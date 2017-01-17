@@ -253,14 +253,14 @@ namespace generate_mpo
                     }
                 }
 
-                typedef std::map<index_type, prempo_key_type> key_map_t;
-                key_map_t key_map;
-                for (index_iterator it = right.begin(); it != right.end(); ++it)
-                    key_map[it->second] = it->first;
-                std::ofstream kos(("key" + boost::lexical_cast<std::string>(p) + ".dat").c_str());
-                for (typename key_map_t::const_iterator it = key_map.begin(); it != key_map.end(); ++it)
-                { kos << it->first << "| " << it->second << std::endl; }
-                kos.close();
+                //typedef std::map<index_type, prempo_key_type> key_map_t;
+                //key_map_t key_map;
+                //for (index_iterator it = right.begin(); it != right.end(); ++it)
+                //    key_map[it->second] = it->first;
+                //std::ofstream kos(("key" + boost::lexical_cast<std::string>(p) + ".dat").c_str());
+                //for (typename key_map_t::const_iterator it = key_map.begin(); it != key_map.end(); ++it)
+                //{ kos << it->first << "| " << it->second << std::endl; }
+                //kos.close();
                 
                 std::pair<index_type, index_type> rcd = rcdim(pre_tensor);
 
@@ -292,7 +292,7 @@ namespace generate_mpo
                             RightPhase[julia] = HermitianPhases[h_it->first].second;
                         }
                     }
-                    maquis::cout << "Bond " << p << ": " << cnt << "/" << RightHerm.size() << std::endl;
+                    //maquis::cout << "Bond " << p << ": " << cnt << "/" << RightHerm.size() << std::endl;
                 }
 
                 MPOTensor_detail::Hermitian h_(LeftHerm, RightHerm, LeftPhase, RightPhase);
