@@ -62,14 +62,16 @@ namespace common {
     };
 
     template <class Matrix, class SymmGroup>
-    struct task_capsule
+    struct task_capsule : public std::map<
+                                          std::pair<typename SymmGroup::charge, typename SymmGroup::charge>,
+                                          std::vector<detail::micro_task<typename Matrix::value_type> >,
+                                          compare_pair<std::pair<typename SymmGroup::charge, typename SymmGroup::charge> >
+                                         >
     {
         typedef typename SymmGroup::charge charge;
         typedef typename Matrix::value_type value_type;
         typedef detail::micro_task<value_type> micro_task;
         typedef std::map<std::pair<charge, charge>, std::vector<micro_task>, compare_pair<std::pair<charge, charge> > > map_t;
-
-        map_t tasks;
     };
 
     template <class Matrix, class SymmGroup>
@@ -112,21 +114,20 @@ namespace common {
         index_type loop_max = mpo.row_dim();
 
         omp_for(index_type b1, parallel::range<index_type>(0,loop_max), {
-            task_capsule<Matrix, SymmGroup> tasks_cap;
-            task_calc(b1, indices, mpo, initial.data().basis(), left_i, out_right_i, in_left_pb, out_right_pb, tasks_cap);
+            task_capsule<Matrix, SymmGroup> tasks;
+            task_calc(b1, indices, mpo, initial.data().basis(), left_i, out_right_i, in_left_pb, out_right_pb, tasks);
 
-            map_t & tasks = tasks_cap.tasks;
             for (typename map_t::iterator it = tasks.begin(); it != tasks.end(); ++it)
                 std::sort((it->second).begin(), (it->second).end(), contraction::common::task_compare<value_type>());
 
-            contraction_schedule[b1] = tasks_cap;
+            contraction_schedule[b1] = tasks;
         });
 
         size_t sz = 0, data = 0;
         for (int b1 = 0; b1 < loop_max; ++b1)
         {
-            map_t & tasks = contraction_schedule[b1].tasks;
-            for (typename map_t::iterator it = tasks.begin(); it != tasks.end(); ++it)
+            task_capsule<Matrix, SymmGroup> const & tasks = contraction_schedule[b1];
+            for (typename map_t::const_iterator it = tasks.begin(); it != tasks.end(); ++it)
             {
                 sz += (it->second).size() * sizeof(detail::micro_task<value_type>);
                 for (typename map_t::mapped_type::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2)
@@ -139,18 +140,45 @@ namespace common {
                                           << "R " << 8*size_of(right)/1024/1024 << "MB "
                                           << initial.data().n_blocks() << " MPS blocks" << std::endl;
 
-        /*
         typedef typename DualIndex<SymmGroup>::const_iterator const_iterator;
+
+        // arrange tasks in groups per mps_charge, middle_charge, mps_offset
+
+        { // separate scope
+
+        typedef boost::tuple<charge, charge> chuple;
+        //typedef std::map<unsigned, MatrixGroup> map2;
+        //typedef std::map<chuple, map2> map1;
+        //for (int b1 = 0; b1 < loop_max; ++b1)
+        //{
+        //    std::vector<value_type> phases = (mpo.herm_info.left_skip(b1)) ? ::contraction::common::conjugate_phases(left[b1], mpo, b1, true, false) :
+        //                                                                     std::vector<value_type>(left[b1].n_blocks(),1.);
+
+        //    for (typename map_t::const_iterator it = contraction_schedule[b1].begin(); it != contraction_schedule[b1].end(); ++it)
+        //    { 
+        //        charge mps_charge = it->first.second;
+        //        charge middle_charge = it->first.first;
+
+        //        std::vector<detail::micro_task> const & otasks = it->second;
+        //        if (otasks.size() == 0) continue;
+
+        //        size_t k = left[b1].basis().position(it->first.second, it->first.first); if (k == left[b1].basis().size()) continue;
+        //    }
+        //}
+
+        } // scope
+
+        /*
+        { // separate scope
 
         // input_per_mps , for each location in the output MPS, list which input blocks from S and T are required
 
         typedef boost::tuple<unsigned, unsigned, unsigned> triple;
-        // [outcharge][outoffset][middlecharge][input_triple]
         typedef std::map<triple, unsigned> map4;
         typedef std::map<charge, map4> map3;
         typedef std::map<unsigned, map3> map2;
         typedef std::map<charge, map2> map1;
-        map1 stasks;
+        map1 stasks; // [outcharge][outoffset][middlecharge][input_triple]
 
         std::map<charge, unsigned> middle_size;
 
@@ -173,7 +201,7 @@ namespace common {
                 
                     // find out_charge in contraction_schedule[b1]
                     std::vector<detail::micro_task<value_type> > const & tvec
-                        = contraction_schedule[b1].tasks[std::make_pair(middle_charge, out_charge)];
+                        = contraction_schedule[b1][std::make_pair(middle_charge, out_charge)];
                     for (int i = 0; i < tvec.size(); ++i)
                         //stasks[out_charge][tvec[i].out_offset][boost::make_tuple(tvec[i].b2, tvec[i].k, tvec[i].in_offset)]++;
                         stasks[out_charge][tvec[i].out_offset][middle_charge][boost::make_tuple(tvec[i].b2, tvec[i].k, tvec[i].in_offset)]++;
@@ -183,39 +211,41 @@ namespace common {
                 //if (cnt > 1) { maquis::cout << left[b1].basis() << std::endl; exit(1); }
             }
         }
-
+        
 
         if (mpo.row_dim() == 178)
         {
-        std::ofstream ips(("ips" + boost::lexical_cast<std::string>(initial.sweep)).c_str());
-        for (typename map1::const_iterator it1 = stasks.begin();
-              it1 != stasks.end(); ++it1)
-        {
-            ips << "MPS charge " << it1->first << ", ls " << left_i.size_of_block(it1->first) << std::endl;
-            for (typename map2::const_iterator it2 = it1->second.begin();
-               it2 != it1->second.end(); ++it2)
+            std::ofstream ips(("ips" + boost::lexical_cast<std::string>(initial.sweep)).c_str());
+            for (typename map1::const_iterator it1 = stasks.begin();
+                  it1 != stasks.end(); ++it1)
             {
-                ips << "  offset " << it2->first << std::endl; //<< "    ";
-                for (typename map3::const_iterator it3 = it2->second.begin(); it3 != it2->second.end(); ++it3)
+                ips << "MPS charge " << it1->first << ", ls " << left_i.size_of_block(it1->first) << std::endl;
+                for (typename map2::const_iterator it2 = it1->second.begin();
+                   it2 != it1->second.end(); ++it2)
                 {
-                    ips << "    mc " << it3->first << "x " << middle_size[it3->first] << std::endl << "      ";
-                    for (typename map4::const_iterator it4 = it3->second.begin(); it4 != it3->second.end(); ++it4)
+                    ips << "  offset " << it2->first << std::endl; //<< "    ";
+                    for (typename map3::const_iterator it3 = it2->second.begin(); it3 != it2->second.end(); ++it3)
                     {
-                        if (it4->second > 1)
-                        ips << boost::get<0>(it4->first)
-                            << "," << boost::get<1>(it4->first)
-                            << "," << boost::get<2>(it4->first)
-                            << ": " << it4->second
-                            << "  ";
+                        ips << "    mc " << it3->first << "x " << middle_size[it3->first] << std::endl << "      ";
+                        for (typename map4::const_iterator it4 = it3->second.begin(); it4 != it3->second.end(); ++it4)
+                        {
+                            if (it4->second > 1)
+                            ips << boost::get<0>(it4->first)
+                                << "," << boost::get<1>(it4->first)
+                                << "," << boost::get<2>(it4->first)
+                                << ": " << it4->second
+                                << "  ";
+                        }
+                        ips << std::endl;
                     }
                     ips << std::endl;
-                }
+                } 
                 ips << std::endl;
-            } 
-            ips << std::endl;
+            }
+            ips.close();
         }
-        ips.close();
-        }
+
+        } //scope
         */
 
         // output_per_T , for each block in T, list all locations in the output MPS that need this block
@@ -242,7 +272,7 @@ namespace common {
         //        
         //            // find out_charge in contraction_schedule[b1]
         //            std::vector<detail::micro_task<value_type> > const & tvec
-        //                = contraction_schedule[b1].tasks[std::make_pair(middle_charge, out_charge)];
+        //                = contraction_schedule[b1][std::make_pair(middle_charge, out_charge)];
         //            for (int i = 0; i < tvec.size(); ++i)
         //                //stasks[out_charge][tvec[i].out_offset][boost::make_tuple(tvec[i].b2, tvec[i].k, tvec[i].in_offset)]++;
         //                stasks[boost::make_tuple(tvec[i].b2, tvec[i].k, tvec[i].in_offset)][out_charge][tvec[i].out_offset]++;
