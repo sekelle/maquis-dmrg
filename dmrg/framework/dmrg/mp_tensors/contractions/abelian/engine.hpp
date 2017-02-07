@@ -148,6 +148,7 @@ namespace contraction {
 
         static schedule_t
         right_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & mps,
+                                   Boundary<OtherMatrix, SymmGroup> const & left,
                                    Boundary<OtherMatrix, SymmGroup> const & right,
                                    MPOTensor<Matrix, SymmGroup> const & mpo)
         {

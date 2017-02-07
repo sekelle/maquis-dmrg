@@ -141,6 +141,8 @@ public:
     	    TwoSiteTensor<Matrix, SymmGroup> tst(mps[site1], mps[site2]);
     	    MPSTensor<Matrix, SymmGroup> twin_mps = tst.make_mps();
             tst.clear();
+            // TODO : remove
+            twin_mps.sweep = 2*sweep + (-lr + 1)/2;
             SiteProblem<Matrix, SymmGroup> sp(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1]);
             
             /// Compute orthogonal vectors

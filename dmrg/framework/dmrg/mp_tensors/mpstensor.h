@@ -143,6 +143,8 @@ public:
     bool reasonable() const;
     bool num_check() const; // checks for nan or inf
     
+    // TODO : remove / make private (change non-abelian::site_hamil2)
+    int sweep;
     Index<SymmGroup> phys_i, left_i, right_i;
 private:
     mutable block_matrix<Matrix, SymmGroup> data_;
