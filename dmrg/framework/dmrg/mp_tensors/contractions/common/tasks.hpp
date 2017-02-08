@@ -79,6 +79,83 @@ namespace common {
     {
         typedef std::vector<contraction::common::task_capsule<Matrix, SymmGroup> > schedule_t;
     }; 
+
+    template <class Matrix, class SymmGroup>
+    class MatrixGroup
+    {
+        typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
+        typedef typename task_capsule<Matrix, SymmGroup>::micro_task micro_task;
+
+    public:
+        void add_line(unsigned b1, unsigned k)
+        {
+            bs.push_back(b1);
+            ks.push_back(k);
+            tasks.push_back(std::vector<micro_task>());
+        }
+
+        void push_back(micro_task mt)
+        {
+            assert(tasks.size() > 0);
+            tasks[tasks.size()-1].push_back(mt);
+        }
+
+        void print_stats()
+        {
+            typedef boost::tuple<unsigned, unsigned, unsigned> triple;
+            typedef std::map<triple, unsigned> amap_t;
+
+            unsigned cnt = 0;
+            amap_t b2_col;
+            for (int i = 0; i < tasks.size(); ++i)
+                for (int j = 0; j < tasks[i].size(); ++j)
+                {
+                    triple tt(tasks[i][j].b2, tasks[i][j].k, tasks[i][j].in_offset); 
+                    if (b2_col.count(tt) == 0)
+                        b2_col[tt] = cnt++;
+                }
+
+            alps::numeric::matrix<unsigned> alpha(tasks.size(), b2_col.size(), 0);
+            for (int i = 0; i < tasks.size(); ++i)
+                for (int j = 0; j < tasks[i].size(); ++j)
+                {
+                    triple tt(tasks[i][j].b2, tasks[i][j].k, tasks[i][j].in_offset); 
+                    alpha(i, b2_col[tt]) = 1;
+                }
+
+            maquis::cout << "      ";
+            for (amap_t::const_iterator it = b2_col.begin(); it != b2_col.end(); ++it)
+                maquis::cout << std::setw(4) << boost::get<1>(it->first);
+            maquis::cout << std::endl;
+            maquis::cout << "      ";
+            for (amap_t::const_iterator it = b2_col.begin(); it != b2_col.end(); ++it)
+                maquis::cout << std::setw(4) << boost::get<0>(it->first);
+            maquis::cout << std::endl;
+
+            std::string hline(6 + 4 * b2_col.size(), '_');
+            maquis::cout << hline << std::endl;
+
+            for (int i = 0; i < bs.size(); ++i)
+            {
+                maquis::cout << std::setw(4) << bs[i] << "| ";
+                for (amap_t::const_iterator it = b2_col.begin(); it != b2_col.end(); ++it)
+                {
+                    int col = it->second;
+                    int val = alpha(i, col);
+                    if (val == 0)
+                        maquis::cout << std::setw(4) << "."; 
+                    else
+                        maquis::cout << std::setw(4) << alpha(i, col); 
+                }
+                maquis::cout << std::endl;
+            }
+            maquis::cout << std::endl << std::endl;
+        }
+        
+    private:
+        std::vector<std::vector<micro_task> > tasks;
+        std::vector<index_type> bs, ks;
+    };
     
     template<class Matrix, class SymmGroup, class TaskCalc>
     typename Schedule<Matrix, SymmGroup>::schedule_t
@@ -92,6 +169,8 @@ namespace common {
         typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
         typedef typename Matrix::value_type value_type;
         typedef typename task_capsule<Matrix, SymmGroup>::map_t map_t;
+
+        typedef typename task_capsule<Matrix, SymmGroup>::micro_task micro_task;
 
         typename Schedule<Matrix, SymmGroup>::schedule_t contraction_schedule;
 
@@ -118,7 +197,7 @@ namespace common {
             task_calc(b1, indices, mpo, initial.data().basis(), left_i, out_right_i, in_left_pb, out_right_pb, tasks);
 
             for (typename map_t::iterator it = tasks.begin(); it != tasks.end(); ++it)
-                std::sort((it->second).begin(), (it->second).end(), contraction::common::task_compare<value_type>());
+                std::sort((it->second).begin(), (it->second).end(), task_compare<value_type>());
 
             contraction_schedule[b1] = tasks;
         });
@@ -129,7 +208,7 @@ namespace common {
             task_capsule<Matrix, SymmGroup> const & tasks = contraction_schedule[b1];
             for (typename map_t::const_iterator it = tasks.begin(); it != tasks.end(); ++it)
             {
-                sz += (it->second).size() * sizeof(detail::micro_task<value_type>);
+                sz += (it->second).size() * sizeof(micro_task);
                 for (typename map_t::mapped_type::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2)
                     data += 8 * it2->r_size * it2->l_size;
             }            
@@ -147,24 +226,66 @@ namespace common {
         { // separate scope
 
         typedef boost::tuple<charge, charge> chuple;
-        //typedef std::map<unsigned, MatrixGroup> map2;
-        //typedef std::map<chuple, map2> map1;
-        //for (int b1 = 0; b1 < loop_max; ++b1)
-        //{
-        //    std::vector<value_type> phases = (mpo.herm_info.left_skip(b1)) ? ::contraction::common::conjugate_phases(left[b1], mpo, b1, true, false) :
-        //                                                                     std::vector<value_type>(left[b1].n_blocks(),1.);
+        typedef std::map<unsigned, MatrixGroup<Matrix, SymmGroup> > map2;
+        typedef std::map<chuple, map2> map1;
 
-        //    for (typename map_t::const_iterator it = contraction_schedule[b1].begin(); it != contraction_schedule[b1].end(); ++it)
-        //    { 
-        //        charge mps_charge = it->first.second;
-        //        charge middle_charge = it->first.first;
+        map1 matrix_groups;
 
-        //        std::vector<detail::micro_task> const & otasks = it->second;
-        //        if (otasks.size() == 0) continue;
+        for (int b1 = 0; b1 < loop_max; ++b1)
+        {
+            std::vector<value_type> phases = (mpo.herm_info.left_skip(b1)) ? ::contraction::common::conjugate_phases(left[b1], mpo, b1, true, false) :
+                                                                             std::vector<value_type>(left[b1].n_blocks(),1.);
 
-        //        size_t k = left[b1].basis().position(it->first.second, it->first.first); if (k == left[b1].basis().size()) continue;
-        //    }
-        //}
+            for (typename map_t::const_iterator it = contraction_schedule[b1].begin(); it != contraction_schedule[b1].end(); ++it)
+            { 
+                charge mps_charge = it->first.second;
+                charge middle_charge = it->first.first;
+
+                std::vector<micro_task> const & otasks = it->second;               if (otasks.size() == 0)           continue;
+                size_t k = left[b1].basis().position(mps_charge, middle_charge);   if (k == left[b1].basis().size()) continue;
+
+                map2 & matrix_groups_ch = matrix_groups[boost::make_tuple(mps_charge, middle_charge)];
+                for (typename std::vector<micro_task>::const_iterator it2 = otasks.begin(); it2 != otasks.end(); )
+                {
+                    unsigned offset = it2->out_offset;
+                    matrix_groups_ch[offset].add_line(b1, k);
+
+                    typename std::vector<micro_task>::const_iterator upper = std::upper_bound(it2, otasks.end(), *it2, task_compare<value_type>());
+                    for ( ; it2 != upper; ++it2)
+                        matrix_groups_ch[offset].push_back(*it2);
+
+                    it2 = upper;
+                }
+            }
+        }
+
+        if (mpo.row_dim() == 178 && initial.sweep == 3)
+        {
+            charge probe1(0), probe2(0);
+            probe1[0] = 4; probe1[1] = 2;
+            probe2[0] = 4; probe2[1] = 0;
+
+            unsigned offprobe = 539;
+            matrix_groups[boost::make_tuple(probe1, probe2)][offprobe].print_stats();
+        }
+        if (mpo.row_dim() == 178 && initial.sweep == 3)
+        {
+            charge probe1(0), probe2(0);
+            probe1[0] = 4; probe1[1] = 2;
+            probe2[0] = 4; probe2[1] = 0;
+
+            unsigned offprobe = 283;
+            matrix_groups[boost::make_tuple(probe1, probe2)][offprobe].print_stats();
+        }
+        if (mpo.row_dim() == 178 && initial.sweep == 3)
+        {
+            charge probe1(0), probe2(0);
+            probe1[0] = 4; probe1[1] = 2;
+            probe2[0] = 4; probe2[1] = 2;
+
+            unsigned offprobe = 283;
+            matrix_groups[boost::make_tuple(probe1, probe2)][offprobe].print_stats();
+        }
 
         } // scope
 
