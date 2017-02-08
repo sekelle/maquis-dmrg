@@ -24,8 +24,8 @@
  *
  *****************************************************************************/
 
-#ifndef CONTRACTIONS_SU2_APPLY_OP_RP_HPP
-#define CONTRACTIONS_SU2_APPLY_OP_RP_HPP
+#ifndef CONTRACTIONS_SU2_LBTM_RP_HPP
+#define CONTRACTIONS_SU2_LBTM_RP_HPP
 
 #include "dmrg/block_matrix/symmetry/gsl_coupling.h"
 #include "dmrg/block_matrix/block_matrix.h"

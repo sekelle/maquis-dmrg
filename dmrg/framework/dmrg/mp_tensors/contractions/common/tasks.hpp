@@ -2,9 +2,8 @@
  *
  * ALPS MPS DMRG Project
  *
- * Copyright (C) 2017 Institute for Theoretical Physics, ETH Zurich
+ * Copyright (C) 2017 Department of Chemistry and the PULSE Institute, Stanford University
  *                    Laboratory for Physical Chemistry, ETH Zurich
- *                    Department of Chemistry and the PULSE Institute, Stanford University
  *               2017-2017 by Sebastian Keller <sebkelle@phys.ethz.ch>
  * 
  * This software is part of the ALPS Applications, published under the ALPS
