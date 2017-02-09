@@ -35,6 +35,24 @@
 #include "utils/sizeof.h"
 
 namespace contraction {
+
+namespace SU2 {
+
+    // forward declaration
+
+    template <class Matrix, class OtherMatrix, class SymmGroup>
+    void shtm_tasks(MPOTensor<Matrix, SymmGroup> const & mpo,
+                    Boundary<OtherMatrix, SymmGroup> const & left,
+                    Boundary<OtherMatrix, SymmGroup> const & right,
+                    DualIndex<SymmGroup> const &,
+                    //Index<SymmGroup> const &,
+                    Index<SymmGroup> const &,
+                    ProductBasis<SymmGroup> const &,
+                    typename SymmGroup::charge,
+                    typename SymmGroup::charge,
+                    unsigned);
+}
+
 namespace common {
 
     namespace detail { 
@@ -260,12 +278,23 @@ namespace common {
 
         if (mpo.row_dim() == 178 && initial.sweep == 3)
         {
-            charge probe1(0), probe2(0);
-            probe1[0] = 4; probe1[1] = 2;
-            probe2[0] = 4; probe2[1] = 0;
+            charge lc(0), mc(0);
+            lc[0] = 4; lc[1] = 2;
+            mc[0] = 4; mc[1] = 0;
 
             unsigned offprobe = 539;
-            matrix_groups[boost::make_tuple(probe1, probe2)][offprobe].print_stats();
+            matrix_groups[boost::make_tuple(lc, mc)][offprobe].print_stats();
+
+            charge phys;
+            for (int s = 0; s < physical_i.size(); ++s)
+            {
+                phys = physical_i[s].first;
+                charge rc = SymmGroup::fuse(phys, lc);
+                if ( out_right_pb(phys, rc) == 539 )
+                    break;
+            }
+
+            SU2::shtm_tasks(mpo, left, right, initial.data().basis(), right_i, out_right_pb, lc, phys, offprobe);
         }
         if (mpo.row_dim() == 178 && initial.sweep == 3)
         {
