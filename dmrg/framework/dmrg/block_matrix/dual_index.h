@@ -158,11 +158,11 @@ public:
     DualIndex() : sorted_(true) {}
     
     std::size_t left_block_size(charge r, charge c) const {
-        std::size_t pos = position(value_type(r,c,0,0));
+        std::size_t pos = position(r,c);
         return (*this)[pos].ls;
     }
     std::size_t right_block_size(charge r, charge c) const {
-        std::size_t pos = position(value_type(r,c,0,0));
+        std::size_t pos = position(r,c);
         return (*this)[pos].rs;
     }
     
