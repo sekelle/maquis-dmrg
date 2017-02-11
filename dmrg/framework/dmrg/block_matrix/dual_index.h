@@ -242,6 +242,7 @@ public:
             std::swap(ret.data_[i].lc, ret.data_[i].rc);
             std::swap(ret.data_[i].ls, ret.data_[i].rs);
         }
+        ret.sort();
         return ret;
     }
     

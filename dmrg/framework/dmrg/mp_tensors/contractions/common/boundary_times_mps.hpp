@@ -115,7 +115,7 @@ namespace contraction {
                     parallel::guard group(scheduler(b1), parallel::groups_granularity);
 
                     //typename Gemm::gemm_trim_left()(left[mpo.herm_info.left_conj(b1)], mps.data(), data_[b1], scales);
-                    (*this)[b1] = left[b1].basis(); 
+                    (*this)[b1] = left[mpo.herm_info.left_conj(b1)].basis(); 
                     //conj_scales[b2] = conjugate_phases(left[mpo.herm_info.left_conj(b1)], mpo, b1, true, false);
                 }
                 else {
