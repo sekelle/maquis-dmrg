@@ -209,7 +209,7 @@ namespace common {
         index_type loop_max = mpo.row_dim();
         omp_for(index_type b1, parallel::range<index_type>(0,loop_max), {
             task_capsule<Matrix, SymmGroup> tasks;
-            task_calc(b1, indices, mpo, left_i, out_right_i, in_left_pb, out_right_pb, tasks);
+            task_calc(b1, indices, mpo, left_indices[b1], left_i, out_right_i, in_left_pb, out_right_pb, tasks);
 
             for (typename map_t::iterator it = tasks.begin(); it != tasks.end(); ++it)
                 std::sort((it->second).begin(), (it->second).end(), task_compare<value_type>());

@@ -44,6 +44,7 @@ namespace SU2 {
     void rbtm_tasks(size_t b1,
                     common::MPSBoundaryProductIndices<Matrix, OtherMatrix, SymmGroup> const & right_mult_mps,
                     MPOTensor<Matrix, SymmGroup> const & mpo,
+                    DualIndex<SymmGroup> const & left_basis,
                     Index<SymmGroup> const & left_i,
                     Index<SymmGroup> const & out_right_i,
                     ProductBasis<SymmGroup> const & in_left_pb,
@@ -170,7 +171,7 @@ namespace SU2 {
     {
         task_capsule<Matrix, SymmGroup> tasks;
 
-        rbtm_tasks(b1, right_mult_mps.indices, mpo, left_i, out_right_i, in_left_pb, out_right_pb, tasks);
+        rbtm_tasks(b1, right_mult_mps.indices, mpo, ket_basis, left_i, out_right_i, in_left_pb, out_right_pb, tasks);
         rbtm_axpy(tasks, ret, out_right_i, right_mult_mps);
 
         right_mult_mps.free(b1);
