@@ -213,12 +213,7 @@ namespace contraction {
             bra_tensor.make_left_paired();
             block_matrix<Matrix, SymmGroup> bra_conj = conjugate(bra_tensor.data());
 
-            DualIndex<SymmGroup> ket_basis_transpose = ket_cpy.data().basis();
-            for (std::size_t i = 0; i < ket_basis_transpose.size(); ++i) {
-                std::swap(ket_basis_transpose[i].lc, ket_basis_transpose[i].rc);
-                std::swap(ket_basis_transpose[i].ls, ket_basis_transpose[i].rs);
-            }
-
+            DualIndex<SymmGroup> ket_basis_transpose = ket_cpy.data().basis().transpose();
 
     #ifdef USE_AMBIENT
             ContractionGrid<Matrix, SymmGroup> contr_grid(mpo, left.aux_dim(), mpo.col_dim());
