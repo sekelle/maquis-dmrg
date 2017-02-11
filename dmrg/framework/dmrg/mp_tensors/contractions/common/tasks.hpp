@@ -189,12 +189,13 @@ namespace common {
         typedef typename task_capsule<Matrix, SymmGroup>::map_t map_t;
         typedef typename task_capsule<Matrix, SymmGroup>::micro_task micro_task;
 
+        initial.make_left_paired();
+
         typename Schedule<Matrix, SymmGroup>::schedule_t contraction_schedule(mpo.row_dim());
         MPSBoundaryProductIndices<Matrix, SMatrix, SymmGroup> indices(initial.data().basis(), right, mpo);
-        //LeftIndices<Matrix, SMatrix, SymmGroup> left_indices(left, mpo);
+        LeftIndices<Matrix, SMatrix, SymmGroup> left_indices(left, mpo);
 
         // MPS indices
-        initial.make_left_paired();
         Index<SymmGroup> const & physical_i = initial.site_dim(),
                                  right_i = initial.col_dim();
         Index<SymmGroup> left_i = initial.row_dim(),
