@@ -42,7 +42,7 @@ namespace SU2 {
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
     void rbtm_tasks(size_t b1,
-                    ::contraction::common::MPSBoundaryProductIndices<Matrix, OtherMatrix, SymmGroup> const & right_mult_mps,
+                    common::MPSBoundaryProductIndices<Matrix, OtherMatrix, SymmGroup> const & right_mult_mps,
                     MPOTensor<Matrix, SymmGroup> const & mpo,
                     DualIndex<SymmGroup> const & ket_basis,
                     Index<SymmGroup> const & left_i,
@@ -53,7 +53,6 @@ namespace SU2 {
     {
         typedef typename MPOTensor<OtherMatrix, SymmGroup>::index_type index_type;
         typedef typename MPOTensor<OtherMatrix, SymmGroup>::row_proxy row_proxy;
-        typedef typename MPOTensor<OtherMatrix, SymmGroup>::col_proxy col_proxy;
         typedef typename DualIndex<SymmGroup>::const_iterator const_iterator;
         typedef typename SymmGroup::charge charge;
         typedef typename Matrix::value_type value_type;
@@ -78,8 +77,7 @@ namespace SU2 {
                     charge lc = T.left_charge(t_block);
                     charge rc = T.right_charge(t_block);
 
-                    const_iterator it = ket_basis.left_lower_bound(lc);
-                    charge mc = it->rc;
+                    charge mc = lc;
 
                     for (size_t w_block = 0; w_block < W.basis().size(); ++w_block)
                     {   
@@ -87,10 +85,12 @@ namespace SU2 {
                         charge phys_out = W.basis().right_charge(w_block);
 
                         charge out_l_charge = SymmGroup::fuse(lc, -phys_in);
+
                         size_t lb = left_i.position(out_l_charge);
                         if (lb == left_i.size()) continue;
 
                         charge out_r_charge = SymmGroup::fuse(rc, -phys_out);
+
                         if (!::SU2::triangle(SymmGroup::spin(out_l_charge), a, SymmGroup::spin(out_r_charge))) continue;
                         if (!left_i.has(out_r_charge)) continue;
 
@@ -204,7 +204,7 @@ namespace SU2 {
         typedef typename task_capsule<Matrix, SymmGroup>::micro_task micro_task;
         typedef typename SymmGroup::charge charge;
 
-        std::vector<value_type> phases = (mpo.herm_info.left_skip(b1)) ? ::contraction::common::conjugate_phases(left_b1, mpo, b1, true, false) :
+        std::vector<value_type> phases = (mpo.herm_info.left_skip(b1)) ? common::conjugate_phases(left_b1, mpo, b1, true, false) :
                                                                          std::vector<value_type>(left_b1.n_blocks(),1.);
         for (typename map_t::const_iterator it = tasks.begin(); it != tasks.end(); ++it)
         {
