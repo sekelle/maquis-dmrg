@@ -182,21 +182,19 @@ namespace common {
                                 MPOTensor<Matrix, SymmGroup> const & mpo,
                                 TaskCalc task_calc)
     {
+        typedef typename storage::constrained<Matrix>::type SMatrix;
         typedef typename SymmGroup::charge charge;
-        typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
         typedef typename Matrix::value_type value_type;
+        typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
         typedef typename task_capsule<Matrix, SymmGroup>::map_t map_t;
-
         typedef typename task_capsule<Matrix, SymmGroup>::micro_task micro_task;
 
-        typename Schedule<Matrix, SymmGroup>::schedule_t contraction_schedule;
+        typename Schedule<Matrix, SymmGroup>::schedule_t contraction_schedule(mpo.row_dim());
+        MPSBoundaryProductIndices<Matrix, SMatrix, SymmGroup> indices(initial.data().basis(), right, mpo);
+        //LeftIndices<Matrix, SMatrix, SymmGroup> left_indices(left, mpo);
 
+        // MPS indices
         initial.make_left_paired();
-
-        contraction_schedule.resize(mpo.row_dim());
-        contraction::common::MPSBoundaryProductIndices<Matrix, typename storage::constrained<Matrix>::type, SymmGroup>
-            indices(initial.data().basis(), right, mpo);
-
         Index<SymmGroup> const & physical_i = initial.site_dim(),
                                  right_i = initial.col_dim();
         Index<SymmGroup> left_i = initial.row_dim(),
@@ -208,10 +206,9 @@ namespace common {
                                              boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
                                                                  -boost::lambda::_1, boost::lambda::_2));
         index_type loop_max = mpo.row_dim();
-
         omp_for(index_type b1, parallel::range<index_type>(0,loop_max), {
             task_capsule<Matrix, SymmGroup> tasks;
-            task_calc(b1, indices, mpo, initial.data().basis(), left_i, out_right_i, in_left_pb, out_right_pb, tasks);
+            task_calc(b1, indices, mpo, left_i, out_right_i, in_left_pb, out_right_pb, tasks);
 
             for (typename map_t::iterator it = tasks.begin(); it != tasks.end(); ++it)
                 std::sort((it->second).begin(), (it->second).end(), task_compare<value_type>());
@@ -240,82 +237,82 @@ namespace common {
 
         // arrange tasks in groups per mps_charge, middle_charge, mps_offset
 
-        { // separate scope
+        //{ // separate scope
 
-        typedef boost::tuple<charge, charge> chuple;
-        typedef std::map<unsigned, MatrixGroup<Matrix, SymmGroup> > map2;
-        typedef std::map<chuple, map2> map1;
+        //typedef boost::tuple<charge, charge> chuple;
+        //typedef std::map<unsigned, MatrixGroup<Matrix, SymmGroup> > map2;
+        //typedef std::map<chuple, map2> map1;
 
-        map1 matrix_groups;
+        //map1 matrix_groups;
 
-        for (int b1 = 0; b1 < loop_max; ++b1)
-        {
-            std::vector<value_type> phases = (mpo.herm_info.left_skip(b1)) ? ::contraction::common::conjugate_phases(left[b1], mpo, b1, true, false) :
-                                                                             std::vector<value_type>(left[b1].n_blocks(),1.);
+        //for (int b1 = 0; b1 < loop_max; ++b1)
+        //{
+        //    std::vector<value_type> phases = (mpo.herm_info.left_skip(b1)) ? ::contraction::common::conjugate_phases(left[b1], mpo, b1, true, false) :
+        //                                                                     std::vector<value_type>(left[b1].n_blocks(),1.);
 
-            for (typename map_t::const_iterator it = contraction_schedule[b1].begin(); it != contraction_schedule[b1].end(); ++it)
-            { 
-                charge mps_charge = it->first.second;
-                charge middle_charge = it->first.first;
+        //    for (typename map_t::const_iterator it = contraction_schedule[b1].begin(); it != contraction_schedule[b1].end(); ++it)
+        //    { 
+        //        charge mps_charge = it->first.second;
+        //        charge middle_charge = it->first.first;
 
-                std::vector<micro_task> const & otasks = it->second;               if (otasks.size() == 0)           continue;
-                size_t k = left[b1].basis().position(mps_charge, middle_charge);   if (k == left[b1].basis().size()) continue;
+        //        std::vector<micro_task> const & otasks = it->second;               if (otasks.size() == 0)           continue;
+        //        size_t k = left[b1].basis().position(mps_charge, middle_charge);   if (k == left[b1].basis().size()) continue;
 
-                map2 & matrix_groups_ch = matrix_groups[boost::make_tuple(mps_charge, middle_charge)];
-                for (typename std::vector<micro_task>::const_iterator it2 = otasks.begin(); it2 != otasks.end(); )
-                {
-                    unsigned offset = it2->out_offset;
-                    matrix_groups_ch[offset].add_line(b1, k);
+        //        map2 & matrix_groups_ch = matrix_groups[boost::make_tuple(mps_charge, middle_charge)];
+        //        for (typename std::vector<micro_task>::const_iterator it2 = otasks.begin(); it2 != otasks.end(); )
+        //        {
+        //            unsigned offset = it2->out_offset;
+        //            matrix_groups_ch[offset].add_line(b1, k);
 
-                    typename std::vector<micro_task>::const_iterator upper = std::upper_bound(it2, otasks.end(), *it2, task_compare<value_type>());
-                    for ( ; it2 != upper; ++it2)
-                        matrix_groups_ch[offset].push_back(*it2);
+        //            typename std::vector<micro_task>::const_iterator upper = std::upper_bound(it2, otasks.end(), *it2, task_compare<value_type>());
+        //            for ( ; it2 != upper; ++it2)
+        //                matrix_groups_ch[offset].push_back(*it2);
 
-                    it2 = upper;
-                }
-            }
-        }
+        //            it2 = upper;
+        //        }
+        //    }
+        //}
 
-        if (mpo.row_dim() == 178 && initial.sweep == 3)
-        {
-            charge lc(0), mc(0);
-            lc[0] = 4; lc[1] = 2;
-            mc[0] = 4; mc[1] = 0;
+        //if (mpo.row_dim() == 178 && initial.sweep == 3)
+        //{
+        //    charge lc(0), mc(0);
+        //    lc[0] = 4; lc[1] = 2;
+        //    mc[0] = 4; mc[1] = 0;
 
-            unsigned offprobe = 539;
-            matrix_groups[boost::make_tuple(lc, mc)][offprobe].print_stats();
+        //    unsigned offprobe = 539;
+        //    matrix_groups[boost::make_tuple(lc, mc)][offprobe].print_stats();
 
-            charge phys;
-            for (int s = 0; s < physical_i.size(); ++s)
-            {
-                phys = physical_i[s].first;
-                charge rc = SymmGroup::fuse(phys, lc);
-                if ( out_right_pb(phys, rc) == 539 )
-                    break;
-            }
+        //    charge phys;
+        //    for (int s = 0; s < physical_i.size(); ++s)
+        //    {
+        //        phys = physical_i[s].first;
+        //        charge rc = SymmGroup::fuse(phys, lc);
+        //        if ( out_right_pb(phys, rc) == 539 )
+        //            break;
+        //    }
 
-            SU2::shtm_tasks(mpo, left, right, initial.data().basis(), right_i, out_right_pb, lc, phys, offprobe);
-        }
-        if (mpo.row_dim() == 178 && initial.sweep == 3)
-        {
-            charge probe1(0), probe2(0);
-            probe1[0] = 4; probe1[1] = 2;
-            probe2[0] = 4; probe2[1] = 0;
+        //    SU2::shtm_tasks(mpo, left, right, initial.data().basis(), right_i, out_right_pb, lc, phys, offprobe);
+        //}
+        //if (mpo.row_dim() == 178 && initial.sweep == 3)
+        //{
+        //    charge probe1(0), probe2(0);
+        //    probe1[0] = 4; probe1[1] = 2;
+        //    probe2[0] = 4; probe2[1] = 0;
 
-            unsigned offprobe = 283;
-            matrix_groups[boost::make_tuple(probe1, probe2)][offprobe].print_stats();
-        }
-        if (mpo.row_dim() == 178 && initial.sweep == 3)
-        {
-            charge probe1(0), probe2(0);
-            probe1[0] = 4; probe1[1] = 2;
-            probe2[0] = 4; probe2[1] = 2;
+        //    unsigned offprobe = 283;
+        //    matrix_groups[boost::make_tuple(probe1, probe2)][offprobe].print_stats();
+        //}
+        //if (mpo.row_dim() == 178 && initial.sweep == 3)
+        //{
+        //    charge probe1(0), probe2(0);
+        //    probe1[0] = 4; probe1[1] = 2;
+        //    probe2[0] = 4; probe2[1] = 2;
 
-            unsigned offprobe = 283;
-            matrix_groups[boost::make_tuple(probe1, probe2)][offprobe].print_stats();
-        }
+        //    unsigned offprobe = 283;
+        //    matrix_groups[boost::make_tuple(probe1, probe2)][offprobe].print_stats();
+        //}
 
-        } // scope
+        //} // scope
 
         /*
         { // separate scope

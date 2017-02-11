@@ -38,13 +38,12 @@
 namespace contraction {
 namespace SU2 {
 
-    using ::contraction::common::task_capsule;
+    using common::task_capsule;
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
     void rbtm_tasks(size_t b1,
                     common::MPSBoundaryProductIndices<Matrix, OtherMatrix, SymmGroup> const & right_mult_mps,
                     MPOTensor<Matrix, SymmGroup> const & mpo,
-                    DualIndex<SymmGroup> const & ket_basis,
                     Index<SymmGroup> const & left_i,
                     Index<SymmGroup> const & out_right_i,
                     ProductBasis<SymmGroup> const & in_left_pb,
@@ -77,8 +76,6 @@ namespace SU2 {
                     charge lc = T.left_charge(t_block);
                     charge rc = T.right_charge(t_block);
 
-                    charge mc = lc;
-
                     for (size_t w_block = 0; w_block < W.basis().size(); ++w_block)
                     {   
                         charge phys_in = W.basis().left_charge(w_block);
@@ -99,7 +96,7 @@ namespace SU2 {
                         std::vector<micro_task> & otasks = tasks[std::make_pair(out_l_charge, out_r_charge)];
 
                         int i = SymmGroup::spin(out_r_charge), ip = SymmGroup::spin(rc);
-                        int j = SymmGroup::spin(out_l_charge), jp = SymmGroup::spin(mc);
+                        int j = SymmGroup::spin(out_l_charge), jp = SymmGroup::spin(lc);
                         int two_sp = std::abs(i - ip), two_s  = std::abs(j - jp);
 
                         typename Matrix::value_type couplings[4];
@@ -173,7 +170,7 @@ namespace SU2 {
     {
         task_capsule<Matrix, SymmGroup> tasks;
 
-        rbtm_tasks(b1, right_mult_mps.indices, mpo, ket_basis, left_i, out_right_i, in_left_pb, out_right_pb, tasks);
+        rbtm_tasks(b1, right_mult_mps.indices, mpo, left_i, out_right_i, in_left_pb, out_right_pb, tasks);
         rbtm_axpy(tasks, ret, out_right_i, right_mult_mps);
 
         right_mult_mps.free(b1);
