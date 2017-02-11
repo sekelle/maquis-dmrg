@@ -122,7 +122,7 @@ namespace contraction {
                     parallel::guard group(scheduler(b1), parallel::groups_granularity);
                     //typename Gemm::gemm_trim_left()(transpose(left[b1]), mps.data(), data_[b1]);
                     (*this)[b1] = left[b1].basis().transpose(); 
-                    conj_scales[b1] = std::vector<value_type>(left[b1].n_blocks(), value_type(1.));
+                    //conj_scales[b1] = std::vector<value_type>(left[b1].n_blocks(), value_type(1.));
                 }
             });
         }
@@ -165,7 +165,7 @@ namespace contraction {
                     parallel::guard group(scheduler(b2), parallel::groups_granularity);
                     //(*this)[b2] = SU2::gemm_trim_right_pretend(mps_basis, right[b2]);
                     (*this)[b2] = right[b2].basis();
-                    conj_scales[b2] = std::vector<value_type>(right[b2].n_blocks(), value_type(1.));
+                    //conj_scales[b2] = std::vector<value_type>(right[b2].n_blocks(), value_type(1.));
                 }
             });
         }
@@ -341,8 +341,6 @@ namespace contraction {
                 data_.push_back(block_matrix<Matrix, SymmGroup>());
         }
 
-        void multiply (index_type b2);
-
         block_matrix<Matrix, SymmGroup> & operator[](index_type k) { return data_[k]; }
         block_matrix<Matrix, SymmGroup> const & operator[](index_type k) const { return data_[k]; }
 
@@ -387,7 +385,16 @@ namespace contraction {
                     }
         }
 
-        MPSBoundaryProductIndices<Matrix, OtherMatrix, SymmGroup> indices;
+        void initialize_indices()
+        {
+            indices_ = MPSBoundaryProductIndices<Matrix, OtherMatrix, SymmGroup>(mps.data().basis(), right, mpo);
+        }
+
+        MPSBoundaryProductIndices<Matrix, OtherMatrix, SymmGroup> const & indices() const
+        {
+            assert (indices_.size() == right.aux_dim()); // fires if indices are not initialized
+            return indices_;
+        }
 
     private:
         mutable std::vector<block_matrix<Matrix, SymmGroup> > data_;
@@ -396,12 +403,9 @@ namespace contraction {
         MPSTensor<Matrix, SymmGroup> const & mps;
         Boundary<OtherMatrix, SymmGroup> const & right;
         MPOTensor<Matrix, SymmGroup> const & mpo;
-    };
 
-    template <class Matrix, class OtherMatrix, class SymmGroup, class Gemm>
-    void MPSBoundaryProduct<Matrix, OtherMatrix, SymmGroup, Gemm>::multiply(index_type b2)
-    {
-    }
+        MPSBoundaryProductIndices<Matrix, OtherMatrix, SymmGroup> indices_;
+    };
 
     } // namespace common
 } // namespace contraction

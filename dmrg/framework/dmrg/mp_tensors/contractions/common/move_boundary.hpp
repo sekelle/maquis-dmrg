@@ -283,8 +283,7 @@ namespace contraction {
 
             MPSTensor<Matrix, SymmGroup> ket_cpy = ket_tensor;
             contraction::common::MPSBoundaryProduct<Matrix, OtherMatrix, SymmGroup, Gemm> t(ket_cpy, right, mpo);
-            contraction::common::MPSBoundaryProductIndices<Matrix, OtherMatrix, SymmGroup> ti(ket_cpy.data().basis(), right, mpo);
-            t.indices = ti;
+            t.initialize_indices();
 
             Index<SymmGroup> const & physical_i = ket_tensor.site_dim(),
                                      right_i = bra_tensor.col_dim();

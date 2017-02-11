@@ -171,7 +171,7 @@ namespace SU2 {
     {
         task_capsule<Matrix, SymmGroup> tasks;
 
-        rbtm_tasks(b1, right_mult_mps.indices, mpo, ket_basis, left_i, out_right_i, in_left_pb, out_right_pb, tasks);
+        rbtm_tasks(b1, right_mult_mps.indices(), mpo, ket_basis, left_i, out_right_i, in_left_pb, out_right_pb, tasks);
         rbtm_axpy(tasks, ret, out_right_i, right_mult_mps);
 
         right_mult_mps.free(b1);
