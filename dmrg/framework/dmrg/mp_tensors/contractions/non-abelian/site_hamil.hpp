@@ -77,7 +77,7 @@ namespace contraction {
         typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
         typedef typename Matrix::value_type value_type;
 
-        contraction::common::BoundaryMPSProduct<Matrix, OtherMatrix, SymmGroup, ::SU2::SU2Gemms> t(ket_tensor, left, mpo);
+        common::BoundaryMPSProduct<Matrix, OtherMatrix, SymmGroup, ::SU2::SU2Gemms> t(ket_tensor, left, mpo);
 
         Index<SymmGroup> const & physical_i = ket_tensor.site_dim(),
                                & left_i = ket_tensor.row_dim();
@@ -94,11 +94,7 @@ namespace contraction {
         ret.phys_i = ket_tensor.site_dim(); ret.left_i = ket_tensor.row_dim(); ret.right_i = ket_tensor.col_dim();
         index_type loop_max = mpo.col_dim();
 
-        DualIndex<SymmGroup> ket_basis_transpose = ket_tensor.data().basis();
-        for (std::size_t i = 0; i < ket_basis_transpose.size(); ++i) {
-            std::swap(ket_basis_transpose[i].lc, ket_basis_transpose[i].rc);
-            std::swap(ket_basis_transpose[i].ls, ket_basis_transpose[i].rs);
-        }
+        DualIndex<SymmGroup> ket_basis_transpose = ket_tensor.data().basis().transpose();
 
 #ifdef USE_AMBIENT
         {
@@ -174,6 +170,7 @@ namespace contraction {
 
         ket_tensor.make_left_paired();
         MPSBoundaryProduct<Matrix, OtherMatrix, SymmGroup, ::SU2::SU2Gemms> t(ket_tensor, right, mpo);
+        common::LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
 
         Index<SymmGroup> const & physical_i = ket_tensor.site_dim(),
                                  right_i = ket_tensor.col_dim();

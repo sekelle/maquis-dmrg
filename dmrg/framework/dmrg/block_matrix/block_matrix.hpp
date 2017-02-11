@@ -312,11 +312,8 @@ typename block_matrix<Matrix, SymmGroup>::real_type block_matrix<Matrix, SymmGro
 template<class Matrix, class SymmGroup>
 void block_matrix<Matrix, SymmGroup>::transpose_inplace()
 {
-    std::for_each(data_.begin(), data_.end(), utils::functor_transpose_inplace());
-    for (std::size_t i=0; i < basis_.size(); ++i) {
-        std::swap(basis_[i].lc, basis_[i].rc);
-        std::swap(basis_[i].ls, basis_[i].rs);
-    }
+    block_matrix<Matrix, SymmGroup> ret = transpose(*this);
+    return ret;
 }
 
 template<class Matrix, class SymmGroup>
