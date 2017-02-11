@@ -234,6 +234,16 @@ public:
             (*this)[k].rc = SymmGroup::fuse((*this)[k].rc, diff);
         }
     }
+
+    DualIndex transpose() const
+    {
+        DualIndex ret(*this);
+        for (std::size_t i=0; i < ret.basis_.size(); ++i) {
+            std::swap(ret.basis_[i].lc, ret.basis_[i].rc);
+            std::swap(ret.basis_[i].ls, ret.basis_[i].rs);
+        }
+        return ret;
+    }
     
     bool operator==(DualIndex const & o) const
     {
