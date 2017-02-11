@@ -204,9 +204,6 @@ namespace contraction {
 
         reshape_right_to_left_new(physical_i, left_i, right_i, collector, ret.data());
 
-        DualIndex<SymmGroup> kb1 = ket_tensor.data().basis();
-        DualIndex<SymmGroup> kb2 = ret.data().basis();
-        if (!(kb1 == kb2)) throw std::runtime_error("XX\n");
         return ret;
     }
 
