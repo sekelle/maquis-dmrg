@@ -92,6 +92,9 @@ namespace SU2 {
                         if (!::SU2::triangle(SymmGroup::spin(out_l_charge), a, SymmGroup::spin(out_r_charge))) continue;
                         if (!left_i.has(out_r_charge)) continue;
 
+                        // valid if called from site_hamil
+                        //if (!left_basis.has(out_r_charge, out_l_charge)) continue;
+
                         size_t l_size = left_i[lb].second; 
 
                         std::vector<micro_task> & otasks = tasks[std::make_pair(out_l_charge, out_r_charge)];
