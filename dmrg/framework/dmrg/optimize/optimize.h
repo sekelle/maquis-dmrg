@@ -51,7 +51,7 @@
 
 
 template<class Matrix, class SymmGroup>
-struct SiteProblem<Matrix, SymmGroup>
+struct SiteProblem
 {
     SiteProblem(MPSTensor<Matrix, SymmGroup> const & initial,
                 Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & left_,
