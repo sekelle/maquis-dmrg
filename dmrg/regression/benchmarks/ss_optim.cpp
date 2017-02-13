@@ -70,6 +70,7 @@ struct SiteProblem
     Boundary<Matrix, SymmGroup> const & left;
     Boundary<Matrix, SymmGroup> const & right;
     MPOTensor<Matrix, SymmGroup> const & mpo;
+    typename contraction::Engine<Matrix, typename storage::constrained<Matrix>::type, SymmGroup>::schedule_t contraction_schedule;
     double ortho_shift;
 };
 
