@@ -135,8 +135,9 @@ namespace contraction {
             }
 
             if (mpo.herm_info.right_skip(b2)) {
-                std::vector<value_type> phases = ::contraction::common::conjugate_phases(transpose(right[mpo.herm_info.right_conj(b2)]), mpo, b2, false, true);
-                ::SU2::gemm_trim(contr_grid(0,0), transpose(right[mpo.herm_info.right_conj(b2)]), tmp, phases, false);
+                block_matrix<typename maquis::traits::transpose_view<Matrix>::type, SymmGroup> trv = transpose(right[mpo.herm_info.right_conj(b2)]);
+                std::vector<value_type> phases = common::conjugate_phases(trv.basis(), mpo, b2, false, true);
+                ::SU2::gemm_trim(contr_grid(0,0), trv, tmp, phases, false);
             }
             else
                 ::SU2::gemm_trim(contr_grid(0,0), right[b2], tmp, std::vector<value_type>(contr_grid(0,0).n_blocks(), 1.), true);

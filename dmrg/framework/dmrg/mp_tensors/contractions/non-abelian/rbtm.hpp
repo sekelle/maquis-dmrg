@@ -205,7 +205,7 @@ namespace SU2 {
         typedef typename task_capsule<Matrix, SymmGroup>::micro_task micro_task;
         typedef typename SymmGroup::charge charge;
 
-        std::vector<value_type> phases = (mpo.herm_info.left_skip(b1)) ? common::conjugate_phases(left_b1, mpo, b1, true, false) :
+        std::vector<value_type> phases = (mpo.herm_info.left_skip(b1)) ? common::conjugate_phases(left_b1.basis(), mpo, b1, true, false) :
                                                                          std::vector<value_type>(left_b1.n_blocks(),1.);
         for (typename map_t::const_iterator it = tasks.begin(); it != tasks.end(); ++it)
         {

@@ -37,21 +37,21 @@
 namespace contraction {
     namespace common {
 
-    template <class Matrix, class OtherMatrix, class SymmGroup>
+    template <class Matrix, class SymmGroup>
     typename boost::enable_if<symm_traits::HasSU2<SymmGroup>, std::vector<typename Matrix::value_type> >::type
-    conjugate_phases(block_matrix<Matrix, SymmGroup> const & bm,
-                     MPOTensor<OtherMatrix, SymmGroup> const & mpo,
+    conjugate_phases(DualIndex<SymmGroup> const & basis,
+                     MPOTensor<Matrix, SymmGroup> const & mpo,
                      size_t k, bool left, bool forward)
     {
         typedef typename Matrix::value_type value_type;
         typename SymmGroup::subcharge S = (left) ? mpo.left_spin(k).get() : mpo.right_spin(k).get();
 
-        std::vector<value_type> ret(bm.n_blocks());
+        std::vector<value_type> ret(basis.size());
 
-        for (size_t b = 0; b < bm.n_blocks(); ++b)
+        for (size_t b = 0; b < basis.size(); ++b)
         {
             value_type scale = ::SU2::conjugate_correction<typename Matrix::value_type, SymmGroup>
-                                 (bm.basis().left_charge(b), bm.basis().right_charge(b), S);
+                                 (basis.left_charge(b), basis.right_charge(b), S);
             if (forward)
                 scale *= (left) ? mpo.herm_info.left_phase(mpo.herm_info.left_conj(k)) 
                                     : mpo.herm_info.right_phase(mpo.herm_info.right_conj(k));
@@ -63,13 +63,13 @@ namespace contraction {
         return ret;
     }
 
-    template <class Matrix, class OtherMatrix, class SymmGroup>
+    template <class Matrix, class SymmGroup>
     typename boost::disable_if<symm_traits::HasSU2<SymmGroup>, std::vector<typename Matrix::value_type> >::type
-    conjugate_phases(block_matrix<Matrix, SymmGroup> const & bm,
-                     MPOTensor<OtherMatrix, SymmGroup> const & mpo,
+    conjugate_phases(DualIndex<SymmGroup> const & basis,
+                     MPOTensor<Matrix, SymmGroup> const & mpo,
                      size_t k, bool left, bool forward)
     {
-        return std::vector<typename Matrix::value_type>(bm.n_blocks(), 1.);
+        return std::vector<typename Matrix::value_type>(basis.size(), 1.);
     }
 
     template <class Matrix, class SymmGroup>
@@ -78,7 +78,7 @@ namespace contraction {
                                                                                        size_t k, bool left, bool forward)
     {
         typedef typename Matrix::value_type value_type;
-        std::vector<value_type> scales = conjugate_phases(bm, mpo, k, left, forward);
+        std::vector<value_type> scales = conjugate_phases(bm.basis(), mpo, k, left, forward);
 
         for (size_t b = 0; b < bm.n_blocks(); ++b)
             bm[b] *= scales[b];
@@ -159,7 +159,7 @@ namespace contraction {
                     //    = transpose(right[mpo.herm_info.right_conj(b2)]);
                     //(*this)[b2] = SU2::gemm_trim_right_pretend(mps_basis, trv);
                     (*this)[b2] = right[mpo.herm_info.right_conj(b2)].basis().transpose();
-                    //std::vector<value_type> scales = conjugate_phases(trv, mpo, b2, false, true);
+                    //std::vector<value_type> scales = conjugate_phases(trv.basis(), mpo, b2, false, true);
                 }
                 else {
                     parallel::guard group(scheduler(b2), parallel::groups_granularity);
@@ -200,7 +200,7 @@ namespace contraction {
                 {   
                     parallel::guard group(scheduler(b1), parallel::groups_granularity);
 
-                    std::vector<value_type> scales = conjugate_phases(left[mpo.herm_info.left_conj(b1)], mpo, b1, true, false);
+                    std::vector<value_type> scales = conjugate_phases(left[mpo.herm_info.left_conj(b1)].basis(), mpo, b1, true, false);
                     typename Gemm::gemm_trim_left()(left[mpo.herm_info.left_conj(b1)], mps.data(), data_[b1], scales);
                 }
                 else {
@@ -233,7 +233,7 @@ namespace contraction {
                 {
                     //parallel::guard group(scheduler(b1), parallel::groups_granularity);
                     //typename Gemm::gemm_trim_left()(left[mpo.herm_info.left_conj(k)], mps.data(), storage);
-                    std::vector<value_type> scales = conjugate_phases(left[mpo.herm_info.left_conj(k)], mpo, k, true, false);
+                    std::vector<value_type> scales = conjugate_phases(left[mpo.herm_info.left_conj(k)].basis(), mpo, k, true, false);
                     typename Gemm::gemm_trim_left()(left[mpo.herm_info.left_conj(k)], mps.data(), storage, scales);
                 }
                 else {
@@ -318,7 +318,7 @@ namespace contraction {
                 {
                     parallel::guard group(scheduler(b2), parallel::groups_granularity);
                     block_matrix<typename maquis::traits::transpose_view<Matrix>::type, SymmGroup> trv = transpose(right[mpo.herm_info.right_conj(b2)]);
-                    std::vector<value_type> scales = conjugate_phases(trv, mpo, b2, false, true);
+                    std::vector<value_type> scales = conjugate_phases(trv.basis(), mpo, b2, false, true);
 
                     typename Gemm::gemm_trim_right()(mps.data(), trv, data_[b2], scales);
                 }
@@ -356,7 +356,7 @@ namespace contraction {
                         //parallel::guard group(scheduler(b2), parallel::groups_granularity);
                         //typename Gemm::gemm_trim_right()(mps.data(), transpose(right[mpo.herm_info.right_conj(k)]), storage);
                         block_matrix<typename maquis::traits::transpose_view<Matrix>::type, SymmGroup> trv = transpose(right[mpo.herm_info.right_conj(k)]);
-                        std::vector<value_type> scales = conjugate_phases(trv, mpo, k, false, true);
+                        std::vector<value_type> scales = conjugate_phases(trv.basis(), mpo, k, false, true);
                         //typename Gemm::gemm_trim_right()(mps.data(), trv, storage, scales);
                         typename Gemm::gemm_trim_right()(mps.data(), trv, data_[k], scales);
                     }

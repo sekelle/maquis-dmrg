@@ -72,7 +72,7 @@ namespace SU2 {
         for (index_type b1 = 0; b1 < mpo.row_dim(); ++b1)
         {
             //maquis::cout << "b1 " << b1 << std::endl;
-            //std::vector<value_type> phases = (mpo.herm_info.left_skip(b1)) ? common::conjugate_phases(left[b1], mpo, b1, true, false) :
+            //std::vector<value_type> phases = (mpo.herm_info.left_skip(b1)) ? common::conjugate_phases(left[b1].basis(), mpo, b1, true, false) :
             //                                                                 std::vector<value_type>(left[b1].n_blocks(),1.);
             const_iterator lit = left[b1].basis().left_lower_bound(lc);
             for ( ; lit != left[b1].basis().end() && lit->lc == lc; ++lit)
