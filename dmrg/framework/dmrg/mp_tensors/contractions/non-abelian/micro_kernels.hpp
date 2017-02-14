@@ -155,9 +155,8 @@ namespace detail {
                     typename Matrix::value_type couplings[],
                     std::vector<micro_task<typename Matrix::value_type> > & tasks,
                     micro_task<typename Matrix::value_type> tpl,
-                    //const typename Matrix::value_type * source,
                     size_t in_offset,
-                    size_t r_size_cache, size_t r_size, size_t out_right_offset)
+                    size_t r_size_cache, size_t r_size, size_t out_right_offset, bool check)
     {
         typedef typename SparseOperator<Matrix, SymmGroup>::const_iterator block_iterator;
         std::pair<block_iterator, block_iterator> blocks = W.get_sparse().block(w_block);
@@ -175,13 +174,52 @@ namespace detail {
             else if (rspin == 2) casenr = 1;
             else if (cspin == 2) casenr = 2;
 
-            //task.source = source + ss1*tpl.l_size;
             task.in_offset = in_offset + ss1*tpl.l_size;
             task.scale = it->coefficient * couplings[casenr];
             task.r_size = r_size_cache;
+            if (check && out_right_offset + ss2*r_size == 168)
+                //maquis::cout << " " << out_right_offset << " + " << ss2 << "*" << r_size << " ";
+                maquis::cout << " " << in_offset << " + " << ss1 << "*" << tpl.l_size << " ";
             task.out_offset = out_right_offset + ss2*r_size;
             tasks.push_back(task);
         }
+        if (check) maquis::cout << std::endl;
+    }
+
+    template <class Matrix, class SymmGroup>
+    void op_iterate_shtm(typename operator_selector<Matrix, SymmGroup>::type const & W, std::size_t w_block,
+                         typename Matrix::value_type couplings[],
+                         std::vector<micro_task<typename Matrix::value_type> > & tasks,
+                         micro_task<typename Matrix::value_type> tpl,
+                         size_t in_offset,
+                         size_t r_size_cache, size_t r_size, size_t pre_offset, bool check)
+    {
+        typedef typename SparseOperator<Matrix, SymmGroup>::const_iterator block_iterator;
+        std::pair<block_iterator, block_iterator> blocks = W.get_sparse().block(w_block);
+
+        for (block_iterator it = blocks.first; it != blocks.second; ++it)
+        {
+            micro_task<typename Matrix::value_type> task = tpl;
+
+            std::size_t ss1 = it->row;
+            std::size_t ss2 = it->col;
+            std::size_t rspin = it->row_spin;
+            std::size_t cspin = it->col_spin;
+            std::size_t casenr = 0; 
+            if (rspin == 2 && cspin == 2) casenr = 3;
+            else if (rspin == 2) casenr = 1;
+            else if (cspin == 2) casenr = 2;
+
+            task.in_offset = in_offset + ss1*tpl.l_size;
+            task.scale = it->coefficient * couplings[casenr];
+            //task.r_size = r_size_cache;
+            if (check && task.out_offset == pre_offset + ss2*r_size)
+                //maquis::cout << " " << pre_offset << " + " << ss2 << "*" << r_size << " ";
+                maquis::cout << " " << in_offset << " + " << ss1 << "*" << tpl.l_size << " ";
+            if (task.out_offset == pre_offset + ss2*r_size)
+                tasks.push_back(task);
+        }
+        if (check) maquis::cout << std::endl;
     }
 
     template<typename T>
@@ -192,8 +230,6 @@ namespace detail {
         std::size_t stripe = task.stripe;
         std::size_t out_right_offset = task.out_offset;
 
-        //if (source2 != task.source) throw std::runtime_error("source mismatch \n");
-        
         for(size_t rr = 0; rr < r_size; ++rr) {
             T alfa_t = task.scale;
             maquis::dmrg::detail::iterator_axpy(source + stripe * rr,

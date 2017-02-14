@@ -109,13 +109,17 @@ namespace SU2 {
                             charge phys_in = W.basis().left_charge(w_block);
                             charge phys_out = W.basis().right_charge(w_block);
                             if (phys_out != phys) continue;
+                            if (check) maquis::cout << "XX0\n";
 
                             //if (!ket_basis.left_has(SymmGroup::fuse(mc, phys_in))) continue;
 
                             size_t r_block = right[b2].find_block(SymmGroup::fuse(mc, phys_in), rc);
-                            if (r_block == right[b2].n_blocks()) continue;
+                            // TODO: change to left and right indices
+                            //if (r_block == right[b2].n_blocks()) continue;
+                            if (check) maquis::cout << "XX1\n";
 
                             if (!right_i.has(SymmGroup::fuse(mc, phys_in))) continue;
+                            if (check) maquis::cout << "XX2\n";
 
                             size_t in_offset = right_pb(phys_in, SymmGroup::fuse(phys_in, mc));
 
