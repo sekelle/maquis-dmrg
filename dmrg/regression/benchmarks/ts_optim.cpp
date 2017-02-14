@@ -47,6 +47,7 @@
 
 #include "dmrg/optimize/ietl_lanczos_solver.h"
 #include "dmrg/optimize/ietl_jacobi_davidson.h"
+#include "dmrg/optimize/site_problem.h"
 
 #include "dmrg/utils/DmrgOptions.h"
 #include "dmrg/utils/DmrgParameters.h"
@@ -54,25 +55,6 @@
 
 #include "utils/timings.h"
 
-
-template<class Matrix, class SymmGroup>
-struct SiteProblem
-{
-    SiteProblem(Boundary<Matrix, SymmGroup> const & left_,
-                Boundary<Matrix, SymmGroup> const & right_,
-                MPOTensor<Matrix, SymmGroup> const & mpo_)
-    : left(left_)
-    , right(right_)
-    , mpo(mpo_)
-    {
-    }
-    
-    Boundary<Matrix, SymmGroup> const & left;
-    Boundary<Matrix, SymmGroup> const & right;
-    MPOTensor<Matrix, SymmGroup> const & mpo;
-    typename contraction::Engine<Matrix, typename storage::constrained<Matrix>::type, SymmGroup>::schedule_t contraction_schedule;
-    double ortho_shift;
-};
 
 bool can_clean(int k, int site, int L, int lr){
     if(k == site || k == site+1) return false;
@@ -205,7 +187,7 @@ int main(int argc, char ** argv)
         
         std::vector<MPSTensor<matrix, grp> > ortho_vecs;
         std::pair<double, MPSTensor<matrix, grp> > res;
-        SiteProblem<matrix, grp> sp(left, right, ts_mpo);
+        SiteProblem<matrix, grp> sp(twin_mps, left, right, ts_mpo);
 
         /// Optimization: JCD
         time_optim_jcd.begin();

@@ -49,27 +49,8 @@
 #include "dmrg/utils/parallel/placement.hpp"
 #include "dmrg/utils/checks.h"
 
+#include "dmrg/optimize/site_problem.h"
 
-template<class Matrix, class SymmGroup>
-struct SiteProblem
-{
-    SiteProblem(MPSTensor<Matrix, SymmGroup> const & initial,
-                Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & left_,
-                Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & right_,
-                MPOTensor<Matrix, SymmGroup> const & mpo_)
-    : left(left_)
-    , right(right_)
-    , mpo(mpo_)
-    , contraction_schedule(contraction::Engine<Matrix, typename storage::constrained<Matrix>::type, SymmGroup>::
-                           right_contraction_schedule(initial, left, right, mpo))
-    { }
-    
-    Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & left;
-    Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & right;
-    MPOTensor<Matrix, SymmGroup> const & mpo;
-    typename contraction::Engine<Matrix, typename storage::constrained<Matrix>::type, SymmGroup>::schedule_t contraction_schedule;
-    double ortho_shift;
-};
 
 #define BEGIN_TIMING(name) \
 now = boost::chrono::high_resolution_clock::now();

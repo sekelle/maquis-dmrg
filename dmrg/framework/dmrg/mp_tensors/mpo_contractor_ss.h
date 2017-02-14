@@ -37,25 +37,7 @@
 
 #include "dmrg/utils/BaseParameters.h"
 
-
-template<class Matrix, class SymmGroup>
-struct SiteProblem
-{
-    SiteProblem(MPSTensor<Matrix, SymmGroup> const & ket_tensor_,
-                Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & left_,
-                Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & right_,
-                MPOTensor<Matrix, SymmGroup> const & mpo_)
-    : ket_tensor(ket_tensor_)
-    , left(left_)
-    , right(right_)
-    , mpo(mpo_) { }
-    
-    MPSTensor<Matrix, SymmGroup> const & ket_tensor;
-    Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & left;
-    Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & right;
-    typename contraction::Engine<Matrix, typename storage::constrained<Matrix>::type, SymmGroup>::schedule_t contraction_schedule;
-    MPOTensor<Matrix, SymmGroup> const & mpo;
-};
+#include "dmrg/optimize/site_problem.h"
 
 #define BEGIN_TIMING(name) \
 now = boost::chrono::high_resolution_clock::now();
