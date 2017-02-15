@@ -44,7 +44,7 @@ template<class Matrix, class SymmGroup>
 class MPOTensor
 {
 public:
-    typedef unsigned index_type;
+    typedef MPOTensor_detail::index_type index_type;
     typedef typename Matrix::value_type value_type;
     typedef typename maquis::traits::scalar_type<Matrix>::type scalar_type;
 

@@ -35,6 +35,8 @@ class MPOTensor;
 
 namespace MPOTensor_detail
 {
+    typedef unsigned index_type;
+
     template <class T, bool C>
     struct const_type { typedef T type; };
 
@@ -136,8 +138,6 @@ namespace MPOTensor_detail
 
     class Hermitian
     {
-        typedef unsigned index_type;
-
         friend Hermitian operator * (Hermitian const &, Hermitian const &);
 
     public:
