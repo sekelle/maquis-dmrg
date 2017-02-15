@@ -177,13 +177,9 @@ namespace detail {
             task.in_offset = in_offset + ss1*tpl.l_size;
             task.scale = it->coefficient * couplings[casenr];
             task.r_size = r_size_cache;
-            if (check && out_right_offset + ss2*r_size == 168)
-                //maquis::cout << " " << out_right_offset << " + " << ss2 << "*" << r_size << " ";
-                maquis::cout << " " << in_offset << " + " << ss1 << "*" << tpl.l_size << " ";
             task.out_offset = out_right_offset + ss2*r_size;
             tasks.push_back(task);
         }
-        if (check) maquis::cout << std::endl;
     }
 
     template <class Matrix, class SymmGroup>
@@ -213,13 +209,9 @@ namespace detail {
             task.in_offset = in_offset + ss1*tpl.l_size;
             task.scale = it->coefficient * couplings[casenr];
             //task.r_size = r_size_cache;
-            if (check && task.out_offset == pre_offset + ss2*r_size)
-                //maquis::cout << " " << pre_offset << " + " << ss2 << "*" << r_size << " ";
-                maquis::cout << " " << in_offset << " + " << ss1 << "*" << tpl.l_size << " ";
             if (task.out_offset == pre_offset + ss2*r_size)
                 tasks.push_back(task);
         }
-        if (check) maquis::cout << std::endl;
     }
 
     template<typename T>

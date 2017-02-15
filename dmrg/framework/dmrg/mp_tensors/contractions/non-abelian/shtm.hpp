@@ -44,8 +44,8 @@ namespace SU2 {
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
     void shtm_tasks(MPOTensor<Matrix, SymmGroup> const & mpo,
-                    Boundary<OtherMatrix, SymmGroup> const & left,
-                    Boundary<OtherMatrix, SymmGroup> const & right,
+                    common::LeftIndices<Matrix, OtherMatrix, SymmGroup> const & left,
+                    common::RightIndices<Matrix, OtherMatrix, SymmGroup> const & right,
                     DualIndex<SymmGroup> const & ket_basis,
                     Index<SymmGroup> const & right_i,
                     ProductBasis<SymmGroup> const & right_pb,
@@ -64,18 +64,18 @@ namespace SU2 {
 
         charge rc = SymmGroup::fuse(lc, phys);
 
-        size_t l_size = ket_basis.left_block_size(lc, lc);
+        size_t l_size = 0;//ket_basis.left_block_size(lc, lc);
         size_t r_size = right_i.size_of_block(rc);
         size_t pre_offset = right_pb(phys, rc);
-        maquis::cout << "pre_offset " << pre_offset << " rc " << rc << std::endl;
+        //maquis::cout << "pre_offset " << pre_offset << " rc " << rc << std::endl;
 
         for (index_type b1 = 0; b1 < mpo.row_dim(); ++b1)
         {
             //maquis::cout << "b1 " << b1 << std::endl;
-            //std::vector<value_type> phases = (mpo.herm_info.left_skip(b1)) ? common::conjugate_phases(left[b1].basis(), mpo, b1, true, false) :
+            //std::vector<value_type> phases = (mpo.herm_info.left_skip(b1)) ? common::conjugate_phases(left[b1], mpo, b1, true, false) :
             //                                                                 std::vector<value_type>(left[b1].n_blocks(),1.);
-            const_iterator lit = left[b1].basis().left_lower_bound(lc);
-            for ( ; lit != left[b1].basis().end() && lit->lc == lc; ++lit)
+            const_iterator lit = left[b1].left_lower_bound(lc);
+            for ( ; lit != left[b1].end() && lit->lc == lc; ++lit)
             {
                 // MatrixGroup for mc
                 charge mc = lit->rc;       
@@ -83,17 +83,17 @@ namespace SU2 {
 
                 int a = mpo.left_spin(b1).get();
                 if (!::SU2::triangle(SymmGroup::spin(mc), a, SymmGroup::spin(lc))) continue;
+
+                charge mcprobe(0); mcprobe[0] = 4;
+                bool check = false;//(mc == mcprobe && b1 == 9 && out_offset == 283);
     
-                size_t k = left[b1].basis().position(lc, mc);   if (k == left[b1].basis().size()) continue;
+                size_t k = left[b1].position(lc, mc);   if (k == left[b1].size()) continue;
                 MatrixGroup<Matrix, SymmGroup> & mg = cgrp.mgroups[boost::make_tuple(out_offset, mc)];
-                mg.add_line(b1, k);
+                mg.add_line(b1, k, check);
 
                 row_proxy row_b1 = mpo.row(b1);
                 for (typename row_proxy::const_iterator row_it = row_b1.begin(); row_it != row_b1.end(); ++row_it) {
                     index_type b2 = row_it.index();
-
-                    charge mcprobe(0); mcprobe[0] = 4;
-                    bool check = (mc == mcprobe && b1 == 5 && b2 == 167);
 
                     if (check) maquis::cout << "  mc " << mc << std::endl;
                     if (check) maquis::cout << "    b2 " << b2 << std::endl;
@@ -109,13 +109,11 @@ namespace SU2 {
                             charge phys_in = W.basis().left_charge(w_block);
                             charge phys_out = W.basis().right_charge(w_block);
                             if (phys_out != phys) continue;
-                            if (check) maquis::cout << "XX0\n";
 
                             //if (!ket_basis.left_has(SymmGroup::fuse(mc, phys_in))) continue;
 
-                            size_t r_block = right[b2].find_block(SymmGroup::fuse(mc, phys_in), rc);
-                            // TODO: change to left and right indices
-                            //if (r_block == right[b2].n_blocks()) continue;
+                            size_t r_block = right[b2].position(SymmGroup::fuse(mc, phys_in), rc);
+                            if (r_block == right[b2].size()) continue;
                             if (check) maquis::cout << "XX1\n";
 
                             if (!right_i.has(SymmGroup::fuse(mc, phys_in))) continue;
@@ -129,12 +127,12 @@ namespace SU2 {
                             couplings[2] = 1.;
                             couplings[3] = 1.;
                             
-                            if (check) maquis::cout << "phys_in/out " << phys_in << phys_out << std::endl;
+                            //if (check) maquis::cout << "phys_in/out " << phys_in << phys_out << std::endl;
                             micro_task tpl; tpl.l_size = m_size; tpl.stripe = m_size; tpl.b2 = b2; tpl.k = r_block; tpl.out_offset = out_offset;
                             detail::op_iterate_shtm<Matrix, SymmGroup>(W, w_block, couplings, mg.current_row(), tpl,
                                                                        in_offset, 0, r_size, pre_offset, check);
                         } // w_block
-                        if (check) maquis::cout << std::endl;
+                        //if (check) maquis::cout << std::endl;
                         
                     } //op_index
 
