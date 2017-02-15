@@ -44,12 +44,21 @@
 template <class Matrix, class SymmGroup>
 class OPTable : public std::vector<typename operator_selector<Matrix, SymmGroup>::type>
 {
+    typedef  std::vector<typename operator_selector<Matrix, SymmGroup>::type> base;
 public:
     typedef tag_detail::tag_type tag_type;
     typedef typename operator_selector<Matrix, SymmGroup>::type op_t;
 
 private:
     typedef typename Matrix::value_type mvalue_type;
+
+    friend class boost::serialization::access;
+
+    template <class Archive>
+    void serialize(Archive & ar, const unsigned version)
+    {
+        ar & boost::serialization::base_object<base>(*this);
+    }
 
 public:
     tag_type register_op(op_t const & op_);

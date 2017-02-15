@@ -173,24 +173,6 @@ namespace MPOTensor_detail
         int left_phase(std::size_t i) const { return LeftPhase[i]; }
         int right_phase(std::size_t i) const { return RightPhase[i]; }
 
-        template <class Archive>
-        void save(Archive & ar) const
-        {
-           ar["leftherm_"] << LeftHerm; 
-           ar["rightherm_"] << RightHerm; 
-           ar["leftphase_"] << LeftPhase; 
-           ar["rightphase_"] << RightPhase; 
-        }
-
-        template <class Archive>
-        void load(Archive & ar)
-        {
-           ar["leftherm_"] >> LeftHerm; 
-           ar["rightherm_"] >> RightHerm; 
-           ar["leftphase_"] >> LeftPhase; 
-           ar["rightphase_"] >> RightPhase; 
-        }
-
     private:
         std::vector<index_type> LeftHerm;
         std::vector<index_type> RightHerm;

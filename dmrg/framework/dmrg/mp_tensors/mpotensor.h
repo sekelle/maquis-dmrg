@@ -33,6 +33,8 @@
 #include <iterator>
 #include <boost/numeric/ublas/matrix_sparse.hpp>
 #include <boost/numeric/ublas/matrix_proxy.hpp>
+#include <boost/serialization/set.hpp>
+#include <boost/serialization/shared_ptr.hpp>
 
 #include "dmrg/block_matrix/block_matrix.h"
 #include "dmrg/block_matrix/indexing.h"
@@ -122,6 +124,12 @@ public:
 
     MPOTensor_detail::Hermitian herm_info;
 private:
+
+    friend class boost::serialization::access;
+
+    template <class Archive>
+    void serialize(Archive & ar, const unsigned int version);
+
     index_type left_i, right_i;
     spin_index left_spins, right_spins;
     std::vector<index_type> row_non_zeros, col_non_zeros;
