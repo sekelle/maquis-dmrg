@@ -44,7 +44,7 @@ template<class Matrix, class SymmGroup>
 class MPOTensor
 {
 public:
-    typedef std::size_t index_type;
+    typedef unsigned index_type;
     typedef typename Matrix::value_type value_type;
     typedef typename maquis::traits::scalar_type<Matrix>::type scalar_type;
 
@@ -67,7 +67,7 @@ public:
     typedef MPOTensor_detail::row_proxy<typename RowIndex::value_type::const_iterator> row_proxy;
     typedef boost::numeric::ublas::matrix_column<const CSCMatrix> col_proxy;
 
-    typedef std::vector<boost::tuple<std::size_t, std::size_t, tag_type, value_type> > prempo_t;
+    typedef std::vector<boost::tuple<index_type, index_type, tag_type, value_type> > prempo_t;
     typedef SpinDescriptor<typename symm_traits::SymmType<SymmGroup>::type> spin_desc_t;
     typedef std::vector<spin_desc_t> spin_index;
     

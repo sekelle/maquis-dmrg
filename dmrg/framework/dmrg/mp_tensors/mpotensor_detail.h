@@ -136,7 +136,7 @@ namespace MPOTensor_detail
 
     class Hermitian
     {
-        typedef std::size_t index_type;
+        typedef unsigned index_type;
 
         friend Hermitian operator * (Hermitian const &, Hermitian const &);
 
@@ -179,6 +179,17 @@ namespace MPOTensor_detail
 
         std::vector<int> LeftPhase;
         std::vector<int> RightPhase;
+
+        friend class boost::serialization::access;
+
+        template <class Archive>
+        void serialize(Archive & ar, const unsigned int version)
+        {
+            ar & LeftHerm;
+            ar & RightHerm;
+            ar & LeftPhase;
+            ar & RightPhase;
+        }
     };
 
     inline Hermitian operator * (Hermitian const & a, Hermitian const & b)
