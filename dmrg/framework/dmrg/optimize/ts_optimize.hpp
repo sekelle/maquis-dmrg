@@ -60,51 +60,53 @@ public:
     , initial_site((initial_site_ < 0) ? 0 : initial_site_)
     {
         parallel::guard::serial guard;
-        //make_ts_cache_mpo(mpo, ts_cache_mpo, mps);
+        make_ts_cache_mpo(mpo, ts_cache_mpo, mps);
 
-        bool dns = (parms["donotsave"] != 0);
-        bool restore_mpo = false;
+        // temporarily deactivated until SparseOperator has been separated from SiteOperator
 
-        std::string chkpfile = parms["chkpfile"];
-        boost::filesystem::path p(chkpfile);
-        if (boost::filesystem::exists(p) && boost::filesystem::exists(p / "ts_mpo.h5"))
-        {
-            // check if the integral_file hash used to build the mpo matches the current integral_file
-            storage::archive ar_props(chkpfile+"/props.h5");
+        //bool dns = (parms["donotsave"] != 0);
+        //bool restore_mpo = false;
 
-            std::string ss_hash, ts_hash;
-            ar_props["/integral_hash"] >> ss_hash; ar_props["/integral_hash_ts"] >> ts_hash;
-            if (ss_hash == ts_hash)
-                restore_mpo = true;
-            else
-                maquis::cout << "Integral file changed, building a new twosite MPO\n";
-        }
+        //std::string chkpfile = parms["chkpfile"];
+        //boost::filesystem::path p(chkpfile);
+        //if (boost::filesystem::exists(p) && boost::filesystem::exists(p / "ts_mpo.h5"))
+        //{
+        //    // check if the integral_file hash used to build the mpo matches the current integral_file
+        //    storage::archive ar_props(chkpfile+"/props.h5");
 
-        /// MPO initialization
-        if (restore_mpo)
-        {
-            maquis::cout << "Restoring twosite hamiltonian." << std::endl;
-            std::ifstream ifs((chkpfile+"/ts_mpo.h5").c_str());
-            boost::archive::binary_iarchive ar(ifs);
-            ar >> ts_cache_mpo;
-        }
-        else
-        {
-            make_ts_cache_mpo(mpo, ts_cache_mpo, mps);
+        //    std::string ss_hash, ts_hash;
+        //    ar_props["/integral_hash"] >> ss_hash; ar_props["/integral_hash_ts"] >> ts_hash;
+        //    if (ss_hash == ts_hash)
+        //        restore_mpo = true;
+        //    else
+        //        maquis::cout << "Integral file changed, building a new twosite MPO\n";
+        //}
 
-            if (!dns)
-            {
-                if (!boost::filesystem::exists(chkpfile)) boost::filesystem::create_directory(chkpfile);
+        ///// MPO initialization
+        //if (restore_mpo)
+        //{
+        //    maquis::cout << "Restoring twosite hamiltonian." << std::endl;
+        //    std::ifstream ifs((chkpfile+"/ts_mpo.h5").c_str());
+        //    boost::archive::binary_iarchive ar(ifs);
+        //    ar >> ts_cache_mpo;
+        //}
+        //else
+        //{
+        //    make_ts_cache_mpo(mpo, ts_cache_mpo, mps);
 
-                std::ofstream ofs((chkpfile+"/ts_mpo.h5").c_str());
-                boost::archive::binary_oarchive mpo_ar(ofs);
-                mpo_ar << ts_cache_mpo;
+        //    if (!dns)
+        //    {
+        //        if (!boost::filesystem::exists(chkpfile)) boost::filesystem::create_directory(chkpfile);
 
-                storage::archive ar(chkpfile+"/props.h5", "w");
-                std::string ss_hash; ar["/integral_hash"] >> ss_hash;
-                ar["/integral_hash_ts"] << ss_hash;
-            }
-        }
+        //        std::ofstream ofs((chkpfile+"/ts_mpo.h5").c_str());
+        //        boost::archive::binary_oarchive mpo_ar(ofs);
+        //        mpo_ar << ts_cache_mpo;
+
+        //        storage::archive ar(chkpfile+"/props.h5", "w");
+        //        std::string ss_hash; ar["/integral_hash"] >> ss_hash;
+        //        ar["/integral_hash_ts"] << ss_hash;
+        //    }
+        //}
     }
 
     inline int to_site(const int L, const int i) const
