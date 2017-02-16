@@ -35,8 +35,15 @@
 #include <boost/filesystem.hpp>
 #include <boost/optional.hpp>
 
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/serialization/complex.hpp>
+
+#include <openssl/md5.h>
+
 #include "utils/data_collector.hpp"
 
+#include "dmrg/version.h"
 #include "dmrg/utils/DmrgParameters.h"
 
 #include "dmrg/mp_tensors/mps.h"

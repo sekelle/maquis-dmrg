@@ -25,8 +25,6 @@
  *
  *****************************************************************************/
 
-#include <boost/algorithm/string.hpp>
-#include "dmrg/version.h"
 
 template <class Matrix, class SymmGroup>
 sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_)
@@ -46,7 +44,6 @@ sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_)
     /// Model initialization
     lat = Lattice(parms);
     model = Model<Matrix, SymmGroup>(lat, parms);
-    mpo = make_mpo(lat, model);
     all_measurements = model.measurements();
     all_measurements << overlap_measurements<Matrix, SymmGroup>(parms);
     
@@ -70,6 +67,33 @@ sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_)
                 restore = true;
             } else {
                 maquis::cout << "A fresh simulation will start." << std::endl;
+            }
+        }
+    }
+
+    /// MPO initialization
+    {
+        boost::filesystem::path p(chkpfile);
+        if (boost::filesystem::exists(p) && boost::filesystem::exists(p / "mpo.h5"))
+        {
+            maquis::checks::symmetry_check(parms, chkpfile);
+
+            maquis::cout << "Restoring hamiltonian." << std::endl;
+            std::ifstream ifs((chkpfile+"/mpo.h5").c_str());
+            boost::archive::binary_iarchive ar(ifs);
+            ar >> mpo;
+        }
+        else
+        {
+            mpo = make_mpo(lat, model);
+
+            if (!dns)
+            {
+                if (!boost::filesystem::exists(chkpfile)) boost::filesystem::create_directory(chkpfile);
+
+                std::ofstream ofs((chkpfile+"/mpo.h5").c_str());
+                boost::archive::binary_oarchive mpo_ar(ofs);
+                mpo_ar << mpo;
             }
         }
     }
@@ -103,8 +127,7 @@ sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_)
     }
     if (!dns)
     {
-        if (!boost::filesystem::exists(chkpfile))
-            boost::filesystem::create_directory(chkpfile);
+        if (!boost::filesystem::exists(chkpfile)) boost::filesystem::create_directory(chkpfile);
         storage::archive ar(chkpfile+"/props.h5", "w");
         
         ar["/parameters"] << parms;
