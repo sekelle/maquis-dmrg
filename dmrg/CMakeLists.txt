@@ -184,6 +184,8 @@ if((DMRG_HAS_SU2U1) OR (DMRG_HAS_SU2U1PG))
   find_package(GSL REQUIRED)
 endif()
 
+find_package(OpenSSL REQUIRED)
+
 # BLAS/LAPACK selector
 if(NOT USE_AMBIENT)
   find_package(MAQUISLapack)
