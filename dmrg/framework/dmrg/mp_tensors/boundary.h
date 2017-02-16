@@ -44,6 +44,8 @@ public:
     typedef typename Matrix::value_type value_type;
     typedef std::pair<typename SymmGroup::charge, std::size_t> access_type;
 
+    friend class boost::serialization::access;
+
     template<class Archive>
     void serialize(Archive &ar, const unsigned int version){
         ar & data_;
@@ -89,24 +91,23 @@ public:
    
     template<class Archive> 
     void load(Archive & ar){
-        std::vector<std::string> children = ar.list_children("data");
+        std::vector<std::string> children = ar.list_children("/data");
         data_.resize(children.size());
         parallel::scheduler_balanced scheduler(children.size());
         for(size_t i = 0; i < children.size(); ++i){
              parallel::guard proc(scheduler(i));
-             ar["data/"+children[i]] >> data_[alps::cast<std::size_t>(children[i])];
+             ar["/data/"+children[i]] >> data_[alps::cast<std::size_t>(children[i])];
         }
     }
     
     template<class Archive> 
     void save(Archive & ar) const {
-        ar["data"] << data_;
+        ar["/data"] << data_;
     }
-    
+
     block_matrix<Matrix, SymmGroup> & operator[](std::size_t k) { return data_[k]; }
     block_matrix<Matrix, SymmGroup> const & operator[](std::size_t k) const { return data_[k]; }
-    //value_type & operator()(std::size_t i, access_type j, access_type k) { return data_[i](j, k); } // I hope this is never used (30.04.2012 / scalar/value discussion)
-    //value_type const & operator()(std::size_t i, access_type j, access_type k) const { return data_[i](j, k); }
+
 private:
     std::vector<block_matrix<Matrix, SymmGroup> > data_;
 };

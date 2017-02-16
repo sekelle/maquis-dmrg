@@ -87,8 +87,9 @@ MPSTensor<matrix, symm> load_mps(std::string file)
 template <class Loadable>
 void load(Loadable & Data, std::string file)
 {
-    alps::hdf5::archive ar(file);
-    Data.load(ar);
+    std::ifstream ifs(file.c_str());
+    boost::archive::binary_iarchive iar(ifs, std::ios::binary);
+    iar >> Data; 
 }
 
 int main(int argc, char ** argv)
@@ -109,15 +110,10 @@ int main(int argc, char ** argv)
         initial.sweep = 1;
         SiteProblem<matrix, symm> sp(initial, left, right, mpo[6]);
 
-        //std::ofstream ofs("mpo.h5");
+        //std::ofstream ofs("left.h5");
         //boost::archive::binary_oarchive ar(ofs);
-        //ar << ts_mpo;
+        //ar << left;
         //ofs.close();
-
-        //std::ifstream ifs("mpo.h5");
-        //boost::archive::binary_iarchive iar(ifs, std::ios::binary);
-        //MPO<matrix, symm> loaded_mpo; 
-        //iar >> loaded_mpo; 
 
     } catch (std::exception& e) {
         std::cerr << "Error:" << std::endl << e.what() << std::endl;

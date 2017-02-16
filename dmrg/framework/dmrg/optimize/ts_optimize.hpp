@@ -28,13 +28,22 @@
 #ifndef TS_OPTIMIZE_H
 #define TS_OPTIMIZE_H
 
-#include "dmrg/optimize/optimize.h"
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/tuple/tuple.hpp>
 
+#include "dmrg/optimize/optimize.h"
 #include "dmrg/mp_tensors/twositetensor.h"
 #include "dmrg/mp_tensors/mpo_ops.h"
 
-#include <boost/tuple/tuple.hpp>
 
+template<class Matrix, class SymmGroup>
+void save_boundary(Boundary<Matrix, SymmGroup> const & b, std::string fname)
+{
+    std::ofstream ofs(fname.c_str());
+    boost::archive::binary_oarchive ar(ofs);
+    ar << b;
+    ofs.close();
+}
 
 template<class Matrix, class SymmGroup, class Storage>
 class ts_optimize : public optimizer_base<Matrix, SymmGroup, Storage>
@@ -182,14 +191,33 @@ public:
             }
 
             boost::chrono::high_resolution_clock::time_point now, then;
+
+            // TODO : remove
+            int twosweep = 2*sweep + (-lr + 1)/2;
             
     	    // Create TwoSite objects
     	    TwoSiteTensor<Matrix, SymmGroup> tst(mps[site1], mps[site2]);
     	    MPSTensor<Matrix, SymmGroup> twin_mps = tst.make_mps();
             tst.clear();
-            // TODO : remove
-            twin_mps.sweep = 2*sweep + (-lr + 1)/2;
+            twin_mps.sweep = twosweep;
             SiteProblem<Matrix, SymmGroup> sp(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1]);
+
+            //if (twosweep == 1 && site1 == 6)
+            //{
+            //    save_boundary(left_[site1], "left_1_" + boost::lexical_cast<std::string>(site1));
+            //    save_boundary(right_[site2+1], "right_1_" + boost::lexical_cast<std::string>(site1));
+
+            //    storage::archive ari("initial_1_" + boost::lexical_cast<std::string>(site1), "w");
+            //    twin_mps.save(ari);
+            //}
+            //if (twosweep == 3 && site1 == 6)
+            //{
+            //    save_boundary(left_[site1], "left_3_" + boost::lexical_cast<std::string>(site1));
+            //    save_boundary(right_[site2+1], "right_3_" + boost::lexical_cast<std::string>(site1));
+
+            //    storage::archive ari("initial_3_" + boost::lexical_cast<std::string>(site1), "w");
+            //    twin_mps.save(ari);
+            //}
             
             /// Compute orthogonal vectors
             std::vector<MPSTensor<Matrix, SymmGroup> > ortho_vecs(base::northo);
