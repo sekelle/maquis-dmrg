@@ -157,7 +157,7 @@ int main(int argc, char ** argv)
         MPO<matrix, symm> loaded_mpo; 
         iar >> loaded_mpo; 
 
-        write_mpo(loaded_mpo, "loaded_mpo.");
+        write_mpo(loaded_mpo, "loaded_mpo.", save_space);
 
     } catch (std::exception& e) {
         std::cerr << "Error:" << std::endl << e.what() << std::endl;
