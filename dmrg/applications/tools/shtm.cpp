@@ -166,82 +166,36 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
         }
     }
 
-    charge lc(0), mc(0);
-    lc[0] = 4; lc[1] = 2;
-    mc[0] = 4; mc[1] = 0;
 
-    if (mpo.row_dim() == 178 && initial.sweep == 1)
+    // testcases: lc,mc,168,168  lc,mc,283,181  lc,lc,283,181
+
+    typedef boost::array<int, 3> array;
+    array alc = {{4,2,0}}, amc = {{4,0,0}};
+    charge lc(alc), mc(amc);
+
+    unsigned offprobe = 168, blockstart = 168;
+    //unsigned offprobe = 539;
+
+    matrix_groups[boost::make_tuple(lc, mc)][offprobe].print_stats();
+
+    charge phys;
+    for (int s = 0; s < physical_i.size(); ++s)
     {
-        //unsigned offprobe = 539;
-        unsigned offprobe = 168;
-        matrix_groups[boost::make_tuple(lc, mc)][offprobe].print_stats();
-
-        charge phys;
-        for (int s = 0; s < physical_i.size(); ++s)
+        phys = physical_i[s].first;
+        charge rc = SymmGroup::fuse(phys, lc);
+        //maquis::cout << "testing " << phys << " " << out_right_pb(phys, rc) << std::endl;
+        if ( out_right_pb(phys, rc) == blockstart )
         {
-            phys = physical_i[s].first;
-            charge rc = SymmGroup::fuse(phys, lc);
-            //maquis::cout << "testing " << phys << " " << out_right_pb(phys, rc) << std::endl;
-            if ( out_right_pb(phys, rc) == offprobe )
-            {
-                //maquis::cout << "found " << phys << std::endl;
-                break;
-            }
+            //maquis::cout << "found " << phys << std::endl;
+            break;
         }
-
-        initial.make_right_paired();
-        maquis::cout << lc << mc << phys << std::endl;
-        ContractionGroup<Matrix, SymmGroup> cgrp;
-        shtm_tasks(mpo, left_indices, right_indices, initial.data().basis(), right_i, out_right_pb, lc, phys, offprobe, cgrp);
-        cgrp.mgroups[boost::make_tuple(offprobe, mc)].print_stats();
     }
-    if (mpo.row_dim() == 178 && initial.sweep == 3)
-    {
-        unsigned offprobe = 283;
-        matrix_groups[boost::make_tuple(lc, mc)][offprobe].print_stats();
 
-        charge phys;
-        for (int s = 0; s < physical_i.size(); ++s)
-        {
-            phys = physical_i[s].first;
-            charge rc = SymmGroup::fuse(phys, lc);
-            //maquis::cout << "testing " << phys << " " << out_right_pb(phys, rc) << std::endl;
-            if ( out_right_pb(phys, rc) == 181 )
-            {
-                //maquis::cout << "found " << phys << std::endl;
-                break;
-            }
-        }
-        maquis::cout << lc << mc << phys << std::endl;
-        ContractionGroup<Matrix, SymmGroup> cgrp;
-        shtm_tasks(mpo, left_indices, right_indices, initial.data().basis(), right_i, out_right_pb, lc, phys, offprobe, cgrp);
-        cgrp.mgroups[boost::make_tuple(offprobe, mc)].print_stats();
-    }
-    if (mpo.row_dim() == 178 && initial.sweep == 3)
-    {
-        charge mc(0);
-        mc[0] = 4; mc[1] = 2;
-
-        unsigned offprobe = 283;
-        matrix_groups[boost::make_tuple(lc, mc)][offprobe].print_stats();
-
-        charge phys;
-        for (int s = 0; s < physical_i.size(); ++s)
-        {
-            phys = physical_i[s].first;
-            charge rc = SymmGroup::fuse(phys, lc);
-            //maquis::cout << "testing " << phys << " " << out_right_pb(phys, rc) << std::endl;
-            if ( out_right_pb(phys, rc) == 181 )
-            {
-                //maquis::cout << "found " << phys << std::endl;
-                break;
-            }
-        }
-        maquis::cout << lc << mc << phys << std::endl;
-        ContractionGroup<Matrix, SymmGroup> cgrp;
-        shtm_tasks(mpo, left_indices, right_indices, initial.data().basis(), right_i, out_right_pb, lc, phys, offprobe, cgrp);
-        cgrp.mgroups[boost::make_tuple(offprobe, mc)].print_stats();
-    }
+    initial.make_right_paired();
+    maquis::cout << lc << mc << phys << std::endl;
+    ContractionGroup<Matrix, SymmGroup> cgrp;
+    shtm_tasks(mpo, left_indices, right_indices, initial.data().basis(), right_i, out_right_pb, lc, phys, offprobe, cgrp);
+    cgrp.mgroups[boost::make_tuple(offprobe, mc)].print_stats();
 
 }
 
