@@ -111,7 +111,7 @@ namespace generate_mpo
         typedef Lattice::pos_t pos_t;
         typedef typename OperatorTagTerm<Matrix, SymmGroup>::tag_type tag_type;
         typedef typename OperatorTagTerm<Matrix, SymmGroup>::op_pair_t pos_op_type;
-        typedef boost::tuple<std::size_t, std::size_t, tag_type, scale_type> tag_block;
+        typedef typename MPOTensor<Matrix,SymmGroup>::prempo_t::value_type tag_block;
         
         typedef ::term_descriptor<typename Matrix::value_type> term_descriptor;
         typedef std::vector<tag_type> tag_vec;

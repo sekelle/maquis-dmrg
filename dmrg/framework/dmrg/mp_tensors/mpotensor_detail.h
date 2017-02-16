@@ -35,6 +35,8 @@ class MPOTensor;
 
 namespace MPOTensor_detail
 {
+    typedef unsigned index_type;
+
     template <class T, bool C>
     struct const_type { typedef T type; };
 
@@ -136,8 +138,6 @@ namespace MPOTensor_detail
 
     class Hermitian
     {
-        typedef std::size_t index_type;
-
         friend Hermitian operator * (Hermitian const &, Hermitian const &);
 
     public:
@@ -179,6 +179,14 @@ namespace MPOTensor_detail
 
         std::vector<int> LeftPhase;
         std::vector<int> RightPhase;
+
+        friend class boost::serialization::access;
+
+        template <class Archive>
+        void serialize(Archive & ar, const unsigned int version)
+        {
+            ar & LeftHerm & RightHerm & LeftPhase & RightPhase;
+        }
     };
 
     inline Hermitian operator * (Hermitian const & a, Hermitian const & b)

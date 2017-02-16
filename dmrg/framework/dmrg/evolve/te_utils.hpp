@@ -176,8 +176,8 @@ class exp_mpo_maker {
     typedef boost::shared_ptr<op_table_t> op_table_ptr;
     typedef typename op_table_t::tag_type tag_type;
     
-    typedef boost::tuple<std::size_t, std::size_t, tag_type, typename Matrix::value_type> pretensor_value;
-    typedef std::vector<pretensor_value> pretensor_t;
+    typedef typename MPOTensor<Matrix, SymmGroup>::prempo_t pretensor_t; 
+    typedef typename pretensor_t::value_type pretensor_value;
     typedef std::vector<pretensor_t> prempo_t;
     
 public:
@@ -255,7 +255,7 @@ public:
         
         MPO<Matrix, SymmGroup> mpo(L);
         for (size_t p=0; p<L; ++p) {
-            size_t nrows, ncols;
+            typename MPOTensor<Matrix, SymmGroup>::index_type nrows, ncols;
             using generate_mpo::rcdim;
             boost::tie(nrows, ncols) = rcdim(prempo[p]);
             MPOTensor<Matrix, SymmGroup> tmp(nrows, ncols, prempo[p], op_table);
@@ -347,8 +347,8 @@ MPO<Matrix, SymmGroup> make_exp_mpo(Lattice const& lat, Model<Matrix, SymmGroup>
     typedef OPTable<Matrix, SymmGroup> op_table_t;
     typedef boost::shared_ptr<op_table_t> op_table_ptr;
     typedef typename op_table_t::tag_type tag_type;
-    typedef boost::tuple<std::size_t, std::size_t, tag_type, typename Matrix::value_type> pretensor_value;
-    typedef std::vector<pretensor_value> pretensor_t;
+    typedef typename MPOTensor<Matrix, SymmGroup>::prempo_t pretensor_t; 
+    typedef typename pretensor_t::value_type pretensor_value;
 
     op_table_ptr original_op_table = model.operators_table()->get_operator_table();
     op_table_ptr new_op_table( new op_table_t() );

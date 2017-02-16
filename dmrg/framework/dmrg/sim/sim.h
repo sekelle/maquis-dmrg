@@ -35,8 +35,15 @@
 #include <boost/filesystem.hpp>
 #include <boost/optional.hpp>
 
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/serialization/complex.hpp>
+
+#include <openssl/md5.h>
+
 #include "utils/data_collector.hpp"
 
+#include "dmrg/version.h"
 #include "dmrg/utils/DmrgParameters.h"
 
 #include "dmrg/mp_tensors/mps.h"
@@ -52,6 +59,7 @@
 #include "dmrg/utils/random.hpp"
 #include "dmrg/utils/time_stopper.h"
 #include "utils/timings.h"
+#include "dmrg/utils/md5.h"
 #include "dmrg/utils/checks.h"
 
 #include "dmrg/models/lattice.h"
