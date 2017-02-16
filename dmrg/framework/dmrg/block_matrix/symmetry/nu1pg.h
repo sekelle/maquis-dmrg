@@ -53,7 +53,7 @@ public:
         (*this)[N] = 0;
     }
     
-    NU1ChargePG(boost::array<S, N> const & rhs)
+    NU1ChargePG(boost::array<S, N+1> const & rhs)
     {
         std::copy(rhs.begin(), rhs.end(), this->begin());
     }
