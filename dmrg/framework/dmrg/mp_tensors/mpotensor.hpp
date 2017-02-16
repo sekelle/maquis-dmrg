@@ -239,9 +239,6 @@ MPOTensor<Matrix, SymmGroup>::tag_number(index_type left_index, index_type right
 }
 
 
-template<class T>
-void pprint(T val) { maquis::cout << val.first << std::endl; }
-
 template<class Matrix, class SymmGroup>
 void MPOTensor<Matrix, SymmGroup>::multiply_by_scalar(value_type v)
 {
@@ -275,3 +272,12 @@ typename MPOTensor<Matrix, SymmGroup>::index_type MPOTensor<Matrix, SymmGroup>::
 {
     return right_i;
 }
+
+template<class Matrix, class SymmGroup>
+template<class Archive>
+void MPOTensor<Matrix, SymmGroup>::serialize(Archive & ar, const unsigned int version)
+{
+    ar & herm_info & left_i & right_i & left_spins & right_spins
+       & row_non_zeros & col_non_zeros & col_tags & row_index & operator_table;
+}
+

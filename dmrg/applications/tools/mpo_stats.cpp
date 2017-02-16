@@ -33,6 +33,9 @@
 #include <sys/time.h>
 #include <sys/stat.h>
 
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+
 using std::cerr;
 using std::cout;
 using std::endl;
@@ -143,7 +146,19 @@ int main(int argc, char ** argv)
         make_ts_cache_mpo(mpo, ts_mpo, mps);
 
         write_mpo(ts_mpo, "ts_mpo_stats.", save_space);
-        
+
+        std::ofstream ofs("mpo.h5");
+        boost::archive::binary_oarchive ar(ofs);
+        ar << ts_mpo;
+        ofs.close();
+
+        std::ifstream ifs("mpo.h5");
+        boost::archive::binary_iarchive iar(ifs, std::ios::binary);
+        MPO<matrix, symm> loaded_mpo; 
+        iar >> loaded_mpo; 
+
+        write_mpo(loaded_mpo, "loaded_mpo.");
+
     } catch (std::exception& e) {
         std::cerr << "Error:" << std::endl << e.what() << std::endl;
         return 1;

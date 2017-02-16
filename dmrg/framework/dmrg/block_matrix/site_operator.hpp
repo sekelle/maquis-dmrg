@@ -323,7 +323,7 @@ template<class Matrix, class SymmGroup>
 template <class Archive>
 void SiteOperator<Matrix, SymmGroup>::serialize(Archive & ar, const unsigned int version)
 {
-    ar & bm_;
+    ar & bm_ & spin_ & spin_basis & sparse_op;
 }
 
 namespace SiteOperator_detail {
@@ -340,7 +340,6 @@ namespace SiteOperator_detail {
     check_spin_basis(block_matrix<Matrix, SymmGroup> const & bm,
                      typename SparseOperator<Matrix, SymmGroup, void>::spin_basis_type & spin_basis)
     {
-        //if (spin_basis.size() != bm.n_blocks())
         if (spin_basis.size() == 0)
         for(std::size_t b = 0; b < bm.n_blocks(); ++b)
             if (spin_basis.count(std::make_pair(bm.basis().left_charge(b), bm.basis().right_charge(b))) == 0)
