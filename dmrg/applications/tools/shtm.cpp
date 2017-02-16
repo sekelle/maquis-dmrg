@@ -92,6 +92,159 @@ void load(Loadable & Data, std::string file)
     iar >> Data; 
 }
 
+template <class Matrix, class SymmGroup>
+void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGroup> const & initial)
+{
+    using namespace contraction;
+    using namespace contraction::common;
+    using namespace contraction::SU2;
+
+    typedef typename storage::constrained<Matrix>::type SMatrix;
+    typedef typename SymmGroup::charge charge;
+    typedef typename Matrix::value_type value_type;
+    typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
+    typedef typename task_capsule<Matrix, SymmGroup>::map_t map_t;
+    typedef typename task_capsule<Matrix, SymmGroup>::micro_task micro_task;
+
+    Boundary<SMatrix, SymmGroup> const & left = sp.left, right = sp.right;
+    MPOTensor<Matrix, SymmGroup> const & mpo = sp.mpo;
+
+    // MPS indices
+    Index<SymmGroup> const & physical_i = initial.site_dim(),
+                             right_i = initial.col_dim();
+    Index<SymmGroup> left_i = initial.row_dim(),
+                     out_right_i = adjoin(physical_i) * right_i;
+
+    common_subset(out_right_i, left_i);
+    ProductBasis<SymmGroup> in_left_pb(physical_i, left_i);
+    ProductBasis<SymmGroup> out_right_pb(physical_i, right_i,
+                                         boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
+                                                             -boost::lambda::_1, boost::lambda::_2));
+
+    LeftIndices<Matrix, SMatrix, SymmGroup> left_indices(left, mpo);
+    RightIndices<Matrix, SMatrix, SymmGroup> right_indices(right, mpo);
+
+    Engine<matrix, smatrix, symm>::schedule_t contraction_schedule = sp.contraction_schedule;
+
+    typedef boost::tuple<charge, charge> chuple;
+    typedef std::map<unsigned, MatrixGroup<Matrix, SymmGroup> > map2;
+    typedef std::map<chuple, map2> map1;
+
+    map1 matrix_groups;
+
+    index_type loop_max = mpo.row_dim();
+    for (int b1 = 0; b1 < loop_max; ++b1)
+    {
+        std::vector<value_type> phases = (mpo.herm_info.left_skip(b1)) ? conjugate_phases(left_indices[b1], mpo, b1, true, false) :
+                                                                         std::vector<value_type>(left_indices[b1].size(),1.);
+
+        for (typename map_t::const_iterator it = contraction_schedule[b1].begin(); it != contraction_schedule[b1].end(); ++it)
+        {
+            charge mps_charge = it->first.second;
+            charge middle_charge = it->first.first;
+
+            std::vector<micro_task> const & otasks = it->second;               if (otasks.size() == 0)           continue;
+            bool check = false;
+            size_t k = left_indices[b1].position(mps_charge, middle_charge);   if (k == left_indices[b1].size()) continue;
+
+            map2 & matrix_groups_ch = matrix_groups[boost::make_tuple(mps_charge, middle_charge)];
+            for (typename std::vector<micro_task>::const_iterator it2 = otasks.begin(); it2 != otasks.end(); )
+            {
+                unsigned offset = it2->out_offset;
+                matrix_groups_ch[offset].add_line(b1, k, check);
+
+                typename std::vector<micro_task>::const_iterator upper = std::upper_bound(it2, otasks.end(), *it2, task_compare<value_type>());
+                int cnt = 0;
+                for ( ; it2 != upper; ++it2)
+                {
+                    matrix_groups_ch[offset].push_back(*it2);
+                    cnt++;
+                }
+
+                it2 = upper;
+            }
+        }
+    }
+
+    charge lc(0), mc(0);
+    lc[0] = 4; lc[1] = 2;
+    mc[0] = 4; mc[1] = 0;
+
+    if (mpo.row_dim() == 178 && initial.sweep == 1)
+    {
+        //unsigned offprobe = 539;
+        unsigned offprobe = 168;
+        matrix_groups[boost::make_tuple(lc, mc)][offprobe].print_stats();
+
+        charge phys;
+        for (int s = 0; s < physical_i.size(); ++s)
+        {
+            phys = physical_i[s].first;
+            charge rc = SymmGroup::fuse(phys, lc);
+            //maquis::cout << "testing " << phys << " " << out_right_pb(phys, rc) << std::endl;
+            if ( out_right_pb(phys, rc) == offprobe )
+            {
+                //maquis::cout << "found " << phys << std::endl;
+                break;
+            }
+        }
+
+        initial.make_right_paired();
+        maquis::cout << lc << mc << phys << std::endl;
+        ContractionGroup<Matrix, SymmGroup> cgrp;
+        shtm_tasks(mpo, left_indices, right_indices, initial.data().basis(), right_i, out_right_pb, lc, phys, offprobe, cgrp);
+        cgrp.mgroups[boost::make_tuple(offprobe, mc)].print_stats();
+    }
+    if (mpo.row_dim() == 178 && initial.sweep == 3)
+    {
+        unsigned offprobe = 283;
+        matrix_groups[boost::make_tuple(lc, mc)][offprobe].print_stats();
+
+        charge phys;
+        for (int s = 0; s < physical_i.size(); ++s)
+        {
+            phys = physical_i[s].first;
+            charge rc = SymmGroup::fuse(phys, lc);
+            //maquis::cout << "testing " << phys << " " << out_right_pb(phys, rc) << std::endl;
+            if ( out_right_pb(phys, rc) == 181 )
+            {
+                //maquis::cout << "found " << phys << std::endl;
+                break;
+            }
+        }
+        maquis::cout << lc << mc << phys << std::endl;
+        ContractionGroup<Matrix, SymmGroup> cgrp;
+        shtm_tasks(mpo, left_indices, right_indices, initial.data().basis(), right_i, out_right_pb, lc, phys, offprobe, cgrp);
+        cgrp.mgroups[boost::make_tuple(offprobe, mc)].print_stats();
+    }
+    if (mpo.row_dim() == 178 && initial.sweep == 3)
+    {
+        charge mc(0);
+        mc[0] = 4; mc[1] = 2;
+
+        unsigned offprobe = 283;
+        matrix_groups[boost::make_tuple(lc, mc)][offprobe].print_stats();
+
+        charge phys;
+        for (int s = 0; s < physical_i.size(); ++s)
+        {
+            phys = physical_i[s].first;
+            charge rc = SymmGroup::fuse(phys, lc);
+            //maquis::cout << "testing " << phys << " " << out_right_pb(phys, rc) << std::endl;
+            if ( out_right_pb(phys, rc) == 181 )
+            {
+                //maquis::cout << "found " << phys << std::endl;
+                break;
+            }
+        }
+        maquis::cout << lc << mc << phys << std::endl;
+        ContractionGroup<Matrix, SymmGroup> cgrp;
+        shtm_tasks(mpo, left_indices, right_indices, initial.data().basis(), right_i, out_right_pb, lc, phys, offprobe, cgrp);
+        cgrp.mgroups[boost::make_tuple(offprobe, mc)].print_stats();
+    }
+
+}
+
 int main(int argc, char ** argv)
 {
     try {
@@ -110,10 +263,7 @@ int main(int argc, char ** argv)
         initial.sweep = 1;
         SiteProblem<matrix, symm> sp(initial, left, right, mpo[6]);
 
-        //std::ofstream ofs("left.h5");
-        //boost::archive::binary_oarchive ar(ofs);
-        //ar << left;
-        //ofs.close();
+        analyze(sp, initial);
 
     } catch (std::exception& e) {
         std::cerr << "Error:" << std::endl << e.what() << std::endl;
