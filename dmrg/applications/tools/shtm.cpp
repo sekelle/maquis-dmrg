@@ -173,8 +173,10 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
     array alc = {{4,2,0}}, amc = {{4,0,0}};
     charge lc(alc), mc(amc);
 
-    unsigned offprobe = 168, blockstart = 168;
     //unsigned offprobe = 539;
+    //unsigned offprobe = 168, blockstart = 168;
+    unsigned offprobe = 283, blockstart = 181;
+    //mc = lc;
 
     matrix_groups[boost::make_tuple(lc, mc)][offprobe].print_stats();
 
@@ -207,14 +209,11 @@ int main(int argc, char ** argv)
         Boundary<smatrix, symm> left, right;
         load(left, argv[1]);
         load(right, argv[2]);
-        maquis::cout << left.aux_dim() << std::endl;
-        maquis::cout << right.aux_dim() << std::endl;
         
         MPSTensor<matrix, symm> initial = load_mps(argv[3]);
         MPO<matrix, symm> mpo = load_mpo(argv[4]);
 
         int site = 6;
-        initial.sweep = 1;
         SiteProblem<matrix, symm> sp(initial, left, right, mpo[6]);
 
         analyze(sp, initial);
