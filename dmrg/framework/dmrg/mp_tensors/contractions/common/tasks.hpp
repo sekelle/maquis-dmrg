@@ -106,6 +106,29 @@ namespace common {
         typedef std::vector<contraction::common::task_capsule<Matrix, SymmGroup> > schedule_t;
     }; 
 
+    struct f3 { f3(double a_) : a(a_) {} double a; };
+    inline std::ostream & operator<<(std::ostream & os, f3 A)
+    {
+        double a = A.a;
+        if (std::abs(a) < 1e-300)
+        {
+            os << '.';
+            return os;
+        }
+
+        char sign = (a>0) ? '+' : '-';
+        a = std::abs(a);
+        double mant = a * pow(10, -floor(log10(std::abs(a))));
+        int d1 = floor(mant);
+        int d2 = int(floor(mant * 10)) % (d1*10);
+
+        std::string out = boost::lexical_cast<std::string>(d1) + sign + boost::lexical_cast<std::string>(d2);
+
+        os << out;
+        return os;
+    }
+
+
     template <class Matrix, class SymmGroup>
     class MatrixGroup
     {
@@ -158,6 +181,8 @@ namespace common {
             typedef boost::tuple<unsigned, unsigned, unsigned> triple;
             typedef std::map<triple, unsigned> amap_t;
 
+            int sw = 4;
+
             unsigned cnt = 0;
             amap_t b2_col;
             for (int i = 0; i < tasks.size(); ++i)
@@ -168,41 +193,44 @@ namespace common {
                         b2_col[tt] = cnt++;
                 }
 
-            alps::numeric::matrix<unsigned> alpha(tasks.size(), b2_col.size(), 0);
+            alps::numeric::matrix<double> alpha(tasks.size(), b2_col.size(), 0);
             for (int i = 0; i < tasks.size(); ++i)
                 for (int j = 0; j < tasks[i].size(); ++j)
                 {
                     triple tt(tasks[i][j].b2, tasks[i][j].k, tasks[i][j].in_offset); 
-                    alpha(i, b2_col[tt]) = 1;
+                    alpha(i, b2_col[tt]) = tasks[i][j].scale;
                 }
 
-            maquis::cout << "      ";
+            int lpc = sw + 2 + sw;
+            std::string leftpad(lpc, ' ');
+
+            maquis::cout << leftpad;
             for (amap_t::const_iterator it = b2_col.begin(); it != b2_col.end(); ++it)
-                maquis::cout << std::setw(4) << boost::get<2>(it->first);
+                maquis::cout << std::setw(sw) << boost::get<2>(it->first);
             maquis::cout << std::endl;
-            maquis::cout << "      ";
+            maquis::cout << leftpad;
             for (amap_t::const_iterator it = b2_col.begin(); it != b2_col.end(); ++it)
-                maquis::cout << std::setw(4) << boost::get<1>(it->first);
+                maquis::cout << std::setw(sw) << boost::get<1>(it->first);
             maquis::cout << std::endl;
-            maquis::cout << "      ";
+            maquis::cout << leftpad;
             for (amap_t::const_iterator it = b2_col.begin(); it != b2_col.end(); ++it)
-                maquis::cout << std::setw(4) << boost::get<0>(it->first);
+                maquis::cout << std::setw(sw) << boost::get<0>(it->first);
             maquis::cout << std::endl;
 
-            std::string hline(6 + 4 * b2_col.size(), '_');
+            std::string hline(lpc + sw * b2_col.size(), '_');
             maquis::cout << hline << std::endl;
 
             for (int i = 0; i < bs.size(); ++i)
             {
-                maquis::cout << std::setw(4) << bs[i] << "| ";
+                maquis::cout << std::setw(sw) << bs[i] << std::setw(sw) << ks[i] << "| ";
                 for (amap_t::const_iterator it = b2_col.begin(); it != b2_col.end(); ++it)
                 {
                     int col = it->second;
                     int val = alpha(i, col);
-                    if (val == 0)
-                        maquis::cout << std::setw(4) << "."; 
-                    else
-                        maquis::cout << std::setw(4) << alpha(i, col); 
+                    //if (val == 0)
+                    //    maquis::cout << std::setw(sw) << "."; 
+                    //else
+                        maquis::cout << std::setw(sw) << f3(alpha(i, col)); 
                 }
                 maquis::cout << std::endl;
             }

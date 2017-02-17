@@ -122,10 +122,10 @@ namespace SU2 {
                             size_t in_offset = right_pb(phys_in, SymmGroup::fuse(phys_in, mc));
 
                             typename Matrix::value_type couplings[4];
-                            couplings[0] = 1.;
-                            couplings[1] = 1.;
-                            couplings[2] = 1.;
-                            couplings[3] = 1.;
+                            couplings[0] = access.scale(op_index);
+                            couplings[1] = access.scale(op_index);
+                            couplings[2] = access.scale(op_index);
+                            couplings[3] = access.scale(op_index);
                             
                             //if (check) maquis::cout << "phys_in/out " << phys_in << phys_out << std::endl;
                             micro_task tpl; tpl.l_size = m_size; tpl.stripe = m_size; tpl.b2 = b2; tpl.k = r_block; tpl.out_offset = out_offset;
