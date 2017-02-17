@@ -67,13 +67,9 @@ namespace SU2 {
         size_t l_size = 0;//ket_basis.left_block_size(lc, lc);
         size_t r_size = right_i.size_of_block(rc);
         size_t pre_offset = right_pb(phys, rc);
-        //maquis::cout << "pre_offset " << pre_offset << " rc " << rc << std::endl;
 
         for (index_type b1 = 0; b1 < mpo.row_dim(); ++b1)
         {
-            //maquis::cout << "b1 " << b1 << std::endl;
-            //std::vector<value_type> phases = (mpo.herm_info.left_skip(b1)) ? common::conjugate_phases(left[b1], mpo, b1, true, false) :
-            //                                                                 std::vector<value_type>(left[b1].n_blocks(),1.);
             const_iterator lit = left[b1].left_lower_bound(lc);
             for ( ; lit != left[b1].end() && lit->lc == lc; ++lit)
             {
@@ -81,28 +77,21 @@ namespace SU2 {
                 charge mc = lit->rc;       
                 size_t m_size = lit->rs;
 
-                int a = mpo.left_spin(b1).get();
-                if (!::SU2::triangle(SymmGroup::spin(mc), a, SymmGroup::spin(lc))) continue;
-
-                charge mcprobe(0); mcprobe[0] = 4;
-                bool check = false;//(mc == mcprobe && b1 == 9 && out_offset == 283);
-    
                 size_t k = left[b1].position(lc, mc);   if (k == left[b1].size()) continue;
                 MatrixGroup<Matrix, SymmGroup> & mg = cgrp.mgroups[boost::make_tuple(out_offset, mc)];
-                mg.add_line(b1, k, check);
+                mg.add_line(b1, k);
 
                 row_proxy row_b1 = mpo.row(b1);
                 for (typename row_proxy::const_iterator row_it = row_b1.begin(); row_it != row_b1.end(); ++row_it) {
                     index_type b2 = row_it.index();
-
-                    if (check) maquis::cout << "  mc " << mc << std::endl;
-                    if (check) maquis::cout << "    b2 " << b2 << std::endl;
 
                     MPOTensor_detail::term_descriptor<Matrix, SymmGroup, true> access = mpo.at(b1,b2);
 
                     for (size_t op_index = 0; op_index < access.size(); ++op_index)
                     {
                         typename operator_selector<Matrix, SymmGroup>::type const & W = access.op(op_index);
+                        int a = mpo.left_spin(b1).get(), k = W.spin().get(), ap = mpo.right_spin(b2).get();
+                        if (!::SU2::triangle(SymmGroup::spin(mc), a, SymmGroup::spin(lc))) continue;
 
                         for (size_t w_block = 0; w_block < W.basis().size(); ++w_block)
                         {
@@ -110,36 +99,32 @@ namespace SU2 {
                             charge phys_out = W.basis().right_charge(w_block);
                             if (phys_out != phys) continue;
 
-                            //if (!ket_basis.left_has(SymmGroup::fuse(mc, phys_in))) continue;
-
-                            size_t r_block = right[b2].position(SymmGroup::fuse(mc, phys_in), rc);
+                            charge tlc = SymmGroup::fuse(mc, phys_in);
+                            size_t r_block = right[b2].position(tlc, rc);
                             if (r_block == right[b2].size()) continue;
-                            if (check) maquis::cout << "XX1\n";
 
-                            if (!right_i.has(SymmGroup::fuse(mc, phys_in))) continue;
-                            if (check) maquis::cout << "XX2\n";
+                            if (!right_i.has(tlc)) continue;
 
-                            size_t in_offset = right_pb(phys_in, SymmGroup::fuse(phys_in, mc));
+                            int i = SymmGroup::spin(lc), ip = SymmGroup::spin(rc);
+                            int j = SymmGroup::spin(mc), jp = SymmGroup::spin(tlc);
+                            int two_sp = std::abs(i - ip), two_s  = std::abs(j - jp);
+
 
                             typename Matrix::value_type couplings[4];
-                            couplings[0] = access.scale(op_index);
-                            couplings[1] = access.scale(op_index);
-                            couplings[2] = access.scale(op_index);
-                            couplings[3] = access.scale(op_index);
+                            ::SU2::set_coupling(j, two_s, jp, a,k,ap, i, two_sp, ip, access.scale(op_index), couplings);
+
+                            size_t in_offset = right_pb(phys_in, SymmGroup::fuse(phys_in, mc));
                             
-                            //if (check) maquis::cout << "phys_in/out " << phys_in << phys_out << std::endl;
                             micro_task tpl; tpl.l_size = m_size; tpl.stripe = m_size; tpl.b2 = b2; tpl.k = r_block; tpl.out_offset = out_offset;
                             detail::op_iterate_shtm<Matrix, SymmGroup>(W, w_block, couplings, mg.current_row(), tpl,
-                                                                       in_offset, 0, r_size, pre_offset, check);
+                                                                       in_offset, 0, r_size, pre_offset, false);
                         } // w_block
-                        //if (check) maquis::cout << std::endl;
                         
                     } //op_index
 
                 } // b2
             } // mc
         } // b1
-
     }
 
 } // namespace SU2
