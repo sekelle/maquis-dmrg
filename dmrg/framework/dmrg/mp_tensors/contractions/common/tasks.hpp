@@ -112,7 +112,7 @@ namespace common {
         double a = A.a;
         if (std::abs(a) < 1e-300)
         {
-            os << '.';
+            os << '0';
             return os;
         }
 
@@ -198,7 +198,8 @@ namespace common {
                 for (int j = 0; j < tasks[i].size(); ++j)
                 {
                     triple tt(tasks[i][j].b2, tasks[i][j].k, tasks[i][j].in_offset); 
-                    alpha(i, b2_col[tt]) = tasks[i][j].scale;
+                    double val = tasks[i][j].scale;
+                    alpha(i, b2_col[tt]) = (std::abs(val) > 1e-300) ? val : 1e-301;
                 }
 
             int lpc = sw + 2 + sw;
@@ -226,10 +227,10 @@ namespace common {
                 for (amap_t::const_iterator it = b2_col.begin(); it != b2_col.end(); ++it)
                 {
                     int col = it->second;
-                    int val = alpha(i, col);
-                    //if (val == 0)
-                    //    maquis::cout << std::setw(sw) << "."; 
-                    //else
+                    double val = alpha(i, col);
+                    if (val == 0.)
+                        maquis::cout << std::setw(sw) << "."; 
+                    else
                         maquis::cout << std::setw(sw) << f3(alpha(i, col)); 
                 }
                 maquis::cout << std::endl;
