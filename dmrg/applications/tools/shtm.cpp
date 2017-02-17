@@ -118,8 +118,8 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
     common_subset(out_right_i, left_i);
     ProductBasis<SymmGroup> in_left_pb(physical_i, left_i);
     ProductBasis<SymmGroup> out_right_pb(physical_i, right_i,
-                                         boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
-                                                             -boost::lambda::_1, boost::lambda::_2));
+                boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
+                                -boost::lambda::_1, boost::lambda::_2));
 
     LeftIndices<Matrix, SMatrix, SymmGroup> left_indices(left, mpo);
     RightIndices<Matrix, SMatrix, SymmGroup> right_indices(right, mpo);
@@ -135,31 +135,31 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
     index_type loop_max = mpo.row_dim();
     for (int b1 = 0; b1 < loop_max; ++b1)
     {
-        std::vector<value_type> phases = (mpo.herm_info.left_skip(b1)) ? conjugate_phases(left_indices[b1], mpo, b1, true, false) :
-                                                                         std::vector<value_type>(left_indices[b1].size(),1.);
+        std::vector<value_type> phases = (mpo.herm_info.left_skip(b1)) 
+                                       ? conjugate_phases(left_indices[b1], mpo, b1, true, false)
+                                       : std::vector<value_type>(left_indices[b1].size(),1.);
 
-        for (typename map_t::const_iterator it = contraction_schedule[b1].begin(); it != contraction_schedule[b1].end(); ++it)
+        for (typename map_t::const_iterator it = contraction_schedule[b1].begin();
+                it != contraction_schedule[b1].end(); ++it)
         {
             charge mps_charge = it->first.second;
             charge middle_charge = it->first.first;
 
-            std::vector<micro_task> const & otasks = it->second;               if (otasks.size() == 0)           continue;
-            bool check = false;
-            size_t k = left_indices[b1].position(mps_charge, middle_charge);   if (k == left_indices[b1].size()) continue;
+            std::vector<micro_task> const & otasks = it->second;
+            if (otasks.size() == 0)           continue;
+            size_t k = left_indices[b1].position(mps_charge, middle_charge);
+            if (k == left_indices[b1].size()) continue;
 
             map2 & matrix_groups_ch = matrix_groups[boost::make_tuple(mps_charge, middle_charge)];
-            for (typename std::vector<micro_task>::const_iterator it2 = otasks.begin(); it2 != otasks.end(); )
+            for (typename std::vector<micro_task>::const_iterator it2 = otasks.begin(); it2 != otasks.end();)
             {
                 unsigned offset = it2->out_offset;
-                matrix_groups_ch[offset].add_line(b1, k, check);
+                matrix_groups_ch[offset].add_line(b1, k);
 
-                typename std::vector<micro_task>::const_iterator upper = std::upper_bound(it2, otasks.end(), *it2, task_compare<value_type>());
-                int cnt = 0;
+                typename std::vector<micro_task>::const_iterator
+                    upper = std::upper_bound(it2, otasks.end(), *it2, task_compare<value_type>());
                 for ( ; it2 != upper; ++it2)
-                {
                     matrix_groups_ch[offset].push_back(*it2);
-                    cnt++;
-                }
 
                 it2 = upper;
             }
@@ -196,9 +196,9 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
     initial.make_right_paired();
     maquis::cout << lc << mc << phys << std::endl;
     ContractionGroup<Matrix, SymmGroup> cgrp;
-    shtm_tasks(mpo, left_indices, right_indices, initial.data().basis(), right_i, out_right_pb, lc, phys, offprobe, cgrp);
+    shtm_tasks(mpo, left_indices, right_indices, initial.data().basis(),
+               right_i, out_right_pb, lc, phys, offprobe, cgrp);
     cgrp.mgroups[boost::make_tuple(offprobe, mc)].print_stats();
-
 }
 
 int main(int argc, char ** argv)
