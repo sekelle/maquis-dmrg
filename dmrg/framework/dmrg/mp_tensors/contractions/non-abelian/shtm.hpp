@@ -41,6 +41,7 @@ namespace SU2 {
     using common::task_capsule;
     using common::ContractionGroup;
     using common::MatrixGroup;
+    using common::MPSBlock;
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
     void shtm_tasks(MPOTensor<Matrix, SymmGroup> const & mpo,
@@ -48,18 +49,20 @@ namespace SU2 {
                     common::RightIndices<Matrix, OtherMatrix, SymmGroup> const & right,
                     DualIndex<SymmGroup> const & ket_basis,
                     Index<SymmGroup> const & right_i,
+                    Index<SymmGroup> const & phys_i,
                     ProductBasis<SymmGroup> const & right_pb,
                     typename SymmGroup::charge lc,
                     typename SymmGroup::charge phys,
+                    size_t phys_index,
                     unsigned out_offset,
-                    ContractionGroup<Matrix, SymmGroup> & cgrp)
+                    ContractionGroup<Matrix, SymmGroup> & cgrp,
+                    MPSBlock<Matrix, SymmGroup> & mpsb)
     {
         typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
         typedef typename MPOTensor<Matrix, SymmGroup>::row_proxy row_proxy;
-        typedef typename DualIndex<SymmGroup>::const_iterator const_iterator;
         typedef typename SymmGroup::charge charge;
         typedef typename Matrix::value_type value_type;
-
+        typedef MPSBlock<Matrix, SymmGroup> mpsb_t;
         typedef typename task_capsule<Matrix, SymmGroup>::micro_task micro_task;
 
         charge rc = SymmGroup::fuse(lc, phys);
@@ -70,7 +73,7 @@ namespace SU2 {
 
         for (index_type b1 = 0; b1 < mpo.row_dim(); ++b1)
         {
-            const_iterator lit = left[b1].left_lower_bound(lc);
+            typename DualIndex<SymmGroup>::const_iterator lit = left[b1].left_lower_bound(lc);
             for ( ; lit != left[b1].end() && lit->lc == lc; ++lit)
             {
                 // MatrixGroup for mc
@@ -80,6 +83,10 @@ namespace SU2 {
                 size_t k = left[b1].position(lc, mc);   if (k == left[b1].size()) continue;
                 MatrixGroup<Matrix, SymmGroup> & mg = cgrp.mgroups[boost::make_tuple(out_offset, mc)];
                 mg.add_line(b1, k);
+
+                mpsb[mc].resize(phys_i.size());
+                mpsb[mc][0].resize(phys_i[phys_index].second);
+                for (std::size_t i = 0 ; i < mpsb[mc][0].size(); ++i) mpsb[mc][0][i].add_line(b1,k);
 
                 row_proxy row_b1 = mpo.row(b1);
                 for (typename row_proxy::const_iterator row_it = row_b1.begin(); row_it != row_b1.end(); ++row_it) {
@@ -103,7 +110,7 @@ namespace SU2 {
                             size_t r_block = right[b2].position(tlc, rc);
                             if (r_block == right[b2].size()) continue;
 
-                            if (!right_i.has(tlc)) continue;
+                            if (!right_i.has(tlc)) throw std::runtime_error("XX\n");
 
                             int i = SymmGroup::spin(lc), ip = SymmGroup::spin(rc);
                             int j = SymmGroup::spin(mc), jp = SymmGroup::spin(tlc);
@@ -115,9 +122,12 @@ namespace SU2 {
 
                             size_t in_offset = right_pb(phys_in, SymmGroup::fuse(phys_in, mc));
                             
-                            micro_task tpl; tpl.l_size = m_size; tpl.stripe = m_size; tpl.b2 = b2; tpl.k = r_block; tpl.out_offset = out_offset;
+                            micro_task tpl; tpl.l_size = lit->ls; tpl.r_size = right[b2].right_size(r_block);
+                                            tpl.stripe = m_size; tpl.b2 = b2; tpl.k = r_block;
+                                            tpl.out_offset = out_offset;
                             detail::op_iterate_shtm<Matrix, SymmGroup>(W, w_block, couplings, mg.current_row(), tpl,
-                                                                       in_offset, 0, r_size, pre_offset, false);
+                                                                       in_offset, 0, r_size, pre_offset,
+                                                                       mpsb[mc][0]);
                         } // w_block
                         
                     } //op_index

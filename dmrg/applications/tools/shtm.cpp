@@ -176,12 +176,14 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
     //unsigned offprobe = 539;
     //unsigned offprobe = 168, blockstart = 168;
     unsigned offprobe = 283, blockstart = 181;
+    //unsigned offprobe = 490, blockstart = 392;
     //mc = lc;
 
     matrix_groups[boost::make_tuple(lc, mc)][offprobe].print_stats();
 
     charge phys;
-    for (int s = 0; s < physical_i.size(); ++s)
+    size_t s = 0;
+    for ( ; s < physical_i.size(); ++s)
     {
         phys = physical_i[s].first;
         charge rc = SymmGroup::fuse(phys, lc);
@@ -193,12 +195,17 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
         }
     }
 
+    MPSBlock<matrix, symm> mpsb;
+
     initial.make_right_paired();
     maquis::cout << lc << mc << phys << std::endl;
     ContractionGroup<Matrix, SymmGroup> cgrp;
     shtm_tasks(mpo, left_indices, right_indices, initial.data().basis(),
-               right_i, out_right_pb, lc, phys, offprobe, cgrp);
+               right_i, physical_i, out_right_pb, lc, phys, s, offprobe, cgrp, mpsb);
     cgrp.mgroups[boost::make_tuple(offprobe, mc)].print_stats();
+
+    mpsb[mc][0][1].print_stats();
+    mpsb[mc][0][0].print_stats();
 }
 
 int main(int argc, char ** argv)

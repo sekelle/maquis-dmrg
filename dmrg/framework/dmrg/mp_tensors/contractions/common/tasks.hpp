@@ -250,12 +250,29 @@ namespace common {
         typedef boost::tuple<unsigned, charge> duple;
 
     public:
-        
-
-    //private:
         std::vector<Matrix> T;
         std::map<duple, MatrixGroup<Matrix, SymmGroup> > mgroups;
     };
+
+
+    template <class Matrix, class SymmGroup>
+    class ContractionGroup2 : public std::vector<MatrixGroup<Matrix, SymmGroup> >
+    {
+    public:
+        typedef std::vector<MatrixGroup<Matrix, SymmGroup> > base;    
+
+        std::vector<Matrix> T;
+    };
+
+    template <class Matrix, class SymmGroup>
+    class MPSBlock : public std::map<typename SymmGroup::charge, std::vector<ContractionGroup2<Matrix, SymmGroup> > >
+    {
+    public:
+        typedef ContractionGroup2<Matrix, SymmGroup> mapped_value_type;
+        typedef std::vector<mapped_value_type > mapped_type;
+        typedef std::map<typename SymmGroup::charge, mapped_type> base;
+    };
+
     
     template<class Matrix, class SymmGroup, class TaskCalc>
     typename Schedule<Matrix, SymmGroup>::schedule_t

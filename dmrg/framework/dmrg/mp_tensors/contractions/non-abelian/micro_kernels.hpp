@@ -37,6 +37,7 @@ namespace detail {
 
     using ::contraction::common::detail::micro_task;
     using ::contraction::common::task_compare;
+    using ::contraction::common::MPSBlock;
 
     template<class Matrix, class SymmGroup>
     void lbtm(Matrix const & iblock, Matrix & oblock, typename operator_selector<Matrix, SymmGroup>::type const & W,
@@ -156,7 +157,7 @@ namespace detail {
                     std::vector<micro_task<typename Matrix::value_type> > & tasks,
                     micro_task<typename Matrix::value_type> tpl,
                     size_t in_offset,
-                    size_t r_size_cache, size_t r_size, size_t out_right_offset, bool check)
+                    size_t r_size_cache, size_t r_size, size_t out_right_offset)
     {
         typedef typename SparseOperator<Matrix, SymmGroup>::const_iterator block_iterator;
         std::pair<block_iterator, block_iterator> blocks = W.get_sparse().block(w_block);
@@ -188,7 +189,8 @@ namespace detail {
                          std::vector<micro_task<typename Matrix::value_type> > & tasks,
                          micro_task<typename Matrix::value_type> tpl,
                          size_t in_offset,
-                         size_t r_size_cache, size_t r_size, size_t pre_offset, bool check)
+                         size_t r_size_cache, size_t r_size, size_t pre_offset,
+                         typename MPSBlock<Matrix, SymmGroup>::mapped_value_type & cg)
     {
         typedef typename SparseOperator<Matrix, SymmGroup>::const_iterator block_iterator;
         std::pair<block_iterator, block_iterator> blocks = W.get_sparse().block(w_block);
@@ -211,6 +213,9 @@ namespace detail {
             //task.r_size = r_size_cache;
             if (task.out_offset == pre_offset + ss2*r_size)
                 tasks.push_back(task);
+
+            task.out_offset = pre_offset + ss2*r_size;
+            cg[ss2].push_back(task);
         }
     }
 

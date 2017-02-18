@@ -118,7 +118,7 @@ namespace SU2 {
                             detail::op_iterate<Matrix, SymmGroup>(W, w_block, couplings, otasks, tpl, 
                                                                   in_left_offset + tpl.stripe * right_offset_cache,
                                                                   r_size_cache, r_size,
-                                                                  out_right_offset + right_offset_cache, false);
+                                                                  out_right_offset + right_offset_cache);
                         }
 
                         unsigned short r_size_remain = r_size % r_size_cache;
@@ -128,7 +128,7 @@ namespace SU2 {
                         detail::op_iterate<Matrix, SymmGroup>(W, w_block, couplings, otasks, tpl,
                                                               in_left_offset + tpl.stripe * right_offset_remain,
                                                               r_size_remain, r_size,
-                                                              out_right_offset + right_offset_remain, false);
+                                                              out_right_offset + right_offset_remain);
                 } // wblock
                 } // ket block
             } // op_index
