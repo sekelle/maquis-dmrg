@@ -195,17 +195,28 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
         }
     }
 
-    MPSBlock<matrix, symm> mpsb;
-
-    initial.make_right_paired();
     maquis::cout << lc << mc << phys << std::endl;
-    ContractionGroup<Matrix, SymmGroup> cgrp;
-    shtm_tasks(mpo, left_indices, right_indices, initial.data().basis(),
-               right_i, physical_i, out_right_pb, lc, phys, s, offprobe, cgrp, mpsb);
-    cgrp.mgroups[boost::make_tuple(offprobe, mc)].print_stats();
 
-    mpsb[mc][0][1].print_stats();
-    mpsb[mc][0][0].print_stats();
+    MPSBlock<matrix, symm> mpsb;
+    shtm_tasks(mpo, left_indices, right_indices, left_i,
+               right_i, physical_i, out_right_pb, lc, mpsb);
+
+    mpsb[mc][s][1].print_stats();
+    mpsb[mc][s][0].print_stats();
+
+    for (size_t l = 0; l < left_i.size(); ++l)
+    {
+        charge lc = left_i[l].first;
+        MPSBlock<matrix, symm> mpsb;
+        shtm_tasks(mpo, left_indices, right_indices, left_i,
+                   right_i, physical_i, out_right_pb, lc, mpsb);
+
+        maquis::cout << "lc: " << lc << " ";
+        for (typename MPSBlock<matrix, symm>::const_iterator it = mpsb.begin();
+             it != mpsb.end(); ++it)
+            maquis::cout << it->first;
+        maquis::cout << std::endl;
+    }
 }
 
 int main(int argc, char ** argv)

@@ -47,15 +47,11 @@ namespace SU2 {
     void shtm_tasks(MPOTensor<Matrix, SymmGroup> const & mpo,
                     common::LeftIndices<Matrix, OtherMatrix, SymmGroup> const & left,
                     common::RightIndices<Matrix, OtherMatrix, SymmGroup> const & right,
-                    DualIndex<SymmGroup> const & ket_basis,
+                    Index<SymmGroup> const & left_i,
                     Index<SymmGroup> const & right_i,
                     Index<SymmGroup> const & phys_i,
                     ProductBasis<SymmGroup> const & right_pb,
                     typename SymmGroup::charge lc,
-                    typename SymmGroup::charge phys,
-                    size_t phys_index,
-                    unsigned out_offset,
-                    ContractionGroup<Matrix, SymmGroup> & cgrp,
                     MPSBlock<Matrix, SymmGroup> & mpsb)
     {
         typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
@@ -65,76 +61,78 @@ namespace SU2 {
         typedef MPSBlock<Matrix, SymmGroup> mpsb_t;
         typedef typename task_capsule<Matrix, SymmGroup>::micro_task micro_task;
 
-        charge rc = SymmGroup::fuse(lc, phys);
+        size_t l_size = left_i.size_of_block(lc);
 
-        size_t l_size = 0;//ket_basis.left_block_size(lc, lc);
-        size_t r_size = right_i.size_of_block(rc);
-        size_t pre_offset = right_pb(phys, rc);
-
-        for (index_type b1 = 0; b1 < mpo.row_dim(); ++b1)
+        for (size_t s = 0; s < phys_i.size(); ++s)
         {
-            typename DualIndex<SymmGroup>::const_iterator lit = left[b1].left_lower_bound(lc);
-            for ( ; lit != left[b1].end() && lit->lc == lc; ++lit)
+            charge phys = phys_i[s].first;
+            charge rc = SymmGroup::fuse(lc, phys);
+            size_t r_index = right_i.position(rc); if (r_index == right_i.size()) continue;
+            size_t r_size = right_i[r_index].second;
+            size_t out_right_offset = right_pb(phys, rc);
+
+            for (index_type b1 = 0; b1 < mpo.row_dim(); ++b1)
             {
-                // MatrixGroup for mc
-                charge mc = lit->rc;       
-                size_t m_size = lit->rs;
+                for (typename DualIndex<SymmGroup>::const_iterator lit = left[b1].left_lower_bound(lc);
+                     lit != left[b1].end() && lit->lc == lc; ++lit)
+                {
+                    charge mc = lit->rc;       
+                    size_t m_size = lit->rs;
+                    size_t left_block = lit - left[b1].begin();
 
-                size_t k = left[b1].position(lc, mc);   if (k == left[b1].size()) continue;
-                MatrixGroup<Matrix, SymmGroup> & mg = cgrp.mgroups[boost::make_tuple(out_offset, mc)];
-                mg.add_line(b1, k);
+                    mpsb[mc].resize(phys_i.size());
+                    typename mpsb_t::mapped_value_type & cg = mpsb[mc][s];
+                    cg.resize(phys_i[s].second);
+                    for (std::size_t i = 0 ; i < cg.size(); ++i) cg[i].add_line(b1, left_block);
 
-                mpsb[mc].resize(phys_i.size());
-                mpsb[mc][0].resize(phys_i[phys_index].second);
-                for (std::size_t i = 0 ; i < mpsb[mc][0].size(); ++i) mpsb[mc][0][i].add_line(b1,k);
+                    row_proxy row_b1 = mpo.row(b1);
+                    for (typename row_proxy::const_iterator row_it = row_b1.begin(); row_it != row_b1.end(); ++row_it) {
+                        index_type b2 = row_it.index();
 
-                row_proxy row_b1 = mpo.row(b1);
-                for (typename row_proxy::const_iterator row_it = row_b1.begin(); row_it != row_b1.end(); ++row_it) {
-                    index_type b2 = row_it.index();
+                        MPOTensor_detail::term_descriptor<Matrix, SymmGroup, true> access = mpo.at(b1,b2);
 
-                    MPOTensor_detail::term_descriptor<Matrix, SymmGroup, true> access = mpo.at(b1,b2);
-
-                    for (size_t op_index = 0; op_index < access.size(); ++op_index)
-                    {
-                        typename operator_selector<Matrix, SymmGroup>::type const & W = access.op(op_index);
-                        int a = mpo.left_spin(b1).get(), k = W.spin().get(), ap = mpo.right_spin(b2).get();
-                        if (!::SU2::triangle(SymmGroup::spin(mc), a, SymmGroup::spin(lc))) continue;
-
-                        for (size_t w_block = 0; w_block < W.basis().size(); ++w_block)
+                        for (size_t op_index = 0; op_index < access.size(); ++op_index)
                         {
-                            charge phys_in = W.basis().left_charge(w_block);
-                            charge phys_out = W.basis().right_charge(w_block);
-                            if (phys_out != phys) continue;
+                            typename operator_selector<Matrix, SymmGroup>::type const & W = access.op(op_index);
+                            int a = mpo.left_spin(b1).get(), k = W.spin().get(), ap = mpo.right_spin(b2).get();
+                            if (!::SU2::triangle(SymmGroup::spin(mc), a, SymmGroup::spin(lc))) continue;
 
-                            charge tlc = SymmGroup::fuse(mc, phys_in);
-                            size_t r_block = right[b2].position(tlc, rc);
-                            if (r_block == right[b2].size()) continue;
+                            for (size_t w_block = 0; w_block < W.basis().size(); ++w_block)
+                            {
+                                charge phys_in = W.basis().left_charge(w_block);
+                                charge phys_out = W.basis().right_charge(w_block);
+                                if (phys_out != phys) continue;
 
-                            if (!right_i.has(tlc)) throw std::runtime_error("XX\n");
+                                charge tlc = SymmGroup::fuse(mc, phys_in);
+                                size_t r_block = right[b2].position(tlc, rc);
+                                if (r_block == right[b2].size()) continue;
 
-                            int i = SymmGroup::spin(lc), ip = SymmGroup::spin(rc);
-                            int j = SymmGroup::spin(mc), jp = SymmGroup::spin(tlc);
-                            int two_sp = std::abs(i - ip), two_s  = std::abs(j - jp);
+                                assert(right_i.has(tlc));
+                                assert(lit->ls == l_size);
+                                assert(right[b2].right_size(r_block) == r_size);
 
+                                int i = SymmGroup::spin(lc), ip = SymmGroup::spin(rc);
+                                int j = SymmGroup::spin(mc), jp = SymmGroup::spin(tlc);
+                                int two_sp = std::abs(i - ip), two_s  = std::abs(j - jp);
 
-                            typename Matrix::value_type couplings[4];
-                            ::SU2::set_coupling(j, two_s, jp, a,k,ap, i, two_sp, ip, access.scale(op_index), couplings);
+                                typename Matrix::value_type couplings[4];
+                                ::SU2::set_coupling(j, two_s, jp, a,k,ap, i, two_sp, ip, access.scale(op_index), couplings);
 
-                            size_t in_offset = right_pb(phys_in, SymmGroup::fuse(phys_in, mc));
+                                size_t in_offset = right_pb(phys_in, SymmGroup::fuse(phys_in, mc));
+                                
+                                micro_task tpl; tpl.l_size = l_size; tpl.r_size = r_size;
+                                                tpl.stripe = m_size; tpl.b2 = b2; tpl.k = r_block;
+
+                                detail::op_iterate_shtm<Matrix, SymmGroup>(W, w_block, couplings, cg, tpl,
+                                                                           in_offset, 0, r_size, out_right_offset);
+                            } // w_block
                             
-                            micro_task tpl; tpl.l_size = lit->ls; tpl.r_size = right[b2].right_size(r_block);
-                                            tpl.stripe = m_size; tpl.b2 = b2; tpl.k = r_block;
-                                            tpl.out_offset = out_offset;
-                            detail::op_iterate_shtm<Matrix, SymmGroup>(W, w_block, couplings, mg.current_row(), tpl,
-                                                                       in_offset, 0, r_size, pre_offset,
-                                                                       mpsb[mc][0]);
-                        } // w_block
-                        
-                    } //op_index
+                        } //op_index
 
-                } // b2
-            } // mc
-        } // b1
+                    } // b2
+                } // mc
+            } // b1
+        } // phys_i
     }
 
 } // namespace SU2
