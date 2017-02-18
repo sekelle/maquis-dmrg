@@ -217,6 +217,140 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
             maquis::cout << it->first;
         maquis::cout << std::endl;
     }
+
+
+    /*
+    { // separate scope
+
+    // input_per_mps , for each location in the output MPS, list which input blocks from S and T are required
+
+    typedef typename DualIndex<SymmGroup>::const_iterator const_iterator;
+
+    typedef boost::tuple<unsigned, unsigned, unsigned> triple;
+    typedef std::map<triple, unsigned> map4;
+    typedef std::map<charge, map4> map3;
+    typedef std::map<unsigned, map3> map2;
+    typedef std::map<charge, map2> map1;
+    map1 stasks; // [outcharge][outoffset][middlecharge][input_triple]
+
+    std::map<charge, unsigned> middle_size;
+
+    // MPS block
+    for (int lb = 0; lb < left_i.size(); ++lb)
+    {
+        charge out_charge = left_i[lb].first;
+         
+        // loop over boundary 
+        for (int b1 = 0; b1 < loop_max; ++b1)
+        {
+            // find connecting middle charge
+            const_iterator lit = left_indices[b1].left_lower_bound(out_charge);
+            for ( ; lit != left_indices[b1].end() && lit->lc == out_charge; ++lit)
+            {
+                charge middle_charge = lit->rc;
+                size_t ms = lit->rs;
+                middle_size[middle_charge] = ms;
+
+                // find out_charge in contraction_schedule[b1]
+                std::vector<micro_task> const & tvec
+                    = contraction_schedule[b1][std::make_pair(middle_charge, out_charge)];
+                for (int i = 0; i < tvec.size(); ++i)
+                    //stasks[out_charge][tvec[i].out_offset][boost::make_tuple(tvec[i].b2, tvec[i].k, tvec[i].in_offset)]++;
+                    stasks[out_charge][tvec[i].out_offset][middle_charge][boost::make_tuple(tvec[i].b2, tvec[i].k, tvec[i].in_offset)]++;
+                
+            }
+        }
+    }
+
+    std::ofstream ips(("ips" + boost::lexical_cast<std::string>(3)).c_str());
+    for (typename map1::const_iterator it1 = stasks.begin();
+          it1 != stasks.end(); ++it1)
+    {
+        ips << "MPS charge " << it1->first << ", ls " << left_i.size_of_block(it1->first) << std::endl;
+        for (typename map2::const_iterator it2 = it1->second.begin();
+           it2 != it1->second.end(); ++it2)
+        {
+            ips << "  offset " << it2->first << std::endl;
+            for (typename map3::const_iterator it3 = it2->second.begin(); it3 != it2->second.end(); ++it3)
+            {
+                ips << "    mc " << it3->first << " x " << middle_size[it3->first] << std::endl << "      ";
+                for (typename map4::const_iterator it4 = it3->second.begin(); it4 != it3->second.end(); ++it4)
+                {
+                    if (it4->second > 1)
+                    ips << boost::get<0>(it4->first)
+                        << "," << boost::get<1>(it4->first)
+                        << "," << boost::get<2>(it4->first)
+                        << ": " << it4->second
+                        << "  ";
+                }
+                ips << std::endl;
+            }
+            ips << std::endl;
+        }
+        ips << std::endl;
+    }
+    ips.close();
+
+    } //scope
+
+
+    {
+    // output_per_T, for each block in T, list all locations in output MPS needing this block
+    typedef typename DualIndex<SymmGroup>::const_iterator const_iterator;
+    typedef boost::tuple<unsigned, unsigned, unsigned> triple;
+    typedef std::map<unsigned, unsigned> map3;
+    typedef std::map<charge, map3 > map2;
+    typedef std::map<triple, map2 > map1;
+
+    map1 stasks;
+    // MPS block
+    for (int lb = 0; lb < left_i.size(); ++lb)
+    {
+        charge out_charge = left_i[lb].first;
+
+        // loop over boundary
+        for (int b1 = 0; b1 < loop_max; ++b1)
+        {
+            // find connecting middle charge
+            int cnt = 0;
+            const_iterator lit = left_indices[b1].left_lower_bound(out_charge);
+            for ( ; lit != left_indices[b1].end() && lit->lc == out_charge; ++lit)
+            {
+                charge middle_charge = lit->rc;
+
+                // find out_charge in contraction_schedule[b1]
+                std::vector<micro_task> const & tvec
+                    = contraction_schedule[b1][std::make_pair(middle_charge, out_charge)];
+                for (int i = 0; i < tvec.size(); ++i)
+                    stasks[boost::make_tuple(tvec[i].b2, tvec[i].k, tvec[i].in_offset)]
+                          [out_charge][tvec[i].out_offset]++;
+
+                cnt++;
+            }
+            if (cnt > 3) { maquis::cout << left[b1].basis() << std::endl; exit(1); }
+        }
+    }
+
+    std::ofstream ops(("output_per_T_" + boost::lexical_cast<std::string>(3)).c_str());
+    for (typename map1::const_iterator it1 = stasks.begin(); it1 != stasks.end(); ++it1)
+    {
+        ops << boost::get<0>(it1->first)
+            << "," << boost::get<1>(it1->first)
+            << "," << boost::get<2>(it1->first)
+            << "| ";
+
+        for (typename map2::const_iterator it2 = it1->second.begin();
+             it2 != it1->second.end(); ++it2)
+        {
+            ops << it2->first << " ";
+            for (typename map3::const_iterator it3 = it2->second.begin();
+                 it3 != it2->second.end(); ++it3)
+                ops << it3->first << ":" << it3->second << " ";
+        }
+        ops << std::endl;
+    }
+    } // scope
+    */
 }
 
 int main(int argc, char ** argv)
