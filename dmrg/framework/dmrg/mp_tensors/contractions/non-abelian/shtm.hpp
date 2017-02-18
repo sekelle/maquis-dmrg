@@ -39,7 +39,6 @@ namespace contraction {
 namespace SU2 {
 
     using common::task_capsule;
-    using common::ContractionGroup;
     using common::MatrixGroup;
     using common::MPSBlock;
 
