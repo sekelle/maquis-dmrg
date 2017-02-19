@@ -61,6 +61,10 @@ typedef TrivialGroup symm;
 typedef U1 symm;
 #endif
 
+using namespace contraction;
+using namespace contraction::common;
+using namespace contraction::SU2;
+
 typedef storage::constrained<matrix>::type smatrix;
 
 //#include "dmrg/utils/DmrgOptions.h"
@@ -93,12 +97,76 @@ void load(Loadable & Data, std::string file)
 }
 
 template <class Matrix, class SymmGroup>
+typename Schedule<Matrix, SymmGroup>::schedule_t convert_to_schedule(MatrixGroup<Matrix, SymmGroup> const & mg,
+                                                                     typename SymmGroup::charge lc,
+                                                                     typename SymmGroup::charge mc,
+                                                                     MPOTensor<Matrix, SymmGroup> const & mpo)
+{
+    typename Schedule<Matrix, SymmGroup>::schedule_t ret(mpo.row_dim());
+    for (size_t i = 0; i < mg.tasks.size(); ++i)
+        ret[ mg.bs[i] ][std::make_pair(mc, lc)] = mg.tasks[i];
+    return ret;
+}
+
+template <class Matrix>
+Matrix extract_cols(Matrix const & source, size_t col1, size_t col2)
+{
+    Matrix ret(num_rows(source), col2 - col1); 
+    std::copy(&source(0, col1), &source(0,col2), &ret(0,0));
+    return ret;
+}
+
+template <class Matrix, class SymmGroup, class T>
+void check_contraction(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGroup> const & initial,
+                       T const & matrix_groups)
+{
+    typedef typename storage::constrained<Matrix>::type SMatrix;
+    typedef typename SymmGroup::charge charge;
+    typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
+
+    Boundary<SMatrix, SymmGroup> const & left = sp.left, right = sp.right;
+    MPOTensor<Matrix, SymmGroup> const & mpo = sp.mpo;
+
+    typedef boost::array<int, 3> array;
+    array lc_ = {{4,2,0}}, mc_ = {{4,0,0}};
+    charge LC(lc_), MC(mc_);
+    unsigned offprobe = 283;
+
+    MPSTensor<Matrix, SymmGroup> partial = initial;
+    partial *= 0.0;
+    
+    for (typename T::const_iterator it = matrix_groups.begin(); it != matrix_groups.end(); ++it)
+    {
+        using namespace boost::tuples;
+
+        charge lc = get<0>(it->first);
+        charge mc = get<1>(it->first);
+        if (lc != LC) continue;
+
+        for (typename T::mapped_type::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2)
+        {
+            if (it2->first != offprobe) continue;
+            maquis::cout << "  " << offprobe << std::endl;
+            typename Schedule<Matrix, SymmGroup>::schedule_t mg_sched 
+                = convert_to_schedule(matrix_groups.at(boost::make_tuple(lc, mc)).at(offprobe), lc, mc, mpo);
+
+            partial += site_hamil_rbtm(initial, left, right, mpo, mg_sched);
+        }
+    }
+
+    partial.make_right_paired();
+    Matrix sample = partial.data()(LC, LC);
+    maquis::cout << extract_cols(sample, 283, 293) << std::endl;
+
+    MPSTensor<Matrix, SymmGroup> ref = site_hamil_rbtm(initial, left, right, mpo, sp.contraction_schedule);
+    ref.make_right_paired();
+    Matrix ref_matrix = ref.data()(LC, LC);
+    maquis::cout << "Reference\n" << extract_cols(ref_matrix, 283, 293) << std::endl;
+}
+
+template <class Matrix, class SymmGroup>
 void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGroup> const & initial)
 {
-    using namespace contraction;
-    using namespace contraction::common;
-    using namespace contraction::SU2;
-
     typedef typename storage::constrained<Matrix>::type SMatrix;
     typedef typename SymmGroup::charge charge;
     typedef typename Matrix::value_type value_type;
@@ -179,6 +247,8 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
     //unsigned offprobe = 490, blockstart = 392;
     //mc = lc;
 
+    check_contraction(sp, initial, matrix_groups);
+
     matrix_groups[boost::make_tuple(lc, mc)][offprobe].print_stats();
 
     charge phys;
@@ -217,7 +287,6 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
             maquis::cout << it->first;
         maquis::cout << std::endl;
     }
-
 
     /*
     { // separate scope

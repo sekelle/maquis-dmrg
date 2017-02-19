@@ -238,7 +238,7 @@ namespace common {
             maquis::cout << std::endl << std::endl;
         }
         
-    private:
+    //private:
         std::vector<std::vector<micro_task> > tasks;
         std::vector<index_type> bs, ks;
     };
