@@ -167,6 +167,8 @@ void check_contraction(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matr
 template <class Matrix, class SymmGroup>
 void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGroup> const & initial)
 {
+    using namespace boost::tuples;
+
     typedef typename storage::constrained<Matrix>::type SMatrix;
     typedef typename SymmGroup::charge charge;
     typedef typename Matrix::value_type value_type;
@@ -247,7 +249,7 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
     //unsigned offprobe = 490, blockstart = 392;
     //mc = lc;
 
-    check_contraction(sp, initial, matrix_groups);
+    //check_contraction(sp, initial, matrix_groups);
 
     matrix_groups[boost::make_tuple(lc, mc)][offprobe].print_stats();
 
@@ -273,6 +275,16 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
 
     mpsb[mc][s][1].print_stats();
     mpsb[mc][s][0].print_stats();
+
+    maquis::cout << "MPS block: " << mpsb[mc][s].mps_block << std::endl;
+    for (typename MPSBlock<matrix, symm>::mapped_value_type::T_index_t::iterator it = mpsb[mc][s].T_index.begin();
+         it != mpsb[mc][s].T_index.end(); ++it)
+    {
+        maquis::cout << it->second << ": " << get<0>(it->first) << ", "
+                                           << get<1>(it->first) << ", "
+                                           << get<2>(it->first)
+                                           << std::endl;
+    }
 
     //for (size_t l = 0; l < left_i.size(); ++l)
     //{

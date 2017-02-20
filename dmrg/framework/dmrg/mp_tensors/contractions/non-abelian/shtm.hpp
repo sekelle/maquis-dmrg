@@ -60,17 +60,17 @@ namespace SU2 {
         typedef MPSBlock<Matrix, SymmGroup> mpsb_t;
         typedef typename task_capsule<Matrix, SymmGroup>::micro_task micro_task;
 
-        size_t l_size = left_i.size_of_block(lc);
+        unsigned l_size = left_i.size_of_block(lc);
 
         // output physical index, output offset range = out_right offset + ss2*r_size
         //                                              for ss2 in {0, 1, .., phys_i[s].second}
-        for (size_t s = 0; s < phys_i.size(); ++s)
+        for (unsigned s = 0; s < phys_i.size(); ++s)
         {
             charge phys = phys_i[s].first;
             charge rc = SymmGroup::fuse(lc, phys);
-            size_t r_index = right_i.position(rc); if (r_index == right_i.size()) continue;
-            size_t r_size = right_i[r_index].second;
-            size_t out_right_offset = right_pb(phys, rc);
+            unsigned r_index = right_i.position(rc); if (r_index == right_i.size()) continue;
+            unsigned r_size = right_i[r_index].second;
+            unsigned out_right_offset = right_pb(phys, rc);
 
             for (index_type b1 = 0; b1 < mpo.row_dim(); ++b1)
             {
@@ -78,13 +78,16 @@ namespace SU2 {
                      lit != left[b1].end() && lit->lc == lc; ++lit)
                 {
                     charge mc = lit->rc;       
-                    size_t m_size = lit->rs;
-                    size_t left_block = lit - left[b1].begin();
+                    unsigned m_size = lit->rs;
+                    unsigned left_block = lit - left[b1].begin();
+                    unsigned mps_block = left_i.position(mc);
+                    assert(mps_block != left_i.size());
 
                     mpsb[mc].resize(phys_i.size());
                     typename mpsb_t::mapped_value_type & cg = mpsb[mc][s];
                     cg.resize(phys_i[s].second);
-                    for (std::size_t i = 0 ; i < cg.size(); ++i) cg[i].add_line(b1, left_block);
+                    cg.mps_block = mps_block;
+                    for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(b1, left_block);
 
                     row_proxy row_b1 = mpo.row(b1);
                     for (typename row_proxy::const_iterator row_it = row_b1.begin(); row_it != row_b1.end(); ++row_it) {
@@ -92,7 +95,7 @@ namespace SU2 {
 
                         MPOTensor_detail::term_descriptor<Matrix, SymmGroup, true> access = mpo.at(b1,b2);
 
-                        for (size_t op_index = 0; op_index < access.size(); ++op_index)
+                        for (unsigned op_index = 0; op_index < access.size(); ++op_index)
                         {
                             typename operator_selector<Matrix, SymmGroup>::type const & W = access.op(op_index);
                             int a = mpo.left_spin(b1).get(), k = W.spin().get(), ap = mpo.right_spin(b2).get();
@@ -105,7 +108,7 @@ namespace SU2 {
                                 if (phys_out != phys) continue;
 
                                 charge tlc = SymmGroup::fuse(mc, phys_in);
-                                size_t r_block = right[b2].position(tlc, rc);
+                                unsigned r_block = right[b2].position(tlc, rc);
                                 if (r_block == right[b2].size()) continue;
 
                                 assert(right_i.has(tlc));
@@ -115,17 +118,16 @@ namespace SU2 {
                                 int i = SymmGroup::spin(lc), ip = SymmGroup::spin(rc);
                                 int j = SymmGroup::spin(mc), jp = SymmGroup::spin(tlc);
                                 int two_sp = std::abs(i - ip), two_s  = std::abs(j - jp);
-
                                 typename Matrix::value_type couplings[4];
                                 ::SU2::set_coupling(j, two_s, jp, a,k,ap, i, two_sp, ip, access.scale(op_index), couplings);
 
-                                size_t in_offset = right_pb(phys_in, SymmGroup::fuse(phys_in, mc));
-                                
+                                unsigned in_offset = right_pb(phys_in, SymmGroup::fuse(phys_in, mc));
+
                                 micro_task tpl; tpl.l_size = l_size; tpl.r_size = r_size;
                                                 tpl.stripe = m_size; tpl.b2 = b2; tpl.k = r_block;
 
                                 detail::op_iterate_shtm<Matrix, SymmGroup>(W, w_block, couplings, cg, tpl,
-                                                                           in_offset, 0, r_size, out_right_offset);
+                                                                           in_offset, out_right_offset);
                             } // w_block
                             
                         } //op_index

@@ -176,8 +176,8 @@ namespace common {
 
         void print_stats() const
         {
-            typedef boost::tuple<unsigned, unsigned, unsigned> triple;
-            typedef std::map<triple, unsigned> amap_t;
+            typedef boost::tuple<unsigned, unsigned, unsigned, unsigned> quadruple;
+            typedef std::map<quadruple, unsigned> amap_t;
 
             int sw = 4;
 
@@ -186,7 +186,7 @@ namespace common {
             for (int i = 0; i < tasks.size(); ++i)
                 for (int j = 0; j < tasks[i].size(); ++j)
                 {
-                    triple tt(tasks[i][j].b2, tasks[i][j].k, tasks[i][j].in_offset); 
+                    quadruple tt(tasks[i][j].b2, tasks[i][j].k, tasks[i][j].in_offset, tasks[i][j].l_size); 
                     if (b2_col.count(tt) == 0)
                         b2_col[tt] = cnt++;
                 }
@@ -195,7 +195,7 @@ namespace common {
             for (int i = 0; i < tasks.size(); ++i)
                 for (int j = 0; j < tasks[i].size(); ++j)
                 {
-                    triple tt(tasks[i][j].b2, tasks[i][j].k, tasks[i][j].in_offset); 
+                    quadruple tt(tasks[i][j].b2, tasks[i][j].k, tasks[i][j].in_offset, tasks[i][j].l_size); 
                     double val = tasks[i][j].scale;
                     alpha(i, b2_col[tt]) = (std::abs(val) > 1e-300) ? val : 1e-301;
                 }
@@ -203,6 +203,10 @@ namespace common {
             int lpc = sw + 2 + sw;
             std::string leftpad(lpc, ' ');
 
+            maquis::cout << leftpad;
+            for (amap_t::const_iterator it = b2_col.begin(); it != b2_col.end(); ++it)
+                maquis::cout << std::setw(sw) << std::min(999u, boost::get<3>(it->first));
+            maquis::cout << std::endl;
             maquis::cout << leftpad;
             for (amap_t::const_iterator it = b2_col.begin(); it != b2_col.end(); ++it)
                 maquis::cout << std::setw(sw) << boost::get<2>(it->first);
@@ -250,16 +254,19 @@ namespace common {
     {
     public:
         typedef std::vector<MatrixGroup<Matrix, SymmGroup> > base;    
+        typedef boost::tuple<unsigned, unsigned, unsigned> Quadruple;
+        typedef std::map<Quadruple, unsigned> T_index_t;
 
-        typedef boost::tuple<unsigned, unsigned, unsigned, unsigned> Quadruple;
+        ContractionGroup() : cnt(0) {}
 
         //void mps_times_boundary_schedule();
 
         // invariant: phys_out, phys_offset
 
         std::vector<Matrix> T;
-
-        std::vector<Quadruple> T_index;
+        T_index_t T_index;
+        unsigned cnt;
+        unsigned mps_block;
     };
                                                                  // size == phys_i.size()
     template <class Matrix, class SymmGroup>                     // invariant: mc, m_size

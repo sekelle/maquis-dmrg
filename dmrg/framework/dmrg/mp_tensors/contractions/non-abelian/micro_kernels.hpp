@@ -187,9 +187,8 @@ namespace detail {
     void op_iterate_shtm(typename operator_selector<Matrix, SymmGroup>::type const & W, std::size_t w_block,
                          typename Matrix::value_type couplings[],
                          typename MPSBlock<Matrix, SymmGroup>::mapped_value_type & cg,
-                         micro_task<typename Matrix::value_type> tpl,
-                         size_t in_offset,
-                         size_t r_size_cache, size_t r_size, size_t out_right_offset)
+                         micro_task<typename Matrix::value_type> tpl, 
+                         unsigned in_offset, unsigned out_right_offset)
     {
         typedef typename SparseOperator<Matrix, SymmGroup>::const_iterator block_iterator;
         std::pair<block_iterator, block_iterator> blocks = W.get_sparse().block(w_block);
@@ -198,20 +197,28 @@ namespace detail {
         {
             micro_task<typename Matrix::value_type> task = tpl;
 
-            std::size_t ss1 = it->row;
-            std::size_t ss2 = it->col;
-            std::size_t rspin = it->row_spin;
-            std::size_t cspin = it->col_spin;
-            std::size_t casenr = 0; 
+            unsigned ss1 = it->row;
+            unsigned ss2 = it->col;
+            unsigned rspin = it->row_spin;
+            unsigned cspin = it->col_spin;
+            unsigned casenr = 0; 
             if (rspin == 2 && cspin == 2) casenr = 3;
             else if (rspin == 2) casenr = 1;
             else if (cspin == 2) casenr = 2;
 
-            task.in_offset = in_offset + ss1*tpl.l_size;
+            task.in_offset = in_offset + ss1*tpl.r_size;
+            task.out_offset = out_right_offset + ss2*task.r_size;
             task.scale = it->coefficient * couplings[casenr];
-            //task.r_size = r_size_cache;
 
-            task.out_offset = out_right_offset + ss2*r_size;
+            typename MPSBlock<Matrix, SymmGroup>::mapped_value_type::Quadruple tq
+                = boost::make_tuple(tpl.b2, tpl.k, task.in_offset);
+            std::pair<typename MPSBlock<Matrix, SymmGroup>::mapped_value_type::T_index_t::iterator, bool> pos
+                = cg.T_index.insert(std::make_pair(tq, cg.cnt));
+            if (pos.second) // new element (tq, cnt) inserted
+                task.l_size = cg.cnt++;
+            else
+                task.l_size = pos.first->second;
+
             cg[ss2].push_back(task);
         }
     }
