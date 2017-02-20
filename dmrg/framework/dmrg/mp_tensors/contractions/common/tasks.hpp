@@ -41,8 +41,7 @@ namespace common {
     //forward declaration
 
     template <class Matrix, class SymmGroup>
-    class ContractionGroup;
-
+    class MPSBlock;
 }
 
 namespace SU2 {
@@ -53,13 +52,12 @@ namespace SU2 {
     void shtm_tasks(MPOTensor<Matrix, SymmGroup> const & mpo,
                     common::LeftIndices<Matrix, OtherMatrix, SymmGroup> const & left,
                     common::RightIndices<Matrix, OtherMatrix, SymmGroup> const & right,
-                    DualIndex<SymmGroup> const &,
+                    Index<SymmGroup> const &,
+                    Index<SymmGroup> const &,
                     Index<SymmGroup> const &,
                     ProductBasis<SymmGroup> const &,
                     typename SymmGroup::charge,
-                    typename SymmGroup::charge,
-                    unsigned,
-                    common::ContractionGroup<Matrix, SymmGroup> &);
+                    common::MPSBlock<Matrix, SymmGroup> &);
 }
 
 namespace common {
