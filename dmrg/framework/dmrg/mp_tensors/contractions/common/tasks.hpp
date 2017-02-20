@@ -235,6 +235,9 @@ namespace common {
             }
             maquis::cout << std::endl << std::endl;
         }
+
+    // invariant: out_offset = phys_offset + ss2*r_size
+    // invariant per b2: phys_in, in_offset
         
     //private:
         std::vector<std::vector<micro_task> > tasks;
@@ -248,16 +251,26 @@ namespace common {
     public:
         typedef std::vector<MatrixGroup<Matrix, SymmGroup> > base;    
 
-        std::vector<Matrix> T;
-    };
+        typedef boost::tuple<unsigned, unsigned, unsigned, unsigned> Quadruple;
 
-    template <class Matrix, class SymmGroup>
+        //void mps_times_boundary_schedule();
+
+        // invariant: phys_out, phys_offset
+
+        std::vector<Matrix> T;
+
+        std::vector<Quadruple> T_index;
+    };
+                                                                 // size == phys_i.size()
+    template <class Matrix, class SymmGroup>                     // invariant: mc, m_size
     class MPSBlock : public std::map<typename SymmGroup::charge, std::vector<ContractionGroup<Matrix, SymmGroup> > >
     {
     public:
         typedef ContractionGroup<Matrix, SymmGroup> mapped_value_type;
         typedef std::vector<mapped_value_type > mapped_type;
         typedef std::map<typename SymmGroup::charge, mapped_type> base;
+
+        // invariant: output MPS block, l_size
     };
 
     

@@ -62,6 +62,8 @@ namespace SU2 {
 
         size_t l_size = left_i.size_of_block(lc);
 
+        // output physical index, output offset range = out_right offset + ss2*r_size
+        //                                              for ss2 in {0, 1, .., phys_i[s].second}
         for (size_t s = 0; s < phys_i.size(); ++s)
         {
             charge phys = phys_i[s].first;

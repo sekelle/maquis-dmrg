@@ -274,19 +274,19 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
     mpsb[mc][s][1].print_stats();
     mpsb[mc][s][0].print_stats();
 
-    for (size_t l = 0; l < left_i.size(); ++l)
-    {
-        charge lc = left_i[l].first;
-        MPSBlock<matrix, symm> mpsb;
-        shtm_tasks(mpo, left_indices, right_indices, left_i,
-                   right_i, physical_i, out_right_pb, lc, mpsb);
+    //for (size_t l = 0; l < left_i.size(); ++l)
+    //{
+    //    charge lc = left_i[l].first;
+    //    MPSBlock<matrix, symm> mpsb;
+    //    shtm_tasks(mpo, left_indices, right_indices, left_i,
+    //               right_i, physical_i, out_right_pb, lc, mpsb);
 
-        maquis::cout << "lc: " << lc << " ";
-        for (typename MPSBlock<matrix, symm>::const_iterator it = mpsb.begin();
-             it != mpsb.end(); ++it)
-            maquis::cout << it->first;
-        maquis::cout << std::endl;
-    }
+    //    maquis::cout << "lc: " << lc << " ";
+    //    for (typename MPSBlock<matrix, symm>::const_iterator it = mpsb.begin();
+    //         it != mpsb.end(); ++it)
+    //        maquis::cout << it->first;
+    //    maquis::cout << std::endl;
+    //}
 
     /*
     { // separate scope
