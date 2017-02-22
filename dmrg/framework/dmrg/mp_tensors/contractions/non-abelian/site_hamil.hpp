@@ -205,6 +205,65 @@ namespace contraction {
         return ret;
     }
 
+    template<class Matrix, class OtherMatrix, class SymmGroup>
+    MPSTensor<Matrix, SymmGroup>
+    site_hamil_shtm(MPSTensor<Matrix, SymmGroup> ket_tensor,
+                    Boundary<OtherMatrix, SymmGroup> const & left,
+                    Boundary<OtherMatrix, SymmGroup> const & right,
+                    MPOTensor<Matrix, SymmGroup> const & mpo,
+                    std::vector<common::MPSBlock<Matrix, SymmGroup> > const & tasks)
+    {
+        typedef typename SymmGroup::charge charge;
+        typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
+        typedef typename Matrix::value_type value_type;
+
+        typedef typename common::MPSBlock<Matrix, SymmGroup>::base::const_iterator const_iterator;
+
+        typedef boost::array<int, 3> array;
+        array alc = {{4,2,0}}, amc = {{4,0,0}};
+        charge LC(alc), MC(amc);
+
+        ket_tensor.make_right_paired();
+        common::LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
+        common::RightIndices<Matrix, OtherMatrix, SymmGroup> right_indices(right, mpo);
+
+        Index<SymmGroup> const & physical_i = ket_tensor.site_dim(),
+                                 right_i = ket_tensor.col_dim();
+        Index<SymmGroup> left_i = ket_tensor.row_dim(),
+                         out_right_i = adjoin(physical_i) * right_i;
+
+        common_subset(out_right_i, left_i);
+
+        MPSTensor<Matrix, SymmGroup> ret;
+        ret.phys_i = ket_tensor.site_dim(); ret.left_i = ket_tensor.row_dim(); ret.right_i = ket_tensor.col_dim();
+        block_matrix<Matrix, SymmGroup> collector(ket_tensor.data().basis());
+
+        index_type loop_max = tasks.size();
+        omp_for(index_type mps_block, parallel::range<index_type>(0,loop_max), {
+            for (const_iterator it = tasks[mps_block].begin(); it != tasks[mps_block].end(); ++it)
+            {
+                charge mc = it->first;
+                for (size_t s = 0; s < it->second.size(); ++s)
+                {
+                    common::ContractionGroup<Matrix, SymmGroup> const & cg = it->second[s];
+                    cg.create_T(ket_tensor, right, mpo, right_indices);
+                    for (size_t ss1 = 0; ss1 < cg.size(); ++ss1)
+                    {
+                        unsigned offset = cg[ss1].offset;
+                        if (offset != 283) continue;
+                        Matrix C = cg[ss1].contract(left, cg.T, mpo, left_indices);
+                        maquis::dmrg::detail::iterator_axpy(&C(0,0), &C(0,0) + num_rows(C) * num_cols(C),
+                                                            &collector[mps_block](0, offset), value_type(1.0));
+                    }
+                }
+            }
+        });
+
+        reshape_right_to_left_new(physical_i, left_i, right_i, collector, ret.data());
+
+        return ret;
+    }
+
 } // namespace contraction
 
 #endif

@@ -131,6 +131,7 @@ namespace common {
     class MatrixGroup
     {
         typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
+        typedef typename Matrix::value_type value_type;
         typedef typename task_capsule<Matrix, SymmGroup>::micro_task micro_task;
 
     public:
@@ -242,31 +243,124 @@ namespace common {
 
     // invariant: out_offset = phys_offset + ss2*r_size
     // invariant per b2: phys_in, in_offset
-        
+
+        template <class OtherMatrix>
+        Matrix contract(Boundary<OtherMatrix, SymmGroup> const & left, std::vector<Matrix> const & T,
+                        MPOTensor<Matrix, SymmGroup> const & mpo, LeftIndices<Matrix, OtherMatrix, SymmGroup> const & li) const
+        {
+            Matrix ret(l_size, r_size);
+            //maquis::cout << "l_size " << l_size << " m_size " << m_size << " r_size " << r_size << std::endl;
+            for (index_type i = 0; i < tasks.size(); ++i)
+            {
+                index_type b1 = bs[i];
+                Matrix S(m_size, r_size);
+
+                //maquis::cout << "b1 " << b1 << " S " << m_size << "x" << r_size << std::endl;
+                for (index_type j = 0; j < tasks[i].size(); ++j)
+                {
+                    //maquis::cout << "  b2 " << tasks[i][j].b2 << " " << num_rows(T[tasks[i][j].l_size]) << "x"
+                    //                        << num_cols(T[tasks[i][j].l_size]) << "  T " << tasks[i][j].l_size << std::endl;
+
+                    S += tasks[i][j].scale * T[tasks[i][j].l_size];
+                }
+
+                value_type conj = li.conj_scales[b1][ks[i]];
+
+                if (mpo.herm_info.left_skip(b1)) {
+                    index_type b1_eff = mpo.herm_info.left_conj(b1);
+                    boost::numeric::bindings::blas::gemm(conj, left[b1_eff][ks[i]], S, value_type(1), ret); 
+                }
+                else
+                    boost::numeric::bindings::blas::gemm(conj, transpose(left[b1])[ks[i]], S, value_type(1), ret); 
+            }
+
+            return ret;
+        }       
+    
     //private:
         std::vector<std::vector<micro_task> > tasks;
         std::vector<index_type> bs, ks;
+
+        unsigned l_size, m_size, r_size, offset;
+    private:
     };
 
+
+    namespace detail {
+
+        template <class Matrix>
+        Matrix extract_cols(Matrix const & source, size_t col1, size_t n_cols)
+        {
+            Matrix ret(num_rows(source), n_cols); 
+            std::copy(&source(0, col1), &source(0, col1) + num_rows(source) * n_cols, &ret(0,0));
+            return ret;
+        }
+    }
 
     template <class Matrix, class SymmGroup>
     class ContractionGroup : public std::vector<MatrixGroup<Matrix, SymmGroup> >
     {
     public:
         typedef std::vector<MatrixGroup<Matrix, SymmGroup> > base;    
+        typedef typename Matrix::value_type value_type;
         typedef boost::tuple<unsigned, unsigned, unsigned> Quadruple;
         typedef std::map<Quadruple, unsigned> T_index_t;
 
         ContractionGroup() : cnt(0) {}
 
-        //void mps_times_boundary_schedule();
+        template <class OtherMatrix>
+        void create_T(MPSTensor<Matrix, SymmGroup> const & mps, Boundary<OtherMatrix, SymmGroup> const & right,
+                      MPOTensor<Matrix, SymmGroup> const & mpo, RightIndices<Matrix, OtherMatrix, SymmGroup> const & ri) const
+        {
+            T.resize(T_index.size());
+
+            Matrix const & mps_matrix = mps.data()[mps_block]; 
+            unsigned l_size = num_rows(mps_matrix);
+
+            for (typename T_index_t::const_iterator it = T_index.begin(); it != T_index.end(); ++it)
+            {
+                unsigned pos = it->second;
+
+                unsigned b2 = boost::get<0>(it->first);
+                unsigned r_block = boost::get<1>(it->first);
+                unsigned in_offset = boost::get<2>(it->first);
+
+                value_type conj = ri.conj_scales[b2][r_block];
+
+                if (mpo.herm_info.right_skip(b2))
+                    multiply(mps_matrix, transpose(right[mpo.herm_info.right_conj(b2)])[r_block], in_offset, pos, conj);    
+                else
+                    multiply(mps_matrix, right[b2][r_block], in_offset, pos, conj);    
+            }
+        }
 
         // invariant: phys_out, phys_offset
 
-        std::vector<Matrix> T;
+        mutable std::vector<Matrix> T;
         T_index_t T_index;
+
         unsigned cnt;
         unsigned mps_block;
+
+    private:
+
+        template <class TMatrix>
+        void multiply(Matrix const & mps_matrix, TMatrix const & trv, unsigned in_offset, unsigned pos, value_type conj) const
+        {
+            unsigned l_size = num_rows(mps_matrix); 
+            unsigned m_size = num_rows(trv); 
+            unsigned r_size = num_cols(trv); 
+
+            //maquis::cout << "pos " << pos << " extract " << in_offset << "-" << in_offset + m_size
+            //             << " of " << num_cols(mps_matrix) << std::endl;
+            Matrix mps_extract = detail::extract_cols(mps_matrix, in_offset, m_size);
+
+            //maquis::cout << num_rows(mps_extract) << " " << num_cols(mps_extract) << " " << m_size << std::endl;
+
+            T[pos] = Matrix(l_size, r_size, 0);
+            boost::numeric::bindings::blas::gemm(conj, mps_extract, trv, value_type(0), T[pos]);
+            //gemm(mps_extract, trv, T[pos]);
+        }
     };
                                                                  // size == phys_i.size()
     template <class Matrix, class SymmGroup>                     // invariant: mc, m_size

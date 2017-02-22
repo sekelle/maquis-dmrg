@@ -206,7 +206,7 @@ namespace detail {
             else if (rspin == 2) casenr = 1;
             else if (cspin == 2) casenr = 2;
 
-            task.in_offset = in_offset + ss1*tpl.r_size;
+            task.in_offset = in_offset + ss1*tpl.stripe;
             task.out_offset = out_right_offset + ss2*task.r_size;
             task.scale = it->coefficient * couplings[casenr];
 
@@ -219,6 +219,7 @@ namespace detail {
             else
                 task.l_size = pos.first->second;
 
+            cg[ss2].offset = task.out_offset;
             cg[ss2].push_back(task);
         }
     }

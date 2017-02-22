@@ -114,20 +114,19 @@ namespace contraction {
                 {   
                     parallel::guard group(scheduler(b1), parallel::groups_granularity);
 
-                    //typename Gemm::gemm_trim_left()(left[mpo.herm_info.left_conj(b1)], mps.data(), data_[b1], scales);
                     (*this)[b1] = left[mpo.herm_info.left_conj(b1)].basis(); 
-                    //conj_scales[b2] = conjugate_phases(left[mpo.herm_info.left_conj(b1)], mpo, b1, true, false);
+                    conj_scales[b1] = conjugate_phases((*this)[b1], mpo, b1, true, false);
                 }
                 else {
                     parallel::guard group(scheduler(b1), parallel::groups_granularity);
-                    //typename Gemm::gemm_trim_left()(transpose(left[b1]), mps.data(), data_[b1]);
+
                     (*this)[b1] = left[b1].basis().transpose(); 
-                    //conj_scales[b1] = std::vector<value_type>(left[b1].n_blocks(), value_type(1.));
+                    conj_scales[b1] = std::vector<value_type>(left[b1].n_blocks(), value_type(1.));
                 }
             });
         }
 
-    private:
+    //private:
         std::vector<std::vector<value_type> > conj_scales;
     };
 
@@ -155,22 +154,20 @@ namespace contraction {
                 if (mpo.herm_info.right_skip(b2))
                 {
                     parallel::guard group(scheduler(b2), parallel::groups_granularity);
-                    //block_matrix<typename maquis::traits::transpose_view<Matrix>::type, SymmGroup> trv
-                    //    = transpose(right[mpo.herm_info.right_conj(b2)]);
-                    //(*this)[b2] = SU2::gemm_trim_right_pretend(mps_basis, trv);
+
                     (*this)[b2] = right[mpo.herm_info.right_conj(b2)].basis().transpose();
-                    //std::vector<value_type> scales = conjugate_phases(trv.basis(), mpo, b2, false, true);
+                    conj_scales[b2] = conjugate_phases((*this)[b2], mpo, b2, false, true);
                 }
                 else {
                     parallel::guard group(scheduler(b2), parallel::groups_granularity);
-                    //(*this)[b2] = SU2::gemm_trim_right_pretend(mps_basis, right[b2]);
+
                     (*this)[b2] = right[b2].basis();
-                    //conj_scales[b2] = std::vector<value_type>(right[b2].n_blocks(), value_type(1.));
+                    conj_scales[b2] = std::vector<value_type>(right[b2].n_blocks(), value_type(1.));
                 }
             });
         }
 
-    private:
+    //private:
         std::vector<std::vector<value_type> > conj_scales;
     };
 

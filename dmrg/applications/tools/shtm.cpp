@@ -108,14 +108,6 @@ typename Schedule<Matrix, SymmGroup>::schedule_t convert_to_schedule(MatrixGroup
     return ret;
 }
 
-template <class Matrix>
-Matrix extract_cols(Matrix const & source, size_t col1, size_t col2)
-{
-    Matrix ret(num_rows(source), col2 - col1); 
-    std::copy(&source(0, col1), &source(0,col2), &ret(0,0));
-    return ret;
-}
-
 template <class Matrix, class SymmGroup, class T>
 void check_contraction(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGroup> const & initial,
                        T const & matrix_groups)
@@ -123,6 +115,7 @@ void check_contraction(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matr
     typedef typename storage::constrained<Matrix>::type SMatrix;
     typedef typename SymmGroup::charge charge;
     typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
+    typedef typename Matrix::value_type value_type;
 
     Boundary<SMatrix, SymmGroup> const & left = sp.left, right = sp.right;
     MPOTensor<Matrix, SymmGroup> const & mpo = sp.mpo;
@@ -142,27 +135,58 @@ void check_contraction(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matr
         charge lc = get<0>(it->first);
         charge mc = get<1>(it->first);
         if (lc != LC) continue;
+        //if (mc != MC) continue;
 
+        maquis::cout << mc << " ";
         for (typename T::mapped_type::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2)
         {
             if (it2->first != offprobe) continue;
-            maquis::cout << "  " << offprobe << std::endl;
             typename Schedule<Matrix, SymmGroup>::schedule_t mg_sched 
                 = convert_to_schedule(matrix_groups.at(boost::make_tuple(lc, mc)).at(offprobe), lc, mc, mpo);
 
             partial += site_hamil_rbtm(initial, left, right, mpo, mg_sched);
         }
     }
+    maquis::cout << std::endl;
 
     partial.make_right_paired();
     Matrix sample = partial.data()(LC, LC);
-    maquis::cout << extract_cols(sample, 283, 293) << std::endl;
+    Matrix extract = common::detail::extract_cols(sample, 283, 10);
+    std::copy(&extract(0,0), &extract(10,0), std::ostream_iterator<value_type>(std::cout, " "));
+    maquis::cout << std::endl;
 
-    MPSTensor<Matrix, SymmGroup> ref = site_hamil_rbtm(initial, left, right, mpo, sp.contraction_schedule);
-    ref.make_right_paired();
-    Matrix ref_matrix = ref.data()(LC, LC);
-    maquis::cout << "Reference\n" << extract_cols(ref_matrix, 283, 293) << std::endl;
+    
+
+    //MPSTensor<Matrix, SymmGroup> ref = site_hamil_rbtm(initial, left, right, mpo, sp.contraction_schedule);
+    //ref.make_right_paired();
+    //Matrix ref_matrix = ref.data()(LC, LC);
+    //maquis::cout << "Reference\n" << extract_cols(ref_matrix, 283, 10) << std::endl;
 }
+
+//template <class SymmGroup>
+//void print_phys_index(Index<SymmGroup> const & phys, Index<SymmGroup> const & right_i, typename SymmGroup::charge mc)
+//{
+//    maquis::cout << std::endl;
+//    //maquis::cout << out_right_pb.size(mc) << std::endl;
+//    for (unsigned ss = 0; ss < physical_i.size(); ++ss)
+//    {
+//        charge phys = physical_i[ss].first;
+//        charge leftc = mc; 
+//        charge rc = SymmGroup::fuse(phys, leftc); 
+//        if (!right_i.has(rc)) continue;
+//
+//        unsigned rtotal = num_cols(initial.data()(mc, mc));
+//        
+//        unsigned r_size = right_i.size_of_block(rc);
+//        unsigned in_offset = out_right_pb(phys, rc);
+//        maquis::cout << rtotal << " " << phys << " ";
+//        for (int ss1 = 0; ss1 < physical_i[ss].second; ++ss1)
+//            maquis::cout << in_offset + ss1*r_size << "-" << in_offset + (ss1+1) * r_size << " ";
+//
+//        maquis::cout << std::endl;
+//    }
+//    maquis::cout << std::endl;
+//}
 
 template <class Matrix, class SymmGroup>
 void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGroup> const & initial)
@@ -240,7 +264,7 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
     // testcases: lc,mc,168,168  lc,mc,283,181  lc,lc,283,181
 
     typedef boost::array<int, 3> array;
-    array alc = {{4,2,0}}, amc = {{4,0,0}};
+    array alc = {{4,2,0}}, amc = {{2,0,0}};
     charge lc(alc), mc(amc);
 
     //unsigned offprobe = 539;
@@ -249,7 +273,7 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
     //unsigned offprobe = 490, blockstart = 392;
     //mc = lc;
 
-    //check_contraction(sp, initial, matrix_groups);
+    check_contraction(sp, initial, matrix_groups);
 
     matrix_groups[boost::make_tuple(lc, mc)][offprobe].print_stats();
 
@@ -267,24 +291,67 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
         }
     }
 
-    maquis::cout << lc << mc << phys << std::endl;
-
     MPSBlock<matrix, symm> mpsb;
     shtm_tasks(mpo, left_indices, right_indices, left_i,
                right_i, physical_i, out_right_pb, lc, mpsb);
 
     mpsb[mc][s][1].print_stats();
-    mpsb[mc][s][0].print_stats();
+    //mpsb[mc][s][0].print_stats();
 
-    maquis::cout << "MPS block: " << mpsb[mc][s].mps_block << std::endl;
-    for (typename MPSBlock<matrix, symm>::mapped_value_type::T_index_t::iterator it = mpsb[mc][s].T_index.begin();
-         it != mpsb[mc][s].T_index.end(); ++it)
-    {
-        maquis::cout << it->second << ": " << get<0>(it->first) << ", "
-                                           << get<1>(it->first) << ", "
-                                           << get<2>(it->first)
-                                           << std::endl;
+    if (true)
+    { // bypass site_hamil_shtm test
+        array alc = {{4,2,0}}, amc = {{4,0,0}};
+        charge lc(alc), mc(amc);
+
+        charge phys;
+        size_t s = 0;
+        for ( ; s < physical_i.size(); ++s) {
+            phys = physical_i[s].first;
+            charge rc = SymmGroup::fuse(phys, lc);
+            if ( out_right_pb(phys, rc) == blockstart )
+                break;
+        }
+
+        // T comparison
+        MPSBoundaryProduct<matrix, smatrix, symm, ::SU2::SU2Gemms> t(initial, right, mpo);
+        matrix const & tmat = t[166][50];
+        std::copy(&tmat(0,0), &tmat(10,0), std::ostream_iterator<value_type>(std::cout, " "));
+        maquis::cout << std::endl;
+
+        initial.make_right_paired();
+        mpsb[mc][s].create_T(initial, right, mpo, right_indices);
+        matrix const & cgmat = mpsb[mc][s].T[4];
+        std::copy(&cgmat(0,0), &cgmat(10,0), std::ostream_iterator<value_type>(std::cout, " "));
+        maquis::cout << std::endl;
+
+        // contraction test
+        Matrix C = mpsb[mc][s][1].contract(left, mpsb[mc][s].T, mpo, left_indices);
+        std::copy(&C(0,0), &C(10,0), std::ostream_iterator<value_type>(std::cout, " "));
+        maquis::cout << std::endl;
     }
+
+    initial.make_right_paired();
+
+    size_t mps_block = initial.data().find_block(lc, lc);
+    std::vector<MPSBlock<matrix, symm> > shtm_tasks(initial.data().n_blocks());
+    shtm_tasks[mps_block] = mpsb;
+    MPSTensor<matrix, symm> prod = site_hamil_shtm(initial, left, right, mpo, shtm_tasks);
+
+    prod.make_right_paired();
+    Matrix X = prod.data()[mps_block];    
+    Matrix Y = common::detail::extract_cols(X, 283, 10);
+    std::copy(&Y(0,0), &Y(10,0), std::ostream_iterator<value_type>(std::cout, " "));
+
+
+    //maquis::cout << "MPS block: " << mpsb[mc][s].mps_block << std::endl;
+    //for (typename MPSBlock<matrix, symm>::mapped_value_type::T_index_t::iterator it = mpsb[mc][s].T_index.begin();
+    //     it != mpsb[mc][s].T_index.end(); ++it)
+    //{
+    //    maquis::cout << it->second << ": " << get<0>(it->first) << ", "
+    //                                       << get<1>(it->first) << ", "
+    //                                       << get<2>(it->first)
+    //                                       << std::endl;
+    //}
 
     //for (size_t l = 0; l < left_i.size(); ++l)
     //{

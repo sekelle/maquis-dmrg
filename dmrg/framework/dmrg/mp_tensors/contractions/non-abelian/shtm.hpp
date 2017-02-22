@@ -78,7 +78,7 @@ namespace SU2 {
                      lit != left[b1].end() && lit->lc == lc; ++lit)
                 {
                     charge mc = lit->rc;       
-                    unsigned m_size = lit->rs;
+                    unsigned m1_size = lit->rs;
                     unsigned left_block = lit - left[b1].begin();
                     unsigned mps_block = left_i.position(mc);
                     assert(mps_block != left_i.size());
@@ -114,6 +114,11 @@ namespace SU2 {
                                 assert(right_i.has(tlc));
                                 assert(lit->ls == l_size);
                                 assert(right[b2].right_size(r_block) == r_size);
+                                //assert(right_i.size_of_block(tlc) == m_size);
+
+                                for (unsigned i = 0 ; i < cg.size(); ++i)
+                                {    cg[i].l_size = l_size; cg[i].m_size = m1_size; cg[i].r_size = r_size; }
+                                size_t m2_size = right_i.size_of_block(tlc);
 
                                 int i = SymmGroup::spin(lc), ip = SymmGroup::spin(rc);
                                 int j = SymmGroup::spin(mc), jp = SymmGroup::spin(tlc);
@@ -124,7 +129,7 @@ namespace SU2 {
                                 unsigned in_offset = right_pb(phys_in, SymmGroup::fuse(phys_in, mc));
 
                                 micro_task tpl; tpl.l_size = l_size; tpl.r_size = r_size;
-                                                tpl.stripe = m_size; tpl.b2 = b2; tpl.k = r_block;
+                                                tpl.stripe = m2_size; tpl.b2 = b2; tpl.k = r_block;
 
                                 detail::op_iterate_shtm<Matrix, SymmGroup>(W, w_block, couplings, cg, tpl,
                                                                            in_offset, out_right_offset);
