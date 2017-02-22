@@ -306,13 +306,15 @@ namespace common {
         typedef boost::tuple<unsigned, unsigned, unsigned> Quadruple;
         typedef std::map<Quadruple, unsigned> T_index_t;
 
-        ContractionGroup() : cnt(0) {}
+        ContractionGroup() : cnt(0), mps_block(std::numeric_limits<unsigned>::max()) {}
 
         template <class OtherMatrix>
         void create_T(MPSTensor<Matrix, SymmGroup> const & mps, Boundary<OtherMatrix, SymmGroup> const & right,
                       MPOTensor<Matrix, SymmGroup> const & mpo, RightIndices<Matrix, OtherMatrix, SymmGroup> const & ri) const
         {
             T.resize(T_index.size());
+
+            if (!this->size()) return;
 
             Matrix const & mps_matrix = mps.data()[mps_block]; 
             unsigned l_size = num_rows(mps_matrix);

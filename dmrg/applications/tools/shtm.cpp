@@ -155,8 +155,6 @@ void check_contraction(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matr
     std::copy(&extract(0,0), &extract(10,0), std::ostream_iterator<value_type>(std::cout, " "));
     maquis::cout << std::endl;
 
-    
-
     //MPSTensor<Matrix, SymmGroup> ref = site_hamil_rbtm(initial, left, right, mpo, sp.contraction_schedule);
     //ref.make_right_paired();
     //Matrix ref_matrix = ref.data()(LC, LC);
@@ -330,17 +328,49 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
         maquis::cout << std::endl;
     }
 
-    initial.make_right_paired();
+    { // test complete contraction at fixed offset 283 in <4,2,0> mps block
+        initial.make_right_paired();
 
-    size_t mps_block = initial.data().find_block(lc, lc);
-    std::vector<MPSBlock<matrix, symm> > shtm_tasks(initial.data().n_blocks());
-    shtm_tasks[mps_block] = mpsb;
-    MPSTensor<matrix, symm> prod = site_hamil_shtm(initial, left, right, mpo, shtm_tasks);
+        size_t mps_block = initial.data().find_block(lc, lc);
+        std::vector<MPSBlock<matrix, symm> > shtm_tasks_vec(initial.data().n_blocks());
+        shtm_tasks_vec[mps_block] = mpsb;
+        MPSTensor<matrix, symm> prod = site_hamil_shtm(initial, left, right, mpo, shtm_tasks_vec);
 
-    prod.make_right_paired();
-    Matrix X = prod.data()[mps_block];    
-    Matrix Y = common::detail::extract_cols(X, 283, 10);
-    std::copy(&Y(0,0), &Y(10,0), std::ostream_iterator<value_type>(std::cout, " "));
+        prod.make_right_paired();
+        Matrix X = prod.data()[mps_block];    
+        Matrix Y = common::detail::extract_cols(X, 283, 10);
+        std::copy(&Y(0,0), &Y(10,0), std::ostream_iterator<value_type>(std::cout, " "));
+        maquis::cout << std::endl;
+    }
+
+    { // test complete contraction for all mps blocks
+        initial.make_right_paired();
+
+        std::vector<MPSBlock<matrix, symm> > shtm_tasks_vec(left_i.size());
+        unsigned loop_max = left_i.size();
+        omp_for(index_type mb, parallel::range<index_type>(0,loop_max), {
+            charge lc = left_i[mb].first;
+            shtm_tasks(mpo, left_indices, right_indices, left_i,
+                       right_i, physical_i, out_right_pb, lc, shtm_tasks_vec[mb]);
+        });
+        maquis::cout << "Schedule done\n";
+
+        MPSTensor<matrix, symm> prod = site_hamil_shtm(initial, left, right, mpo, shtm_tasks_vec);
+        prod.make_right_paired();
+
+        size_t mps_block = prod.data().find_block(lc, lc);
+        assert(mps_block != prod.data().n_blocks());
+        Matrix X = prod.data()[mps_block];    
+        Matrix Y = common::detail::extract_cols(X, 283, 10);
+        std::copy(&Y(0,0), &Y(10,0), std::ostream_iterator<value_type>(std::cout, " "));
+        maquis::cout << std::endl;
+
+        MPSTensor<Matrix, SymmGroup> ref = site_hamil_rbtm(initial, left, right, mpo, sp.contraction_schedule);
+        ref.make_right_paired();
+        block_matrix<matrix, symm> diff = prod.data() - ref.data();
+
+        maquis::cout << "norm diff" << diff.norm() << std::endl;
+    }
 
 
     //maquis::cout << "MPS block: " << mpsb[mc][s].mps_block << std::endl;

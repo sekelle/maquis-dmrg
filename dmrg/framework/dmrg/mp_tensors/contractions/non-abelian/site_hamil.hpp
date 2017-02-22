@@ -219,10 +219,6 @@ namespace contraction {
 
         typedef typename common::MPSBlock<Matrix, SymmGroup>::base::const_iterator const_iterator;
 
-        typedef boost::array<int, 3> array;
-        array alc = {{4,2,0}}, amc = {{4,0,0}};
-        charge LC(alc), MC(amc);
-
         ket_tensor.make_right_paired();
         common::LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
         common::RightIndices<Matrix, OtherMatrix, SymmGroup> right_indices(right, mpo);
@@ -250,7 +246,6 @@ namespace contraction {
                     for (size_t ss1 = 0; ss1 < cg.size(); ++ss1)
                     {
                         unsigned offset = cg[ss1].offset;
-                        if (offset != 283) continue;
                         Matrix C = cg[ss1].contract(left, cg.T, mpo, left_indices);
                         maquis::dmrg::detail::iterator_axpy(&C(0,0), &C(0,0) + num_rows(C) * num_cols(C),
                                                             &collector[mps_block](0, offset), value_type(1.0));
