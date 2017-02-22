@@ -96,6 +96,7 @@ void load(Loadable & Data, std::string file)
     iar >> Data; 
 }
 
+/*
 template <class Matrix, class SymmGroup>
 typename Schedule<Matrix, SymmGroup>::schedule_t convert_to_schedule(MatrixGroup<Matrix, SymmGroup> const & mg,
                                                                      typename SymmGroup::charge lc,
@@ -144,7 +145,8 @@ void check_contraction(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matr
             typename Schedule<Matrix, SymmGroup>::schedule_t mg_sched 
                 = convert_to_schedule(matrix_groups.at(boost::make_tuple(lc, mc)).at(offprobe), lc, mc, mpo);
 
-            partial += site_hamil_rbtm(initial, left, right, mpo, mg_sched);
+            //partial += site_hamil_rbtm(initial, left, right, mpo, mg_sched);
+            partial += site_hamil_shtm(initial, left, right, mpo, mg_sched);
         }
     }
     maquis::cout << std::endl;
@@ -160,6 +162,7 @@ void check_contraction(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matr
     //Matrix ref_matrix = ref.data()(LC, LC);
     //maquis::cout << "Reference\n" << extract_cols(ref_matrix, 283, 10) << std::endl;
 }
+*/
 
 //template <class SymmGroup>
 //void print_phys_index(Index<SymmGroup> const & phys, Index<SymmGroup> const & right_i, typename SymmGroup::charge mc)
@@ -216,7 +219,10 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
     LeftIndices<Matrix, SMatrix, SymmGroup> left_indices(left, mpo);
     RightIndices<Matrix, SMatrix, SymmGroup> right_indices(right, mpo);
 
-    Engine<matrix, smatrix, symm>::schedule_t contraction_schedule = sp.contraction_schedule;
+    //Engine<matrix, smatrix, symm>::schedule_t contraction_schedule = sp.contraction_schedule;
+    std::vector<task_capsule<Matrix, SymmGroup> >  contraction_schedule
+        = create_contraction_schedule_old(initial, left, right, mpo,
+                                          contraction::SU2::rbtm_tasks<Matrix, SMatrix, SymmGroup>);
 
     typedef boost::tuple<charge, charge> chuple;
     typedef std::map<unsigned, MatrixGroup<Matrix, SymmGroup> > map2;
@@ -271,7 +277,7 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
     //unsigned offprobe = 490, blockstart = 392;
     //mc = lc;
 
-    check_contraction(sp, initial, matrix_groups);
+    //check_contraction(sp, initial, matrix_groups);
 
     matrix_groups[boost::make_tuple(lc, mc)][offprobe].print_stats();
 
@@ -365,7 +371,7 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
         std::copy(&Y(0,0), &Y(10,0), std::ostream_iterator<value_type>(std::cout, " "));
         maquis::cout << std::endl;
 
-        MPSTensor<Matrix, SymmGroup> ref = site_hamil_rbtm(initial, left, right, mpo, sp.contraction_schedule);
+        MPSTensor<Matrix, SymmGroup> ref = site_hamil_rbtm(initial, left, right, mpo, contraction_schedule);
         ref.make_right_paired();
         block_matrix<matrix, symm> diff = prod.data() - ref.data();
 

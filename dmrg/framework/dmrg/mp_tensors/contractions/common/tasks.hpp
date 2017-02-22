@@ -98,12 +98,6 @@ namespace common {
         typedef std::map<std::pair<charge, charge>, std::vector<micro_task>, compare_pair<std::pair<charge, charge> > > map_t;
     };
 
-    template <class Matrix, class SymmGroup>
-    struct Schedule
-    {
-        typedef std::vector<contraction::common::task_capsule<Matrix, SymmGroup> > schedule_t;
-    }; 
-
     struct f3 { f3(double a_) : a(a_) {} double a; };
     inline std::ostream & operator<<(std::ostream & os, f3 A)
     {
@@ -376,10 +370,17 @@ namespace common {
         // invariant: output MPS block, l_size
     };
 
+    template <class Matrix, class SymmGroup>
+    struct Schedule
+    {
+        //typedef std::vector<contraction::common::task_capsule<Matrix, SymmGroup> > schedule_t;
+        typedef std::vector<MPSBlock<Matrix, SymmGroup> > schedule_t;
+    }; 
     
     template<class Matrix, class SymmGroup, class TaskCalc>
-    typename Schedule<Matrix, SymmGroup>::schedule_t
-    create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
+    //typename Schedule<Matrix, SymmGroup>::schedule_t
+    std::vector<contraction::common::task_capsule<Matrix, SymmGroup> >
+    create_contraction_schedule_old(MPSTensor<Matrix, SymmGroup> const & initial,
                                 Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & left,
                                 Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & right,
                                 MPOTensor<Matrix, SymmGroup> const & mpo,
@@ -392,9 +393,12 @@ namespace common {
         typedef typename task_capsule<Matrix, SymmGroup>::map_t map_t;
         typedef typename task_capsule<Matrix, SymmGroup>::micro_task micro_task;
 
+        //typedef typename Schedule<Matrix, SymmGroup>::schedule_t schedule_t;
+        typedef std::vector<task_capsule<Matrix, SymmGroup> > schedule_t;
+
         initial.make_left_paired();
 
-        typename Schedule<Matrix, SymmGroup>::schedule_t contraction_schedule(mpo.row_dim());
+        schedule_t contraction_schedule(mpo.row_dim());
         MPSBoundaryProductIndices<Matrix, SMatrix, SymmGroup> indices(initial.data().basis(), right, mpo);
         LeftIndices<Matrix, SMatrix, SymmGroup> left_indices(left, mpo);
         RightIndices<Matrix, SMatrix, SymmGroup> right_indices(right, mpo);
@@ -437,6 +441,49 @@ namespace common {
                                           << "T " << 8*::utils::size_of(indices.begin(), indices.end())/1024/1024 << "MB "
                                           << "R " << 8*size_of(right)/1024/1024 << "MB "
                                           << initial.data().n_blocks() << " MPS blocks" << std::endl;
+        return contraction_schedule;
+    }
+
+    template<class Matrix, class SymmGroup, class TaskCalc>
+    typename Schedule<Matrix, SymmGroup>::schedule_t
+    create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
+                                Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & left,
+                                Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & right,
+                                MPOTensor<Matrix, SymmGroup> const & mpo,
+                                TaskCalc task_calc)
+    {
+        typedef typename storage::constrained<Matrix>::type SMatrix;
+        typedef typename SymmGroup::charge charge;
+        typedef typename Matrix::value_type value_type;
+        typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
+        typedef typename task_capsule<Matrix, SymmGroup>::map_t map_t;
+        typedef typename task_capsule<Matrix, SymmGroup>::micro_task micro_task;
+
+        LeftIndices<Matrix, SMatrix, SymmGroup> left_indices(left, mpo);
+        RightIndices<Matrix, SMatrix, SymmGroup> right_indices(right, mpo);
+
+        // MPS indices
+        Index<SymmGroup> const & physical_i = initial.site_dim(),
+                                 right_i = initial.col_dim();
+        Index<SymmGroup> left_i = initial.row_dim(),
+                         out_right_i = adjoin(physical_i) * right_i;
+
+        common_subset(out_right_i, left_i);
+        ProductBasis<SymmGroup> out_right_pb(physical_i, right_i,
+                                             boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
+                                                                 -boost::lambda::_1, boost::lambda::_2));
+
+        initial.make_right_paired();
+
+        typename Schedule<Matrix, SymmGroup>::schedule_t contraction_schedule(left_i.size());
+
+        unsigned loop_max = left_i.size();
+        omp_for(index_type mb, parallel::range<index_type>(0,loop_max), {
+            charge lc = left_i[mb].first;
+            task_calc(mpo, left_indices, right_indices, left_i,
+                      right_i, physical_i, out_right_pb, lc, contraction_schedule[mb]);
+        });
+
         return contraction_schedule;
     }
 

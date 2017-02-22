@@ -45,6 +45,14 @@ namespace contraction {
                     Boundary<OtherMatrix, SymmGroup> const & right,
                     MPOTensor<Matrix, SymmGroup> const & mpo,
                     std::vector<common::task_capsule<Matrix, SymmGroup> > const & tasks);
+
+    template<class Matrix, class OtherMatrix, class SymmGroup>
+    MPSTensor<Matrix, SymmGroup>
+    site_hamil_shtm(MPSTensor<Matrix, SymmGroup> ket_tensor,
+                    Boundary<OtherMatrix, SymmGroup> const & left,
+                    Boundary<OtherMatrix, SymmGroup> const & right,
+                    MPOTensor<Matrix, SymmGroup> const & mpo,
+                    typename common::Schedule<Matrix, SymmGroup>::schedule_t const & tasks);
     // *************************************************************
 
 
@@ -55,12 +63,14 @@ namespace contraction {
                 Boundary<OtherMatrix, SymmGroup> const & left,
                 Boundary<OtherMatrix, SymmGroup> const & right,
                 MPOTensor<Matrix, SymmGroup> const & mpo,
-                std::vector<common::task_capsule<Matrix, SymmGroup> > const & tasks)
+                //std::vector<common::task_capsule<Matrix, SymmGroup> > const & tasks)
+                typename common::Schedule<Matrix, SymmGroup>::schedule_t const & tasks)
     {
-        if ( (mpo.row_dim() - mpo.num_one_rows()) < (mpo.col_dim() - mpo.num_one_cols()) )
-            return site_hamil_lbtm(ket_tensor, left, right, mpo);
-        else
-            return site_hamil_rbtm(ket_tensor, left, right, mpo, tasks);
+        //if ( (mpo.row_dim() - mpo.num_one_rows()) < (mpo.col_dim() - mpo.num_one_cols()) )
+        //    return site_hamil_lbtm(ket_tensor, left, right, mpo);
+        //else
+        //    return site_hamil_rbtm(ket_tensor, left, right, mpo, tasks);
+        return site_hamil_shtm(ket_tensor, left, right, mpo, tasks); 
     }
 
     // *************************************************************
@@ -211,7 +221,8 @@ namespace contraction {
                     Boundary<OtherMatrix, SymmGroup> const & left,
                     Boundary<OtherMatrix, SymmGroup> const & right,
                     MPOTensor<Matrix, SymmGroup> const & mpo,
-                    std::vector<common::MPSBlock<Matrix, SymmGroup> > const & tasks)
+                    //std::vector<common::MPSBlock<Matrix, SymmGroup> > const & tasks)
+                    typename common::Schedule<Matrix, SymmGroup>::schedule_t const & tasks)
     {
         typedef typename SymmGroup::charge charge;
         typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
