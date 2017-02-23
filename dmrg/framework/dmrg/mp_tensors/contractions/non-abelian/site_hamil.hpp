@@ -221,7 +221,6 @@ namespace contraction {
                     Boundary<OtherMatrix, SymmGroup> const & left,
                     Boundary<OtherMatrix, SymmGroup> const & right,
                     MPOTensor<Matrix, SymmGroup> const & mpo,
-                    //std::vector<common::MPSBlock<Matrix, SymmGroup> > const & tasks)
                     typename common::Schedule<Matrix, SymmGroup>::schedule_t const & tasks)
     {
         typedef typename SymmGroup::charge charge;
@@ -234,12 +233,9 @@ namespace contraction {
         common::LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
         common::RightIndices<Matrix, OtherMatrix, SymmGroup> right_indices(right, mpo);
 
-        Index<SymmGroup> const & physical_i = ket_tensor.site_dim(),
-                                 right_i = ket_tensor.col_dim();
-        Index<SymmGroup> left_i = ket_tensor.row_dim(),
-                         out_right_i = adjoin(physical_i) * right_i;
-
-        common_subset(out_right_i, left_i);
+        Index<SymmGroup> const & physical_i = ket_tensor.site_dim(), right_i = ket_tensor.col_dim(),
+                                 left_i = ket_tensor.row_dim();
+        DualIndex<SymmGroup> const & ket_basis = ket_tensor.data().basis();
 
         MPSTensor<Matrix, SymmGroup> ret;
         ret.phys_i = ket_tensor.site_dim(); ret.left_i = ket_tensor.row_dim(); ret.right_i = ket_tensor.col_dim();
@@ -247,6 +243,8 @@ namespace contraction {
 
         index_type loop_max = tasks.size();
         omp_for(index_type mps_block, parallel::range<index_type>(0,loop_max), {
+
+            Matrix destination(ket_basis.left_size(mps_block), ket_basis.right_size(mps_block));
             for (const_iterator it = tasks[mps_block].begin(); it != tasks[mps_block].end(); ++it)
             {
                 charge mc = it->first;
@@ -260,11 +258,12 @@ namespace contraction {
                         unsigned offset = cg[ss1].offset;
                         Matrix C = cg[ss1].contract(left, cg.T, mpo);
                         maquis::dmrg::detail::iterator_axpy(&C(0,0), &C(0,0) + num_rows(C) * num_cols(C),
-                                                            &collector[mps_block](0, offset), value_type(1.0));
+                                                            &destination(0, offset), value_type(1.0));
                     }
                     cg.drop_T();
                 }
             }
+            swap(collector[mps_block], destination);
         });
 
         reshape_right_to_left_new(physical_i, left_i, right_i, collector, ret.data());
