@@ -140,6 +140,7 @@ namespace SU2 {
                    Index<SymmGroup> const & out_right_i,
                    MPSBoundaryProduct<Matrix, OtherMatrix, SymmGroup, ::SU2::SU2Gemms> const & t)
     {
+        using ::contraction::common::task_compare;
         typedef typename Matrix::value_type value_type;
         typedef typename task_capsule<Matrix, SymmGroup>::map_t map_t;
         typedef typename task_capsule<Matrix, SymmGroup>::micro_task micro_task;
@@ -147,7 +148,7 @@ namespace SU2 {
         for (typename map_t::iterator it = tasks.begin(); it != tasks.end(); ++it)
         {
             std::vector<micro_task> & otasks = it->second;
-            std::sort(otasks.begin(), otasks.end(), detail::task_compare<value_type>()); 
+            std::sort(otasks.begin(), otasks.end(), task_compare<value_type>()); 
 
             if (otasks.size() == 0) continue;
             Matrix buf(otasks[0].l_size, out_right_i.size_of_block(it->first.second));

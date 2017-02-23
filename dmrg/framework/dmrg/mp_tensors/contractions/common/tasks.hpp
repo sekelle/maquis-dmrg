@@ -51,6 +51,16 @@ namespace common {
             IS b2, k, l_size, r_size, stripe, out_offset;
         };
 
+        template <typename T>
+        struct micro_task_shtm
+        {
+            typedef unsigned short IS;
+
+            T scale;
+            unsigned in_offset;
+            IS b2, k, l_size, r_size, stripe, out_offset;
+        };
+
     } // namespace detail
 
     #include "dmrg/mp_tensors/contractions/common/tasks_old.hpp"
@@ -86,7 +96,7 @@ namespace common {
 
     public:
 
-        typedef typename detail::micro_task<value_type> micro_task;
+        typedef typename detail::micro_task_shtm<value_type> micro_task;
 
         MatrixGroup() : valid(false) {}
 

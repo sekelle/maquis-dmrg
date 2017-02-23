@@ -210,6 +210,7 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
     typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
     typedef typename task_capsule<Matrix, SymmGroup>::map_t map_t;
     typedef typename task_capsule<Matrix, SymmGroup>::micro_task micro_task;
+    typedef typename MatrixGroup<Matrix, SymmGroup>::micro_task micro_task_shtm;
 
     Boundary<SMatrix, SymmGroup> const & left = sp.left, right = sp.right;
     MPOTensor<Matrix, SymmGroup> const & mpo = sp.mpo;
@@ -242,10 +243,6 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
     index_type loop_max = mpo.row_dim();
     for (int b1 = 0; b1 < loop_max; ++b1)
     {
-        std::vector<value_type> phases = (mpo.herm_info.left_skip(b1)) 
-                                       ? conjugate_phases(left_indices[b1], mpo, b1, true, false)
-                                       : std::vector<value_type>(left_indices[b1].size(),1.);
-
         for (typename map_t::const_iterator it = contraction_schedule[b1].begin();
                 it != contraction_schedule[b1].end(); ++it)
         {
@@ -266,7 +263,15 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
                 typename std::vector<micro_task>::const_iterator
                     upper = std::upper_bound(it2, otasks.end(), *it2, task_compare<value_type>());
                 for ( ; it2 != upper; ++it2)
-                    matrix_groups_ch[offset].push_back(*it2);
+                {
+                    micro_task_shtm task2;
+                    task2.scale = it2->scale;
+                    task2.in_offset = it2->in_offset;
+                    task2.b2 = it2->b2;
+                    task2.k = it2->k;
+                    task2.l_size = it2->l_size;
+                    matrix_groups_ch[offset].push_back(task2);
+                }
 
                 it2 = upper;
             }
@@ -277,7 +282,7 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
     // testcases: lc,mc,168,168  lc,mc,283,181  lc,lc,283,181
 
     typedef boost::array<int, 3> array;
-    array alc = {{4,2,0}}, amc = {{2,0,0}};
+    array alc = {{4,2,0}}, amc = {{4,0,0}};
     charge lc(alc), mc(amc);
 
     //unsigned offprobe = 539;
@@ -359,6 +364,7 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
         maquis::cout << std::endl;
     }
 
+    if (false)
     { // test complete contraction for all mps blocks
         initial.make_right_paired();
 

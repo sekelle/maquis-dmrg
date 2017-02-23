@@ -36,8 +36,8 @@ namespace SU2 {
 namespace detail {
 
     using ::contraction::common::detail::micro_task;
-    using ::contraction::common::task_compare;
     using ::contraction::common::MPSBlock;
+    using ::contraction::common::MatrixGroup;
 
     template<class Matrix, class SymmGroup>
     void lbtm(Matrix const & iblock, Matrix & oblock, typename operator_selector<Matrix, SymmGroup>::type const & W,
@@ -187,7 +187,7 @@ namespace detail {
     void op_iterate_shtm(typename operator_selector<Matrix, SymmGroup>::type const & W, std::size_t w_block,
                          typename Matrix::value_type couplings[],
                          typename MPSBlock<Matrix, SymmGroup>::mapped_value_type & cg,
-                         micro_task<typename Matrix::value_type> task, 
+                         typename MatrixGroup<Matrix, SymmGroup>::micro_task task, 
                          unsigned in_offset, unsigned out_right_offset)
     {
         using boost::make_tuple;
