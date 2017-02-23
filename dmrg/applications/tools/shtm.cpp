@@ -264,12 +264,13 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
                     upper = std::upper_bound(it2, otasks.end(), *it2, task_compare<value_type>());
                 for ( ; it2 != upper; ++it2)
                 {
+                    //  conversion from old micro_task to micro_task_shtm
                     micro_task_shtm task2;
                     task2.scale = it2->scale;
                     task2.in_offset = it2->in_offset;
                     task2.b2 = it2->b2;
                     task2.k = it2->k;
-                    task2.l_size = it2->l_size;
+                    task2.t_index = it2->l_size;
                     matrix_groups_ch[offset].push_back(task2);
                 }
 

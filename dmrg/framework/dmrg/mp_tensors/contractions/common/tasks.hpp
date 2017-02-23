@@ -57,8 +57,7 @@ namespace common {
             typedef unsigned short IS;
 
             T scale;
-            unsigned in_offset;
-            IS b2, k, l_size, r_size, stripe, out_offset;
+            IS in_offset, b2, k, t_index;
         };
 
     } // namespace detail
@@ -141,7 +140,7 @@ namespace common {
             for (int i = 0; i < tasks.size(); ++i)
                 for (int j = 0; j < tasks[i].size(); ++j)
                 {
-                    quadruple tt(tasks[i][j].b2, tasks[i][j].k, tasks[i][j].in_offset, tasks[i][j].l_size); 
+                    quadruple tt(tasks[i][j].b2, tasks[i][j].k, tasks[i][j].in_offset, tasks[i][j].t_index); 
                     if (b2_col.count(tt) == 0)
                         b2_col[tt] = cnt++;
                 }
@@ -150,7 +149,7 @@ namespace common {
             for (int i = 0; i < tasks.size(); ++i)
                 for (int j = 0; j < tasks[i].size(); ++j)
                 {
-                    quadruple tt(tasks[i][j].b2, tasks[i][j].k, tasks[i][j].in_offset, tasks[i][j].l_size); 
+                    quadruple tt(tasks[i][j].b2, tasks[i][j].k, tasks[i][j].in_offset, tasks[i][j].t_index); 
                     double val = tasks[i][j].scale;
                     alpha(i, b2_col[tt]) = (std::abs(val) > 1e-300) ? val : 1e-301;
                 }
@@ -210,8 +209,8 @@ namespace common {
 
                 for (index_type j = 0; j < tasks[i].size(); ++j)
                 {
-                    maquis::dmrg::detail::iterator_axpy(&T[tasks[i][j].l_size](0,0),
-                                                        &T[tasks[i][j].l_size](0,0) + m_size * r_size,
+                    maquis::dmrg::detail::iterator_axpy(&T[tasks[i][j].t_index](0,0),
+                                                        &T[tasks[i][j].t_index](0,0) + m_size * r_size,
                                                         &S(0,0), tasks[i][j].scale);
                 }
 

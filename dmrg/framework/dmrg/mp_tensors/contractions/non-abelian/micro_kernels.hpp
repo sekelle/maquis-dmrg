@@ -122,35 +122,6 @@ namespace detail {
         }
     }
 
-    template<class Matrix, class SymmGroup>
-    void rbtm(Matrix const & iblock, Matrix & oblock, typename operator_selector<Matrix, SymmGroup>::type const & W,
-                         std::size_t in_left_offset, std::size_t out_right_offset, std::size_t l_size, std::size_t r_size, std::size_t w_block,
-                         typename Matrix::value_type couplings[])
-    {
-        typedef typename SparseOperator<Matrix, SymmGroup>::const_iterator block_iterator;
-        std::pair<block_iterator, block_iterator> blocks = W.get_sparse().block(w_block);
-
-        for(size_t rr = 0; rr < r_size; ++rr) {
-            for( block_iterator it = blocks.first; it != blocks.second; ++it)
-            {
-                std::size_t ss1 = it->row;
-                std::size_t ss2 = it->col;
-                std::size_t rspin = it->row_spin;
-                std::size_t cspin = it->col_spin;
-                std::size_t casenr = 0; 
-                if (rspin == 2 && cspin == 2) casenr = 3;
-                else if (rspin == 2) casenr = 1;
-                else if (cspin == 2) casenr = 2;
-
-                typename Matrix::value_type alfa_t = it->coefficient * couplings[casenr];
-                maquis::dmrg::detail::iterator_axpy(&iblock(in_left_offset + ss1*l_size, rr),
-                                                    &iblock(in_left_offset + ss1*l_size, rr) + l_size,
-                                                    &oblock(0, out_right_offset + ss2*r_size + rr),
-                                                    alfa_t);
-            }
-        }
-    }
-
     template <class Matrix, class SymmGroup>
     void op_iterate(typename operator_selector<Matrix, SymmGroup>::type const & W, std::size_t w_block,
                     typename Matrix::value_type couplings[],
@@ -188,6 +159,7 @@ namespace detail {
                          typename Matrix::value_type couplings[],
                          typename MPSBlock<Matrix, SymmGroup>::mapped_value_type & cg,
                          typename MatrixGroup<Matrix, SymmGroup>::micro_task task, 
+                         unsigned m2_size, unsigned r_size,
                          unsigned in_offset, unsigned out_right_offset)
     {
         using boost::make_tuple;
@@ -207,17 +179,16 @@ namespace detail {
             else if (rspin == 2) casenr = 1;
             else if (cspin == 2) casenr = 2;
 
-            task.in_offset = in_offset + ss1*task.stripe;
-            task.out_offset = out_right_offset + ss2*task.r_size;
+            task.in_offset = in_offset + ss1*m2_size;
             task.scale = it->coefficient * couplings[casenr];
 
             typename cgroup::Quadruple tq = make_tuple(task.b2, task.k, task.in_offset);
             std::pair<typename cgroup::T_index_t::iterator, bool> pos = cg.T_index.insert(std::make_pair(tq, cg.cnt));
 
-            if (pos.second) task.l_size = cg.cnt++; // new element (tq, cnt) inserted
-            else            task.l_size = pos.first->second;
+            if (pos.second) task.t_index = cg.cnt++; // new element (tq, cnt) inserted
+            else            task.t_index = pos.first->second;
 
-            cg[ss2].offset = task.out_offset;
+            cg[ss2].offset = out_right_offset + ss2*r_size;
             cg[ss2].push_back(task);
         }
     }

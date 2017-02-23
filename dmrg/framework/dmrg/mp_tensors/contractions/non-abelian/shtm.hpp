@@ -129,11 +129,9 @@ namespace SU2 {
 
                                 unsigned in_offset = right_pb(phys_in, SymmGroup::fuse(phys_in, mc));
 
-                                micro_task tpl; tpl.l_size = l_size; tpl.r_size = r_size;
-                                                tpl.stripe = m2_size; tpl.b2 = b2; tpl.k = r_block;
-
+                                micro_task tpl; tpl.b2 = b2; tpl.k = r_block;
                                 detail::op_iterate_shtm<Matrix, SymmGroup>(W, w_block, couplings, cg, tpl,
-                                                                           in_offset, out_right_offset);
+                                                                           m2_size, r_size, in_offset, out_right_offset);
                             } // w_block
                             
                         } //op_index
