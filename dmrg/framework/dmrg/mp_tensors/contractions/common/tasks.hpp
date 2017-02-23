@@ -131,7 +131,7 @@ namespace common {
     public:
         MatrixGroup() : valid(false) {}
 
-        void add_line(unsigned b1, unsigned k, bool check = false)
+        void add_line(unsigned b1, unsigned k)
         {
             // if size is zero or we see a new b1 for the first time and the previous b1 did yield terms
             if (bs.size() == 0 || (*bs.rbegin() != b1 && tasks.rbegin()->size() > 0))
@@ -139,24 +139,12 @@ namespace common {
                 bs.push_back(b1);
                 ks.push_back(k);
                 tasks.push_back(std::vector<micro_task>());
-                if (check)
-                {
-                    maquis::cout << "b1 = " << b1 << ", bs add ";
-                    std::copy(bs.begin(), bs.end(), std::ostream_iterator<index_type>(std::cout, " "));
-                    maquis::cout << std::endl;
-                }
             }
             // if the previous b1 didnt yield any terms overwrite it with the new b1
             else if (*bs.rbegin() != b1 && tasks.rbegin()->size() == 0)
             {
                 *bs.rbegin() = b1;
                 *ks.rbegin() = k;
-                if (check)
-                {
-                    maquis::cout << "b1 = " << b1 << ", bs ovw ";
-                    std::copy(bs.begin(), bs.end(), std::ostream_iterator<index_type>(std::cout, " "));
-                    maquis::cout << std::endl;
-                }
             }
         }
 
@@ -258,7 +246,10 @@ namespace common {
                     //maquis::cout << "  b2 " << tasks[i][j].b2 << " " << num_rows(T[tasks[i][j].l_size]) << "x"
                     //                        << num_cols(T[tasks[i][j].l_size]) << "  T " << tasks[i][j].l_size << std::endl;
 
-                    S += tasks[i][j].scale * T[tasks[i][j].l_size];
+                    //S += tasks[i][j].scale * T[tasks[i][j].l_size];
+                    maquis::dmrg::detail::iterator_axpy(&T[tasks[i][j].l_size](0,0),
+                                                        &T[tasks[i][j].l_size](0,0) + m_size * r_size,
+                                                        &S(0,0), tasks[i][j].scale);
                 }
 
                 value_type conj = li.conj_scales[b1][ks[i]];
@@ -333,6 +324,8 @@ namespace common {
                     multiply(mps_matrix, right[b2][r_block], in_offset, pos, conj);    
             }
         }
+
+        void drop_T() const { T = std::vector<Matrix>(); }
 
         // invariant: phys_out, phys_offset
 

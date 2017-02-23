@@ -262,6 +262,7 @@ namespace contraction {
                         maquis::dmrg::detail::iterator_axpy(&C(0,0), &C(0,0) + num_rows(C) * num_cols(C),
                                                             &collector[mps_block](0, offset), value_type(1.0));
                     }
+                    cg.drop_T();
                 }
             }
         });
