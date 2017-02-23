@@ -83,9 +83,11 @@ namespace common {
     {
         typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
         typedef typename Matrix::value_type value_type;
-        typedef typename task_capsule<Matrix, SymmGroup>::micro_task micro_task;
 
     public:
+
+        typedef typename detail::micro_task<value_type> micro_task;
+
         MatrixGroup() : valid(false) {}
 
         void add_line(unsigned b1, unsigned k)
@@ -317,7 +319,7 @@ namespace common {
         typedef typename Matrix::value_type value_type;
         typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
         typedef typename task_capsule<Matrix, SymmGroup>::map_t map_t;
-        typedef typename task_capsule<Matrix, SymmGroup>::micro_task micro_task;
+        typedef typename MatrixGroup<Matrix, SymmGroup>::micro_task micro_task;
 
         LeftIndices<Matrix, SMatrix, SymmGroup> left_indices(left, mpo);
         RightIndices<Matrix, SMatrix, SymmGroup> right_indices(right, mpo);

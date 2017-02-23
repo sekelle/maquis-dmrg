@@ -229,8 +229,7 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
     LeftIndices<Matrix, SMatrix, SymmGroup> left_indices(left, mpo);
     RightIndices<Matrix, SMatrix, SymmGroup> right_indices(right, mpo);
 
-    //Engine<matrix, smatrix, symm>::schedule_t contraction_schedule = sp.contraction_schedule;
-    std::vector<task_capsule<Matrix, SymmGroup> >  contraction_schedule
+    typename ScheduleOld<Matrix, SymmGroup>::schedule_t contraction_schedule
         = create_contraction_schedule_old(initial, left, right, mpo,
                                           contraction::SU2::rbtm_tasks<Matrix, SMatrix, SymmGroup>);
 

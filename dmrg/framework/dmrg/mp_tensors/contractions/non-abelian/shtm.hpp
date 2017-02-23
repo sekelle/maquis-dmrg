@@ -38,7 +38,6 @@
 namespace contraction {
 namespace SU2 {
 
-    using common::task_capsule;
     using common::MatrixGroup;
     using common::MPSBlock;
 
@@ -57,8 +56,8 @@ namespace SU2 {
         typedef typename MPOTensor<Matrix, SymmGroup>::row_proxy row_proxy;
         typedef typename SymmGroup::charge charge;
         typedef typename Matrix::value_type value_type;
+        typedef typename MatrixGroup<Matrix, SymmGroup>::micro_task micro_task;
         typedef MPSBlock<Matrix, SymmGroup> mpsb_t;
-        typedef typename task_capsule<Matrix, SymmGroup>::micro_task micro_task;
 
         unsigned l_size = left_i.size_of_block(lc);
 
