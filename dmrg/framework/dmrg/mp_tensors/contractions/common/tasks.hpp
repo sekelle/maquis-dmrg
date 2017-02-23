@@ -129,6 +129,8 @@ namespace common {
         typedef typename task_capsule<Matrix, SymmGroup>::micro_task micro_task;
 
     public:
+        MatrixGroup() : valid(false) {}
+
         void add_line(unsigned b1, unsigned k, bool check = false)
         {
             // if size is zero or we see a new b1 for the first time and the previous b1 did yield terms
@@ -162,6 +164,7 @@ namespace common {
         {
             assert(tasks.size() > 0);
             tasks[tasks.size()-1].push_back(mt);
+            valid = true;
         }
 
         std::vector<micro_task> & current_row()
@@ -275,6 +278,7 @@ namespace common {
         std::vector<std::vector<micro_task> > tasks;
         std::vector<index_type> bs, ks;
 
+        bool valid;
         unsigned l_size, m_size, r_size, offset;
     private:
     };

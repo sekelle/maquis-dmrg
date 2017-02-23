@@ -256,6 +256,7 @@ namespace contraction {
                     cg.create_T(ket_tensor, right, mpo, right_indices);
                     for (size_t ss1 = 0; ss1 < cg.size(); ++ss1)
                     {
+                        if (!cg[ss1].valid) continue;
                         unsigned offset = cg[ss1].offset;
                         Matrix C = cg[ss1].contract(left, cg.T, mpo, left_indices);
                         maquis::dmrg::detail::iterator_axpy(&C(0,0), &C(0,0) + num_rows(C) * num_cols(C),
