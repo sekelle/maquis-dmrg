@@ -233,7 +233,7 @@ namespace common {
 
         template <class OtherMatrix>
         Matrix contract(Boundary<OtherMatrix, SymmGroup> const & left, std::vector<Matrix> const & T,
-                        MPOTensor<Matrix, SymmGroup> const & mpo, LeftIndices<Matrix, OtherMatrix, SymmGroup> const & li) const
+                        MPOTensor<Matrix, SymmGroup> const & mpo) const
         {
             Matrix ret(l_size, r_size);
             //maquis::cout << "l_size " << l_size << " m_size " << m_size << " r_size " << r_size << std::endl;
@@ -254,14 +254,12 @@ namespace common {
                                                         &S(0,0), tasks[i][j].scale);
                 }
 
-                value_type conj = li.conj_scales[b1][ks[i]];
-
                 if (mpo.herm_info.left_skip(b1)) {
                     index_type b1_eff = mpo.herm_info.left_conj(b1);
-                    boost::numeric::bindings::blas::gemm(conj, left[b1_eff][ks[i]], S, value_type(1), ret); 
+                    boost::numeric::bindings::blas::gemm(value_type(1), left[b1_eff][ks[i]], S, value_type(1), ret); 
                 }
                 else
-                    boost::numeric::bindings::blas::gemm(conj, transpose(left[b1])[ks[i]], S, value_type(1), ret); 
+                    boost::numeric::bindings::blas::gemm(value_type(1), transpose(left[b1])[ks[i]], S, value_type(1), ret); 
             }
 
             return ret;

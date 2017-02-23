@@ -124,7 +124,8 @@ namespace SU2 {
                                 int j = SymmGroup::spin(mc), jp = SymmGroup::spin(tlc);
                                 int two_sp = std::abs(i - ip), two_s  = std::abs(j - jp);
                                 value_type couplings[4];
-                                value_type scale = right.conj_scales[b2][r_block] * access.scale(op_index);
+                                value_type scale = right.conj_scales[b2][r_block] * access.scale(op_index)
+                                                 *  left.conj_scales[b1][left_block];
                                 ::SU2::set_coupling(j, two_s, jp, a,k,ap, i, two_sp, ip, scale, couplings);
 
                                 unsigned in_offset = right_pb(phys_in, SymmGroup::fuse(phys_in, mc));
