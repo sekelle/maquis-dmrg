@@ -44,7 +44,7 @@ namespace contraction {
                     Boundary<OtherMatrix, SymmGroup> const & left,
                     Boundary<OtherMatrix, SymmGroup> const & right,
                     MPOTensor<Matrix, SymmGroup> const & mpo,
-                    std::vector<common::task_capsule<Matrix, SymmGroup> > const & tasks);
+                    typename common::ScheduleOld<Matrix, SymmGroup>::schedule_t const & tasks);
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
     MPSTensor<Matrix, SymmGroup>
@@ -53,8 +53,8 @@ namespace contraction {
                     Boundary<OtherMatrix, SymmGroup> const & right,
                     MPOTensor<Matrix, SymmGroup> const & mpo,
                     typename common::Schedule<Matrix, SymmGroup>::schedule_t const & tasks);
-    // *************************************************************
 
+    // *************************************************************
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
     MPSTensor<Matrix, SymmGroup>
@@ -63,8 +63,7 @@ namespace contraction {
                 Boundary<OtherMatrix, SymmGroup> const & left,
                 Boundary<OtherMatrix, SymmGroup> const & right,
                 MPOTensor<Matrix, SymmGroup> const & mpo,
-                //std::vector<common::task_capsule<Matrix, SymmGroup> > const & tasks)
-                typename common::Schedule<Matrix, SymmGroup>::schedule_t const & tasks)
+                schedule_t const & tasks) 
     {
         //if ( (mpo.row_dim() - mpo.num_one_rows()) < (mpo.col_dim() - mpo.num_one_cols()) )
         //    return site_hamil_lbtm(ket_tensor, left, right, mpo);
@@ -173,7 +172,7 @@ namespace contraction {
                     Boundary<OtherMatrix, SymmGroup> const & left,
                     Boundary<OtherMatrix, SymmGroup> const & right,
                     MPOTensor<Matrix, SymmGroup> const & mpo,
-                    std::vector<common::task_capsule<Matrix, SymmGroup> > const & tasks)
+                    typename common::ScheduleOld<Matrix, SymmGroup>::schedule_t const & tasks)
     {
         typedef typename SymmGroup::charge charge;
         typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
