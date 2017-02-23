@@ -37,31 +37,6 @@
 #include "dmrg/mp_tensors/contractions/common/gemm_binding.hpp"
 
 namespace contraction {
-
-namespace common {
-
-    //forward declaration
-
-    template <class Matrix, class SymmGroup>
-    class MPSBlock;
-}
-
-namespace SU2 {
-
-    // forward declaration
-
-    template <class Matrix, class OtherMatrix, class SymmGroup>
-    void shtm_tasks(MPOTensor<Matrix, SymmGroup> const & mpo,
-                    common::LeftIndices<Matrix, OtherMatrix, SymmGroup> const & left,
-                    common::RightIndices<Matrix, OtherMatrix, SymmGroup> const & right,
-                    Index<SymmGroup> const &,
-                    Index<SymmGroup> const &,
-                    Index<SymmGroup> const &,
-                    ProductBasis<SymmGroup> const &,
-                    typename SymmGroup::charge,
-                    common::MPSBlock<Matrix, SymmGroup> &);
-}
-
 namespace common {
 
     namespace detail { 
@@ -99,6 +74,77 @@ namespace common {
         typedef detail::micro_task<value_type> micro_task;
         typedef std::map<std::pair<charge, charge>, std::vector<micro_task>, compare_pair<std::pair<charge, charge> > > map_t;
     };
+
+    template <class Matrix, class SymmGroup>
+    struct ScheduleOld
+    {
+        typedef std::vector<contraction::common::task_capsule<Matrix, SymmGroup> > schedule_t;
+    }; 
+    
+    template<class Matrix, class SymmGroup, class TaskCalc>
+    typename ScheduleOld<Matrix, SymmGroup>::schedule_t
+    create_contraction_schedule_old(MPSTensor<Matrix, SymmGroup> const & initial,
+                                Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & left,
+                                Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & right,
+                                MPOTensor<Matrix, SymmGroup> const & mpo,
+                                TaskCalc task_calc)
+    {
+        typedef typename storage::constrained<Matrix>::type SMatrix;
+        typedef typename SymmGroup::charge charge;
+        typedef typename Matrix::value_type value_type;
+        typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
+        typedef typename task_capsule<Matrix, SymmGroup>::map_t map_t;
+        typedef typename task_capsule<Matrix, SymmGroup>::micro_task micro_task;
+
+        typedef typename ScheduleOld<Matrix, SymmGroup>::schedule_t schedule_t;
+
+        initial.make_left_paired();
+
+        schedule_t contraction_schedule(mpo.row_dim());
+        MPSBoundaryProductIndices<Matrix, SMatrix, SymmGroup> indices(initial.data().basis(), right, mpo);
+        LeftIndices<Matrix, SMatrix, SymmGroup> left_indices(left, mpo);
+        RightIndices<Matrix, SMatrix, SymmGroup> right_indices(right, mpo);
+
+        // MPS indices
+        Index<SymmGroup> const & physical_i = initial.site_dim(),
+                                 right_i = initial.col_dim();
+        Index<SymmGroup> left_i = initial.row_dim(),
+                         out_right_i = adjoin(physical_i) * right_i;
+
+        common_subset(out_right_i, left_i);
+        ProductBasis<SymmGroup> in_left_pb(physical_i, left_i);
+        ProductBasis<SymmGroup> out_right_pb(physical_i, right_i,
+                                             boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
+                                                                 -boost::lambda::_1, boost::lambda::_2));
+        index_type loop_max = mpo.row_dim();
+        omp_for(index_type b1, parallel::range<index_type>(0,loop_max), {
+            task_capsule<Matrix, SymmGroup> tasks;
+            task_calc(b1, indices, mpo, left_indices[b1], left_i, out_right_i, in_left_pb, out_right_pb, tasks);
+
+            for (typename map_t::iterator it = tasks.begin(); it != tasks.end(); ++it)
+                std::sort((it->second).begin(), (it->second).end(), task_compare<value_type>());
+
+            contraction_schedule[b1] = tasks;
+        });
+
+        size_t sz = 0, data = 0;
+        for (int b1 = 0; b1 < loop_max; ++b1)
+        {
+            task_capsule<Matrix, SymmGroup> const & tasks = contraction_schedule[b1];
+            for (typename map_t::const_iterator it = tasks.begin(); it != tasks.end(); ++it)
+            {
+                sz += (it->second).size() * sizeof(micro_task);
+                for (typename map_t::mapped_type::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2)
+                    data += 8 * it2->r_size * it2->l_size;
+            }            
+        }
+        maquis::cout << "Schedule size: " << sz / 1024 << "KB " << data / 1024 / 1024 <<  "MB "
+                                          << (data * 24) / sz / 1024 << "KB "
+                                          << "T " << 8*::utils::size_of(indices.begin(), indices.end())/1024/1024 << "MB "
+                                          << "R " << 8*size_of(right)/1024/1024 << "MB "
+                                          << initial.data().n_blocks() << " MPS blocks" << std::endl;
+        return contraction_schedule;
+    }
 
     struct f3 { f3(double a_) : a(a_) {} double a; };
     inline std::ostream & operator<<(std::ostream & os, f3 A)
@@ -236,19 +282,13 @@ namespace common {
                         MPOTensor<Matrix, SymmGroup> const & mpo) const
         {
             Matrix ret(l_size, r_size);
-            //maquis::cout << "l_size " << l_size << " m_size " << m_size << " r_size " << r_size << std::endl;
             for (index_type i = 0; i < tasks.size(); ++i)
             {
                 index_type b1 = bs[i];
                 Matrix S(m_size, r_size);
 
-                //maquis::cout << "b1 " << b1 << " S " << m_size << "x" << r_size << std::endl;
                 for (index_type j = 0; j < tasks[i].size(); ++j)
                 {
-                    //maquis::cout << "  b2 " << tasks[i][j].b2 << " " << num_rows(T[tasks[i][j].l_size]) << "x"
-                    //                        << num_cols(T[tasks[i][j].l_size]) << "  T " << tasks[i][j].l_size << std::endl;
-
-                    //S += tasks[i][j].scale * T[tasks[i][j].l_size];
                     maquis::dmrg::detail::iterator_axpy(&T[tasks[i][j].l_size](0,0),
                                                         &T[tasks[i][j].l_size](0,0) + m_size * r_size,
                                                         &S(0,0), tasks[i][j].scale);
@@ -273,18 +313,6 @@ namespace common {
         unsigned l_size, m_size, r_size, offset;
     private:
     };
-
-
-    namespace detail {
-
-        template <class Matrix>
-        Matrix extract_cols(Matrix const & source, size_t col1, size_t n_cols)
-        {
-            Matrix ret(num_rows(source), n_cols); 
-            std::copy(&source(0, col1), &source(0, col1) + num_rows(source) * n_cols, &ret(0,0));
-            return ret;
-        }
-    }
 
     template <class Matrix, class SymmGroup>
     class ContractionGroup : public std::vector<MatrixGroup<Matrix, SymmGroup> >
@@ -364,76 +392,8 @@ namespace common {
     template <class Matrix, class SymmGroup>
     struct Schedule
     {
-        //typedef std::vector<contraction::common::task_capsule<Matrix, SymmGroup> > schedule_t;
         typedef std::vector<MPSBlock<Matrix, SymmGroup> > schedule_t;
     }; 
-    
-    template<class Matrix, class SymmGroup, class TaskCalc>
-    //typename Schedule<Matrix, SymmGroup>::schedule_t
-    std::vector<contraction::common::task_capsule<Matrix, SymmGroup> >
-    create_contraction_schedule_old(MPSTensor<Matrix, SymmGroup> const & initial,
-                                Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & left,
-                                Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & right,
-                                MPOTensor<Matrix, SymmGroup> const & mpo,
-                                TaskCalc task_calc)
-    {
-        typedef typename storage::constrained<Matrix>::type SMatrix;
-        typedef typename SymmGroup::charge charge;
-        typedef typename Matrix::value_type value_type;
-        typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
-        typedef typename task_capsule<Matrix, SymmGroup>::map_t map_t;
-        typedef typename task_capsule<Matrix, SymmGroup>::micro_task micro_task;
-
-        //typedef typename Schedule<Matrix, SymmGroup>::schedule_t schedule_t;
-        typedef std::vector<task_capsule<Matrix, SymmGroup> > schedule_t;
-
-        initial.make_left_paired();
-
-        schedule_t contraction_schedule(mpo.row_dim());
-        MPSBoundaryProductIndices<Matrix, SMatrix, SymmGroup> indices(initial.data().basis(), right, mpo);
-        LeftIndices<Matrix, SMatrix, SymmGroup> left_indices(left, mpo);
-        RightIndices<Matrix, SMatrix, SymmGroup> right_indices(right, mpo);
-
-        // MPS indices
-        Index<SymmGroup> const & physical_i = initial.site_dim(),
-                                 right_i = initial.col_dim();
-        Index<SymmGroup> left_i = initial.row_dim(),
-                         out_right_i = adjoin(physical_i) * right_i;
-
-        common_subset(out_right_i, left_i);
-        ProductBasis<SymmGroup> in_left_pb(physical_i, left_i);
-        ProductBasis<SymmGroup> out_right_pb(physical_i, right_i,
-                                             boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
-                                                                 -boost::lambda::_1, boost::lambda::_2));
-        index_type loop_max = mpo.row_dim();
-        omp_for(index_type b1, parallel::range<index_type>(0,loop_max), {
-            task_capsule<Matrix, SymmGroup> tasks;
-            task_calc(b1, indices, mpo, left_indices[b1], left_i, out_right_i, in_left_pb, out_right_pb, tasks);
-
-            for (typename map_t::iterator it = tasks.begin(); it != tasks.end(); ++it)
-                std::sort((it->second).begin(), (it->second).end(), task_compare<value_type>());
-
-            contraction_schedule[b1] = tasks;
-        });
-
-        size_t sz = 0, data = 0;
-        for (int b1 = 0; b1 < loop_max; ++b1)
-        {
-            task_capsule<Matrix, SymmGroup> const & tasks = contraction_schedule[b1];
-            for (typename map_t::const_iterator it = tasks.begin(); it != tasks.end(); ++it)
-            {
-                sz += (it->second).size() * sizeof(micro_task);
-                for (typename map_t::mapped_type::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2)
-                    data += 8 * it2->r_size * it2->l_size;
-            }            
-        }
-        maquis::cout << "Schedule size: " << sz / 1024 << "KB " << data / 1024 / 1024 <<  "MB "
-                                          << (data * 24) / sz / 1024 << "KB "
-                                          << "T " << 8*::utils::size_of(indices.begin(), indices.end())/1024/1024 << "MB "
-                                          << "R " << 8*size_of(right)/1024/1024 << "MB "
-                                          << initial.data().n_blocks() << " MPS blocks" << std::endl;
-        return contraction_schedule;
-    }
 
     template<class Matrix, class SymmGroup, class TaskCalc>
     typename Schedule<Matrix, SymmGroup>::schedule_t

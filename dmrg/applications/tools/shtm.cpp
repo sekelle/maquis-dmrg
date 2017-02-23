@@ -67,8 +67,18 @@ using namespace contraction::SU2;
 
 typedef storage::constrained<matrix>::type smatrix;
 
-//#include "dmrg/utils/DmrgOptions.h"
-//#include "dmrg/utils/DmrgParameters.h"
+namespace detail {
+
+    template <class Matrix>
+    Matrix extract_cols(Matrix const & source, size_t col1, size_t n_cols)
+    {
+        Matrix ret(num_rows(source), n_cols);
+        std::copy(&source(0, col1), &source(0, col1) + num_rows(source) * n_cols, &ret(0,0));
+        return ret;
+    }
+
+} // namespace detail
+
 
 MPO<matrix, symm> load_mpo(std::string file)
 {
@@ -302,7 +312,7 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
     mpsb[mc][s][1].print_stats();
     //mpsb[mc][s][0].print_stats();
 
-    if (true)
+    if (false)
     { // bypass site_hamil_shtm test
         array alc = {{4,2,0}}, amc = {{4,0,0}};
         charge lc(alc), mc(amc);
@@ -323,17 +333,18 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
         maquis::cout << std::endl;
 
         initial.make_right_paired();
-        mpsb[mc][s].create_T(initial, right, mpo, right_indices);
+        mpsb[mc][s].create_T(initial, right, mpo);
         matrix const & cgmat = mpsb[mc][s].T[4];
         std::copy(&cgmat(0,0), &cgmat(10,0), std::ostream_iterator<value_type>(std::cout, " "));
         maquis::cout << std::endl;
 
         // contraction test
-        Matrix C = mpsb[mc][s][1].contract(left, mpsb[mc][s].T, mpo, left_indices);
+        Matrix C = mpsb[mc][s][1].contract(left, mpsb[mc][s].T, mpo);
         std::copy(&C(0,0), &C(10,0), std::ostream_iterator<value_type>(std::cout, " "));
         maquis::cout << std::endl;
     }
 
+    if (false)
     { // test complete contraction at fixed offset 283 in <4,2,0> mps block
         initial.make_right_paired();
 
@@ -344,7 +355,7 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
 
         prod.make_right_paired();
         Matrix X = prod.data()[mps_block];    
-        Matrix Y = common::detail::extract_cols(X, 283, 10);
+        Matrix Y = ::detail::extract_cols(X, 283, 10);
         std::copy(&Y(0,0), &Y(10,0), std::ostream_iterator<value_type>(std::cout, " "));
         maquis::cout << std::endl;
     }
@@ -367,7 +378,7 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
         size_t mps_block = prod.data().find_block(lc, lc);
         assert(mps_block != prod.data().n_blocks());
         Matrix X = prod.data()[mps_block];    
-        Matrix Y = common::detail::extract_cols(X, 283, 10);
+        Matrix Y = ::detail::extract_cols(X, 283, 10);
         std::copy(&Y(0,0), &Y(10,0), std::ostream_iterator<value_type>(std::cout, " "));
         maquis::cout << std::endl;
 
