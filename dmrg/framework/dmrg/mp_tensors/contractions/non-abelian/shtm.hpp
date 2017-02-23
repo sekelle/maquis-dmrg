@@ -123,8 +123,9 @@ namespace SU2 {
                                 int i = SymmGroup::spin(lc), ip = SymmGroup::spin(rc);
                                 int j = SymmGroup::spin(mc), jp = SymmGroup::spin(tlc);
                                 int two_sp = std::abs(i - ip), two_s  = std::abs(j - jp);
-                                typename Matrix::value_type couplings[4];
-                                ::SU2::set_coupling(j, two_s, jp, a,k,ap, i, two_sp, ip, access.scale(op_index), couplings);
+                                value_type couplings[4];
+                                value_type scale = right.conj_scales[b2][r_block] * access.scale(op_index);
+                                ::SU2::set_coupling(j, two_s, jp, a,k,ap, i, two_sp, ip, scale, couplings);
 
                                 unsigned in_offset = right_pb(phys_in, SymmGroup::fuse(phys_in, mc));
 

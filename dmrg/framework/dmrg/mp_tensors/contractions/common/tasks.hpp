@@ -301,7 +301,7 @@ namespace common {
 
         template <class OtherMatrix>
         void create_T(MPSTensor<Matrix, SymmGroup> const & mps, Boundary<OtherMatrix, SymmGroup> const & right,
-                      MPOTensor<Matrix, SymmGroup> const & mpo, RightIndices<Matrix, OtherMatrix, SymmGroup> const & ri) const
+                      MPOTensor<Matrix, SymmGroup> const & mpo) const
         {
             T.resize(T_index.size());
 
@@ -318,12 +318,12 @@ namespace common {
                 unsigned r_block = boost::get<1>(it->first);
                 unsigned in_offset = boost::get<2>(it->first);
 
-                value_type conj = ri.conj_scales[b2][r_block];
+                value_type conj = 1.0;
 
                 if (mpo.herm_info.right_skip(b2))
-                    multiply(mps_matrix, transpose(right[mpo.herm_info.right_conj(b2)])[r_block], in_offset, pos, conj);    
+                    multiply(mps_matrix, transpose(right[mpo.herm_info.right_conj(b2)])[r_block], in_offset, pos);    
                 else
-                    multiply(mps_matrix, right[b2][r_block], in_offset, pos, conj);    
+                    multiply(mps_matrix, right[b2][r_block], in_offset, pos);    
             }
         }
 
@@ -340,14 +340,15 @@ namespace common {
     private:
 
         template <class TMatrix>
-        void multiply(Matrix const & mps_matrix, TMatrix const & trv, unsigned in_offset, unsigned pos, value_type conj) const
+        void multiply(Matrix const & mps_matrix, TMatrix const & trv, unsigned in_offset, unsigned pos) const
         {
             unsigned l_size = num_rows(mps_matrix); 
             unsigned m_size = num_rows(trv); 
             unsigned r_size = num_cols(trv); 
 
             T[pos] = Matrix(l_size, r_size, 0);
-            boost::numeric::bindings::blas::gemm(conj, mps_matrix, trv, value_type(0), T[pos], in_offset, 0, 0, m_size, r_size);
+            boost::numeric::bindings::blas::gemm(value_type(1), mps_matrix, trv, value_type(0), T[pos],
+                                                 in_offset, 0, 0, m_size, r_size);
         }
     };
                                                                  // size == phys_i.size()

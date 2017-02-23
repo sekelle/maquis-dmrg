@@ -253,7 +253,7 @@ namespace contraction {
                 for (size_t s = 0; s < it->second.size(); ++s)
                 {
                     common::ContractionGroup<Matrix, SymmGroup> const & cg = it->second[s];
-                    cg.create_T(ket_tensor, right, mpo, right_indices);
+                    cg.create_T(ket_tensor, right, mpo);
                     for (size_t ss1 = 0; ss1 < cg.size(); ++ss1)
                     {
                         if (!cg[ss1].valid) continue;
