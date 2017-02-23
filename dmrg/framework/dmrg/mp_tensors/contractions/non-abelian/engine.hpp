@@ -45,7 +45,6 @@ namespace contraction {
 
     using ::contraction::common::BoundaryMPSProduct;
     using ::contraction::common::MPSBoundaryProduct;
-    using ::contraction::common::MPSBoundaryProductIndices;
 
     template <class Matrix, class OtherMatrix, class SymmGroup>
     class Engine<Matrix, OtherMatrix, SymmGroup, typename boost::enable_if<symm_traits::HasSU2<SymmGroup> >::type>
@@ -202,7 +201,6 @@ namespace contraction {
                     Boundary<OtherMatrix, SymmGroup> const & left,
                     Boundary<OtherMatrix, SymmGroup> const & right,
                     MPOTensor<Matrix, SymmGroup> const & mpo,
-                    //std::vector<SU2::task_capsule<Matrix, SymmGroup> > const & tasks);
                     schedule_t const & tasks);
     };
 
