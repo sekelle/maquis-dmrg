@@ -187,16 +187,17 @@ namespace detail {
     void op_iterate_shtm(typename operator_selector<Matrix, SymmGroup>::type const & W, std::size_t w_block,
                          typename Matrix::value_type couplings[],
                          typename MPSBlock<Matrix, SymmGroup>::mapped_value_type & cg,
-                         micro_task<typename Matrix::value_type> tpl, 
+                         micro_task<typename Matrix::value_type> task, 
                          unsigned in_offset, unsigned out_right_offset)
     {
+        using boost::make_tuple;
+        typedef typename MPSBlock<Matrix, SymmGroup>::mapped_value_type cgroup;
         typedef typename SparseOperator<Matrix, SymmGroup>::const_iterator block_iterator;
+
         std::pair<block_iterator, block_iterator> blocks = W.get_sparse().block(w_block);
 
         for (block_iterator it = blocks.first; it != blocks.second; ++it)
         {
-            micro_task<typename Matrix::value_type> task = tpl;
-
             unsigned ss1 = it->row;
             unsigned ss2 = it->col;
             unsigned rspin = it->row_spin;
@@ -206,18 +207,15 @@ namespace detail {
             else if (rspin == 2) casenr = 1;
             else if (cspin == 2) casenr = 2;
 
-            task.in_offset = in_offset + ss1*tpl.stripe;
+            task.in_offset = in_offset + ss1*task.stripe;
             task.out_offset = out_right_offset + ss2*task.r_size;
             task.scale = it->coefficient * couplings[casenr];
 
-            typename MPSBlock<Matrix, SymmGroup>::mapped_value_type::Quadruple tq
-                = boost::make_tuple(tpl.b2, tpl.k, task.in_offset);
-            std::pair<typename MPSBlock<Matrix, SymmGroup>::mapped_value_type::T_index_t::iterator, bool> pos
-                = cg.T_index.insert(std::make_pair(tq, cg.cnt));
-            if (pos.second) // new element (tq, cnt) inserted
-                task.l_size = cg.cnt++;
-            else
-                task.l_size = pos.first->second;
+            typename cgroup::Quadruple tq = make_tuple(task.b2, task.k, task.in_offset);
+            std::pair<typename cgroup::T_index_t::iterator, bool> pos = cg.T_index.insert(std::make_pair(tq, cg.cnt));
+
+            if (pos.second) task.l_size = cg.cnt++; // new element (tq, cnt) inserted
+            else            task.l_size = pos.first->second;
 
             cg[ss2].offset = task.out_offset;
             cg[ss2].push_back(task);

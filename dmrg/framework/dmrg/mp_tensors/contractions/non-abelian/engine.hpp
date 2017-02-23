@@ -85,6 +85,7 @@ namespace contraction {
 
     public:
 
+        //typedef typename contraction::common::ScheduleOld<Matrix, SymmGroup>::schedule_t schedule_t;
         typedef typename contraction::common::Schedule<Matrix, SymmGroup>::schedule_t schedule_t;
 
         static block_matrix<OtherMatrix, SymmGroup>
@@ -153,7 +154,7 @@ namespace contraction {
                                    Boundary<OtherMatrix, SymmGroup> const & right,
                                    MPOTensor<Matrix, SymmGroup> const & mpo)
         {
-            //return common::create_contraction_schedule(mps, left, right, mpo, SU2::rbtm_tasks<Matrix, OtherMatrix, SymmGroup>);
+            //return common::create_contraction_schedule_old(mps, left, right, mpo, SU2::rbtm_tasks<Matrix, OtherMatrix, SymmGroup>);
             return common::create_contraction_schedule(mps, left, right, mpo, SU2::shtm_tasks<Matrix, OtherMatrix, SymmGroup>);
         }
 
