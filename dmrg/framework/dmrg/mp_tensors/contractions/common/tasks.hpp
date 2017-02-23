@@ -34,6 +34,8 @@
 
 #include "utils/sizeof.h"
 
+#include "dmrg/mp_tensors/contractions/common/gemm_binding.hpp"
+
 namespace contraction {
 
 namespace common {
@@ -344,15 +346,8 @@ namespace common {
             unsigned m_size = num_rows(trv); 
             unsigned r_size = num_cols(trv); 
 
-            //maquis::cout << "pos " << pos << " extract " << in_offset << "-" << in_offset + m_size
-            //             << " of " << num_cols(mps_matrix) << std::endl;
-            Matrix mps_extract = detail::extract_cols(mps_matrix, in_offset, m_size);
-
-            //maquis::cout << num_rows(mps_extract) << " " << num_cols(mps_extract) << " " << m_size << std::endl;
-
             T[pos] = Matrix(l_size, r_size, 0);
-            boost::numeric::bindings::blas::gemm(conj, mps_extract, trv, value_type(0), T[pos]);
-            //gemm(mps_extract, trv, T[pos]);
+            boost::numeric::bindings::blas::gemm(conj, mps_matrix, trv, value_type(0), T[pos], in_offset, 0, 0, m_size, r_size);
         }
     };
                                                                  // size == phys_i.size()
