@@ -113,11 +113,12 @@ namespace SU2 {
                                 assert(right_i.has(tlc));
                                 assert(lit->ls == l_size);
                                 assert(right[b2].right_size(r_block) == r_size);
-                                //assert(right_i.size_of_block(tlc) == m_size);
 
-                                for (unsigned i = 0 ; i < cg.size(); ++i)
-                                {    cg[i].l_size = l_size; cg[i].m_size = m1_size; cg[i].r_size = r_size; }
-                                size_t m2_size = right_i.size_of_block(tlc);
+                                for (unsigned i = 0 ; i < cg.size(); ++i) {
+                                    cg[i].l_size = l_size; cg[i].m_size = m1_size; cg[i].r_size = r_size;
+                                }
+                                unsigned m2_size = right_i.size_of_block(tlc);
+                                unsigned in_offset = right_pb(phys_in, tlc);
 
                                 int i = SymmGroup::spin(lc), ip = SymmGroup::spin(rc);
                                 int j = SymmGroup::spin(mc), jp = SymmGroup::spin(tlc);
@@ -127,7 +128,6 @@ namespace SU2 {
                                                  *  left.conj_scales[b1][left_block];
                                 ::SU2::set_coupling(j, two_s, jp, a,k,ap, i, two_sp, ip, scale, couplings);
 
-                                unsigned in_offset = right_pb(phys_in, SymmGroup::fuse(phys_in, mc));
 
                                 micro_task tpl; tpl.b2 = b2; tpl.k = r_block;
                                 detail::op_iterate_shtm<Matrix, SymmGroup>(W, w_block, couplings, cg, tpl,

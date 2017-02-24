@@ -264,8 +264,6 @@ namespace common {
                 unsigned r_block = boost::get<1>(it->first);
                 unsigned in_offset = boost::get<2>(it->first);
 
-                value_type conj = 1.0;
-
                 if (mpo.herm_info.right_skip(b2))
                     multiply(mps_matrix, transpose(right[mpo.herm_info.right_conj(b2)])[r_block], in_offset, pos);    
                 else
