@@ -39,6 +39,8 @@
 namespace contraction {
 namespace common {
 
+    using boost::get; 
+
     namespace detail { 
 
         template <typename T>
@@ -126,6 +128,14 @@ namespace common {
         std::vector<micro_task> & current_row()
         {
             return tasks[tasks.size()-1];
+        }
+
+        std::size_t n_tasks() const
+        {
+            std::size_t ret = 0;
+            for (int i = 0; i < tasks.size(); ++i)
+                ret += tasks[i].size();
+            return ret;
         }
 
         void print_stats() const
@@ -273,6 +283,43 @@ namespace common {
 
         void drop_T() const { T = std::vector<Matrix>(); }
 
+        std::size_t n_tasks() const
+        {
+            std::size_t ret = 0;
+            for (int i = 0; i < this->size(); ++i)
+                ret += (*this)[i].n_tasks(); 
+            return ret;
+        }
+
+        template <class OtherMatrix>
+        boost::tuple<std::size_t, std::size_t, std::size_t, std::size_t>
+        data_stats(MPSTensor<Matrix, SymmGroup> const & mps, RightIndices<Matrix, OtherMatrix, SymmGroup> const & right) const
+        {
+            std::size_t t_move = 0, l_load = 0, lgemm_flops = 0, tgemm_flops = 0;
+            for (int i = 0; i < this->size(); ++i)
+            {
+                t_move += (*this)[i].n_tasks() * 8 * (*this)[i].m_size * (*this)[i].r_size; 
+                l_load += (*this)[i].tasks.size() * 8 * (*this)[i].l_size * (*this)[i].m_size;
+                lgemm_flops += (*this)[i].tasks.size() * 2 * (*this)[i].l_size * (*this)[i].m_size * (*this)[i].r_size;
+            }
+
+            for (typename T_index_t::const_iterator it = T_index.begin(); it != T_index.end(); ++it)
+            {
+                unsigned pos = it->second;
+                unsigned b2 = boost::get<0>(it->first);
+                unsigned r_block = boost::get<1>(it->first);
+
+                unsigned l_size = num_rows(mps.data()[mps_block]);
+                //unsigned l_size = mps.row_dim()[mps_block].second;
+                unsigned m_size = right[b2].left_size(r_block);
+                unsigned r_size = right[b2].right_size(r_block);
+
+                tgemm_flops += 2 * l_size * m_size * r_size;
+            }
+
+            return boost::make_tuple(t_move, l_load, lgemm_flops, tgemm_flops);
+        }
+
         // invariant: phys_out, phys_offset
 
         mutable std::vector<Matrix> T;
@@ -299,10 +346,38 @@ namespace common {
     template <class Matrix, class SymmGroup>                     // invariant: mc, m_size
     class MPSBlock : public std::map<typename SymmGroup::charge, std::vector<ContractionGroup<Matrix, SymmGroup> > >
     {
+        typedef boost::tuple<std::size_t, std::size_t, std::size_t, std::size_t> stats_t;
     public:
         typedef ContractionGroup<Matrix, SymmGroup> mapped_value_type;
         typedef std::vector<mapped_value_type > mapped_type;
         typedef std::map<typename SymmGroup::charge, mapped_type> base;
+        typedef typename base::const_iterator const_iterator;
+
+        std::size_t n_tasks() const
+        {
+            std::size_t ret = 0;
+            for (const_iterator it = this->begin(); it != this->end(); ++ it)
+                for (int i = 0; i < it->second.size(); ++i)
+                    ret += (it->second)[i].n_tasks();    
+            return ret;
+        }
+
+        template <class OtherMatrix>
+        stats_t
+        data_stats(MPSTensor<Matrix, SymmGroup> const & mps, RightIndices<Matrix, OtherMatrix, SymmGroup> const & right) const
+        {
+            stats_t ret;
+            for (const_iterator it = this->begin(); it != this->end(); ++ it)
+                for (int i = 0; i < it->second.size(); ++i)
+                {
+                    stats_t cg = (it->second)[i].data_stats(mps, right);
+                    get<0>(ret) += get<0>(cg); 
+                    get<1>(ret) += get<1>(cg); 
+                    get<2>(ret) += get<2>(cg); 
+                    get<3>(ret) += get<3>(cg); 
+                }
+            return ret;
+        }
 
         // invariant: output MPS block, l_size
     };
@@ -352,6 +427,26 @@ namespace common {
             task_calc(mpo, left_indices, right_indices, left_i,
                       right_i, physical_i, out_right_pb, lc, contraction_schedule[mb]);
         });
+
+        size_t sz = 0, a = 0, b = 0, c = 0, d = 0;
+        for (size_t block = 0; block < loop_max; ++block)
+        {
+            sz += contraction_schedule[block].n_tasks();
+            boost::tuple<size_t, size_t, size_t, size_t> flops = contraction_schedule[block].data_stats(initial, right_indices);
+            a += get<0>(flops);
+            b += get<1>(flops);
+            c += get<2>(flops);
+            d += get<3>(flops);
+        }
+
+        maquis::cout << "Schedule size: " << sz << " tasks, "
+                     << " t_move " << a / 1024 << "KB, "
+                     << " l_load " << b / 1024 << "KB, "
+                     << " lgemmf " << c / 1024 << "KF, "
+                     << " tgemmf " << d / 1024 << "KF, "
+                     << " R " << 8*size_of(right)/1024 << "KB, "
+                     << " L " << 8*size_of(left)/1024 << "KB "
+                     << std::endl;
 
         return contraction_schedule;
     }

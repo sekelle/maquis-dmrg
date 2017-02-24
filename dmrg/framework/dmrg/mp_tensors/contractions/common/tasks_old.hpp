@@ -104,22 +104,36 @@
             contraction_schedule[b1] = tasks;
         });
 
-        size_t sz = 0, data = 0;
+        size_t sz = 0, a = 0, b = 0, c = 0, d = 0;
         for (int b1 = 0; b1 < loop_max; ++b1)
         {
             task_capsule<Matrix, SymmGroup> const & tasks = contraction_schedule[b1];
             for (typename map_t::const_iterator it = tasks.begin(); it != tasks.end(); ++it)
             {
-                sz += (it->second).size() * sizeof(micro_task);
+                sz += (it->second).size();
                 for (typename map_t::mapped_type::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2)
-                    data += 8 * it2->r_size * it2->l_size;
+                {
+                    a += 8 * it2->r_size * it2->l_size;
+                }
+
+                size_t k = left_indices[b1].position(it->first.second, it->first.first); if (k == left_indices[b1].size()) continue;
+
+                size_t l_size = left_indices[b1].left_size(k);
+                size_t m_size = left_indices[b1].right_size(k);
+                size_t r_size = out_right_i.size_of_block(it->first.second);
+
+                b += 8*l_size*m_size;
+                c += 2 * l_size * m_size * r_size;
             }            
         }
-        maquis::cout << "Schedule size: " << sz / 1024 << "KB " << data / 1024 / 1024 <<  "MB "
-                                          << (data * 24) / sz / 1024 << "KB "
-                                          << "T " << 8*::utils::size_of(indices.begin(), indices.end())/1024/1024 << "MB "
-                                          << "R " << 8*size_of(right)/1024/1024 << "MB "
-                                          << initial.data().n_blocks() << " MPS blocks" << std::endl;
+        maquis::cout << "Schedule size: " << sz << " tasks, "
+                                          << " t_move " << a / 1024 <<  "KB, "
+                                          << " l_load " << b / 1024 << "KB, "
+                                          << " lgemmf " << c / 1024 << "KF, "
+                                          << " tgemmf " << d / 1024 << "KF, "
+                                          << " R " << 8*size_of(right)/1024 << "KB, "
+                                          << " L " << 8*size_of(left)/1024 << "KB ";
+                                          //<< " T " << 8*::utils::size_of(indices.begin(), indices.end())/1024/1024 << "MB "
         return contraction_schedule;
     }
 
