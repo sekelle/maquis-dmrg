@@ -56,6 +56,10 @@ namespace SU2 {
                              int d, int e, int f,
                              int g, int h, int i, T init, T couplings[])
     {
+        couplings[0] = 0.0;
+        couplings[1] = 0.0;
+        couplings[2] = 0.0;
+        couplings[3] = 0.0;
         T prefactor = T(sqrt((i+1.)*(a+1.)/((g+1.)*(c+1.)))) * init;
         if (triangle(a,b,c))
         {
