@@ -258,6 +258,7 @@ namespace contraction {
     {
         typedef std::vector<DualIndex<SymmGroup> > base;
         typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
+        typedef typename maquis::traits::transpose_view<Matrix>::type TVMatrix;
 
     public:
 
@@ -265,7 +266,7 @@ namespace contraction {
 
         MPSBoundaryProductIndices(DualIndex<SymmGroup> const & mps_basis,
                                   Boundary<OtherMatrix, SymmGroup> const & right,
-                                  MPOTensor<Matrix, SymmGroup> const & mpo) : base(right.aux_dim())
+                                  MPOTensor<Matrix, SymmGroup> const & mpo) : base(right.aux_dim()), flops_(0)
         {
             parallel::scheduler_permute scheduler(mpo.placement_r, parallel::groups_granularity);
 
@@ -277,15 +278,20 @@ namespace contraction {
                 {
                     parallel::guard group(scheduler(b2), parallel::groups_granularity);
 
-                    block_matrix<typename maquis::traits::transpose_view<Matrix>::type, SymmGroup> trv = transpose(right[mpo.herm_info.right_conj(b2)]);
-                    (*this)[b2] = SU2::gemm_trim_right_pretend(mps_basis, trv);
+                    block_matrix<TVMatrix, SymmGroup> trv = transpose(right[mpo.herm_info.right_conj(b2)]);
+                    (*this)[b2] = SU2::gemm_trim_right_pretend(mps_basis, trv, flops_);
                 }
                 else {
                     parallel::guard group(scheduler(b2), parallel::groups_granularity);
-                    (*this)[b2] = SU2::gemm_trim_right_pretend(mps_basis, right[b2]);
+                    (*this)[b2] = SU2::gemm_trim_right_pretend(mps_basis, right[b2], flops_);
                 }
             });
         }
+
+        std::size_t flops() { return flops_; }
+
+    private:
+        std::size_t flops_;
     };
 
     template<class Matrix, class OtherMatrix, class SymmGroup, class Gemm>

@@ -144,7 +144,7 @@ namespace SU2 {
 
     template<class Matrix2, class SymmGroup>
     DualIndex<SymmGroup> gemm_trim_right_pretend(DualIndex<SymmGroup> const & A,
-                                                 block_matrix<Matrix2, SymmGroup> const & B)
+                                                 block_matrix<Matrix2, SymmGroup> const & B, std::size_t & flops)
     {
         typedef typename SymmGroup::charge charge;
         typedef typename DualIndex<SymmGroup>::const_iterator const_iterator;
@@ -167,6 +167,8 @@ namespace SU2 {
 
                 if (!ret.has(lc, rc))
                     ret.insert(typename DualIndex<SymmGroup>::value_type(lc, rc, A.left_size(k), it->rs));
+
+                flops += 2 * A.left_size(k) * A.right_size(k) * it->rs;
             }
         }
 
