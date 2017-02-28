@@ -69,6 +69,8 @@ namespace contraction {
         //    return site_hamil_lbtm(ket_tensor, left, right, mpo);
         //else
         //    return site_hamil_rbtm(ket_tensor, left, right, mpo, tasks);
+
+        //return site_hamil_rbtm(ket_tensor, left, right, mpo, tasks);
         return site_hamil_shtm(ket_tensor, left, right, mpo, tasks); 
     }
 

@@ -73,6 +73,7 @@ solve_ietl_jcd(SiteProblem<Matrix, SymmGroup> & sp,
         maquis::cout << "Output <MPS|O[" << n << "]> : " << ietl::dot(r0.second, ortho_vecs[n]) << std::endl;
     
     maquis::cout << "JCD used " << iter.iterations() << " iterations." << std::endl;
+    sp.contraction_schedule.niter = iter.iterations();
     
     return r0;
 }

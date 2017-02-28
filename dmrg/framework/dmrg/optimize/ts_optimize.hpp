@@ -228,6 +228,7 @@ public:
 
             //std::pair<typename maquis::traits::real_type<value_type>::type, MPSTensor<Matrix, SymmGroup> > res;
             std::pair<double, MPSTensor<Matrix, SymmGroup> > res;
+            double jcd_time;
 
             if (d == Both ||
                 (d == LeftOnly && lr == -1) ||
@@ -241,6 +242,9 @@ public:
             	    BEGIN_TIMING("JCD")
                     res = solve_ietl_jcd(sp, twin_mps, parms, ortho_vecs);
             	    END_TIMING("JCD")
+                    jcd_time = boost::chrono::duration<double>(then-now).count();
+                    maquis::cout << sp.contraction_schedule.mflops(jcd_time) << " MFLOPS "
+                                 << sp.contraction_schedule.bandwidth(jcd_time) << " MB/s " << std::endl;
                 } else if (parms["eigensolver"] == std::string("IETL_DAVIDSON")) {
             	    BEGIN_TIMING("DAVIDSON")
                     res = solve_ietl_davidson(sp, twin_mps, parms, ortho_vecs);
