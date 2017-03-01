@@ -49,7 +49,7 @@ namespace SU2 {
                     Index<SymmGroup> const & right_i,
                     Index<SymmGroup> const & phys_i,
                     ProductBasis<SymmGroup> const & right_pb,
-                    typename SymmGroup::charge lc,
+                    unsigned mps_block,
                     MPSBlock<Matrix, SymmGroup> & mpsb)
     {
         typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
@@ -59,7 +59,8 @@ namespace SU2 {
         typedef typename MatrixGroup<Matrix, SymmGroup>::micro_task micro_task;
         typedef MPSBlock<Matrix, SymmGroup> mpsb_t;
 
-        unsigned l_size = left_i.size_of_block(lc);
+        charge lc = left_i[mps_block].first;
+        unsigned l_size = left_i[mps_block].second;
 
         // output physical index, output offset range = out_right offset + ss2*r_size
         //                                              for ss2 in {0, 1, .., phys_i[s].second}
@@ -128,7 +129,6 @@ namespace SU2 {
                                                  *  left.conj_scales[b1][left_block];
                                 ::SU2::set_coupling(j, two_s, jp, a,k,ap, i, two_sp, ip, scale, couplings);
 
-                                //micro_task tpl; tpl.b2 = b2; tpl.k = r_block;
                                 typename mpsb_t::mapped_value_type::Quadruple tq = boost::make_tuple(b2, r_block, in_offset);
                                 detail::op_iterate_shtm<Matrix, SymmGroup>(W, w_block, couplings, cg, tq,
                                                                            m2_size, r_size, in_offset, out_right_offset);

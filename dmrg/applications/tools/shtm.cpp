@@ -316,7 +316,7 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
 
     MPSBlock<matrix, symm> mpsb;
     shtm_tasks(mpo, left_indices, right_indices, left_i,
-               right_i, physical_i, out_right_pb, lc, mpsb);
+               right_i, physical_i, out_right_pb, left_i.position(lc), mpsb);
 
     mpsb[mc][s][1].print_stats();
     //mpsb[mc][s][0].print_stats();
@@ -378,9 +378,8 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
         schedule_t shtm_tasks_vec(left_i.size());
         unsigned loop_max = left_i.size();
         omp_for(index_type mb, parallel::range<index_type>(0,loop_max), {
-            charge lc = left_i[mb].first;
             shtm_tasks(mpo, left_indices, right_indices, left_i,
-                       right_i, physical_i, out_right_pb, lc, shtm_tasks_vec[mb]);
+                       right_i, physical_i, out_right_pb, mb, shtm_tasks_vec[mb]);
         });
         maquis::cout << "Schedule done\n";
 

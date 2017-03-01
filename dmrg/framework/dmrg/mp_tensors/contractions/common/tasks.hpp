@@ -433,9 +433,8 @@ namespace common {
 
         unsigned loop_max = left_i.size();
         omp_for(index_type mb, parallel::range<index_type>(0,loop_max), {
-            charge lc = left_i[mb].first;
             task_calc(mpo, left_indices, right_indices, left_i,
-                      right_i, physical_i, out_right_pb, lc, contraction_schedule[mb]);
+                      right_i, physical_i, out_right_pb, mb, contraction_schedule[mb]);
         });
 
         size_t sz = 0, a = 0, b = 0, c = 0, d = 0, e = 0;
