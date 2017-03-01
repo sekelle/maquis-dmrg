@@ -56,10 +56,8 @@ namespace common {
         template <typename T>
         struct micro_task_shtm
         {
-            typedef unsigned short IS;
-
             T scale;
-            IS in_offset, b2, k, t_index;
+            unsigned short t_index;
         };
 
     } // namespace detail
@@ -140,8 +138,7 @@ namespace common {
 
         void print_stats() const
         {
-            typedef boost::tuple<unsigned, unsigned, unsigned, unsigned> quadruple;
-            typedef std::map<quadruple, unsigned> amap_t;
+            typedef std::map<unsigned, unsigned> amap_t;
 
             int sw = 4;
 
@@ -150,7 +147,7 @@ namespace common {
             for (int i = 0; i < tasks.size(); ++i)
                 for (int j = 0; j < tasks[i].size(); ++j)
                 {
-                    quadruple tt(tasks[i][j].b2, tasks[i][j].k, tasks[i][j].in_offset, tasks[i][j].t_index); 
+                    unsigned tt = tasks[i][j].t_index; 
                     if (b2_col.count(tt) == 0)
                         b2_col[tt] = cnt++;
                 }
@@ -159,7 +156,7 @@ namespace common {
             for (int i = 0; i < tasks.size(); ++i)
                 for (int j = 0; j < tasks[i].size(); ++j)
                 {
-                    quadruple tt(tasks[i][j].b2, tasks[i][j].k, tasks[i][j].in_offset, tasks[i][j].t_index); 
+                    unsigned tt = tasks[i][j].t_index; 
                     double val = tasks[i][j].scale;
                     alpha(i, b2_col[tt]) = (std::abs(val) > 1e-300) ? val : 1e-301;
                 }
@@ -169,19 +166,7 @@ namespace common {
 
             maquis::cout << leftpad;
             for (amap_t::const_iterator it = b2_col.begin(); it != b2_col.end(); ++it)
-                maquis::cout << std::setw(sw) << std::min(999u, boost::get<3>(it->first));
-            maquis::cout << std::endl;
-            maquis::cout << leftpad;
-            for (amap_t::const_iterator it = b2_col.begin(); it != b2_col.end(); ++it)
-                maquis::cout << std::setw(sw) << boost::get<2>(it->first);
-            maquis::cout << std::endl;
-            maquis::cout << leftpad;
-            for (amap_t::const_iterator it = b2_col.begin(); it != b2_col.end(); ++it)
-                maquis::cout << std::setw(sw) << boost::get<1>(it->first);
-            maquis::cout << std::endl;
-            maquis::cout << leftpad;
-            for (amap_t::const_iterator it = b2_col.begin(); it != b2_col.end(); ++it)
-                maquis::cout << std::setw(sw) << boost::get<0>(it->first);
+                maquis::cout << std::setw(sw) << it->second;
             maquis::cout << std::endl;
 
             std::string hline(lpc + sw * b2_col.size(), '_');

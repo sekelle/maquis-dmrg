@@ -45,6 +45,8 @@
 #include "dmrg/optimize/site_problem.h"
 #include "dmrg/mp_tensors/contractions/non-abelian/engine.hpp"
 
+#include "matrix_group.hpp"
+
 #if defined(USE_TWOU1)
 typedef TwoU1 symm;
 #elif defined(USE_U1DG)
@@ -235,7 +237,7 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
                                           contraction::SU2::rbtm_tasks<Matrix, SMatrix, SymmGroup>);
 
     typedef boost::tuple<charge, charge> chuple;
-    typedef std::map<unsigned, MatrixGroup<Matrix, SymmGroup> > map2;
+    typedef std::map<unsigned, MatrixGroupPrint<Matrix, SymmGroup> > map2;
     typedef std::map<chuple, map2> map1;
 
     map1 matrix_groups;
@@ -265,12 +267,12 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
                 for ( ; it2 != upper; ++it2)
                 {
                     //  conversion from old micro_task to micro_task_shtm
-                    micro_task_shtm task2;
+                    micro_task task2;
                     task2.scale = it2->scale;
                     task2.in_offset = it2->in_offset;
                     task2.b2 = it2->b2;
                     task2.k = it2->k;
-                    task2.t_index = it2->l_size;
+                    task2.r_size = it2->r_size;
                     matrix_groups_ch[offset].push_back(task2);
                 }
 

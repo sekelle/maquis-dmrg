@@ -158,11 +158,12 @@ namespace detail {
     void op_iterate_shtm(typename operator_selector<Matrix, SymmGroup>::type const & W, std::size_t w_block,
                          typename Matrix::value_type couplings[],
                          typename MPSBlock<Matrix, SymmGroup>::mapped_value_type & cg,
-                         typename MatrixGroup<Matrix, SymmGroup>::micro_task task, 
+                         typename MPSBlock<Matrix, SymmGroup>::mapped_value_type::Quadruple tq,
                          unsigned m2_size, unsigned r_size,
                          unsigned in_offset, unsigned out_right_offset)
     {
         using boost::make_tuple;
+        using boost::get;
         typedef typename MPSBlock<Matrix, SymmGroup>::mapped_value_type cgroup;
         typedef typename SparseOperator<Matrix, SymmGroup>::const_iterator block_iterator;
 
@@ -179,11 +180,12 @@ namespace detail {
             else if (rspin == 2) casenr = 1;
             else if (cspin == 2) casenr = 2;
 
-            task.in_offset = in_offset + ss1*m2_size;
+            typename MatrixGroup<Matrix, SymmGroup>::micro_task task;
             task.scale = it->coefficient * couplings[casenr];
 
-            typename cgroup::Quadruple tq = make_tuple(task.b2, task.k, task.in_offset);
-            std::pair<typename cgroup::T_index_t::iterator, bool> pos = cg.T_index.insert(std::make_pair(tq, cg.cnt));
+            //typename cgroup::Quadruple tq = make_tuple(task.b2, task.k, in_offset + ss1*m2_size);
+            typename cgroup::Quadruple tq2 = make_tuple(get<0>(tq), get<1>(tq), get<2>(tq) + ss1*m2_size);
+            std::pair<typename cgroup::T_index_t::iterator, bool> pos = cg.T_index.insert(std::make_pair(tq2, cg.cnt));
 
             if (pos.second) task.t_index = cg.cnt++; // new element (tq, cnt) inserted
             else            task.t_index = pos.first->second;
