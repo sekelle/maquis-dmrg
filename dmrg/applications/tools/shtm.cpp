@@ -292,6 +292,8 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
     //unsigned offprobe = 490, blockstart = 392;
     //mc = lc;
 
+    //unsigned offprobe = 65, blockstart = 60;
+
     //check_contraction(sp, initial, matrix_groups);
 
     matrix_groups[boost::make_tuple(lc, mc)][offprobe].print_stats();
@@ -316,6 +318,8 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
 
     mpsb[mc][s][1].print_stats();
     //mpsb[mc][s][0].print_stats();
+
+    typedef typename Schedule<Matrix, SymmGroup>::schedule_t schedule_t;
 
     if (false)
     { // bypass site_hamil_shtm test
@@ -354,7 +358,7 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
         initial.make_right_paired();
 
         size_t mps_block = initial.data().find_block(lc, lc);
-        std::vector<MPSBlock<matrix, symm> > shtm_tasks_vec(initial.data().n_blocks());
+        schedule_t shtm_tasks_vec(initial.data().n_blocks());
         shtm_tasks_vec[mps_block] = mpsb;
         MPSTensor<matrix, symm> prod = site_hamil_shtm(initial, left, right, mpo, shtm_tasks_vec);
 
@@ -369,7 +373,7 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
     { // test complete contraction for all mps blocks
         initial.make_right_paired();
 
-        std::vector<MPSBlock<matrix, symm> > shtm_tasks_vec(left_i.size());
+        schedule_t shtm_tasks_vec(left_i.size());
         unsigned loop_max = left_i.size();
         omp_for(index_type mb, parallel::range<index_type>(0,loop_max), {
             charge lc = left_i[mb].first;
@@ -420,7 +424,6 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
     //    maquis::cout << std::endl;
     //}
 
-    /*
     { // separate scope
 
     // input_per_mps , for each location in the output MPS, list which input blocks from S and T are required
@@ -463,7 +466,7 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
         }
     }
 
-    std::ofstream ips(("ips" + boost::lexical_cast<std::string>(3)).c_str());
+    std::ofstream ips(("ips" + boost::lexical_cast<std::string>(0)).c_str());
     for (typename map1::const_iterator it1 = stasks.begin();
           it1 != stasks.end(); ++it1)
     {
@@ -494,7 +497,7 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
 
     } //scope
 
-
+/*
     {
     // output_per_T, for each block in T, list all locations in output MPS needing this block
     typedef typename DualIndex<SymmGroup>::const_iterator const_iterator;

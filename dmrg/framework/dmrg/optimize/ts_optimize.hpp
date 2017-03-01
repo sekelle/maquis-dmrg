@@ -201,23 +201,15 @@ public:
             tst.clear();
             SiteProblem<Matrix, SymmGroup> sp(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1]);
 
-            //if (twosweep == 1 && site1 == 6)
+            //if (twosweep == 0 && site1 == 6)
             //{
-            //    save_boundary(left_[site1], "left_1_" + boost::lexical_cast<std::string>(site1));
-            //    save_boundary(right_[site2+1], "right_1_" + boost::lexical_cast<std::string>(site1));
+            //    save_boundary(left_[site1], "left_0_" + boost::lexical_cast<std::string>(site1));
+            //    save_boundary(right_[site2+1], "right_0_" + boost::lexical_cast<std::string>(site1));
 
-            //    storage::archive ari("initial_1_" + boost::lexical_cast<std::string>(site1), "w");
+            //    storage::archive ari("initial_0_" + boost::lexical_cast<std::string>(site1), "w");
             //    twin_mps.save(ari);
             //}
-            //if (twosweep == 3 && site1 == 6)
-            //{
-            //    save_boundary(left_[site1], "left_3_" + boost::lexical_cast<std::string>(site1));
-            //    save_boundary(right_[site2+1], "right_3_" + boost::lexical_cast<std::string>(site1));
 
-            //    storage::archive ari("initial_3_" + boost::lexical_cast<std::string>(site1), "w");
-            //    twin_mps.save(ari);
-            //}
-            
             /// Compute orthogonal vectors
             std::vector<MPSTensor<Matrix, SymmGroup> > ortho_vecs(base::northo);
             for (int n = 0; n < base::northo; ++n) {
