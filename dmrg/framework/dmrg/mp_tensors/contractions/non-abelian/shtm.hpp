@@ -49,7 +49,7 @@ namespace SU2 {
                     Index<SymmGroup> const & right_i,
                     Index<SymmGroup> const & phys_i,
                     ProductBasis<SymmGroup> const & right_pb,
-                    unsigned mps_block,
+                    unsigned left_mps_block,
                     MPSBlock<Matrix, SymmGroup> & mpsb)
     {
         typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
@@ -59,8 +59,8 @@ namespace SU2 {
         typedef typename MatrixGroup<Matrix, SymmGroup>::micro_task micro_task;
         typedef MPSBlock<Matrix, SymmGroup> mpsb_t;
 
-        charge lc = left_i[mps_block].first;
-        unsigned l_size = left_i[mps_block].second;
+        charge lc = left_i[left_mps_block].first;
+        unsigned l_size = left_i[left_mps_block].second;
 
         // output physical index, output offset range = out_right offset + ss2*r_size
         //                                              for ss2 in {0, 1, .., phys_i[s].second}
@@ -80,13 +80,13 @@ namespace SU2 {
                     charge mc = lit->rc;       
                     unsigned m1_size = lit->rs;
                     unsigned left_block = lit - left[b1].begin();
-                    unsigned mps_block = left_i.position(mc);
-                    assert(mps_block != left_i.size());
+                    unsigned in_mps_block = left_i.position(mc);
+                    assert(in_mps_block != left_i.size());
 
                     mpsb[mc].resize(phys_i.size());
                     typename mpsb_t::mapped_value_type & cg = mpsb[mc][s];
                     cg.resize(phys_i[s].second);
-                    cg.mps_block = mps_block;
+                    cg.mps_block = in_mps_block;
                     for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(b1, left_block);
 
                     row_proxy row_b1 = mpo.row(b1);
@@ -108,12 +108,12 @@ namespace SU2 {
                                 if (phys_out != phys) continue;
 
                                 charge tlc = SymmGroup::fuse(mc, phys_in);
-                                unsigned r_block = right[b2].position(tlc, rc);
-                                if (r_block == right[b2].size()) continue;
+                                unsigned right_block = right[b2].position(tlc, rc);
+                                if (right_block == right[b2].size()) continue;
 
                                 assert(right_i.has(tlc));
                                 assert(lit->ls == l_size);
-                                assert(right[b2].right_size(r_block) == r_size);
+                                assert(right[b2].right_size(right_block) == r_size);
 
                                 for (unsigned i = 0 ; i < cg.size(); ++i) {
                                     cg[i].l_size = l_size; cg[i].m_size = m1_size; cg[i].r_size = r_size;
@@ -125,11 +125,11 @@ namespace SU2 {
                                 int j = SymmGroup::spin(mc), jp = SymmGroup::spin(tlc);
                                 int two_sp = std::abs(i - ip), two_s  = std::abs(j - jp);
                                 value_type couplings[4];
-                                value_type scale = right.conj_scales[b2][r_block] * access.scale(op_index)
+                                value_type scale = right.conj_scales[b2][right_block] * access.scale(op_index)
                                                  *  left.conj_scales[b1][left_block];
                                 ::SU2::set_coupling(j, two_s, jp, a,k,ap, i, two_sp, ip, scale, couplings);
 
-                                typename mpsb_t::mapped_value_type::Quadruple tq = boost::make_tuple(b2, r_block, in_offset);
+                                typename mpsb_t::mapped_value_type::Quadruple tq = boost::make_tuple(b2, right_block, in_offset);
                                 detail::op_iterate_shtm<Matrix, SymmGroup>(W, w_block, couplings, cg, tq,
                                                                            m2_size, r_size, in_offset, out_right_offset);
                             } // w_block

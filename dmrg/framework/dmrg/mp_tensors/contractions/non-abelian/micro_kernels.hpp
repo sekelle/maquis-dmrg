@@ -183,7 +183,6 @@ namespace detail {
             typename MatrixGroup<Matrix, SymmGroup>::micro_task task;
             task.scale = it->coefficient * couplings[casenr];
 
-            //typename cgroup::Quadruple tq = make_tuple(task.b2, task.k, in_offset + ss1*m2_size);
             typename cgroup::Quadruple tq2 = make_tuple(get<0>(tq), get<1>(tq), get<2>(tq) + ss1*m2_size);
             std::pair<typename cgroup::T_index_t::iterator, bool> pos = cg.T_index.insert(std::make_pair(tq2, cg.cnt));
 
