@@ -95,7 +95,9 @@ namespace contraction {
     {
         typedef std::vector<DualIndex<SymmGroup> > base;
         typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
+        typedef typename SymmGroup::charge charge;
         typedef typename Matrix::value_type value_type;
+
     public:
 
         LeftIndices() {}
@@ -106,8 +108,8 @@ namespace contraction {
         {
             parallel::scheduler_permute scheduler(mpo.placement_l, parallel::groups_granularity);
 
-            int loop_max = left.aux_dim();
-            omp_for(int b1, parallel::range(0,loop_max), {
+            index_type loop_max = left.aux_dim();
+            omp_for(index_type b1, parallel::range(index_type(0),loop_max), {
 
                 // exploit hermiticity if available
                 if (mpo.herm_info.left_skip(b1))
@@ -123,10 +125,23 @@ namespace contraction {
                     (*this)[b1] = left[b1].basis().transpose(); 
                     conj_scales[b1] = std::vector<value_type>(left[b1].n_blocks(), value_type(1.));
                 }
+
+                DualIndex<SymmGroup> const & di = (*this)[b1];
+                parallel_critical
+                for (std::size_t k = 0; k < di.size(); ++k)
+                {
+                    charge lc = di.left_charge(k);
+                    charge mc = di.right_charge(k);
+                    std::vector<charge> & lcfixed = deltas[lc];
+                    if (std::find(lcfixed.begin(), lcfixed.end(), mc) == lcfixed.end())
+                        lcfixed.push_back(mc);
+                }
+
             });
         }
 
     //private:
+        std::map<charge, std::vector<charge> > deltas;
         std::vector<std::vector<value_type> > conj_scales;
     };
 
@@ -134,6 +149,7 @@ namespace contraction {
     class RightIndices : public std::vector<DualIndex<SymmGroup> >
     {
         typedef std::vector<DualIndex<SymmGroup> > base;
+        typedef typename SymmGroup::charge charge;
         typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
         typedef typename Matrix::value_type value_type;
 
