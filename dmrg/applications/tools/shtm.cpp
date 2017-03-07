@@ -290,9 +290,9 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
 
     //unsigned offprobe = 539;
     //unsigned offprobe = 168, blockstart = 168;
-    unsigned offprobe = 283, blockstart = 181;
-    //unsigned offprobe = 490, blockstart = 392;
-    //mc = lc;
+    //unsigned offprobe = 283, blockstart = 181;
+    unsigned offprobe = 490, blockstart = 392;
+    mc = lc;
 
     //unsigned offprobe = 65, blockstart = 60;
 
@@ -318,7 +318,7 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
     shtm_tasks(mpo, left_indices, right_indices, left_i,
                right_i, physical_i, out_right_pb, left_i.position(lc), mpsb);
 
-    mpsb[mc][s][1].print_stats();
+    mpsb[mc][s][1].print_stats(mpo);
     //mpsb[mc][s][0].print_stats();
 
     typedef typename Schedule<Matrix, SymmGroup>::schedule_t schedule_t;
