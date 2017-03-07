@@ -86,7 +86,7 @@ namespace common {
             return ret;
         }
 
-        void print_stats() const
+        void print_stats(MPOTensor<Matrix, SymmGroup> const & mpo) const
         {
             typedef boost::tuple<unsigned, unsigned, unsigned, unsigned> quadruple;
             typedef std::map<quadruple, unsigned> amap_t;
@@ -117,7 +117,11 @@ namespace common {
 
             maquis::cout << leftpad;
             for (amap_t::const_iterator it = b2_col.begin(); it != b2_col.end(); ++it)
-                maquis::cout << std::setw(sw) << std::min(999u, boost::get<3>(it->first));
+                maquis::cout << std::setw(sw) << mpo.right_spin(boost::get<0>(it->first)).get();
+            maquis::cout << std::endl;
+            maquis::cout << leftpad;
+            for (amap_t::const_iterator it = b2_col.begin(); it != b2_col.end(); ++it)
+                maquis::cout << std::setw(sw) << mpo.num_col_non_zeros(boost::get<0>(it->first));
             maquis::cout << std::endl;
             maquis::cout << leftpad;
             for (amap_t::const_iterator it = b2_col.begin(); it != b2_col.end(); ++it)

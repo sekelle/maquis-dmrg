@@ -298,7 +298,7 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
 
     //check_contraction(sp, initial, matrix_groups);
 
-    matrix_groups[boost::make_tuple(lc, mc)][offprobe].print_stats();
+    matrix_groups[boost::make_tuple(lc, mc)][offprobe].print_stats(mpo);
 
     charge phys;
     size_t s = 0;

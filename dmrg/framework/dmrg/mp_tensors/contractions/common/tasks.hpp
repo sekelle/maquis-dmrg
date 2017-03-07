@@ -168,10 +168,6 @@ namespace common {
             for (amap_t::const_iterator it = b2_col.begin(); it != b2_col.end(); ++it)
                 maquis::cout << std::setw(sw) << it->second;
             maquis::cout << std::endl;
-            maquis::cout << leftpad;
-            for (amap_t::const_iterator it = b2_col.begin(); it != b2_col.end(); ++it)
-                maquis::cout << std::setw(sw) << mpo.right_spin(it->second).get();
-            maquis::cout << std::endl;
 
             std::string hline(lpc + sw * b2_col.size(), '_');
             maquis::cout << hline << std::endl;
