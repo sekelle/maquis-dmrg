@@ -97,7 +97,7 @@ namespace common {
 
         typedef typename detail::micro_task_shtm<value_type> micro_task;
 
-        MatrixGroup() : valid(false) {}
+        MatrixGroup() {}
 
         void add_line(unsigned b1, unsigned k)
         {
@@ -120,7 +120,6 @@ namespace common {
         {
             assert(tasks.size() > 0);
             tasks[tasks.size()-1].push_back(mt);
-            valid = true;
         }
 
         std::vector<micro_task> & current_row()
@@ -224,7 +223,6 @@ namespace common {
         std::vector<std::vector<micro_task> > tasks;
         std::vector<index_type> bs, ks;
 
-        bool valid;
         unsigned l_size, m_size, r_size, offset;
     private:
     };
@@ -290,7 +288,7 @@ namespace common {
             std::size_t t_move = 0, l_load = 0, lgemm_flops = 0, tgemm_flops = 0, collect=0;
             for (int i = 0; i < this->size(); ++i)
             {
-                if (! (*this)[i].valid) continue;
+                if (! (*this)[i].n_tasks()) continue;
 
                 t_move += (*this)[i].n_tasks() * 8 * (*this)[i].m_size * (*this)[i].r_size; 
                 l_load += (*this)[i].tasks.size() * 8 * (*this)[i].l_size * (*this)[i].m_size;
@@ -322,9 +320,9 @@ namespace common {
         T_index_t T_index;
 
         unsigned cnt;
-        unsigned mps_block;
 
     private:
+        unsigned mps_block;
 
         template <class TMatrix>
         void multiply(Matrix const & mps_matrix, TMatrix const & trv, unsigned in_offset, unsigned pos) const
