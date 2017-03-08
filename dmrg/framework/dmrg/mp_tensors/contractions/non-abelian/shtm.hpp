@@ -80,19 +80,15 @@ namespace SU2 {
                 unsigned m1_size = left_i[in_mps_block].second;
 
                 typename mpsb_t::mapped_value_type cg(in_mps_block, phys_i[s].second, l_size, m1_size, r_size);
-
-                int I = SymmGroup::spin(lc), Ip = SymmGroup::spin(rc), two_sp = std::abs(I - Ip);
-                int J = SymmGroup::spin(mc);
+                ::SU2::Wigner9jCache<value_type, SymmGroup> w9j(lc, mc, rc);
 
                 for (index_type b1 = 0; b1 < mpo.row_dim(); ++b1)
                 {
                     unsigned left_block = left[b1].position(lc, mc); if (left_block == left[b1].size()) continue;
-                    int A = mpo.left_spin(b1).get(); if (!::SU2::triangle(J, A, I)) continue;
-
+                    int A = mpo.left_spin(b1).get(); if (!::SU2::triangle(SymmGroup::spin(mc), A, SymmGroup::spin(lc))) continue;
                     for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(b1, left_block);
 
-                    row_proxy row_b1 = mpo.row(b1);
-                    for (typename row_proxy::const_iterator row_it = row_b1.begin(); row_it != row_b1.end(); ++row_it) {
+                    for (typename row_proxy::const_iterator row_it = mpo.row(b1).begin(); row_it != mpo.row(b1).end(); ++row_it) {
                         index_type b2 = row_it.index();
 
                         MPOTensor_detail::term_descriptor<Matrix, SymmGroup, true> access = mpo.at(b1,b2);
@@ -113,11 +109,10 @@ namespace SU2 {
                                 unsigned m2_size = right_i.size_of_block(tlc);
                                 unsigned in_offset = right_pb(phys_in, tlc);
 
-                                int Jp = SymmGroup::spin(tlc), two_s = std::abs(J - Jp);
                                 value_type couplings[4];
                                 value_type scale = right.conj_scales[b2][right_block] * access.scale(op_index)
                                                  *  left.conj_scales[b1][left_block];
-                                ::SU2::set_coupling(J, two_s, Jp, A,K,Ap, I, two_sp, Ip, scale, couplings);
+                                w9j.set_scale(A, K, Ap, SymmGroup::spin(tlc), scale, couplings);
 
                                 typename mpsb_t::mapped_value_type::Quadruple tq = boost::make_tuple(b2, right_block, in_offset);
                                 detail::op_iterate_shtm<Matrix, SymmGroup>(W, w_block, couplings, cg, tq,
