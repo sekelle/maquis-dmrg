@@ -72,6 +72,72 @@ namespace SU2 {
             couplings[3] = prefactor * (T)::SU2::mod_coupling(a, 2, c, d, e, f, g, 2, i);
         }
     }
+
+    template <typename T>
+    class Wigner9jCache
+    {
+    public:
+        Wigner9jCache(int J, int Jp, int A, int I, int Ip) //: coefficients(16)
+        {
+            int K[4], Ap[4];
+
+            if (A == 0) {
+                K[0] = 0; Ap[0] = 0;
+                K[1] = 1; Ap[1] = 1;
+                K[2] = 2; Ap[2] = 2;
+                K[3] = 0; Ap[3] = 0;
+            }
+            else if (A == 1) {
+                K[0] = 0; Ap[0] = 1;
+                K[1] = 1; Ap[1] = 0;
+                K[2] = 2; Ap[2] = 1;
+                K[3] = 1; Ap[3] = 2;
+            }
+            else if (A == 2) {
+                K[0] = 0; Ap[0] = 2;
+                K[1] = 1; Ap[1] = 1;
+                K[2] = 2; Ap[2] = 0;
+                K[3] = 0; Ap[3] = 0;
+            }
+
+            //K[0] = 0; Ap[0] = 0;
+            //K[1] = 1; Ap[1] = 1;
+            //K[2] = 2; Ap[2] = 2;
+            //K[3] = 0; Ap[3] = 0;
+            //K[4+0] = 0; Ap[4+0] = 1;
+            //K[4+1] = 1; Ap[4+1] = 0;
+            //K[4+2] = 1; Ap[4+2] = 2;
+            //K[4+3] = 2; Ap[4+3] = 1;
+            //K[8+0] = 0; Ap[8+0] = 2;
+            //K[8+1] = 1; Ap[8+1] = 1;
+            //K[8+2] = 2; Ap[8+2] = 0;
+            //K[8+3] = 0; Ap[8+3] = 0;
+
+            int two_sp = std::abs(I-Ip), two_s = std::abs(J-Jp);
+            for (int i = 0; i < 4; ++i)
+            {
+                //std::cout << i << " " << J << two_s << Jp << " " << A << K[i] << Ap[i] << " " << I << two_sp << Ip << std::endl;
+                set_coupling(J, two_s, Jp, A, K[i], Ap[i], I, two_sp, Ip, T(1), &coefficients[4*i]);
+            }
+        }
+
+        T* scale(int A, int K, int Ap)
+        {
+            //std::cout << "hash " << A << K << Ap << " " << hash(A,K,Ap) << std::endl;
+            return &coefficients[4*hash(A,K,Ap)];
+        }
+
+    private:
+
+        static int hash(int a, int b, int c)
+        {
+            //return 4*a + b + ((a==1) ? c : 0);
+            return b + ((a==1 && b==1) ? c : 0);
+        }
+
+        //std::vector<T> coefficients;
+        T coefficients[16];
+    };
 }
 
 #endif

@@ -180,10 +180,22 @@ namespace contraction {
                     (*this)[b2] = right[b2].basis();
                     conj_scales[b2] = std::vector<value_type>(right[b2].n_blocks(), value_type(1.));
                 }
+
+                //DualIndex<SymmGroup> const & di = (*this)[b2];
+                //parallel_critical
+                //for (std::size_t k = 0; k < di.size(); ++k)
+                //{
+                //    charge tlc = di.left_charge(k);
+                //    charge rc = di.right_charge(k);
+                //    std::vector<charge> & rcfixed = deltas[rc];
+                //    if (std::find(rcfixed.begin(), rcfixed.end(), tlc) == rcfixed.end())
+                //        rcfixed.push_back(tlc);
+                //}
             });
         }
 
     //private:
+        //std::map<charge, std::vector<charge> > deltas;
         std::vector<std::vector<value_type> > conj_scales;
     };
 
