@@ -239,6 +239,13 @@ namespace common {
         typedef std::map<Quadruple, unsigned> T_index_t;
 
         ContractionGroup() : cnt(0), mps_block(std::numeric_limits<unsigned>::max()) {}
+        ContractionGroup(unsigned b, unsigned s, unsigned ls, unsigned ms, unsigned rs)
+            : cnt(0), mps_block(b), base(s)
+        {
+            for (unsigned i = 0 ; i < s; ++i) {
+                (*this)[i].l_size = ls; (*this)[i].m_size = ms; (*this)[i].r_size = rs;
+            }
+        }
 
         template <class OtherMatrix>
         void create_T(MPSTensor<Matrix, SymmGroup> const & mps, Boundary<OtherMatrix, SymmGroup> const & right,
