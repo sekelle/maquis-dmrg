@@ -159,8 +159,7 @@ namespace detail {
                          typename Matrix::value_type couplings[],
                          typename MPSBlock<Matrix, SymmGroup>::mapped_value_type & cg,
                          typename MPSBlock<Matrix, SymmGroup>::mapped_value_type::Quadruple tq,
-                         unsigned m2_size, unsigned r_size,
-                         unsigned in_offset, unsigned out_right_offset)
+                         unsigned m2_size)
     {
         using boost::make_tuple;
         using boost::get;
@@ -189,7 +188,6 @@ namespace detail {
             if (pos.second) task.t_index = cg.cnt++; // new element (tq, cnt) inserted
             else            task.t_index = pos.first->second;
 
-            cg[ss2].offset = out_right_offset + ss2*r_size;
             cg[ss2].push_back(task);
         }
     }

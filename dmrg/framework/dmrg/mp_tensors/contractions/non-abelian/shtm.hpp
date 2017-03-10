@@ -79,9 +79,10 @@ namespace SU2 {
                 unsigned in_mps_block = left_i.position(mc); if (in_mps_block == left_i.size()) continue;
                 unsigned m1_size = left_i[in_mps_block].second;
 
-                typename mpsb_t::mapped_value_type cg(in_mps_block, phys_i[s].second, l_size, m1_size, r_size);
-                ::SU2::Wigner9jCache<value_type, SymmGroup> w9j(lc, mc, rc);
+                typename mpsb_t::mapped_value_type cg(in_mps_block, phys_i[s].second, l_size, m1_size, r_size,
+                                                      out_right_offset);
 
+                ::SU2::Wigner9jCache<value_type, SymmGroup> w9j(lc, mc, rc);
                 for (index_type b1 = 0; b1 < mpo.row_dim(); ++b1)
                 {
                     unsigned left_block = left[b1].position(lc, mc); if (left_block == left[b1].size()) continue;
@@ -115,8 +116,7 @@ namespace SU2 {
                                 w9j.set_scale(A, K, Ap, SymmGroup::spin(tlc), scale, couplings);
 
                                 typename mpsb_t::mapped_value_type::Quadruple tq = boost::make_tuple(b2, right_block, in_offset);
-                                detail::op_iterate_shtm<Matrix, SymmGroup>(W, w_block, couplings, cg, tq,
-                                                                           m2_size, r_size, in_offset, out_right_offset);
+                                detail::op_iterate_shtm<Matrix, SymmGroup>(W, w_block, couplings, cg, tq, m2_size);
                             } // w_block
                         } //op_index
                     } // b2

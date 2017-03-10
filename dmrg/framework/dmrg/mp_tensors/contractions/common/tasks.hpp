@@ -40,6 +40,7 @@ namespace contraction {
 namespace common {
 
     using boost::get; 
+    namespace bl = boost::lambda;
 
     namespace detail { 
 
@@ -98,6 +99,7 @@ namespace common {
         typedef typename detail::micro_task_shtm<value_type> micro_task;
 
         MatrixGroup() {}
+        MatrixGroup(unsigned ls, unsigned ms, unsigned rs) : l_size(ls), m_size(ms), r_size(rs) {}
 
         void add_line(unsigned b1, unsigned k)
         {
@@ -129,11 +131,14 @@ namespace common {
 
         std::size_t n_tasks() const
         {
-            std::size_t ret = 0;
-            for (int i = 0; i < tasks.size(); ++i)
-                ret += tasks[i].size();
-            return ret;
+            return std::accumulate(tasks.begin(), tasks.end(), 0,
+                                   bl::_1 + bl::bind(&std::vector<micro_task>::size, bl::_2));
         }
+
+        std::size_t t_move()      const { return n_tasks() * 8 * m_size * r_size; }
+        std::size_t l_load()      const { return (n_tasks()) ? tasks.size() * 8 * l_size * m_size : 0; }
+        std::size_t lgemm_flops() const { return (n_tasks()) ? tasks.size() * 2 * l_size * m_size * r_size : 0; }
+        std::size_t collect()     const { return (n_tasks()) ? 8 * l_size * r_size : 0; }
 
         void print_stats(MPOTensor<Matrix, SymmGroup> const & mpo) const
         {
@@ -218,13 +223,14 @@ namespace common {
 
             return ret;
         }       
-    
-    //private:
+
+        unsigned offset;
+
+    private:
+        unsigned l_size, m_size, r_size;
+
         std::vector<std::vector<micro_task> > tasks;
         std::vector<index_type> bs, ks;
-
-        unsigned l_size, m_size, r_size, offset;
-    private:
     };
 
     template <class Matrix, class SymmGroup>
@@ -237,12 +243,11 @@ namespace common {
         typedef std::map<Quadruple, unsigned> T_index_t;
 
         ContractionGroup() : cnt(0), mps_block(std::numeric_limits<unsigned>::max()) {}
-        ContractionGroup(unsigned b, unsigned s, unsigned ls, unsigned ms, unsigned rs)
-            : cnt(0), mps_block(b), base(s)
+        ContractionGroup(unsigned b, unsigned s, unsigned ls, unsigned ms, unsigned rs, unsigned out_offset)
+            : cnt(0), mps_block(b), base(s, typename base::value_type(ls, ms, rs))
         {
-            for (unsigned i = 0 ; i < s; ++i) {
-                (*this)[i].l_size = ls; (*this)[i].m_size = ms; (*this)[i].r_size = rs;
-            }
+            for (unsigned i = 0 ; i < s; ++i)
+                (*this)[i].offset = out_offset + i * rs;
         }
 
         template <class OtherMatrix>
@@ -275,10 +280,8 @@ namespace common {
 
         std::size_t n_tasks() const
         {
-            std::size_t ret = 0;
-            for (int i = 0; i < this->size(); ++i)
-                ret += (*this)[i].n_tasks(); 
-            return ret;
+            return std::accumulate(this->begin(), this->end(), 0,
+                                   bl::_1 + bl::bind(&base::value_type::n_tasks, bl::_2));
         }
 
         template <class OtherMatrix>
@@ -288,13 +291,10 @@ namespace common {
             std::size_t t_move = 0, l_load = 0, lgemm_flops = 0, tgemm_flops = 0, collect=0;
             for (int i = 0; i < this->size(); ++i)
             {
-                if (! (*this)[i].n_tasks()) continue;
-
-                t_move += (*this)[i].n_tasks() * 8 * (*this)[i].m_size * (*this)[i].r_size; 
-                l_load += (*this)[i].tasks.size() * 8 * (*this)[i].l_size * (*this)[i].m_size;
-                lgemm_flops += (*this)[i].tasks.size() * 2 * (*this)[i].l_size * (*this)[i].m_size * (*this)[i].r_size;
-
-                collect += 8 * (*this)[i].l_size * (*this)[i].r_size;
+                t_move += (*this)[i].t_move();
+                l_load += (*this)[i].l_load();
+                lgemm_flops += (*this)[i].lgemm_flops();
+                collect += (*this)[i].collect();
             }
 
             for (typename T_index_t::const_iterator it = T_index.begin(); it != T_index.end(); ++it)
@@ -303,8 +303,7 @@ namespace common {
                 unsigned b2 = boost::get<0>(it->first);
                 unsigned r_block = boost::get<1>(it->first);
 
-                unsigned l_size = num_rows(mps.data()[mps_block]);
-                //unsigned l_size = mps.row_dim()[mps_block].second;
+                unsigned l_size = mps.row_dim()[mps_block].second;
                 unsigned m_size = right[b2].left_size(r_block);
                 unsigned r_size = right[b2].right_size(r_block);
 
@@ -315,7 +314,6 @@ namespace common {
         }
 
         // invariant: phys_out, phys_offset
-
         mutable std::vector<Matrix> T;
         T_index_t T_index;
 
@@ -399,7 +397,6 @@ namespace common {
     template <class Matrix, class SymmGroup>
     struct Schedule
     {
-        //typedef std::vector<MPSBlock<Matrix, SymmGroup> > schedule_t;
         typedef Schedule_<Matrix, SymmGroup> schedule_t;
     }; 
 
