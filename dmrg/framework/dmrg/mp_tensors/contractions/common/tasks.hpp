@@ -415,6 +415,8 @@ namespace common {
         typedef typename task_capsule<Matrix, SymmGroup>::map_t map_t;
         typedef typename MatrixGroup<Matrix, SymmGroup>::micro_task micro_task;
 
+        boost::chrono::high_resolution_clock::time_point now = boost::chrono::high_resolution_clock::now();
+
         LeftIndices<Matrix, SMatrix, SymmGroup> left_indices(left, mpo);
         RightIndices<Matrix, SMatrix, SymmGroup> right_indices(right, mpo);
 
@@ -468,6 +470,9 @@ namespace common {
                      << " F " << total_flops / 1024 << "KF, "
                      << " B " << total_mem / 1024 << "KB, "
                      << std::endl;
+
+        boost::chrono::high_resolution_clock::time_point then = boost::chrono::high_resolution_clock::now();
+        maquis::cout << "Time elapsed in SCHEDULE: " << boost::chrono::duration<double>(then - now).count() << std::endl;
 
         return contraction_schedule;
     }
