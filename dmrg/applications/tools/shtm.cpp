@@ -45,8 +45,6 @@
 #include "dmrg/optimize/site_problem.h"
 #include "dmrg/mp_tensors/contractions/non-abelian/engine.hpp"
 
-#include "matrix_group.hpp"
-
 #if defined(USE_TWOU1)
 typedef TwoU1 symm;
 #elif defined(USE_U1DG)
@@ -106,6 +104,89 @@ void load(Loadable & Data, std::string file)
     std::ifstream ifs(file.c_str());
     boost::archive::binary_iarchive iar(ifs, std::ios::binary);
     iar >> Data; 
+}
+
+struct f3 { f3(double a_) : a(a_) {} double a; };
+inline std::ostream & operator<<(std::ostream & os, f3 A)
+{
+    double a = A.a;
+    if (std::abs(a) < 1e-300)
+    {
+        os << '0';
+        return os;
+    }
+
+    char sign = (a>0) ? '+' : '-';
+    a = std::abs(a);
+    double mant = a * pow(10, -floor(log10(std::abs(a))));
+    int d1 = floor(mant);
+    int d2 = int(floor(mant * 10)) % (d1*10);
+
+    std::string out = boost::lexical_cast<std::string>(d1) + sign + boost::lexical_cast<std::string>(d2);
+
+    os << out;
+    return os;
+}
+
+// provides MatrixGroupPrint, verbose version used for converting from rbtm schedule types
+#include "matrix_group.hpp"
+
+//print function for the MatrixGroup used in contraction codes
+template <class Matrix, class SmallMatrix, class SymmGroup>
+void print(MatrixGroup<Matrix, SymmGroup> const & mpsb, MPOTensor<SmallMatrix, SymmGroup> const & mpo)
+{
+    typedef std::map<unsigned, unsigned> amap_t;
+
+    std::vector<std::vector<typename MatrixGroup<Matrix, SymmGroup>::micro_task> >
+        const & tasks = mpsb.get_tasks();
+    std::vector<MPOTensor_detail::index_type> const & bs = mpsb.get_bs();
+    int sw = 4;
+
+    unsigned cnt = 0;
+    amap_t b2_col;
+    for (int i = 0; i < tasks.size(); ++i)
+        for (int j = 0; j < tasks[i].size(); ++j)
+        {
+            unsigned tt = tasks[i][j].t_index;
+            if (b2_col.count(tt) == 0)
+                b2_col[tt] = cnt++;
+        }
+
+    alps::numeric::matrix<double> alpha(tasks.size(), b2_col.size(), 0);
+    for (int i = 0; i < tasks.size(); ++i)
+        for (int j = 0; j < tasks[i].size(); ++j)
+        {
+            unsigned tt = tasks[i][j].t_index;
+            double val = tasks[i][j].scale;
+            alpha(i, b2_col[tt]) = (std::abs(val) > 1e-300) ? val : 1e-301;
+        }
+
+    int lpc = sw + 2 + sw;
+    std::string leftpad(lpc, ' ');
+
+    maquis::cout << leftpad;
+    for (amap_t::const_iterator it = b2_col.begin(); it != b2_col.end(); ++it)
+        maquis::cout << std::setw(sw) << it->second;
+    maquis::cout << std::endl;
+
+    std::string hline(lpc + sw * b2_col.size(), '_');
+    maquis::cout << hline << std::endl;
+
+    for (int i = 0; i < bs.size(); ++i)
+    {
+        maquis::cout << std::setw(sw) << bs[i] << std::setw(sw) << mpo.left_spin(bs[i]).get() << "| ";
+        for (amap_t::const_iterator it = b2_col.begin(); it != b2_col.end(); ++it)
+        {
+            int col = it->second;
+            double val = alpha(i, col);
+            if (val == 0.)
+                maquis::cout << std::setw(sw) << ".";
+            else
+                maquis::cout << std::setw(sw) << f3(alpha(i, col));
+        }
+        maquis::cout << std::endl;
+    }
+    maquis::cout << std::endl << std::endl;
 }
 
 /*
@@ -318,8 +399,8 @@ void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGr
     shtm_tasks(mpo, left_indices, right_indices, left_i,
                right_i, physical_i, out_right_pb, left_i.position(lc), mpsb);
 
-    mpsb[mc][s][0].print_stats(mpo);
-    mpsb[mc][s][1].print_stats(mpo);
+    print(mpsb[mc][s][0], mpo);
+    print(mpsb[mc][s][1], mpo);
 
     typedef typename Schedule<Matrix, SymmGroup>::schedule_t schedule_t;
 

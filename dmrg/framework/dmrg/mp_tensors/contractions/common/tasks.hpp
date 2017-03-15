@@ -65,29 +65,6 @@ namespace common {
 
     #include "dmrg/mp_tensors/contractions/common/tasks_old.hpp"
 
-    struct f3 { f3(double a_) : a(a_) {} double a; };
-    inline std::ostream & operator<<(std::ostream & os, f3 A)
-    {
-        double a = A.a;
-        if (std::abs(a) < 1e-300)
-        {
-            os << '0';
-            return os;
-        }
-
-        char sign = (a>0) ? '+' : '-';
-        a = std::abs(a);
-        double mant = a * pow(10, -floor(log10(std::abs(a))));
-        int d1 = floor(mant);
-        int d2 = int(floor(mant * 10)) % (d1*10);
-
-        std::string out = boost::lexical_cast<std::string>(d1) + sign + boost::lexical_cast<std::string>(d2);
-
-        os << out;
-        return os;
-    }
-
-
     template <class Matrix, class SymmGroup>
     class MatrixGroup
     {
@@ -135,64 +112,6 @@ namespace common {
                                    bl::_1 + bl::bind(&std::vector<micro_task>::size, bl::_2));
         }
 
-        std::size_t t_move()      const { return n_tasks() * 8 * m_size * r_size; }
-        std::size_t l_load()      const { return (n_tasks()) ? tasks.size() * 8 * l_size * m_size : 0; }
-        std::size_t lgemm_flops() const { return (n_tasks()) ? tasks.size() * 2 * l_size * m_size * r_size : 0; }
-        std::size_t collect()     const { return (n_tasks()) ? 8 * l_size * r_size : 0; }
-
-        void print_stats(MPOTensor<Matrix, SymmGroup> const & mpo) const
-        {
-            typedef std::map<unsigned, unsigned> amap_t;
-
-            int sw = 4;
-
-            unsigned cnt = 0;
-            amap_t b2_col;
-            for (int i = 0; i < tasks.size(); ++i)
-                for (int j = 0; j < tasks[i].size(); ++j)
-                {
-                    unsigned tt = tasks[i][j].t_index; 
-                    if (b2_col.count(tt) == 0)
-                        b2_col[tt] = cnt++;
-                }
-
-            alps::numeric::matrix<double> alpha(tasks.size(), b2_col.size(), 0);
-            for (int i = 0; i < tasks.size(); ++i)
-                for (int j = 0; j < tasks[i].size(); ++j)
-                {
-                    unsigned tt = tasks[i][j].t_index; 
-                    double val = tasks[i][j].scale;
-                    alpha(i, b2_col[tt]) = (std::abs(val) > 1e-300) ? val : 1e-301;
-                }
-
-            int lpc = sw + 2 + sw;
-            std::string leftpad(lpc, ' ');
-
-            maquis::cout << leftpad;
-            for (amap_t::const_iterator it = b2_col.begin(); it != b2_col.end(); ++it)
-                maquis::cout << std::setw(sw) << it->second;
-            maquis::cout << std::endl;
-
-            std::string hline(lpc + sw * b2_col.size(), '_');
-            maquis::cout << hline << std::endl;
-
-            for (int i = 0; i < bs.size(); ++i)
-            {
-                maquis::cout << std::setw(sw) << bs[i] << std::setw(sw) << mpo.left_spin(bs[i]).get() << "| ";
-                for (amap_t::const_iterator it = b2_col.begin(); it != b2_col.end(); ++it)
-                {
-                    int col = it->second;
-                    double val = alpha(i, col);
-                    if (val == 0.)
-                        maquis::cout << std::setw(sw) << "."; 
-                    else
-                        maquis::cout << std::setw(sw) << f3(alpha(i, col)); 
-                }
-                maquis::cout << std::endl;
-            }
-            maquis::cout << std::endl << std::endl;
-        }
-
         template <class SmallMatrix, class OtherMatrix>
         Matrix contract(Boundary<OtherMatrix, SymmGroup> const & left, std::vector<Matrix> const & T,
                         MPOTensor<SmallMatrix, SymmGroup> const & mpo) const
@@ -220,6 +139,14 @@ namespace common {
 
             return ret;
         }       
+
+        std::size_t t_move()      const { return n_tasks() * 8 * m_size * r_size; }
+        std::size_t l_load()      const { return (n_tasks()) ? tasks.size() * 8 * l_size * m_size : 0; }
+        std::size_t lgemm_flops() const { return (n_tasks()) ? tasks.size() * 2 * l_size * m_size * r_size : 0; }
+        std::size_t collect()     const { return (n_tasks()) ? 8 * l_size * r_size : 0; }
+
+        std::vector<std::vector<micro_task> > const & get_tasks() const { return tasks; }
+        std::vector<index_type> const & get_bs() const { return bs; }
 
         unsigned offset;
 
