@@ -160,8 +160,7 @@ namespace detail {
                          typename MPSBlock<Matrix, SymmGroup>::mapped_value_type & cg,
                          typename MPSBlock<Matrix, SymmGroup>::mapped_value_type::t_key tq,
                          unsigned m2_size,
-                         typename boost::unordered_map<typename MPSBlock<Matrix, SymmGroup>::mapped_value_type::t_key, unsigned> & t_map,
-                         unsigned & cur_pos)
+                         typename boost::unordered_map<typename MPSBlock<Matrix, SymmGroup>::mapped_value_type::t_key, unsigned> & t_map)
     {
         using boost::make_tuple;
         using boost::get;
@@ -186,10 +185,8 @@ namespace detail {
             task.scale = it->coefficient * couplings[casenr];
 
             typename cgroup::t_key tq2 = make_tuple(get<0>(tq), get<1>(tq), get<2>(tq) + ss1*m2_size);
-            std::pair<typename t_map_t::iterator, bool> pos = t_map.insert(std::make_pair(tq2, cur_pos));
-
-            if (pos.second) task.t_index = cur_pos++; // new element (tq, cnt) inserted
-            else            task.t_index = pos.first->second;
+            std::pair<typename t_map_t::iterator, bool> pos = t_map.insert(std::make_pair(tq2, t_map.size()));
+            task.t_index = pos.first->second;
 
             cg[ss2].push_back(task);
         }

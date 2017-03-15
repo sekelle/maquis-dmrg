@@ -87,7 +87,6 @@ namespace SU2 {
                 ::SU2::Wigner9jCache<value_type, SymmGroup> w9j(lc, mc, rc);
 
                 boost::unordered_map<t_key, unsigned> t_index;
-                unsigned cnt = 0;
                 for (index_type b1 = 0; b1 < mpo.row_dim(); ++b1)
                 {
                     unsigned left_block = left[b1].position(lc, mc); if (left_block == left[b1].size()) continue;
@@ -121,15 +120,17 @@ namespace SU2 {
                                 w9j.set_scale(A, K, Ap, SymmGroup::spin(tlc), scale, couplings);
 
                                 typename mpsb_t::mapped_value_type::t_key tq = boost::make_tuple(b2, right_block, in_offset);
-                                detail::op_iterate_shtm<Matrix, SymmGroup>(W, w_block, couplings, cg, tq, m2_size, t_index, cnt);
+                                detail::op_iterate_shtm<Matrix, SymmGroup>(W, w_block, couplings, cg, tq, m2_size, t_index);
                             } // w_block
                         } //op_index
                     } // b2
                 } // b1
+
                 cg.t_key_vec.resize(t_index.size());
                 for (typename boost::unordered_map<t_key, unsigned>::const_iterator kit = t_index.begin(); kit != t_index.end(); ++kit)
                     cg.t_key_vec[kit->second] = kit->first;
                 if (cg.n_tasks() > 0) mpsb[mc].push_back(cg);
+
             } // mci
         } // phys_out
     }
