@@ -231,8 +231,6 @@ namespace contraction {
         typedef typename common::MPSBlock<Matrix, SymmGroup>::const_iterator const_iterator;
 
         ket_tensor.make_right_paired();
-        common::LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
-        common::RightIndices<Matrix, OtherMatrix, SymmGroup> right_indices(right, mpo);
 
         Index<SymmGroup> const & physical_i = ket_tensor.site_dim(), right_i = ket_tensor.col_dim(),
                                  left_i = ket_tensor.row_dim();
@@ -253,13 +251,12 @@ namespace contraction {
                 {
                     common::ContractionGroup<Matrix, SymmGroup> const & cg = it->second[s];
                     cg.create_T(ket_tensor, right, mpo);
-                    for (size_t ss1 = 0; ss1 < cg.size(); ++ss1)
+                    for (size_t ss2 = 0; ss2 < cg.size(); ++ss2)
                     {
-                        if (!cg[ss1].n_tasks()) continue;
-                        unsigned offset = cg[ss1].offset;
-                        Matrix C = cg[ss1].contract(left, cg.T, mpo);
+                        if (!cg[ss2].n_tasks()) continue;
+                        Matrix C = cg[ss2].contract(left, cg.T, mpo);
                         maquis::dmrg::detail::iterator_axpy(&C(0,0), &C(0,0) + num_rows(C) * num_cols(C),
-                                                            &destination(0, offset), value_type(1.0));
+                                                            &destination(0, cg[ss2].offset), value_type(1.0));
                     }
                     cg.drop_T();
                 }

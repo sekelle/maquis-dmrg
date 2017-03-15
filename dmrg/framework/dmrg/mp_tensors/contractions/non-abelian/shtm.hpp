@@ -129,7 +129,7 @@ namespace SU2 {
                 cg.t_key_vec.resize(t_index.size());
                 for (typename boost::unordered_map<t_key, unsigned>::const_iterator kit = t_index.begin(); kit != t_index.end(); ++kit)
                     cg.t_key_vec[kit->second] = kit->first;
-                if (cg.n_tasks() > 0) mpsb[mc].push_back(cg);
+                if (cg.n_tasks()) mpsb[mc].push_back(cg);
 
             } // mci
         } // phys_out
