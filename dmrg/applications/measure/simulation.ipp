@@ -30,7 +30,7 @@
 #include "simulation.h"
 
 template <class SymmGroup>
-void simulation<SymmGroup>::run(DmrgParameters & parms)
+void measure_simulation<SymmGroup>::run(DmrgParameters & parms)
 {
     if (parms["COMPLEX"]) {
         measure_sim<cmatrix, SymmGroup> sim(parms);
@@ -38,5 +38,17 @@ void simulation<SymmGroup>::run(DmrgParameters & parms)
     } else {
         measure_sim<matrix, SymmGroup> sim(parms);
         sim.run();
+    }
+}
+
+template <class SymmGroup>
+void measure_simulation<SymmGroup>::measure_observable(DmrgParameters & parms, std::string name, std::vector<double> & results)
+{
+    if (parms["COMPLEX"]) {
+        measure_sim<cmatrix, SymmGroup> sim(parms);
+        sim.measure_observable(name, results);
+    } else {
+        measure_sim<matrix, SymmGroup> sim(parms);
+        sim.measure_observable(name, results);
     }
 }

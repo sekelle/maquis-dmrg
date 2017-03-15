@@ -35,14 +35,14 @@ struct simulation_base {
 };
 
 template <class SymmGroup>
-struct simulation : public simulation_base {
+struct dmrg_simulation : public simulation_base {
     void run(DmrgParameters & parms);
 };
 
 struct simulation_traits {
     typedef boost::shared_ptr<simulation_base> shared_ptr;
     template <class SymmGroup> struct F {
-        typedef simulation<SymmGroup> type;
+        typedef dmrg_simulation<SymmGroup> type;
     };
 };
 

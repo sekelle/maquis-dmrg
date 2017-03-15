@@ -44,7 +44,7 @@ template <class Matrix, class SymmGroup>
 class measure_sim : public sim<Matrix, SymmGroup> {
     
     typedef sim<Matrix, SymmGroup> base;
-    typedef optimizer_base<Matrix, SymmGroup, storage::disk> opt_base_t;
+    typedef typename Model<Matrix, SymmGroup>::measurements_type measurements_type;
     
     using base::mps;
     using base::mpo;
@@ -100,6 +100,18 @@ public:
         if (parms.is_set("MEASURE[ChemEntropy]"))
             measure_transform<Matrix, SymmGroup>()(rfile, "/spectrum/results", base::lat, mps);
         #endif
+    }
+
+    void measure_observable(std::string name_, std::vector<double> & results)
+    {
+        for (typename measurements_type::iterator it = all_measurements.begin(); it != all_measurements.end(); ++it)
+        {
+            if (it->name() == name_)
+            {
+                maquis::cout << "Measuring " << it->name() << std::endl;
+                it->evaluate(mps);
+            }
+        }
     }
 };
 

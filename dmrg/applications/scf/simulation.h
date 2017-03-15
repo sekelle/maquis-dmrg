@@ -24,8 +24,8 @@
  *
  *****************************************************************************/
 
-#ifndef MAQUIS_SIM_RUN_H
-#define MAQUIS_SIM_RUN_H
+#ifndef MAQUIS_SCF_SIM_RUN_H
+#define MAQUIS_SCF_SIM_RUN_H
 
 #include <boost/shared_ptr.hpp>
 
@@ -34,7 +34,19 @@
 struct simulation_base {
     virtual ~simulation_base() {}
     virtual void run(DmrgParameters & parms) =0;
-    virtual void measure_observable(DmrgParameters & parms, std::string name, std::vector<double> & results)=0;
+    virtual void measure_observable(DmrgParameters & parms, std::string name, std::vector<double> & results) {}
+};
+
+template <class SymmGroup>
+struct dmrg_simulation : public simulation_base {
+    void run(DmrgParameters & parms);
+};
+
+struct dmrg_simulation_traits {
+    typedef boost::shared_ptr<simulation_base> shared_ptr;
+    template <class SymmGroup> struct F {
+        typedef dmrg_simulation<SymmGroup> type;
+    };
 };
 
 template <class SymmGroup>
@@ -43,11 +55,12 @@ struct measure_simulation : public simulation_base {
     void measure_observable(DmrgParameters & parms, std::string name, std::vector<double> & results);
 };
 
-struct simulation_traits {
+struct measure_simulation_traits {
     typedef boost::shared_ptr<simulation_base> shared_ptr;
     template <class SymmGroup> struct F {
         typedef measure_simulation<SymmGroup> type;
     };
 };
+
 
 #endif
