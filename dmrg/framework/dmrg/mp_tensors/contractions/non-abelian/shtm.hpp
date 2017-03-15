@@ -115,7 +115,7 @@ namespace SU2 {
                                                  *  left.conj_scales[b1][left_block];
                                 w9j.set_scale(A, K, Ap, SymmGroup::spin(tlc), scale, couplings);
 
-                                typename mpsb_t::mapped_value_type::Quadruple tq = boost::make_tuple(b2, right_block, in_offset);
+                                typename mpsb_t::mapped_value_type::t_key tq = boost::make_tuple(b2, right_block, in_offset);
                                 detail::op_iterate_shtm<Matrix, SymmGroup>(W, w_block, couplings, cg, tq, m2_size);
                             } // w_block
                         } //op_index

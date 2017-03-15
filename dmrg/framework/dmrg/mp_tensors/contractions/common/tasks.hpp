@@ -193,9 +193,6 @@ namespace common {
             maquis::cout << std::endl << std::endl;
         }
 
-    // invariant: out_offset = phys_offset + ss2*r_size
-    // invariant per b2: phys_in, in_offset
-
         template <class OtherMatrix>
         Matrix contract(Boundary<OtherMatrix, SymmGroup> const & left, std::vector<Matrix> const & T,
                         MPOTensor<Matrix, SymmGroup> const & mpo) const
@@ -239,8 +236,8 @@ namespace common {
     public:
         typedef std::vector<MatrixGroup<Matrix, SymmGroup> > base;    
         typedef typename Matrix::value_type value_type;
-        typedef boost::tuple<unsigned, unsigned, unsigned> Quadruple;
-        typedef std::map<Quadruple, unsigned> T_index_t;
+        typedef boost::tuple<unsigned, unsigned, unsigned> t_key;
+        typedef std::map<t_key, unsigned> T_index_t;
 
         ContractionGroup() : cnt(0), mps_block(std::numeric_limits<unsigned>::max()) {}
         ContractionGroup(unsigned b, unsigned s, unsigned ls, unsigned ms, unsigned rs, unsigned out_offset)
@@ -259,7 +256,6 @@ namespace common {
             if (!this->size()) return;
 
             Matrix const & mps_matrix = mps.data()[mps_block]; 
-            unsigned l_size = num_rows(mps_matrix);
 
             for (typename T_index_t::const_iterator it = T_index.begin(); it != T_index.end(); ++it)
             {
