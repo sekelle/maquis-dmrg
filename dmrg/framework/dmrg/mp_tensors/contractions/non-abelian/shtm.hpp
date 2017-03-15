@@ -52,7 +52,7 @@ namespace SU2 {
                     unsigned left_mps_block,
                     MPSBlock<Matrix, SymmGroup> & mpsb)
     {
-        typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
+        typedef MPOTensor_detail::index_type index_type;
         typedef typename MPOTensor<Matrix, SymmGroup>::row_proxy row_proxy;
         typedef typename SymmGroup::charge charge;
         typedef typename Matrix::value_type value_type;

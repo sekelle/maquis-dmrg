@@ -91,7 +91,7 @@ namespace common {
     template <class Matrix, class SymmGroup>
     class MatrixGroup
     {
-        typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
+        typedef MPOTensor_detail::index_type index_type;
         typedef typename Matrix::value_type value_type;
 
     public:
@@ -193,9 +193,9 @@ namespace common {
             maquis::cout << std::endl << std::endl;
         }
 
-        template <class OtherMatrix>
+        template <class SmallMatrix, class OtherMatrix>
         Matrix contract(Boundary<OtherMatrix, SymmGroup> const & left, std::vector<Matrix> const & T,
-                        MPOTensor<Matrix, SymmGroup> const & mpo) const
+                        MPOTensor<SmallMatrix, SymmGroup> const & mpo) const
         {
             Matrix ret(l_size, r_size);
             for (index_type i = 0; i < tasks.size(); ++i)
@@ -252,9 +252,9 @@ namespace common {
                                    bl::_1 + bl::bind(&base::value_type::n_tasks, bl::_2));
         }
 
-        template <class OtherMatrix>
-        void create_T(MPSTensor<Matrix, SymmGroup> const & mps, Boundary<OtherMatrix, SymmGroup> const & right,
-                      MPOTensor<Matrix, SymmGroup> const & mpo) const
+        template <class DefaultMatrix, class SmallMatrix, class OtherMatrix>
+        void create_T(MPSTensor<DefaultMatrix, SymmGroup> const & mps, Boundary<OtherMatrix, SymmGroup> const & right,
+                      MPOTensor<SmallMatrix, SymmGroup> const & mpo) const
         {
             if (!this->size()) return;
 
@@ -276,9 +276,9 @@ namespace common {
 
         void drop_T() const { T = std::vector<Matrix>(); }
 
-        template <class OtherMatrix>
+        template <class DefaultMatrix, class OtherMatrix>
         boost::tuple<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t>
-        data_stats(MPSTensor<Matrix, SymmGroup> const & mps, RightIndices<Matrix, OtherMatrix, SymmGroup> const & right) const
+        data_stats(MPSTensor<DefaultMatrix, SymmGroup> const & mps, RightIndices<DefaultMatrix, OtherMatrix, SymmGroup> const & right) const
         {
             std::size_t t_move = 0, l_load = 0, lgemm_flops = 0, tgemm_flops = 0, collect=0;
             for (int i = 0; i < this->size(); ++i)
@@ -311,8 +311,8 @@ namespace common {
     private:
         unsigned mps_block;
 
-        template <class TMatrix>
-        void multiply(Matrix const & mps_matrix, TMatrix const & trv, unsigned in_offset, unsigned pos) const
+        template <class DefaultMatrix, class TMatrix>
+        void multiply(DefaultMatrix const & mps_matrix, TMatrix const & trv, unsigned in_offset, unsigned pos) const
         {
             unsigned l_size = num_rows(mps_matrix); 
             unsigned m_size = num_rows(trv); 
@@ -343,9 +343,8 @@ namespace common {
             return ret;
         }
 
-        template <class OtherMatrix>
-        stats_t
-        data_stats(MPSTensor<Matrix, SymmGroup> const & mps, RightIndices<Matrix, OtherMatrix, SymmGroup> const & right) const
+        template <class DefaultMatrix, class OtherMatrix>
+        stats_t data_stats(MPSTensor<DefaultMatrix, SymmGroup> const & mps, RightIndices<DefaultMatrix, OtherMatrix, SymmGroup> const & right) const
         {
             stats_t ret = boost::make_tuple(0,0,0,0,0);
             for (const_iterator it = this->begin(); it != this->end(); ++ it)
@@ -400,7 +399,7 @@ namespace common {
         typedef typename storage::constrained<Matrix>::type SMatrix;
         typedef typename SymmGroup::charge charge;
         typedef typename Matrix::value_type value_type;
-        typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
+        typedef MPOTensor_detail::index_type index_type;
         typedef typename task_capsule<Matrix, SymmGroup>::map_t map_t;
         typedef typename MatrixGroup<Matrix, SymmGroup>::micro_task micro_task;
 
