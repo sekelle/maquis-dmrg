@@ -91,4 +91,38 @@ struct compare_pair_inverse
     }
 };
 
+namespace boost { namespace tuples {
+
+  namespace detail {
+
+    template <class Tuple, size_t Index = length<Tuple>::value - 1>
+    struct HashValueImpl
+    {
+      static void apply(size_t& seed, Tuple const& tuple)
+      {
+        HashValueImpl<Tuple, Index-1>::apply(seed, tuple);
+        boost::hash_combine(seed, tuple.get<Index>());
+      }
+    };
+
+    template <class Tuple>
+    struct HashValueImpl<Tuple, 0>
+    {
+      static void apply(size_t& seed, Tuple const& tuple)
+      {
+        boost::hash_combine(seed, tuple.get<0>());
+      }
+    };
+  } // namespace detail
+
+  template <class Tuple>
+  size_t hash_value(Tuple const& tuple)
+  {
+    size_t seed = 0;
+    detail::HashValueImpl<Tuple>::apply(seed, tuple);
+    return seed;
+  }
+
+}}
+
 #endif /* UTILS_HPP_ */

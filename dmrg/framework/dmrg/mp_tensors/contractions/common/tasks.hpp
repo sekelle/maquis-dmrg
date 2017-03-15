@@ -237,33 +237,35 @@ namespace common {
         typedef std::vector<MatrixGroup<Matrix, SymmGroup> > base;    
         typedef typename Matrix::value_type value_type;
         typedef boost::tuple<unsigned, unsigned, unsigned> t_key;
-        typedef std::map<t_key, unsigned> T_index_t;
 
-        ContractionGroup() : cnt(0), mps_block(std::numeric_limits<unsigned>::max()) {}
+        ContractionGroup() {}
         ContractionGroup(unsigned b, unsigned s, unsigned ls, unsigned ms, unsigned rs, unsigned out_offset)
-            : cnt(0), mps_block(b), base(s, typename base::value_type(ls, ms, rs))
+            : mps_block(b), base(s, typename base::value_type(ls, ms, rs))
         {
             for (unsigned i = 0 ; i < s; ++i)
                 (*this)[i].offset = out_offset + i * rs;
+        }
+
+        std::size_t n_tasks() const
+        {
+            return std::accumulate(this->begin(), this->end(), 0,
+                                   bl::_1 + bl::bind(&base::value_type::n_tasks, bl::_2));
         }
 
         template <class OtherMatrix>
         void create_T(MPSTensor<Matrix, SymmGroup> const & mps, Boundary<OtherMatrix, SymmGroup> const & right,
                       MPOTensor<Matrix, SymmGroup> const & mpo) const
         {
-            T.resize(T_index.size());
-
             if (!this->size()) return;
 
             Matrix const & mps_matrix = mps.data()[mps_block]; 
 
-            for (typename T_index_t::const_iterator it = T_index.begin(); it != T_index.end(); ++it)
+            T.resize(t_key_vec.size());
+            for (unsigned pos = 0; pos < t_key_vec.size(); ++pos)
             {
-                unsigned pos = it->second;
-
-                unsigned b2 = boost::get<0>(it->first);
-                unsigned r_block = boost::get<1>(it->first);
-                unsigned in_offset = boost::get<2>(it->first);
+                unsigned b2 = boost::get<0>(t_key_vec[pos]);
+                unsigned r_block = boost::get<1>(t_key_vec[pos]);
+                unsigned in_offset = boost::get<2>(t_key_vec[pos]);
 
                 if (mpo.herm_info.right_skip(b2))
                     multiply(mps_matrix, transpose(right[mpo.herm_info.right_conj(b2)])[r_block], in_offset, pos);    
@@ -273,12 +275,6 @@ namespace common {
         }
 
         void drop_T() const { T = std::vector<Matrix>(); }
-
-        std::size_t n_tasks() const
-        {
-            return std::accumulate(this->begin(), this->end(), 0,
-                                   bl::_1 + bl::bind(&base::value_type::n_tasks, bl::_2));
-        }
 
         template <class OtherMatrix>
         boost::tuple<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t>
@@ -293,11 +289,10 @@ namespace common {
                 collect += (*this)[i].collect();
             }
 
-            for (typename T_index_t::const_iterator it = T_index.begin(); it != T_index.end(); ++it)
+            for (typename std::vector<t_key>::const_iterator it = t_key_vec.begin(); it != t_key_vec.end(); ++it)
             {
-                unsigned pos = it->second;
-                unsigned b2 = boost::get<0>(it->first);
-                unsigned r_block = boost::get<1>(it->first);
+                unsigned b2 = it->get<0>();
+                unsigned r_block = it->get<1>();
 
                 unsigned l_size = mps.row_dim()[mps_block].second;
                 unsigned m_size = right[b2].left_size(r_block);
@@ -311,9 +306,7 @@ namespace common {
 
         // invariant: phys_out, phys_offset
         mutable std::vector<Matrix> T;
-        T_index_t T_index;
-
-        unsigned cnt;
+        std::vector<t_key> t_key_vec;
 
     private:
         unsigned mps_block;
