@@ -42,13 +42,14 @@ void measure_simulation<SymmGroup>::run(DmrgParameters & parms)
 }
 
 template <class SymmGroup>
-void measure_simulation<SymmGroup>::measure_observable(DmrgParameters & parms, std::string name, std::vector<double> & results)
+void measure_simulation<SymmGroup>::measure_observable(DmrgParameters & parms, std::string name,
+                                                       std::vector<double> & results,
+                                                       std::vector<std::vector<Lattice::pos_t> > & labels)
 {
     if (parms["COMPLEX"]) {
-        measure_sim<cmatrix, SymmGroup> sim(parms);
-        sim.measure_observable(name, results);
+        throw std::runtime_error("extraction of complex observables not implemented\n");
     } else {
         measure_sim<matrix, SymmGroup> sim(parms);
-        sim.measure_observable(name, results);
+        sim.measure_observable(name, results, labels);
     }
 }

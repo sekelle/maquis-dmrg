@@ -33,18 +33,9 @@
 #include <sys/time.h>
 #include <sys/stat.h>
 
-int main(int argc, char ** argv)
+void optimize_and_measure(DmrgOptions & opt, std::string name, std::vector<double> & results,
+                                                               std::vector<std::vector<int> > & labels)
 {
-    std::cout << "  QCMaquis - Quantum Chemical Density Matrix Renormalization group\n"
-              << "  available from http://www.reiher.ethz.ch/software\n"
-              << "  based on the ALPS MPS codes from http://alps.comp-phys.org/\n"
-              << "  copyright (c) 2015 Laboratory of Physical Chemistry, ETH Zurich\n"
-              << "  copyright (c) 2012-2015 by Sebastian Keller\n"
-              << "  for details see the publication: \n"
-              << "  S. Keller et al, arXiv:1510.02026\n"
-              << std::endl;
-
-    DmrgOptions opt(argc, argv);
     if (opt.valid) {
         
         maquis::cout.precision(10);
@@ -54,7 +45,7 @@ int main(int argc, char ** argv)
         
         try {
             dmrg_simulation_traits::shared_ptr sim = dmrg::symmetry_factory<dmrg_simulation_traits>(opt.parms);
-            //sim->run(opt.parms);
+            sim->run(opt.parms);
         } catch (std::exception & e) {
             maquis::cerr << "Exception thrown!" << std::endl;
             maquis::cerr << e.what() << std::endl;
@@ -62,10 +53,8 @@ int main(int argc, char ** argv)
         }
         
         try {
-            std::vector<double> results;
             measure_simulation_traits::shared_ptr sim = dmrg::symmetry_factory<measure_simulation_traits>(opt.parms);
-            //sim->run(opt.parms);
-            sim->measure_observable(opt.parms, "twoptdm", results);
+            sim->measure_observable(opt.parms, name, results, labels);
         } catch (std::exception & e) {
             maquis::cerr << "Exception thrown!" << std::endl;
             maquis::cerr << e.what() << std::endl;
@@ -77,4 +66,27 @@ int main(int argc, char ** argv)
         
         maquis::cout << "Task took " << elapsed << " seconds." << std::endl;
     }
+}
+
+int main(int argc, char ** argv)
+{
+    std::cout << "  QCMaquis - Quantum Chemical Density Matrix Renormalization group\n"
+              << "  available from http://www.reiher.ethz.ch/software\n"
+              << "  based on the ALPS MPS codes from http://alps.comp-phys.org/\n"
+              << "  copyright (c) 2015 Laboratory of Physical Chemistry, ETH Zurich\n"
+              << "  copyright (c) 2012-2015 by Sebastian Keller\n"
+              << "  for details see the publication: \n"
+              << "  S. Keller et al, arXiv:1510.02026\n"
+              << std::endl;
+
+    std::vector<double> results;
+    std::vector<std::vector<int> > labels;
+
+    DmrgOptions opt(argc, argv);
+
+    // labels are not yet adjusted to orbital ordering
+    optimize_and_measure(opt, "oneptdm", results, labels);
+
+    std::copy(results.begin(), results.end(), std::ostream_iterator<double>(std::cout, " "));
+    maquis::cout << std::endl;
 }

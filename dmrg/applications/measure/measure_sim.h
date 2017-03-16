@@ -102,7 +102,8 @@ public:
         #endif
     }
 
-    void measure_observable(std::string name_, std::vector<double> & results)
+    void measure_observable(std::string name_, std::vector<typename Matrix::value_type> & results,
+                            std::vector<std::vector<Lattice::pos_t> > & labels)
     {
         for (typename measurements_type::iterator it = all_measurements.begin(); it != all_measurements.end(); ++it)
         {
@@ -110,6 +111,7 @@ public:
             {
                 maquis::cout << "Measuring " << it->name() << std::endl;
                 it->evaluate(mps);
+                it->extract(results, labels);
             }
         }
     }

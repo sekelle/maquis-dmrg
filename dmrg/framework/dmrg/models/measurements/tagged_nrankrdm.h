@@ -472,6 +472,12 @@ namespace measurements {
         {
             return new TaggedNRankRDM(*this);
         }
+
+        void extract(std::vector<value_type> & results, std::vector<std::vector<Lattice::pos_t> > & num_labels)
+        {
+            results = this->vector_results;
+            num_labels = numeric_labels;
+        }
         
         void measure_correlation(MPS<Matrix, SymmGroup> const & dummy_bra_mps,
                                  MPS<Matrix, SymmGroup> const & ket_mps)
@@ -534,6 +540,9 @@ namespace measurements {
 
                     this->labels.reserve(this->labels.size() + dct.size());
                     std::copy(lbt.rbegin(), lbt.rend(), std::back_inserter(this->labels));
+
+                    this->numeric_labels.reserve(this->numeric_labels.size() + dct.size());
+                    std::copy(num_labels.rbegin(), num_labels.rend(), std::back_inserter(numeric_labels));
                 }
             }
         }
@@ -599,6 +608,9 @@ namespace measurements {
 
                     this->labels.reserve(this->labels.size() + dct.size());
                     std::copy(lbt.rbegin(), lbt.rend(), std::back_inserter(this->labels));
+
+                    this->numeric_labels.reserve(this->numeric_labels.size() + dct.size());
+                    std::copy(num_labels.rbegin(), num_labels.rend(), std::back_inserter(numeric_labels));
                 }
             }
         }
@@ -613,6 +625,8 @@ namespace measurements {
         tag_vec identities, fillings;
 
         std::string bra_ckp;
+
+        std::vector<std::vector<pos_t> > numeric_labels;
     };
 }
 
