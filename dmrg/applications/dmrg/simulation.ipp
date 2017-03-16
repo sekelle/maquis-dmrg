@@ -30,7 +30,7 @@
 #include "simulation.h"
 
 template <class SymmGroup>
-void simulation<SymmGroup>::run(DmrgParameters & parms)
+void dmrg_simulation<SymmGroup>::run(DmrgParameters & parms)
 {
     if (parms["COMPLEX"]) {
         dmrg_sim<cmatrix, SymmGroup> sim(parms);

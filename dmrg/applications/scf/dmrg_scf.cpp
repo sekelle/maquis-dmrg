@@ -24,7 +24,7 @@
  *
  *****************************************************************************/
 
-#include "utils/io.hpp" // has to be first include because of impi
+#include "utils/io.hpp"
 #include "dmrg/utils/DmrgOptions.h"
 #include "simulation.h"
 #include "dmrg/sim/symmetry_factory.h"
@@ -32,6 +32,41 @@
 #include <iostream>
 #include <sys/time.h>
 #include <sys/stat.h>
+
+void optimize_and_measure(DmrgOptions & opt, std::string name, std::vector<double> & results,
+                                                               std::vector<std::vector<int> > & labels)
+{
+    if (opt.valid) {
+        
+        maquis::cout.precision(10);
+        
+        timeval now, then, snow, sthen;
+        gettimeofday(&now, NULL);
+        
+        try {
+            dmrg_simulation_traits::shared_ptr sim = dmrg::symmetry_factory<dmrg_simulation_traits>(opt.parms);
+            sim->run(opt.parms);
+        } catch (std::exception & e) {
+            maquis::cerr << "Exception thrown!" << std::endl;
+            maquis::cerr << e.what() << std::endl;
+            exit(1);
+        }
+        
+        try {
+            measure_simulation_traits::shared_ptr sim = dmrg::symmetry_factory<measure_simulation_traits>(opt.parms);
+            sim->measure_observable(opt.parms, name, results, labels);
+        } catch (std::exception & e) {
+            maquis::cerr << "Exception thrown!" << std::endl;
+            maquis::cerr << e.what() << std::endl;
+            exit(1);
+        }
+        
+        gettimeofday(&then, NULL);
+        double elapsed = then.tv_sec-now.tv_sec + 1e-6 * (then.tv_usec-now.tv_usec);
+        
+        maquis::cout << "Task took " << elapsed << " seconds." << std::endl;
+    }
+}
 
 int main(int argc, char ** argv)
 {
@@ -44,27 +79,14 @@ int main(int argc, char ** argv)
               << "  S. Keller et al, arXiv:1510.02026\n"
               << std::endl;
 
+    std::vector<double> results;
+    std::vector<std::vector<int> > labels;
+
     DmrgOptions opt(argc, argv);
-    if (opt.valid) {
-        
-        maquis::cout.precision(10);
-        
-        timeval now, then, snow, sthen;
-        gettimeofday(&now, NULL);
-        
-        
-        try {
-            measure_simulation_traits::shared_ptr sim = dmrg::symmetry_factory<measure_simulation_traits>(opt.parms);
-            sim->run(opt.parms);
-        } catch (std::exception & e) {
-            maquis::cerr << "Exception thrown!" << std::endl;
-            maquis::cerr << e.what() << std::endl;
-            exit(1);
-        }
-        
-        gettimeofday(&then, NULL);
-        double elapsed = then.tv_sec-now.tv_sec + 1e-6 * (then.tv_usec-now.tv_usec);
-        
-        maquis::cout << "Task took " << elapsed << " seconds." << std::endl;
-    }
+
+    // labels are not yet adjusted to orbital ordering
+    optimize_and_measure(opt, "oneptdm", results, labels);
+
+    std::copy(results.begin(), results.end(), std::ostream_iterator<double>(std::cout, " "));
+    maquis::cout << std::endl;
 }

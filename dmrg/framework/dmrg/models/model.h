@@ -81,7 +81,7 @@ public:
     
     virtual initializer_ptr initializer(Lattice const& lat, BaseParameters & parms) const;
 
-    // optionally delay the assemly of the operator terms until the MPO is actually created
+    // optionally delay the assembly of the operator terms until the MPO is actually created
     virtual void create_terms() {};
 
 protected:

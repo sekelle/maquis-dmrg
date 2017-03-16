@@ -66,6 +66,7 @@ public:
     void save(Archive &) const;
     void write_xml(alps::oxstream &) const;
     virtual void print(std::ostream& os) const;
+    virtual void extract(std::vector<value_type> & results, std::vector<std::vector<Lattice::pos_t> > & labels) { }
     
     std::string const& name() const { return name_; }
     int& eigenstate_index() { return eigenstate; }
