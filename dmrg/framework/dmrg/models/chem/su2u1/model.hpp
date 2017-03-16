@@ -285,13 +285,6 @@ qc_su2<Matrix, SymmGroup>::qc_su2(Lattice const & lat_, BaseParameters & parms_)
 //    PRINT(e2d)
 //    PRINT(d2e)
 //#undef PRINT
-}
-
-template <class Matrix, class SymmGroup>
-void qc_su2<Matrix, SymmGroup>::create_terms()
-{
-    typedef typename SymmGroup::subcharge subcharge;
-    subcharge N = SymmGroup::particleNumber(this->total_quantum_numbers(parms));
 
     /*************************************************************/
     typename TermMakerSU2<Matrix, SymmGroup>::OperatorBundle create_pkg, destroy_pkg;
@@ -335,6 +328,13 @@ void qc_su2<Matrix, SymmGroup>::create_terms()
     op_collection.flip      .no_couple = flip_S0;
     op_collection.flip      .couple_up = flip_to_S2;
     op_collection.flip      .couple_down = flip_to_S0;
+}
+
+template <class Matrix, class SymmGroup>
+void qc_su2<Matrix, SymmGroup>::create_terms()
+{
+    typedef typename SymmGroup::subcharge subcharge;
+    subcharge N = SymmGroup::particleNumber(this->total_quantum_numbers(parms));
 
     /**********************************************************************/
 

@@ -24,32 +24,26 @@
  *
  *****************************************************************************/
 
-#include "dmrg/sim/matrix_types.h"
+#ifndef MAQUIS_SCF_SIM_RUN_H
+#define MAQUIS_SCF_SIM_RUN_H
 
-#include "measure_sim.h"
-#include "simulation.h"
+#include <boost/shared_ptr.hpp>
 
-template <class SymmGroup>
-void measure_simulation<SymmGroup>::run(DmrgParameters & parms)
-{
-    if (parms["COMPLEX"]) {
-        measure_sim<cmatrix, SymmGroup> sim(parms);
-        sim.run();
-    } else {
-        measure_sim<matrix, SymmGroup> sim(parms);
-        sim.run();
-    }
-}
+#include "dmrg/utils/DmrgParameters.h"
+
+#include "../measure/simulation.h"
 
 template <class SymmGroup>
-void measure_simulation<SymmGroup>::measure_observable(DmrgParameters & parms, std::string name,
-                                                       std::vector<double> & results,
-                                                       std::vector<std::vector<Lattice::pos_t> > & labels)
-{
-    if (parms["COMPLEX"]) {
-        throw std::runtime_error("extraction of complex observables not implemented\n");
-    } else {
-        measure_sim<matrix, SymmGroup> sim(parms);
-        sim.measure_observable(name, results, labels);
-    }
-}
+struct dmrg_simulation : public simulation_base {
+    void run(DmrgParameters & parms);
+};
+
+struct dmrg_simulation_traits {
+    typedef boost::shared_ptr<simulation_base> shared_ptr;
+    template <class SymmGroup> struct F {
+        typedef dmrg_simulation<SymmGroup> type;
+    };
+};
+
+
+#endif

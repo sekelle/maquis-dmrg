@@ -13,10 +13,14 @@ endif(USE_AMBIENT)
 configure_symm_file("simulation_symm/simulation_tpl.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/simulation_symm/simulation_{SYMM}.cpp" CMAKE_SYMM_GROUP)
 get_symm_files(APPEND DMRG_SYMM_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/simulation_symm/simulation_{SYMM}.cpp")
 
+add_library(optimizer STATIC ${DMRG_SYMM_SOURCES})
+
 
 # *** Targets
-add_executable(dmrg ${DMRG_SYMM_SOURCES} dmrg.cpp)
-target_link_libraries(dmrg ${DMRG_APP_LIBRARIES})
+add_executable(dmrg dmrg.cpp)
+target_link_libraries(dmrg optimizer ${DMRG_APP_LIBRARIES})
 
 # *** Install
 install(TARGETS dmrg RUNTIME DESTINATION bin COMPONENT applications)
+install(TARGETS optimizer COMPONENT libraries DESTINATION lib)
+export(TARGETS optimizer FILE "${PROJECT_BINARY_DIR}/DMRGTargets.cmake")
