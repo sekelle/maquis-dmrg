@@ -38,7 +38,7 @@ namespace contraction {
                 Boundary<OtherMatrix, SymmGroup> const & left,
                 Boundary<OtherMatrix, SymmGroup> const & right,
                 MPOTensor<Matrix, SymmGroup> const & mpo,
-                std::vector<common::task_capsule<Matrix, SymmGroup> > const & tasks)
+                schedule_t const & tasks)
     {
         return site_hamil2(ket_tensor, left, right, mpo);
     }

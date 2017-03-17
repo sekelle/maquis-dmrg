@@ -43,8 +43,8 @@
 
 namespace contraction {
 
-    using ::contraction::common::BoundaryMPSProduct;
-    using ::contraction::common::MPSBoundaryProduct;
+    using common::BoundaryMPSProduct;
+    using common::MPSBoundaryProduct;
 
     template <class Matrix, class OtherMatrix, class SymmGroup>
     class Engine<Matrix, OtherMatrix, SymmGroup, typename boost::enable_if<symm_traits::HasSU2<SymmGroup> >::type>
@@ -52,7 +52,7 @@ namespace contraction {
         struct lbtm_functor
         {
             void operator()(size_t b2,
-                            contraction::ContractionGrid<Matrix, SymmGroup>& contr_grid,
+                            ContractionGrid<Matrix, SymmGroup>& contr_grid,
                             Boundary<OtherMatrix, SymmGroup> const & left,
                             BoundaryMPSProduct<Matrix, OtherMatrix, SymmGroup, ::SU2::SU2Gemms> const & left_mult_mps,
                             MPOTensor<Matrix, SymmGroup> const & mpo,
@@ -85,8 +85,8 @@ namespace contraction {
 
     public:
 
-        //typedef typename contraction::common::ScheduleOld<Matrix, SymmGroup>::schedule_t schedule_t;
-        typedef typename contraction::common::Schedule<Matrix, SymmGroup>::schedule_t schedule_t;
+        //typedef typename common::ScheduleOld<Matrix, SymmGroup>::schedule_t schedule_t;
+        typedef typename common::Schedule<Matrix, SymmGroup>::schedule_t schedule_t;
 
         static block_matrix<OtherMatrix, SymmGroup>
         overlap_left_step(MPSTensor<Matrix, SymmGroup> const & bra_tensor,

@@ -90,7 +90,7 @@ public:
                 lr = -1;
             }
             
-            SiteProblem<Matrix, SymmGroup> sp(mps[site], left_[site], right_[site+1], mpo[site]);
+            SiteProblem<Matrix, typename storage::constrained<Matrix>::type, SymmGroup> sp(mps[site], left_[site], right_[site+1], mpo[site]);
             ietl::mult(sp, mps[site], mpsp[site]);
             
             if (lr == +1) {

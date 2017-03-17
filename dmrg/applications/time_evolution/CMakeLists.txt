@@ -16,7 +16,7 @@ get_symm_files(APPEND DMRG_TEVOL_SYMM_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/simul
 
 # *** Targets
 add_executable(dmrg_tevol ${DMRG_TEVOL_SYMM_SOURCES} dmrg_tevol.cpp)
-target_link_libraries(dmrg_tevol ${DMRG_APP_LIBRARIES})
+target_link_libraries(dmrg_tevol ${DMRG_APP_LIBRARIES} ${OPENSSL_LIBRARIES})
 
 
 # *** Install

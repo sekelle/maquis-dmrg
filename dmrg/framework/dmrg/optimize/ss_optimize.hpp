@@ -109,7 +109,7 @@ public:
             boost::chrono::high_resolution_clock::time_point now, then;
 
             std::pair<double, MPSTensor<Matrix, SymmGroup> > res;
-            SiteProblem<Matrix, SymmGroup> sp(mps[site], left_[site], right_[site+1], mpo[site]);
+            SiteProblem<Matrix, typename base::BoundaryMatrix, SymmGroup> sp(mps[site], left_[site], right_[site+1], mpo[site]);
             
             /// Compute orthogonal vectors
             std::vector<MPSTensor<Matrix, SymmGroup> > ortho_vecs(base::northo);

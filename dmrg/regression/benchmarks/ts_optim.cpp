@@ -187,7 +187,7 @@ int main(int argc, char ** argv)
         
         std::vector<MPSTensor<matrix, grp> > ortho_vecs;
         std::pair<double, MPSTensor<matrix, grp> > res;
-        SiteProblem<matrix, grp> sp(twin_mps, left, right, ts_mpo);
+        SiteProblem<matrix, matrix, grp> sp(twin_mps, left, right, ts_mpo);
 
         /// Optimization: JCD
         time_optim_jcd.begin();

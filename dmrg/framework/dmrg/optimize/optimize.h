@@ -48,6 +48,7 @@
 #include "dmrg/utils/time_limit_exception.h"
 #include "dmrg/utils/parallel/placement.hpp"
 #include "dmrg/utils/checks.h"
+#include "dmrg/utils/aligned_allocator.hpp"
 
 #include "dmrg/optimize/site_problem.h"
 
@@ -73,8 +74,12 @@ enum OptimizeDirection { Both, LeftOnly, RightOnly };
 template<class Matrix, class SymmGroup, class Storage>
 class optimizer_base
 {
-    typedef contraction::Engine<Matrix, typename storage::constrained<Matrix>::type, SymmGroup> contr;
 public:
+    typedef typename storage::constrained<Matrix>::type BoundaryMatrix;
+private:
+    typedef contraction::Engine<Matrix, BoundaryMatrix, SymmGroup> contr;
+public:
+
     optimizer_base(MPS<Matrix, SymmGroup> & mps_,
                    MPO<Matrix, SymmGroup> const & mpo_,
                    BaseParameters & parms_,
@@ -225,11 +230,11 @@ protected:
     BaseParameters & parms;
     boost::function<bool ()> stop_callback;
 
-    std::vector<Boundary<typename storage::constrained<Matrix>::type, SymmGroup> > left_, right_;
+    std::vector<Boundary<BoundaryMatrix, SymmGroup> > left_, right_;
     
     /* This is used for multi-state targeting */
     unsigned int northo;
-    std::vector< std::vector<block_matrix<typename storage::constrained<Matrix>::type, SymmGroup> > > ortho_left_, ortho_right_;
+    std::vector< std::vector<block_matrix<BoundaryMatrix, SymmGroup> > > ortho_left_, ortho_right_;
     std::vector<MPS<Matrix, SymmGroup> > ortho_mps;
 };
 

@@ -33,7 +33,7 @@
 #include <utility>
 
 #include "utils/sizeof.h"
-
+#include "dmrg/utils/aligned_allocator.hpp"
 #include "dmrg/mp_tensors/contractions/common/gemm_binding.hpp"
 
 namespace contraction {
@@ -296,6 +296,7 @@ struct Schedule_ : public std::vector<MPSBlock<Matrix, SymmGroup> >
 {
     typedef std::vector<MPSBlock<Matrix, SymmGroup> > base;
 
+    Schedule_() {}
     Schedule_(std::size_t dim) : base(dim) {}
     double mflops(double time)
     {
@@ -316,15 +317,14 @@ struct Schedule
     typedef Schedule_<Matrix, SymmGroup> schedule_t;
 }; 
 
-template<class Matrix, class SymmGroup, class TaskCalc>
+template<class Matrix, class OtherMatrix, class SymmGroup, class TaskCalc>
 typename Schedule<Matrix, SymmGroup>::schedule_t
 create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
-                            Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & left,
-                            Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & right,
+                            Boundary<OtherMatrix, SymmGroup> const & left,
+                            Boundary<OtherMatrix, SymmGroup> const & right,
                             MPOTensor<Matrix, SymmGroup> const & mpo,
                             TaskCalc task_calc)
 {
-    typedef typename storage::constrained<Matrix>::type SMatrix;
     typedef typename SymmGroup::charge charge;
     typedef typename Matrix::value_type value_type;
     typedef MPOTensor_detail::index_type index_type;
@@ -335,8 +335,8 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
 
     boost::chrono::high_resolution_clock::time_point now = boost::chrono::high_resolution_clock::now();
 
-    LeftIndices<Matrix, SMatrix, SymmGroup> left_indices(left, mpo);
-    RightIndices<Matrix, SMatrix, SymmGroup> right_indices(right, mpo);
+    LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
+    RightIndices<Matrix, OtherMatrix, SymmGroup> right_indices(right, mpo);
 
     // MPS indices
     Index<SymmGroup> const & physical_i = initial.site_dim(),

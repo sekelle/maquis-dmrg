@@ -39,8 +39,8 @@
 
 namespace contraction {
 
-    using ::contraction::common::BoundaryMPSProduct;
-    using ::contraction::common::MPSBoundaryProduct;
+    using common::BoundaryMPSProduct;
+    using common::MPSBoundaryProduct;
 
     template <class Matrix, class OtherMatrix, class SymmGroup, class SymmType = void>
     class Engine
@@ -50,7 +50,7 @@ namespace contraction {
         struct lbtm_functor
         {
             void operator()(size_t b2,
-                            contraction::ContractionGrid<Matrix, SymmGroup>& contr_grid,
+                            ContractionGrid<Matrix, SymmGroup>& contr_grid,
                             Boundary<OtherMatrix, SymmGroup> const & left,
                             BoundaryMPSProduct<Matrix, OtherMatrix, SymmGroup, abelian::Gemms> const & left_mult_mps,
                             MPOTensor<Matrix, SymmGroup> const & mpo,
@@ -84,7 +84,7 @@ namespace contraction {
         };
 
     public:
-        typedef typename contraction::common::Schedule<Matrix, SymmGroup>::schedule_t schedule_t;
+        typedef typename common::Schedule<Matrix, SymmGroup>::schedule_t schedule_t;
 
         // generic methods forward
 
@@ -200,7 +200,7 @@ namespace contraction {
                     Boundary<OtherMatrix, SymmGroup> const & left,
                     Boundary<OtherMatrix, SymmGroup> const & right,
                     MPOTensor<Matrix, SymmGroup> const & mpo,
-                    std::vector<common::task_capsule<Matrix, SymmGroup> > const & tasks);
+                    schedule_t const & tasks);
 
         static MPSTensor<Matrix, SymmGroup>
         site_hamil2(MPSTensor<Matrix, SymmGroup> ket_tensor,

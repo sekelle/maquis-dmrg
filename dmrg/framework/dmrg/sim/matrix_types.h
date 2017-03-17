@@ -36,7 +36,6 @@ typedef ambient::tiles<ambient::matrix< std::complex<double> > > cmatrix;
 #else
 #include <complex>
 #include "dmrg/block_matrix/detail/alps.hpp"
-#include "dmrg/utils/aligned_allocator.hpp"
 typedef alps::numeric::matrix<double> matrix;
 typedef alps::numeric::matrix<std::complex<double> > cmatrix;
 #endif

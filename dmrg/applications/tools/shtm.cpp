@@ -202,8 +202,8 @@ typename Schedule<Matrix, SymmGroup>::schedule_t convert_to_schedule(MatrixGroup
     return ret;
 }
 
-template <class Matrix, class SymmGroup, class T>
-void check_contraction(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGroup> const & initial,
+template <class Matrix, class OtherMatrix, class SymmGroup, class T>
+void check_contraction(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGroup> const & initial,
                        T const & matrix_groups)
 {
     typedef typename storage::constrained<Matrix>::type SMatrix;
@@ -282,8 +282,8 @@ void check_contraction(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matr
 //    maquis::cout << std::endl;
 //}
 
-template <class Matrix, class SymmGroup>
-void analyze(SiteProblem<Matrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGroup> const & initial)
+template <class Matrix, class OtherMatrix, class SymmGroup>
+void analyze(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGroup> const & initial)
 {
     using namespace boost::tuples;
 
@@ -652,7 +652,7 @@ int main(int argc, char ** argv)
         MPO<matrix, symm> mpo = load_mpo(argv[4]);
 
         int site = 6;
-        SiteProblem<matrix, symm> sp(initial, left, right, mpo[6]);
+        SiteProblem<matrix, smatrix, symm> sp(initial, left, right, mpo[6]);
 
         analyze(sp, initial);
 

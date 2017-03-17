@@ -72,6 +72,7 @@ sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_)
     }
 
     bool restore_mpo = false;
+    if (parms.defined("integral_file"))
     {
         boost::filesystem::path p(chkpfile);
         if (boost::filesystem::exists(p) && boost::filesystem::exists(p / "mpo.h5"))
@@ -105,7 +106,7 @@ sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_)
     {
         mpo = make_mpo(lat, model);
 
-        if (!dns)
+        if (!dns && parms.defined("integral_file"))
         {
             if (!boost::filesystem::exists(chkpfile)) boost::filesystem::create_directory(chkpfile);
 

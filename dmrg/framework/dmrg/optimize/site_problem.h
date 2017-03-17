@@ -35,24 +35,24 @@
 #include "dmrg/mp_tensors/contractions.h"
 
 
-template<class Matrix, class SymmGroup>
+template<class Matrix, class OtherMatrix, class SymmGroup>
 struct SiteProblem
 {
     SiteProblem(MPSTensor<Matrix, SymmGroup> const & initial,
-                Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & left_,
-                Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & right_,
+                Boundary<OtherMatrix, SymmGroup> const & left_,
+                Boundary<OtherMatrix, SymmGroup> const & right_,
                 MPOTensor<Matrix, SymmGroup> const & mpo_)
     : left(left_)
     , right(right_)
     , mpo(mpo_)
-    , contraction_schedule(contraction::Engine<Matrix, typename storage::constrained<Matrix>::type, SymmGroup>::
+    , contraction_schedule(contraction::Engine<Matrix, OtherMatrix, SymmGroup>::
                            right_contraction_schedule(initial, left, right, mpo))
     { }
     
-    Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & left;
-    Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & right;
+    Boundary<OtherMatrix, SymmGroup> const & left;
+    Boundary<OtherMatrix, SymmGroup> const & right;
     MPOTensor<Matrix, SymmGroup> const & mpo;
-    typename contraction::Engine<Matrix, typename storage::constrained<Matrix>::type, SymmGroup>::schedule_t contraction_schedule;
+    typename contraction::Engine<Matrix, OtherMatrix, SymmGroup>::schedule_t contraction_schedule;
     double ortho_shift;
 };
 

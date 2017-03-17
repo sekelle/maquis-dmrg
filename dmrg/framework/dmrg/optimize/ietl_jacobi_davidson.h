@@ -34,9 +34,9 @@
 #include "ietl/jacobi.h"
 #include "ietl/jd.h"
 
-template<class Matrix, class SymmGroup>
+template<class Matrix, class OtherMatrix, class SymmGroup>
 std::pair<double, MPSTensor<Matrix, SymmGroup> >
-solve_ietl_jcd(SiteProblem<Matrix, SymmGroup> & sp,
+solve_ietl_jcd(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp,
                MPSTensor<Matrix, SymmGroup> const & initial,
                BaseParameters & params,
                std::vector<MPSTensor<Matrix, SymmGroup> > ortho_vecs = std::vector<MPSTensor<Matrix, SymmGroup> >())
@@ -51,10 +51,10 @@ solve_ietl_jcd(SiteProblem<Matrix, SymmGroup> & sp,
     typedef MPSTensor<Matrix, SymmGroup> Vector;
     SingleSiteVS<Matrix, SymmGroup> vs(initial, ortho_vecs);
     
-    ietl::jcd_gmres_solver<SiteProblem<Matrix, SymmGroup>, SingleSiteVS<Matrix, SymmGroup> >
+    ietl::jcd_gmres_solver<SiteProblem<Matrix, OtherMatrix, SymmGroup>, SingleSiteVS<Matrix, SymmGroup> >
     jcd_gmres(sp, vs, params["ietl_jcd_gmres"]);
     
-    ietl::jacobi_davidson<SiteProblem<Matrix, SymmGroup>, SingleSiteVS<Matrix, SymmGroup> >
+    ietl::jacobi_davidson<SiteProblem<Matrix, OtherMatrix, SymmGroup>, SingleSiteVS<Matrix, SymmGroup> >
     jd(sp, vs, ietl::Smallest);
     
     double tol = params["ietl_jcd_tol"];
@@ -78,14 +78,14 @@ solve_ietl_jcd(SiteProblem<Matrix, SymmGroup> & sp,
     return r0;
 }
 
-/*template<class Matrix, class SymmGroup>
+/*template<class Matrix, class OtherMatrix, class SymmGroup>
 std::pair<double, MPSTensor<Matrix, SymmGroup> >
-solve_ietl_new_jd(SiteProblem<Matrix, SymmGroup> & sp,
+solve_ietl_new_jd(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp,
                   MPSTensor<Matrix, SymmGroup> const & initial,
                   BaseParameters & params)
 {
     typedef MPSTensor<Matrix, SymmGroup> Vector;
-    typedef SiteProblem<Matrix, SymmGroup> Operator;
+    typedef SiteProblem<Matrix, OtherMatrix, SymmGroup> Operator;
     typedef SingleSiteVS<Matrix, SymmGroup> Vecspace;
     Vecspace vs(initial);
 

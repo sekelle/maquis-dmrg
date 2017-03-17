@@ -79,15 +79,14 @@ struct ScheduleOld
     typedef ScheduleOld_<Matrix, SymmGroup> schedule_t;
 }; 
 
-template<class Matrix, class SymmGroup, class TaskCalc>
+template<class Matrix, class OtherMatrix, class SymmGroup, class TaskCalc>
 typename ScheduleOld<Matrix, SymmGroup>::schedule_t
 create_contraction_schedule_old(MPSTensor<Matrix, SymmGroup> const & initial,
-                            Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & left,
-                            Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & right,
-                            MPOTensor<Matrix, SymmGroup> const & mpo,
-                            TaskCalc task_calc)
+                                Boundary<OtherMatrix, SymmGroup> const & left,
+                                Boundary<OtherMatrix, SymmGroup> const & right,
+                                MPOTensor<Matrix, SymmGroup> const & mpo,
+                                TaskCalc task_calc)
 {
-    typedef typename storage::constrained<Matrix>::type SMatrix;
     typedef typename SymmGroup::charge charge;
     typedef typename Matrix::value_type value_type;
     typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
@@ -99,9 +98,9 @@ create_contraction_schedule_old(MPSTensor<Matrix, SymmGroup> const & initial,
     initial.make_left_paired();
 
     schedule_t contraction_schedule(mpo.row_dim());
-    MPSBoundaryProductIndices<Matrix, SMatrix, SymmGroup> indices(initial.data().basis(), right, mpo);
-    LeftIndices<Matrix, SMatrix, SymmGroup> left_indices(left, mpo);
-    RightIndices<Matrix, SMatrix, SymmGroup> right_indices(right, mpo);
+    MPSBoundaryProductIndices<Matrix, OtherMatrix, SymmGroup> indices(initial.data().basis(), right, mpo);
+    LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
+    RightIndices<Matrix, OtherMatrix, SymmGroup> right_indices(right, mpo);
 
     // MPS indices
     Index<SymmGroup> const & physical_i = initial.site_dim(),
