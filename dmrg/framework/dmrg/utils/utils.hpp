@@ -91,6 +91,11 @@ struct compare_pair_inverse
     }
 };
 
+template <typename T>
+bool check_align(T const* const p, unsigned int alignment) {
+    return ((reinterpret_cast<uintptr_t>(static_cast<void const* const>(p))&(alignment-1)) == 0);
+};
+
 namespace boost { namespace tuples {
 
   namespace detail {

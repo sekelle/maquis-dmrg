@@ -121,6 +121,7 @@ public:
         {
             index_type b1 = bs[i];
             Matrix S(m_size, r_size);
+            //if (!check_align(&S(0,0), 32)) throw std::runtime_error("Alignment wrong\n");
 
             for (index_type j = 0; j < tasks[i].size(); ++j)
             {
@@ -329,6 +330,8 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
     typedef MPOTensor_detail::index_type index_type;
     typedef typename task_capsule<Matrix, SymmGroup>::map_t map_t;
     typedef typename MatrixGroup<Matrix, SymmGroup>::micro_task micro_task;
+
+    typedef typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, 32>::type AlignedMatrix;
 
     boost::chrono::high_resolution_clock::time_point now = boost::chrono::high_resolution_clock::now();
 
