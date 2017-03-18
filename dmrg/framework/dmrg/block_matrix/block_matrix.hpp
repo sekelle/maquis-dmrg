@@ -72,7 +72,7 @@ block_matrix<Matrix, SymmGroup>::block_matrix(block_matrix const& rhs)
 
 template<class Matrix, class SymmGroup>
 template <class OtherMatrix>
-block_matrix<Matrix, SymmGroup>::block_matrix(block_matrix<OtherMatrix,SymmGroup> const& rhs)
+block_matrix<Matrix, SymmGroup>::block_matrix(block_matrix<OtherMatrix, SymmGroup> const& rhs)
 : basis_(rhs.basis())
 , size_index(rhs.size_index)
 , iter_index(rhs.iter_index)
@@ -93,13 +93,13 @@ template<class Matrix, class SymmGroup>
 template<class OtherMatrix>
 block_matrix<Matrix, SymmGroup> & block_matrix<Matrix, SymmGroup>::operator=(const block_matrix<OtherMatrix, SymmGroup> & rhs)
 {
-    basis_ = rhs.basis_;
+    basis_ = rhs.basis();
     size_index = rhs.size_index;
     iter_index = rhs.iter_index;
-    data_.resize(rhs.data_.size());
+    data_.resize(rhs.n_blocks());
     for(int k = 0; k < data_.size(); k++){
-        data_[k].resize(num_rows(rhs.data_[k]), num_cols(rhs.data_[k]));
-        data_[k] = rhs.data_[k];
+        Matrix tmp(rhs[k]);
+        swap(data_[k], tmp);
     }
     return *this;
 }

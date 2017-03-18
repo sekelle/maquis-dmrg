@@ -75,7 +75,8 @@ template<class Matrix, class SymmGroup, class Storage>
 class optimizer_base
 {
 public:
-    typedef typename storage::constrained<Matrix>::type BoundaryMatrix;
+    typedef typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, 32>::type AlignedMatrix;
+    typedef typename storage::constrained<AlignedMatrix>::type BoundaryMatrix;
 private:
     typedef contraction::Engine<Matrix, BoundaryMatrix, SymmGroup> contr;
 public:

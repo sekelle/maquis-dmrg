@@ -286,7 +286,7 @@ namespace contraction {
     {
         typedef std::vector<DualIndex<SymmGroup> > base;
         typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
-        typedef typename maquis::traits::transpose_view<Matrix>::type TVMatrix;
+        typedef typename maquis::traits::transpose_view<OtherMatrix>::type TVMatrix;
 
     public:
 
@@ -348,7 +348,8 @@ namespace contraction {
                 if (mpo.herm_info.right_skip(b2))
                 {
                     parallel::guard group(scheduler(b2), parallel::groups_granularity);
-                    block_matrix<typename maquis::traits::transpose_view<Matrix>::type, SymmGroup> trv = transpose(right[mpo.herm_info.right_conj(b2)]);
+                    block_matrix<typename maquis::traits::transpose_view<OtherMatrix>::type, SymmGroup> trv
+                        = transpose(right[mpo.herm_info.right_conj(b2)]);
                     std::vector<value_type> scales = conjugate_phases(trv.basis(), mpo, b2, false, true);
 
                     typename Gemm::gemm_trim_right()(mps.data(), trv, data_[b2], scales);
@@ -386,7 +387,8 @@ namespace contraction {
                     {
                         //parallel::guard group(scheduler(b2), parallel::groups_granularity);
                         //typename Gemm::gemm_trim_right()(mps.data(), transpose(right[mpo.herm_info.right_conj(k)]), storage);
-                        block_matrix<typename maquis::traits::transpose_view<Matrix>::type, SymmGroup> trv = transpose(right[mpo.herm_info.right_conj(k)]);
+                        block_matrix<typename maquis::traits::transpose_view<OtherMatrix>::type, SymmGroup> trv
+                            = transpose(right[mpo.herm_info.right_conj(k)]);
                         std::vector<value_type> scales = conjugate_phases(trv.basis(), mpo, k, false, true);
                         //typename Gemm::gemm_trim_right()(mps.data(), trv, storage, scales);
                         typename Gemm::gemm_trim_right()(mps.data(), trv, data_[k], scales);
