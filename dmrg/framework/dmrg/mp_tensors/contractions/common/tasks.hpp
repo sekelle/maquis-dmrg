@@ -295,6 +295,7 @@ template <class Matrix, class SymmGroup>
 struct Schedule_ : public std::vector<MPSBlock<Matrix, SymmGroup> >
 {
     typedef std::vector<MPSBlock<Matrix, SymmGroup> > base;
+    typedef typename base::value_type value_type;
 
     Schedule_() {}
     Schedule_(std::size_t dim) : base(dim) {}

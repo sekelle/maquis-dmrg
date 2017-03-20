@@ -228,7 +228,7 @@ namespace contraction {
         typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
         typedef typename Matrix::value_type value_type;
 
-        typedef typename common::MPSBlock<Matrix, SymmGroup>::const_iterator const_iterator;
+        typedef typename common::Schedule<Matrix, SymmGroup>::schedule_t::value_type::const_iterator const_iterator;
 
         ket_tensor.make_right_paired();
 
