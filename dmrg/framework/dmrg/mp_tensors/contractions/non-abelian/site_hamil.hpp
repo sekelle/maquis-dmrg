@@ -238,7 +238,7 @@ namespace contraction {
 
         MPSTensor<Matrix, SymmGroup> ret;
         ret.phys_i = ket_tensor.site_dim(); ret.left_i = ket_tensor.row_dim(); ret.right_i = ket_tensor.col_dim();
-        block_matrix<Matrix, SymmGroup> collector(ket_tensor.data().basis());
+        block_matrix<Matrix, SymmGroup> collector(ket_basis);
 
         index_type loop_max = tasks.size();
         omp_for(index_type mps_block, parallel::range<index_type>(0,loop_max), {
