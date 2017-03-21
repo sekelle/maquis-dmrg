@@ -200,13 +200,12 @@ namespace detail {
         std::size_t stripe = task.stripe;
         std::size_t out_right_offset = task.out_offset;
 
-        for(size_t rr = 0; rr < r_size; ++rr) {
-            T alfa_t = task.scale;
+        T alfa_t = task.scale;
+        for(size_t rr = 0; rr < r_size; ++rr) 
             maquis::dmrg::detail::iterator_axpy(source + stripe * rr,
                                                 source + stripe * rr + l_size,
                                                 oblock + (out_right_offset + rr) * l_size,
                                                 alfa_t);
-        }
     }
 
 } // namespace detail

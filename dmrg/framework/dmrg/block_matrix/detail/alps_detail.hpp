@@ -30,6 +30,9 @@
 #ifndef MAQUIS_BLOCK_MATRIX_DEATAIL_ALPS_MATRIX_DETAIL_HPP
 #define MAQUIS_BLOCK_MATRIX_DEATAIL_ALPS_MATRIX_DETAIL_HPP
 
+#include <x86intrin.h>
+#include <immintrin.h>
+
 template<class T, class SymmGroup>
 class block_matrix;
 
@@ -38,6 +41,55 @@ namespace maquis { namespace dmrg { namespace detail {
     template<class Matrix, class Generator>
     void generate_impl(Matrix & m, Generator g){
         generate(m, g);
+    }
+
+    inline void mydaxpy(int n, double a, const double* x, double* y)
+    {
+      // broadcast the scale factor into a register
+      __m256d x0 = _mm256_broadcast_sd(&a);
+
+      // align
+      //std::size_t xv = *reinterpret_cast<std::size_t*>(&x);
+      //std::size_t yv = *reinterpret_cast<std::size_t*>(&y);
+      //std::size_t skip = 4 - (xv % 32) / sizeof(double);
+      //std::size_t skip2 = 4 - (yv % 32) / sizeof(double);
+      //assert(skip == skip2);
+      assert((uintptr_t)(x) % 32 == 0);
+      assert((uintptr_t)(y) % 32 == 0);
+      const std::size_t skip = 0;
+
+      std::size_t ndiv4 = (n-skip)/4;
+      const double * xs = x + skip;
+      double * ys = y + skip;
+
+      // loop over chunks of 4 values
+      for (int i=0; i<ndiv4; ++i) {
+        __m256d x1 = _mm256_load_pd(xs+4*i);  // aligned (fast) load
+        __m256d x2 = _mm256_load_pd(ys+4*i);  // aligned (fast) load
+        __m256d x3 = _mm256_mul_pd(x0, x1);   // multiply
+        __m256d x4 = _mm256_add_pd(x2, x3);   // add
+        _mm256_store_pd(ys+4*i, x4);      // store back aligned
+      }
+
+      // do the remaining entries
+      //for (int i=0 ; i< skip ; ++i)
+      //  y[i] += a*x[i];
+
+      for (int i=ndiv4*4 + skip; i< n ; ++i)
+        y[i] += a*x[i];
+    }
+
+    template<class InputIterator, class OutputIterator, class T>
+    void iterator_axpy2(InputIterator in1, InputIterator in2,
+                       OutputIterator out1, T val)
+    {
+        std::transform(in1, in2, out1, out1, boost::lambda::_1*val+boost::lambda::_2);
+    }
+    inline void iterator_axpy2(double const * in1, double const * in2,
+                               double * out1, double val)
+    {
+        fortran_int_t one = 1, diff = in2-in1;
+        mydaxpy(diff, val, in1, out1);
     }
         
     template<class InputIterator, class OutputIterator, class T>
