@@ -228,7 +228,7 @@ namespace contraction {
         typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
         typedef typename Matrix::value_type value_type;
 
-        typedef typename common::Schedule<Matrix, SymmGroup>::schedule_t::value_type::const_iterator const_iterator;
+        typedef typename common::Schedule<Matrix, SymmGroup>::block_type::const_iterator const_iterator;
 
         ket_tensor.make_right_paired();
 
@@ -249,12 +249,12 @@ namespace contraction {
                 charge mc = it->first;
                 for (size_t s = 0; s < it->second.size(); ++s)
                 {
-                    common::ContractionGroup<Matrix, SymmGroup> const & cg = it->second[s];
+                    typename common::Schedule<Matrix, SymmGroup>::block_type::mapped_value_type const & cg = it->second[s];
                     cg.create_T(ket_tensor, right, mpo);
                     for (size_t ss2 = 0; ss2 < cg.size(); ++ss2)
                     {
                         if (!cg[ss2].n_tasks()) continue;
-                        Matrix C = cg[ss2].contract(left, cg.T, mpo);
+                        typename common::Schedule<Matrix, SymmGroup>::AlignedMatrix C = cg[ss2].contract(left, cg.T, mpo);
                         maquis::dmrg::detail::iterator_axpy(&C(0,0), &C(0,0) + num_rows(C) * num_cols(C),
                                                             &destination(0, cg[ss2].offset), value_type(1.0));
                     }

@@ -66,6 +66,7 @@ using namespace contraction::common;
 using namespace contraction::SU2;
 
 typedef storage::constrained<matrix>::type smatrix;
+typedef maquis::traits::aligned_matrix<matrix, maquis::aligned_allocator, 32>::type amatrix;
 
 namespace detail {
 
@@ -287,7 +288,8 @@ void analyze(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & sp, MPSTensor<M
 {
     using namespace boost::tuples;
 
-    typedef typename storage::constrained<Matrix>::type SMatrix;
+    typedef typename Schedule<Matrix, SymmGroup>::AlignedMatrix AlignedMatrix;
+
     typedef typename SymmGroup::charge charge;
     typedef typename Matrix::value_type value_type;
     typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
@@ -295,7 +297,7 @@ void analyze(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & sp, MPSTensor<M
     typedef typename task_capsule<Matrix, SymmGroup>::micro_task micro_task;
     typedef typename MatrixGroup<Matrix, SymmGroup>::micro_task micro_task_shtm;
 
-    Boundary<SMatrix, SymmGroup> const & left = sp.left, right = sp.right;
+    Boundary<OtherMatrix, SymmGroup> const & left = sp.left, right = sp.right;
     MPOTensor<Matrix, SymmGroup> const & mpo = sp.mpo;
 
     // MPS indices
@@ -310,12 +312,12 @@ void analyze(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & sp, MPSTensor<M
                 boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
                                 -boost::lambda::_1, boost::lambda::_2));
 
-    LeftIndices<Matrix, SMatrix, SymmGroup> left_indices(left, mpo);
-    RightIndices<Matrix, SMatrix, SymmGroup> right_indices(right, mpo);
+    LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
+    RightIndices<Matrix, OtherMatrix, SymmGroup> right_indices(right, mpo);
 
     typename ScheduleOld<Matrix, SymmGroup>::schedule_t contraction_schedule
         = create_contraction_schedule_old(initial, left, right, mpo,
-                                          contraction::SU2::rbtm_tasks<Matrix, SMatrix, SymmGroup>);
+                                          contraction::SU2::rbtm_tasks<Matrix, OtherMatrix, SymmGroup>);
 
     typedef boost::tuple<charge, charge> chuple;
     typedef std::map<unsigned, MatrixGroupPrint<Matrix, SymmGroup> > map2;
@@ -395,7 +397,7 @@ void analyze(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & sp, MPSTensor<M
         }
     }
 
-    MPSBlock<matrix, symm> mpsb;
+    MPSBlock<AlignedMatrix, symm> mpsb;
     shtm_tasks(mpo, left_indices, right_indices, left_i,
                right_i, physical_i, out_right_pb, left_i.position(lc), mpsb);
 
@@ -419,19 +421,19 @@ void analyze(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & sp, MPSTensor<M
         }
 
         // T comparison
-        MPSBoundaryProduct<matrix, smatrix, symm, ::SU2::SU2Gemms> t(initial, right, mpo);
-        matrix const & tmat = t[166][50];
+        MPSBoundaryProduct<Matrix, OtherMatrix, SymmGroup, ::SU2::SU2Gemms> t(initial, right, mpo);
+        Matrix const & tmat = t[166][50];
         std::copy(&tmat(0,0), &tmat(10,0), std::ostream_iterator<value_type>(std::cout, " "));
         maquis::cout << std::endl;
 
         initial.make_right_paired();
         mpsb[mc][s].create_T(initial, right, mpo);
-        matrix const & cgmat = mpsb[mc][s].T[4];
+        AlignedMatrix const & cgmat = mpsb[mc][s].T[4];
         std::copy(&cgmat(0,0), &cgmat(10,0), std::ostream_iterator<value_type>(std::cout, " "));
         maquis::cout << std::endl;
 
         // contraction test
-        Matrix C = mpsb[mc][s][1].contract(left, mpsb[mc][s].T, mpo);
+        AlignedMatrix C = mpsb[mc][s][1].contract(left, mpsb[mc][s].T, mpo);
         std::copy(&C(0,0), &C(10,0), std::ostream_iterator<value_type>(std::cout, " "));
         maquis::cout << std::endl;
     }
@@ -443,7 +445,7 @@ void analyze(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & sp, MPSTensor<M
         size_t mps_block = initial.data().find_block(lc, lc);
         schedule_t shtm_tasks_vec(initial.data().n_blocks());
         shtm_tasks_vec[mps_block] = mpsb;
-        MPSTensor<matrix, symm> prod = site_hamil_shtm(initial, left, right, mpo, shtm_tasks_vec);
+        MPSTensor<Matrix, symm> prod = site_hamil_shtm(initial, left, right, mpo, shtm_tasks_vec);
 
         prod.make_right_paired();
         Matrix X = prod.data()[mps_block];    
@@ -464,7 +466,7 @@ void analyze(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & sp, MPSTensor<M
         });
         maquis::cout << "Schedule done\n";
 
-        MPSTensor<matrix, symm> prod = site_hamil_shtm(initial, left, right, mpo, shtm_tasks_vec);
+        MPSTensor<Matrix, symm> prod = site_hamil_shtm(initial, left, right, mpo, shtm_tasks_vec);
         prod.make_right_paired();
 
         size_t mps_block = prod.data().find_block(lc, lc);
@@ -476,14 +478,14 @@ void analyze(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & sp, MPSTensor<M
 
         MPSTensor<Matrix, SymmGroup> ref = site_hamil_rbtm(initial, left, right, mpo, contraction_schedule);
         ref.make_right_paired();
-        block_matrix<matrix, symm> diff = prod.data() - ref.data();
+        block_matrix<Matrix, symm> diff = prod.data() - ref.data();
 
         maquis::cout << "norm diff" << diff.norm() << std::endl;
     }
 
 
     //maquis::cout << "MPS block: " << mpsb[mc][s].mps_block << std::endl;
-    //for (typename MPSBlock<matrix, symm>::mapped_value_type::T_index_t::iterator it = mpsb[mc][s].T_index.begin();
+    //for (typename MPSBlock<Matrix, symm>::mapped_value_type::T_index_t::iterator it = mpsb[mc][s].T_index.begin();
     //     it != mpsb[mc][s].T_index.end(); ++it)
     //{
     //    maquis::cout << it->second << ": " << get<0>(it->first) << ", "
@@ -495,12 +497,12 @@ void analyze(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & sp, MPSTensor<M
     //for (size_t l = 0; l < left_i.size(); ++l)
     //{
     //    charge lc = left_i[l].first;
-    //    MPSBlock<matrix, symm> mpsb;
+    //    MPSBlock<Matrix, symm> mpsb;
     //    shtm_tasks(mpo, left_indices, right_indices, left_i,
     //               right_i, physical_i, out_right_pb, lc, mpsb);
 
     //    maquis::cout << "lc: " << lc << " ";
-    //    for (typename MPSBlock<matrix, symm>::const_iterator it = mpsb.begin();
+    //    for (typename MPSBlock<Matrix, symm>::const_iterator it = mpsb.begin();
     //         it != mpsb.end(); ++it)
     //        maquis::cout << it->first;
     //    maquis::cout << std::endl;

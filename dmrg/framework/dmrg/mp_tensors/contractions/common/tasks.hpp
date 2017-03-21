@@ -186,8 +186,6 @@ public:
     {
         if (!this->size()) return;
 
-        Matrix const & mps_matrix = mps.data()[mps_block]; 
-
         T.resize(t_key_vec.size());
         for (unsigned pos = 0; pos < t_key_vec.size(); ++pos)
         {
@@ -196,9 +194,9 @@ public:
             unsigned in_offset = boost::get<2>(t_key_vec[pos]);
 
             if (mpo.herm_info.right_skip(b2))
-                multiply(mps_matrix, transpose(right[mpo.herm_info.right_conj(b2)])[r_block], in_offset, pos);    
+                multiply(mps.data()[mps_block], transpose(right[mpo.herm_info.right_conj(b2)])[r_block], in_offset, pos);    
             else
-                multiply(mps_matrix, right[b2][r_block], in_offset, pos);    
+                multiply(mps.data()[mps_block], right[b2][r_block], in_offset, pos);    
         }
     }
 
@@ -295,7 +293,6 @@ template <class Matrix, class SymmGroup>
 struct Schedule_ : public std::vector<MPSBlock<Matrix, SymmGroup> >
 {
     typedef std::vector<MPSBlock<Matrix, SymmGroup> > base;
-    typedef typename base::value_type value_type;
 
     Schedule_() {}
     Schedule_(std::size_t dim) : base(dim) {}
@@ -315,7 +312,10 @@ struct Schedule_ : public std::vector<MPSBlock<Matrix, SymmGroup> >
 template <class Matrix, class SymmGroup>
 struct Schedule
 {
-    typedef Schedule_<Matrix, SymmGroup> schedule_t;
+    typedef typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, 32>::type AlignedMatrix;
+    typedef typename MatrixGroup<AlignedMatrix, SymmGroup>::micro_task micro_task;
+    typedef MPSBlock<AlignedMatrix, SymmGroup> block_type;
+    typedef Schedule_<AlignedMatrix, SymmGroup> schedule_t;
 }; 
 
 template<class Matrix, class OtherMatrix, class SymmGroup, class TaskCalc>
@@ -331,8 +331,6 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
     typedef MPOTensor_detail::index_type index_type;
     typedef typename task_capsule<Matrix, SymmGroup>::map_t map_t;
     typedef typename MatrixGroup<Matrix, SymmGroup>::micro_task micro_task;
-
-    typedef typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, 32>::type AlignedMatrix;
 
     boost::chrono::high_resolution_clock::time_point now = boost::chrono::high_resolution_clock::now();
 

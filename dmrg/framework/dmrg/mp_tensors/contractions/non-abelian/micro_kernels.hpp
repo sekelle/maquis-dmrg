@@ -154,13 +154,14 @@ namespace detail {
         }
     }
 
-    template <class Matrix, class SymmGroup>
+    template <class Matrix, class AlignedMatrix, class SymmGroup>
     void op_iterate_shtm(typename operator_selector<Matrix, SymmGroup>::type const & W, std::size_t w_block,
                          typename Matrix::value_type couplings[],
-                         typename MPSBlock<Matrix, SymmGroup>::mapped_value_type & cg,
-                         typename MPSBlock<Matrix, SymmGroup>::mapped_value_type::t_key tq,
+                         typename MPSBlock<AlignedMatrix, SymmGroup>::mapped_value_type & cg,
+                         typename MPSBlock<AlignedMatrix, SymmGroup>::mapped_value_type::t_key tq,
                          unsigned m2_size,
-                         typename boost::unordered_map<typename MPSBlock<Matrix, SymmGroup>::mapped_value_type::t_key, unsigned> & t_map)
+                         typename boost::unordered_map<typename MPSBlock<AlignedMatrix, SymmGroup>
+                                    ::mapped_value_type::t_key, unsigned> & t_map)
     {
         using boost::get;
         typedef typename MPSBlock<Matrix, SymmGroup>::mapped_value_type cgroup;

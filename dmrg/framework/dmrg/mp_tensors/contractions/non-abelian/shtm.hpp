@@ -38,9 +38,6 @@
 namespace contraction {
 namespace SU2 {
 
-    using common::MatrixGroup;
-    using common::MPSBlock;
-
     template<class Matrix, class OtherMatrix, class SymmGroup>
     void shtm_tasks(MPOTensor<Matrix, SymmGroup> const & mpo,
                     common::LeftIndices<Matrix, OtherMatrix, SymmGroup> const & left,
@@ -50,15 +47,15 @@ namespace SU2 {
                     Index<SymmGroup> const & phys_i,
                     ProductBasis<SymmGroup> const & right_pb,
                     unsigned left_mps_block,
-                    MPSBlock<Matrix, SymmGroup> & mpsb)
+                    typename common::Schedule<Matrix, SymmGroup>::block_type & mpsb)
     {
         typedef MPOTensor_detail::index_type index_type;
         typedef typename MPOTensor<Matrix, SymmGroup>::row_proxy row_proxy;
         typedef typename SymmGroup::charge charge;
         typedef typename Matrix::value_type value_type;
-        typedef typename MatrixGroup<Matrix, SymmGroup>::micro_task micro_task;
-        typedef MPSBlock<Matrix, SymmGroup> mpsb_t;
-        typedef typename mpsb_t::mapped_value_type cgroup;
+        typedef typename common::Schedule<Matrix, SymmGroup>::micro_task micro_task;
+        typedef typename common::Schedule<Matrix, SymmGroup>::block_type block_type;
+        typedef typename block_type::mapped_value_type cgroup;
         typedef typename cgroup::t_key t_key;
 
         charge lc = left_i[left_mps_block].first;
@@ -81,7 +78,7 @@ namespace SU2 {
                 unsigned in_mps_block = left_i.position(mc); if (in_mps_block == left_i.size()) continue;
                 unsigned m1_size = left_i[in_mps_block].second;
 
-                typename mpsb_t::mapped_value_type cg(in_mps_block, phys_i[s].second, l_size, m1_size, r_size,
+                typename block_type::mapped_value_type cg(in_mps_block, phys_i[s].second, l_size, m1_size, r_size,
                                                       out_right_offset);
 
                 ::SU2::Wigner9jCache<value_type, SymmGroup> w9j(lc, mc, rc);
@@ -119,8 +116,9 @@ namespace SU2 {
                                                  *  left.conj_scales[b1][left_block];
                                 w9j.set_scale(A, K, Ap, SymmGroup::spin(tlc), scale, couplings);
 
-                                typename mpsb_t::mapped_value_type::t_key tq = boost::make_tuple(b2, right_block, in_offset);
-                                detail::op_iterate_shtm<Matrix, SymmGroup>(W, w_block, couplings, cg, tq, m2_size, t_index);
+                                typename block_type::mapped_value_type::t_key tq = boost::make_tuple(b2, right_block, in_offset);
+                                detail::op_iterate_shtm<Matrix, typename common::Schedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
+                                    (W, w_block, couplings, cg, tq, m2_size, t_index);
                             } // w_block
                         } //op_index
                     } // b2
