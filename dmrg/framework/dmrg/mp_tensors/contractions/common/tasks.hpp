@@ -128,6 +128,7 @@ public:
                 maquis::dmrg::detail::iterator_axpy(&T[tasks[i][j].t_index](0,0),
                                                     &T[tasks[i][j].t_index](0,0) + m_size * r_size,
                                                     &S(0,0), tasks[i][j].scale);
+                //maquis::dmrg::detail::mydaxpy(m_size * r_size, tasks[i][j].scale, &T[tasks[i][j].t_index](0,0), &S(0,0));
             }
 
             if (mpo.herm_info.left_skip(b1)) {

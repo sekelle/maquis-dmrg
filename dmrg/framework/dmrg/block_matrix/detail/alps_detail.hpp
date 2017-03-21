@@ -43,7 +43,14 @@ namespace maquis { namespace dmrg { namespace detail {
         generate(m, g);
     }
 
-    inline void mydaxpy(int n, double a, const double* x, double* y)
+    template <class T>
+    inline void mydaxpy(std::size_t n, T a, const T* x, T* y)
+    {
+        std::cout << "Generic\n";
+        std::transform(x, x+n, y, y, boost::lambda::_1*a+boost::lambda::_2);
+    }
+
+    inline void mydaxpy(std::size_t n, double a, const double* x, double* y)
     {
       // broadcast the scale factor into a register
       __m256d x0 = _mm256_broadcast_sd(&a);
@@ -51,31 +58,20 @@ namespace maquis { namespace dmrg { namespace detail {
       // align
       //std::size_t xv = *reinterpret_cast<std::size_t*>(&x);
       //std::size_t yv = *reinterpret_cast<std::size_t*>(&y);
-      //std::size_t skip = 4 - (xv % 32) / sizeof(double);
-      //std::size_t skip2 = 4 - (yv % 32) / sizeof(double);
-      //assert(skip == skip2);
       assert((uintptr_t)(x) % 32 == 0);
       assert((uintptr_t)(y) % 32 == 0);
-      const std::size_t skip = 0;
+     
+      std::size_t ndiv4 = n/4;
 
-      std::size_t ndiv4 = (n-skip)/4;
-      const double * xs = x + skip;
-      double * ys = y + skip;
-
-      // loop over chunks of 4 values
       for (int i=0; i<ndiv4; ++i) {
-        __m256d x1 = _mm256_load_pd(xs+4*i);  // aligned (fast) load
-        __m256d x2 = _mm256_load_pd(ys+4*i);  // aligned (fast) load
-        __m256d x3 = _mm256_mul_pd(x0, x1);   // multiply
-        __m256d x4 = _mm256_add_pd(x2, x3);   // add
-        _mm256_store_pd(ys+4*i, x4);      // store back aligned
+        __m256d x1 = _mm256_load_pd(x+4*i);
+        __m256d x2 = _mm256_load_pd(y+4*i);
+        __m256d x3 = _mm256_mul_pd(x0, x1);
+        __m256d x4 = _mm256_add_pd(x2, x3);
+        _mm256_store_pd(y+4*i, x4);
       }
 
-      // do the remaining entries
-      //for (int i=0 ; i< skip ; ++i)
-      //  y[i] += a*x[i];
-
-      for (int i=ndiv4*4 + skip; i< n ; ++i)
+      for (int i=ndiv4*4; i < n ; ++i)
         y[i] += a*x[i];
     }
 
@@ -132,8 +128,6 @@ namespace maquis { namespace dmrg { namespace detail {
         return nzeros;
     }
     
-    //template <typename T, class A>
-    //void op_kron(alps::numeric::matrix<T,A>& out, const alps::numeric::matrix<T,A>& in, const alps::numeric::matrix<T,A>& alfa,
     template <class Matrix1, class Matrix2>
     void op_kron(Matrix2& out, const Matrix1& in, const Matrix1& alfa,
                  size_t out_y_offset, size_t out_x_offset, 
