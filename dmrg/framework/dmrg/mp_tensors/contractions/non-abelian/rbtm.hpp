@@ -182,11 +182,11 @@ namespace SU2 {
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
     void charge_gemm(Matrix const & A, OtherMatrix const & B, block_matrix<OtherMatrix, SymmGroup> & C,
-                     typename SymmGroup::charge rc, typename Matrix::value_type scale)
+                     typename SymmGroup::charge lc, typename Matrix::value_type scale)
     {
-        size_t c_block = C.find_block(rc, rc);
+        size_t c_block = C.find_block(lc, lc);
         if (c_block == C.n_blocks())
-               c_block = C.insert_block(OtherMatrix(num_rows(A), num_cols(B)), rc, rc);
+               c_block = C.insert_block(OtherMatrix(num_rows(A), num_cols(B)), lc, lc);
 
         boost::numeric::bindings::blas::gemm(scale, A, B, typename Matrix::value_type(1), C[c_block]); 
     }
@@ -207,19 +207,20 @@ namespace SU2 {
 
         std::vector<value_type> phases = (mpo.herm_info.left_skip(b1)) ? common::conjugate_phases(left_b1.basis(), mpo, b1, true, false) :
                                                                          std::vector<value_type>(left_b1.n_blocks(),1.);
+        // loop over (lc,mc) in L(lc,mc) ~ S(mc,lc)
         for (typename map_t::const_iterator it = tasks.begin(); it != tasks.end(); ++it)
         {
-            std::vector<micro_task> const & otasks = it->second;
+            charge mc = it->first.first;
+            charge lc = it->first.second;
+            size_t k = left_b1.basis().position(lc, mc); if (k == left_b1.basis().size()) continue;
 
-            if (otasks.size() == 0) continue;
-            Matrix buf(otasks[0].l_size, out_right_i.size_of_block(it->first.second));
-
-            size_t k = left_b1.basis().position(it->first.second, it->first.first); if (k == left_b1.basis().size()) continue;
+            std::vector<micro_task> const & otasks = it->second; if (otasks.size() == 0) continue;
+            Matrix S_buffer(otasks[0].l_size, out_right_i.size_of_block(it->first.second));
 
             for (typename std::vector<micro_task>::const_iterator it2 = otasks.begin(); it2 != otasks.end(); ++it2)
-                detail::task_axpy(*it2, &buf(0,0), &t.at(it2->b2)[it2->k](0,0) + it2->in_offset);
+                detail::task_axpy(*it2, &S_buffer(0,0), &t.at(it2->b2)[it2->k](0,0) + it2->in_offset);
 
-            charge_gemm(left_b1[k], buf, prod, it->first.second, phases[k]);
+            charge_gemm(left_b1[k], S_buffer, prod, lc, phases[k]);
         }
     }
 } // namespace SU2
