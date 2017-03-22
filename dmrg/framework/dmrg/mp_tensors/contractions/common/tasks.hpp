@@ -36,6 +36,8 @@
 #include "dmrg/utils/aligned_allocator.hpp"
 #include "dmrg/mp_tensors/contractions/common/gemm_binding.hpp"
 
+#include "dmrg/mp_tensors/contractions/common/numeric.h"
+
 namespace contraction {
 namespace common {
 
@@ -64,6 +66,8 @@ namespace detail {
 } // namespace detail
 
 #include "dmrg/mp_tensors/contractions/common/tasks_old.hpp"
+
+extern "C" { void MKL_Verbose(int); }
 
 template <class Matrix, class SymmGroup>
 class MatrixGroup
@@ -116,28 +120,131 @@ public:
     Matrix contract(Boundary<OtherMatrix, SymmGroup> const & left, std::vector<Matrix> const & T,
                     MPOTensor<SmallMatrix, SymmGroup> const & mpo) const
     {
+        unsigned b1size = tasks.size();
+
+        unsigned* b2sz = new unsigned[b1size];
+        bool*     transL = new bool[b1size];
+        const value_type** left_mat = new const value_type*[b1size];
+        const value_type** t_mat = new const value_type*[T.size()];
+
+        unsigned ** tidx = new unsigned*[b1size];
+        value_type ** alpha = new value_type*[b1size];
+
+        for (index_type t = 0; t < T.size(); ++t)
+            t_mat[t] = &T[t](0,0);
+
+        for (index_type i = 0; i < b1size; ++i)
+        {
+            index_type b1 = bs[i];
+            b2sz[i] = tasks[i].size();
+
+            if (mpo.herm_info.left_skip(b1)) {
+                transL[i] = false;
+                index_type b1_eff = mpo.herm_info.left_conj(b1);
+                left_mat[i] = &left[b1_eff][ks[i]](0,0);
+            }
+            else {
+                transL[i] = true;
+                left_mat[i] = &left[b1][ks[i]](0,0);
+            }
+
+            tidx[i] = new unsigned[tasks[i].size()];
+            alpha[i] = new value_type[tasks[i].size()];
+            for (index_type j = 0; j < tasks[i].size(); ++j) {
+                tidx[i][j] = tasks[i][j].t_index; 
+                alpha[i][j] = tasks[i][j].scale; 
+            }
+        }
+
         Matrix ret(l_size, r_size);
+        //dgemm_ddot(l_size, m_size, r_size, b1size, b2sz, transL, tidx, alpha, left_mat, t_mat, &ret(0,0));
         for (index_type i = 0; i < tasks.size(); ++i)
         {
             index_type b1 = bs[i];
             Matrix S(m_size, r_size);
             //if (!check_align(&S(0,0), 32)) throw std::runtime_error("Alignment wrong\n");
 
-            for (index_type j = 0; j < tasks[i].size(); ++j)
-            {
-                maquis::dmrg::detail::iterator_axpy(&T[tasks[i][j].t_index](0,0),
-                                                    &T[tasks[i][j].t_index](0,0) + m_size * r_size,
-                                                    &S(0,0), tasks[i][j].scale);
-                //maquis::dmrg::detail::mydaxpy(m_size * r_size, tasks[i][j].scale, &T[tasks[i][j].t_index](0,0), &S(0,0));
-            }
+            //for (index_type j = 0; j < tasks[i].size(); ++j)
+            //{
+            //    maquis::dmrg::detail::iterator_axpy(&T[tasks[i][j].t_index](0,0),
+            //                                        &T[tasks[i][j].t_index](0,0) + m_size * r_size,
+            //                                        &S(0,0), tasks[i][j].scale);
+            //    //maquis::dmrg::detail::mydaxpy(m_size * r_size, tasks[i][j].scale, &T[tasks[i][j].t_index](0,0), &S(0,0));
+            //}
+            daxpy_ddot(m_size, r_size, tasks[i].size(), alpha[i], tidx[i], t_mat, &S(0,0));
 
-            if (mpo.herm_info.left_skip(b1)) {
+            if (!transL[i]) {
                 index_type b1_eff = mpo.herm_info.left_conj(b1);
-                boost::numeric::bindings::blas::gemm(value_type(1), left[b1_eff][ks[i]], S, value_type(1), ret); 
+
+                value_type one = 1;
+                char ntr = 'N';
+                int M = l_size, K = m_size, N = r_size;
+
+                assert(left_mat[i] == &left[b1_eff][ks[i]](0,0));
+                assert(M==num_rows(left[b1_eff][ks[i]]));
+                assert(K==num_cols(left[b1_eff][ks[i]]));
+                assert(K==num_rows(S));
+                assert(N==num_cols(S));
+                assert(M==num_rows(ret));
+                assert(N==num_cols(ret));
+
+                //for (int m = 0; m < M; ++m)
+                //for (int n = 0; n < N; ++n)
+                //for (int k = 0; k < K; ++k)
+                //    ret(m,n) += *(left_mat[i]+M*k+m) * *(&S(0,0)+K*n+k);
+
+                dgemm_(&ntr,&ntr, &M, &N, &K, &one,
+                       left_mat[i], &M, &S(0,0), &K, &one, &ret(0,0), &M);
+                //boost::numeric::bindings::blas::gemm(value_type(1), left[b1_eff][ks[i]], S, value_type(1), ret); 
             }
-            else
+            else {
+
+                value_type one = 1;
+                char ntr = 'N';
+                char tr = 'T';
+                int M = l_size, K = m_size, N = r_size;
+
+                //for (int m = 0; m < M; ++m)
+                //for (int n = 0; n < N; ++n)
+                //for (int k = 0; k < K; ++k)
+                //    //ret(m,n) += *(left_mat[i]+M*k+m) * *(&S(0,0)+K*n+k);
+                //    ret(m,n) += *(left_mat[i]+M*m+k) * *(&S(0,0)+K*n+k);
+
+                //assert(left_mat[i] == &left[b1][ks[i]](0,0));
+                //assert(M==num_rows(transpose(left[b1])[ks[i]]));
+                //assert(K==num_cols(transpose(left[b1])[ks[i]]));
+                //assert(K==num_rows(S));
+                //assert(N==num_cols(S));
+                //assert(M==num_rows(ret));
+                //assert(N==num_cols(ret));
+
+                //block_matrix<typename maquis::traits::transpose_view<OtherMatrix>::type, SymmGroup> trv = transpose(left[b1]);
+
+                //const value_type * ptr = &trv[ks[i]](0,0);
+                //maquis::cout << M << " " <<  N << " " << K << " " << ptr
+                //             << " " << &left[b1][ks[i]](0,0) << std::endl;
+
+                //MKL_Verbose(1);
+                //dgemm_(&tr,&ntr, &M, &N, &K, &one,
+                //       left_mat[i], &M, &S(0,0), &K, &one, &ret(0,0), &M);
+                //MKL_Verbose(0);
                 boost::numeric::bindings::blas::gemm(value_type(1), transpose(left[b1])[ks[i]], S, value_type(1), ret); 
+            }
+            //if (mpo.herm_info.left_skip(b1)) {
+            //    index_type b1_eff = mpo.herm_info.left_conj(b1);
+            //    boost::numeric::bindings::blas::gemm(value_type(1), left[b1_eff][ks[i]], S, value_type(1), ret); 
+            //}
+            //else
+            //    boost::numeric::bindings::blas::gemm(value_type(1), transpose(left[b1])[ks[i]], S, value_type(1), ret); 
         }
+
+        delete[] b2sz;
+        delete[] transL;
+        delete[] left_mat;
+        delete[] t_mat;
+        for (unsigned i = 0; i < b1size; ++i) { delete[] tidx[i]; delete[] alpha[i]; }
+        delete[] tidx;
+        delete[] alpha;
 
         return ret;
     }       

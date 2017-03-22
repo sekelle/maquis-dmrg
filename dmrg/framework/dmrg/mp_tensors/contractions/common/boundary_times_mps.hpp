@@ -105,6 +105,7 @@ namespace contraction {
         LeftIndices(Boundary<OtherMatrix, SymmGroup> const & left,
                     MPOTensor<Matrix, SymmGroup> const & mpo) : base(left.aux_dim())
                                                               , conj_scales(left.aux_dim())
+                                                              , trans_storage(left.aux_dim())
         {
             parallel::scheduler_permute scheduler(mpo.placement_l, parallel::groups_granularity);
 
@@ -140,9 +141,10 @@ namespace contraction {
             });
         }
 
-    //private:
         std::map<charge, std::vector<charge> > deltas;
         std::vector<std::vector<value_type> > conj_scales;
+    private:
+        std::vector<bool> trans_storage;
     };
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
