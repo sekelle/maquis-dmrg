@@ -182,7 +182,6 @@ namespace contraction {
 
         ket_tensor.make_left_paired();
         MPSBoundaryProduct<Matrix, OtherMatrix, SymmGroup, ::SU2::SU2Gemms> t(ket_tensor, right, mpo);
-        common::LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
 
         Index<SymmGroup> const & physical_i = ket_tensor.site_dim(),
                                  right_i = ket_tensor.col_dim();
