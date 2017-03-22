@@ -295,13 +295,13 @@ public:
 
     charge & left_charge(std::size_t k) { return data_[k].lc; }
     charge & right_charge(std::size_t k) { return data_[k].rc; }
-    std::size_t & left_size(std::size_t k) { return data_[k].ls; }
-    std::size_t & right_size(std::size_t k) { return data_[k].rs; }
+    qsize_type & left_size(std::size_t k) { return data_[k].ls; }
+    qsize_type & right_size(std::size_t k) { return data_[k].rs; }
 
     charge const & left_charge(std::size_t k) const { return data_[k].lc; }
     charge const & right_charge(std::size_t k) const { return data_[k].rc; }
-    std::size_t const & left_size(std::size_t k) const { return data_[k].ls; }
-    std::size_t const & right_size(std::size_t k) const { return data_[k].rs; }
+    qsize_type const & left_size(std::size_t k) const { return data_[k].ls; }
+    qsize_type const & right_size(std::size_t k) const { return data_[k].rs; }
 
     void resize(std::size_t sz) { data_.resize(sz); }
     
