@@ -41,6 +41,8 @@ namespace dual_index_detail
         typedef typename SymmGroup::charge charge;
 
     public:
+        typedef std::size_t qsize_type;
+
         QnBlock() {}
         QnBlock(charge lc_, charge rc_, std::size_t ls_, std::size_t rs_)
             : lc(lc_), rc(rc_), ls(ls_), rs(rs_) {}
@@ -50,10 +52,10 @@ namespace dual_index_detail
             return lc == o.lc && rc == o.rc && ls == o.ls && rs == o.rs;
         }
 
-        typename SymmGroup::charge lc;
-        typename SymmGroup::charge rc;
-        std::size_t                ls;
-        std::size_t                rs;
+        charge     lc;
+        charge     rc;
+        qsize_type ls;
+        qsize_type rs;
     };
 
     template<class SymmGroup>
@@ -146,6 +148,7 @@ template<class SymmGroup> class DualIndex
 public:
     typedef typename SymmGroup::charge charge;
     typedef typename data_type::value_type value_type;
+    typedef typename value_type::qsize_type qsize_type;
     
     typedef typename data_type::iterator iterator;
     typedef typename data_type::const_iterator const_iterator;
