@@ -67,8 +67,6 @@ namespace detail {
 
 #include "dmrg/mp_tensors/contractions/common/tasks_old.hpp"
 
-extern "C" { void MKL_Verbose(int); }
-
 template <class Matrix, class SymmGroup>
 class MatrixGroup
 {

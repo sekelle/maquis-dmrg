@@ -3,6 +3,7 @@
 
 #include <malloc.h>
 
+extern "C" { void MKL_Verbose(int); }
 
 template <class T>
 inline void mydaxpy(std::size_t n, T a, const T* x, T* y)
@@ -72,8 +73,7 @@ void dgemm_ddot(unsigned ls, unsigned ms, unsigned rs, unsigned b1size,
         for (uint j = 0; j < b2sz[i]; ++j)
         {
             unsigned tpos = tidx_i[j];
-            maquis::dmrg::detail::iterator_axpy(t[tpos], t[tpos] + t_size, s_buffer, alpha_i[j]);
-            //mydaxpy(m_size * r_size, tasks[i][j].scale, &T[tasks[i][j].t_index](0,0), &S(0,0));
+            mydaxpy(t_size, alpha_i[j], t[tpos], s_buffer);
         }
 
         blas_dgemm(left[i], s_buffer, out, ls, ms, rs, transL[i]);
