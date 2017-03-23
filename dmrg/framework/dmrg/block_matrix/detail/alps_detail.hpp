@@ -30,9 +30,6 @@
 #ifndef MAQUIS_BLOCK_MATRIX_DEATAIL_ALPS_MATRIX_DETAIL_HPP
 #define MAQUIS_BLOCK_MATRIX_DEATAIL_ALPS_MATRIX_DETAIL_HPP
 
-#include <x86intrin.h>
-#include <immintrin.h>
-
 template<class T, class SymmGroup>
 class block_matrix;
 

@@ -36,7 +36,7 @@
 #include "dmrg/utils/aligned_allocator.hpp"
 #include "dmrg/mp_tensors/contractions/common/gemm_binding.hpp"
 
-#include "dmrg/mp_tensors/contractions/common/numeric.h"
+#include "dmrg/mp_tensors/contractions/numeric/numeric.h"
 
 namespace contraction {
 namespace common {
