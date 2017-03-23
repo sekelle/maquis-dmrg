@@ -12,8 +12,8 @@ inline void blas_dgemm(const T* A, const T* B, T* C, int M, int K, int N, bool t
 inline void blas_dgemm(const double* A, const double* B, double* C, int M, int K, int N, bool trA)
 {
     double one=1;
-    char trans = 'N';
-    char notrans = 'T';
+    char trans = 'T';
+    char notrans = 'N';
     if (trA)
         dgemm_(&trans, &notrans, &M, &N, &K, &one, A, &K, B, &K, &one, C, &M);
     else
