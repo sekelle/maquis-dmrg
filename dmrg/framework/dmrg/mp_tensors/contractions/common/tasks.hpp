@@ -211,8 +211,10 @@ public:
                 //    ret(m,n) += *(left_mat[i]+M*m+k) * *(&S(0,0)+K*n+k);
 
                 //assert(left_mat[i] == &left[b1][ks[i]](0,0));
-                //assert(M==num_rows(transpose(left[b1])[ks[i]]));
-                //assert(K==num_cols(transpose(left[b1])[ks[i]]));
+                //if(M!=num_rows(transpose(left[b1][ks[i]])))
+                //    maquis::cout << M << " " << K << " " << N << " " << left[b1].basis() << " " << ks[i] << std::endl;
+                //assert(M==num_rows(transpose(left[b1][ks[i]])));
+                //assert(K==num_cols(transpose(left[b1][ks[i]])));
                 //assert(K==num_rows(S));
                 //assert(N==num_cols(S));
                 //assert(M==num_rows(ret));
@@ -228,7 +230,9 @@ public:
                 //dgemm_(&tr,&ntr, &M, &N, &K, &one,
                 //       left_mat[i], &M, &S(0,0), &K, &one, &ret(0,0), &M);
                 //MKL_Verbose(0);
-                boost::numeric::bindings::blas::gemm(value_type(1), transpose(left[b1])[ks[i]], S, value_type(1), ret); 
+
+                //boost::numeric::bindings::blas::gemm(value_type(1), transpose(left[b1])[ks[i]], S, value_type(1), ret); 
+                boost::numeric::bindings::blas::gemm(value_type(1), transpose(left[b1][ks[i]]), S, value_type(1), ret); 
             }
             //if (mpo.herm_info.left_skip(b1)) {
             //    index_type b1_eff = mpo.herm_info.left_conj(b1);

@@ -41,14 +41,14 @@ namespace contraction {
     typename boost::enable_if<symm_traits::HasSU2<SymmGroup>, std::vector<typename Matrix::value_type> >::type
     conjugate_phases(DualIndex<SymmGroup> const & basis,
                      MPOTensor<Matrix, SymmGroup> const & mpo,
-                     size_t k, bool left, bool forward)
+                     std::size_t k, bool left, bool forward)
     {
         typedef typename Matrix::value_type value_type;
         typename SymmGroup::subcharge S = (left) ? mpo.left_spin(k).get() : mpo.right_spin(k).get();
 
         std::vector<value_type> ret(basis.size());
 
-        for (size_t b = 0; b < basis.size(); ++b)
+        for (std::size_t b = 0; b < basis.size(); ++b)
         {
             value_type scale = ::SU2::conjugate_correction<typename Matrix::value_type, SymmGroup>
                                  (basis.left_charge(b), basis.right_charge(b), S);
@@ -67,7 +67,7 @@ namespace contraction {
     typename boost::disable_if<symm_traits::HasSU2<SymmGroup>, std::vector<typename Matrix::value_type> >::type
     conjugate_phases(DualIndex<SymmGroup> const & basis,
                      MPOTensor<Matrix, SymmGroup> const & mpo,
-                     size_t k, bool left, bool forward)
+                     std::size_t k, bool left, bool forward)
     {
         return std::vector<typename Matrix::value_type>(basis.size(), 1.);
     }
@@ -75,19 +75,19 @@ namespace contraction {
     template <class Matrix, class SymmGroup>
     typename boost::enable_if<symm_traits::HasSU2<SymmGroup> >::type recover_conjugate(block_matrix<Matrix, SymmGroup> & bm,
                                                                                        MPOTensor<Matrix, SymmGroup> const & mpo,
-                                                                                       size_t k, bool left, bool forward)
+                                                                                       std::size_t k, bool left, bool forward)
     {
         typedef typename Matrix::value_type value_type;
         std::vector<value_type> scales = conjugate_phases(bm.basis(), mpo, k, left, forward);
 
-        for (size_t b = 0; b < bm.n_blocks(); ++b)
+        for (std::size_t b = 0; b < bm.n_blocks(); ++b)
             bm[b] *= scales[b];
     }
 
     template <class Matrix, class SymmGroup>
     typename boost::disable_if<symm_traits::HasSU2<SymmGroup> >::type recover_conjugate(block_matrix<Matrix, SymmGroup> & bm,
                                                                                         MPOTensor<Matrix, SymmGroup> const & mpo,
-                                                                                        size_t b, bool left, bool forward)
+                                                                                        std::size_t b, bool left, bool forward)
     { }
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
@@ -106,12 +106,12 @@ namespace contraction {
                     MPOTensor<Matrix, SymmGroup> const & mpo) : base(left.aux_dim())
                                                               , conj_scales(left.aux_dim())
                                                               , trans_storage(left.aux_dim())
+                                                              , left_(left)
         {
             parallel::scheduler_permute scheduler(mpo.placement_l, parallel::groups_granularity);
 
             index_type loop_max = left.aux_dim();
             omp_for(index_type b1, parallel::range(index_type(0),loop_max), {
-
                 // exploit hermiticity if available
                 if (mpo.herm_info.left_skip(b1))
                 {   
@@ -119,12 +119,15 @@ namespace contraction {
 
                     (*this)[b1] = left[mpo.herm_info.left_conj(b1)].basis(); 
                     conj_scales[b1] = conjugate_phases((*this)[b1], mpo, b1, true, false);
+                    trans_storage[b1] = false;
                 }
                 else {
                     parallel::guard group(scheduler(b1), parallel::groups_granularity);
 
-                    (*this)[b1] = left[b1].basis().transpose(); 
+                    //(*this)[b1] = left[b1].basis().transpose(); 
+                    (*this)[b1] = left[b1].basis(); 
                     conj_scales[b1] = std::vector<value_type>(left[b1].n_blocks(), value_type(1.));
+                    trans_storage[b1] = true;
                 }
 
                 DualIndex<SymmGroup> const & di = (*this)[b1];
@@ -133,6 +136,7 @@ namespace contraction {
                 {
                     charge lc = di.left_charge(k);
                     charge mc = di.right_charge(k);
+                    if (trans_storage[b1]) std::swap(lc,mc);
                     std::vector<charge> & lcfixed = deltas[lc];
                     if (std::find(lcfixed.begin(), lcfixed.end(), mc) == lcfixed.end())
                         lcfixed.push_back(mc);
@@ -141,10 +145,43 @@ namespace contraction {
             });
         }
 
+        std::size_t position(index_type b1, charge lc, charge mc) const
+        {
+            if(trans_storage[b1]) {
+
+                //DualIndex<SymmGroup> orig = (*this)[b1].transpose();
+                //assert(orig == left_[b1].basis());
+                //size_t b = orig.position(mc, lc);
+
+                //size_t ret = (*this)[b1].position(lc, mc);
+
+                //if (b < orig.size())
+                //{
+                //    assert(left_[b1].basis().left_charge(b) == mc);
+                //    assert(left_[b1].basis().right_charge(b) == lc);
+                //    block_matrix<typename maquis::traits::transpose_view<OtherMatrix>::type, SymmGroup> trv = transpose(left_[b1]);
+                //    if(num_rows(trv[ret]) != num_cols(left_[b1][b]))
+                //    {
+                //        maquis::cout << trv.basis() << " " << ret << std::endl;
+                //        maquis::cout << orig << " " << b << std::endl << std::endl;
+                //        maquis::cout << (*this)[b1] << std::endl;
+                //    }
+                //    assert(num_rows(trv[ret]) == num_cols(left_[b1][b]));
+                //}
+                
+                //return b;
+                return (*this)[b1].position(mc,lc);
+                //return (*this)[b1].transpose().position(mc, lc);
+            }
+            else
+                return (*this)[b1].position(lc,mc);
+        }
+
         std::map<charge, std::vector<charge> > deltas;
         std::vector<std::vector<value_type> > conj_scales;
     private:
-        std::vector<bool> trans_storage;
+        std::vector<char> trans_storage; // vector<bool> not thread safe !!
+        Boundary<OtherMatrix, SymmGroup> const & left_;
     };
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
