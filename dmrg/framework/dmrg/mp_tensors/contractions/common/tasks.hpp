@@ -157,53 +157,6 @@ public:
         }
 
         Matrix ret(l_size, r_size);
-
-        //value_type * s_buffer = (value_type*)memalign(32, m_size * r_size * sizeof(value_type));
-        //for (index_type i = 0; i < b1size; ++i)
-        //{
-        //    index_type b1 = bs[i];
-        //    Matrix S(m_size, r_size);
-        //    memset(s_buffer, 0, m_size * r_size * sizeof(value_type));
-        //    
-        //    //maquis::dmrg::detail::mydaxpy(m_size * r_size, tasks[i][j].scale, &T[tasks[i][j].t_index](0,0), &S(0,0));
-
-        //    //daxpy_ddot(m_size, r_size, tasks[i].size(), alpha[i], tidx[i], t_mat, &S(0,0));
-        //    daxpy_ddot(m_size, r_size, b2sz[i], alpha[i], tidx[i], t_mat, s_buffer);
-
-        //    if (!transL[i]) {
-        //        //index_type b1_eff = mpo.herm_info.left_conj(b1);
-
-        //        value_type one = 1;
-        //        char ntr = 'N';
-        //        int M = l_size, K = m_size, N = r_size;
-
-        //        dgemm_(&ntr,&ntr, &M, &N, &K, &one, left_mat[i], &M, s_buffer, &K, &one, &ret(0,0), &M);
-        //        //boost::numeric::bindings::blas::gemm(value_type(1), left[b1_eff][ks[i]], S, value_type(1), ret); 
-        //    }
-        //    else {
-
-        //        value_type one = 1;
-        //        char ntr = 'N';
-        //        char tr = 'T';
-        //        int M = l_size, K = m_size, N = r_size;
-
-        //        //MKL_Verbose(1);
-        //        dgemm_(&tr,&ntr, &M, &N, &K, &one, left_mat[i], &K, s_buffer, &K, &one, &ret(0,0), &M);
-        //        //MKL_Verbose(0);
-
-        //        //boost::numeric::bindings::blas::gemm(value_type(1), transpose(left[b1])[ks[i]], S, value_type(1), ret); 
-        //        //boost::numeric::bindings::blas::gemm(value_type(1), transpose(left[b1][ks[i]]), S, value_type(1), ret); 
-        //    }
-
-        //    //if (mpo.herm_info.left_skip(b1)) {
-        //    //    index_type b1_eff = mpo.herm_info.left_conj(b1);
-        //    //    boost::numeric::bindings::blas::gemm(value_type(1), left[b1_eff][ks[i]], S, value_type(1), ret); 
-        //    //}
-        //    //else
-        //    //    boost::numeric::bindings::blas::gemm(value_type(1), transpose(left[b1])[ks[i]], S, value_type(1), ret); 
-        //}
-        //free(s_buffer);
-
         dgemm_ddot(l_size, m_size, r_size, b1size, b2sz, transL, tidx, alpha, left_mat, t_mat, &ret(0,0));
 
         delete[] b2sz;

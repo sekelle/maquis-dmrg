@@ -3,6 +3,40 @@
 
 #include <malloc.h>
 
+
+template <class T>
+inline void mydaxpy(std::size_t n, T a, const T* x, T* y)
+{
+    std::cout << "Generic\n";
+    std::transform(x, x+n, y, y, boost::lambda::_1*a+boost::lambda::_2);
+}
+
+inline void mydaxpy(std::size_t n, double a, const double* x, double* y)
+{
+  // broadcast the scale factor into a register
+  __m256d x0 = _mm256_broadcast_sd(&a);
+
+  // align
+  //std::size_t xv = *reinterpret_cast<std::size_t*>(&x);
+  //std::size_t yv = *reinterpret_cast<std::size_t*>(&y);
+  assert((uintptr_t)(x) % 32 == 0);
+  assert((uintptr_t)(y) % 32 == 0);
+
+  std::size_t ndiv4 = n/4;
+
+  for (int i=0; i<ndiv4; ++i) {
+    __m256d x1 = _mm256_load_pd(x+4*i);
+    __m256d x2 = _mm256_load_pd(y+4*i);
+    __m256d x3 = _mm256_mul_pd(x0, x1);
+    __m256d x4 = _mm256_add_pd(x2, x3);
+    _mm256_store_pd(y+4*i, x4);
+  }
+
+  for (int i=ndiv4*4; i < n ; ++i)
+    y[i] += a*x[i];
+}
+
+
 template <class T>
 inline void blas_dgemm(const T* A, const T* B, T* C, int M, int K, int N, bool trA)
 {
@@ -39,26 +73,13 @@ void dgemm_ddot(unsigned ls, unsigned ms, unsigned rs, unsigned b1size,
         {
             unsigned tpos = tidx_i[j];
             maquis::dmrg::detail::iterator_axpy(t[tpos], t[tpos] + t_size, s_buffer, alpha_i[j]);
+            //mydaxpy(m_size * r_size, tasks[i][j].scale, &T[tasks[i][j].t_index](0,0), &S(0,0));
         }
 
         blas_dgemm(left[i], s_buffer, out, ls, ms, rs, transL[i]);
     }
 
     free(s_buffer);
-}
-
-template <class T>
-void daxpy_ddot(unsigned ms, unsigned rs, unsigned b2sz, T* alpha_i,
-                unsigned * tidx_i, const T** t, T* out)
-{
-    typedef unsigned uint;
-    uint t_size = ms * rs;
-
-    for (uint j = 0; j < b2sz; ++j)
-    {
-        unsigned tpos = tidx_i[j];
-        maquis::dmrg::detail::iterator_axpy(t[tpos], t[tpos] + t_size, out, alpha_i[j]);
-    }
 }
 
 #endif

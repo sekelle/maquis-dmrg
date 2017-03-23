@@ -42,51 +42,6 @@ namespace maquis { namespace dmrg { namespace detail {
     void generate_impl(Matrix & m, Generator g){
         generate(m, g);
     }
-
-    template <class T>
-    inline void mydaxpy(std::size_t n, T a, const T* x, T* y)
-    {
-        std::cout << "Generic\n";
-        std::transform(x, x+n, y, y, boost::lambda::_1*a+boost::lambda::_2);
-    }
-
-    inline void mydaxpy(std::size_t n, double a, const double* x, double* y)
-    {
-      // broadcast the scale factor into a register
-      __m256d x0 = _mm256_broadcast_sd(&a);
-
-      // align
-      //std::size_t xv = *reinterpret_cast<std::size_t*>(&x);
-      //std::size_t yv = *reinterpret_cast<std::size_t*>(&y);
-      assert((uintptr_t)(x) % 32 == 0);
-      assert((uintptr_t)(y) % 32 == 0);
-     
-      std::size_t ndiv4 = n/4;
-
-      for (int i=0; i<ndiv4; ++i) {
-        __m256d x1 = _mm256_load_pd(x+4*i);
-        __m256d x2 = _mm256_load_pd(y+4*i);
-        __m256d x3 = _mm256_mul_pd(x0, x1);
-        __m256d x4 = _mm256_add_pd(x2, x3);
-        _mm256_store_pd(y+4*i, x4);
-      }
-
-      for (int i=ndiv4*4; i < n ; ++i)
-        y[i] += a*x[i];
-    }
-
-    template<class InputIterator, class OutputIterator, class T>
-    void iterator_axpy2(InputIterator in1, InputIterator in2,
-                       OutputIterator out1, T val)
-    {
-        std::transform(in1, in2, out1, out1, boost::lambda::_1*val+boost::lambda::_2);
-    }
-    inline void iterator_axpy2(double const * in1, double const * in2,
-                               double * out1, double val)
-    {
-        fortran_int_t one = 1, diff = in2-in1;
-        mydaxpy(diff, val, in1, out1);
-    }
         
     template<class InputIterator, class OutputIterator, class T>
     void iterator_axpy(InputIterator in1, InputIterator in2,
