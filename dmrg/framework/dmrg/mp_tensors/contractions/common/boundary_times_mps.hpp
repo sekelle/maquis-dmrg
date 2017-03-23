@@ -106,7 +106,6 @@ namespace contraction {
                     MPOTensor<Matrix, SymmGroup> const & mpo) : base(left.aux_dim())
                                                               , conj_scales(left.aux_dim())
                                                               , trans_storage(left.aux_dim())
-                                                              , left_(left)
         {
             parallel::scheduler_permute scheduler(mpo.placement_l, parallel::groups_granularity);
 
@@ -147,32 +146,8 @@ namespace contraction {
 
         std::size_t position(index_type b1, charge lc, charge mc) const
         {
-            if(trans_storage[b1]) {
-
-                //DualIndex<SymmGroup> orig = (*this)[b1].transpose();
-                //assert(orig == left_[b1].basis());
-                //size_t b = orig.position(mc, lc);
-
-                //size_t ret = (*this)[b1].position(lc, mc);
-
-                //if (b < orig.size())
-                //{
-                //    assert(left_[b1].basis().left_charge(b) == mc);
-                //    assert(left_[b1].basis().right_charge(b) == lc);
-                //    block_matrix<typename maquis::traits::transpose_view<OtherMatrix>::type, SymmGroup> trv = transpose(left_[b1]);
-                //    if(num_rows(trv[ret]) != num_cols(left_[b1][b]))
-                //    {
-                //        maquis::cout << trv.basis() << " " << ret << std::endl;
-                //        maquis::cout << orig << " " << b << std::endl << std::endl;
-                //        maquis::cout << (*this)[b1] << std::endl;
-                //    }
-                //    assert(num_rows(trv[ret]) == num_cols(left_[b1][b]));
-                //}
-                
-                //return b;
+            if(trans_storage[b1])
                 return (*this)[b1].position(mc,lc);
-                //return (*this)[b1].transpose().position(mc, lc);
-            }
             else
                 return (*this)[b1].position(lc,mc);
         }
@@ -181,7 +156,6 @@ namespace contraction {
         std::vector<std::vector<value_type> > conj_scales;
     private:
         std::vector<char> trans_storage; // vector<bool> not thread safe !!
-        Boundary<OtherMatrix, SymmGroup> const & left_;
     };
 
     template<class Matrix, class OtherMatrix, class SymmGroup>

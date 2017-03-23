@@ -86,7 +86,6 @@ namespace SU2 {
                 boost::unordered_map<t_key, unsigned> t_index;
                 for (index_type b1 = 0; b1 < mpo.row_dim(); ++b1)
                 {
-                    //unsigned left_block = left[b1].position(lc, mc); if (left_block == left[b1].size()) continue;
                     unsigned left_block = left.position(b1, lc, mc); if (left_block == left[b1].size()) continue;
                     int A = mpo.left_spin(b1).get(); if (!::SU2::triangle(SymmGroup::spin(mc), A, SymmGroup::spin(lc))) continue;
                     for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(b1, left_block);
