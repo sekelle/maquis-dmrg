@@ -15,7 +15,7 @@ inline void blas_dgemm(const double* A, const double* B, double* C, int M, int K
     char trans = 'N';
     char notrans = 'T';
     if (trA)
-        dgemm_(&trans, &notrans, &M, &N, &K, &one, A, &M, B, &K, &one, C, &M);
+        dgemm_(&trans, &notrans, &M, &N, &K, &one, A, &K, B, &K, &one, C, &M);
     else
         dgemm_(&notrans, &notrans, &M, &N, &K, &one, A, &M, B, &K, &one, C, &M);
 }
