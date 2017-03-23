@@ -180,14 +180,6 @@ public:
                 char ntr = 'N';
                 int M = l_size, K = m_size, N = r_size;
 
-                assert(left_mat[i] == &left[b1_eff][ks[i]](0,0));
-                assert(M==num_rows(left[b1_eff][ks[i]]));
-                assert(K==num_cols(left[b1_eff][ks[i]]));
-                assert(K==num_rows(S));
-                assert(N==num_cols(S));
-                assert(M==num_rows(ret));
-                assert(N==num_cols(ret));
-
                 //for (int m = 0; m < M; ++m)
                 //for (int n = 0; n < N; ++n)
                 //for (int k = 0; k < K; ++k)
@@ -207,32 +199,15 @@ public:
                 //for (int m = 0; m < M; ++m)
                 //for (int n = 0; n < N; ++n)
                 //for (int k = 0; k < K; ++k)
-                //    //ret(m,n) += *(left_mat[i]+M*k+m) * *(&S(0,0)+K*n+k);
-                //    ret(m,n) += *(left_mat[i]+M*m+k) * *(&S(0,0)+K*n+k);
-
-                //assert(left_mat[i] == &left[b1][ks[i]](0,0));
-                //if(M!=num_rows(transpose(left[b1][ks[i]])))
-                //    maquis::cout << M << " " << K << " " << N << " " << left[b1].basis() << " " << ks[i] << std::endl;
-                //assert(M==num_rows(transpose(left[b1][ks[i]])));
-                //assert(K==num_cols(transpose(left[b1][ks[i]])));
-                //assert(K==num_rows(S));
-                //assert(N==num_cols(S));
-                //assert(M==num_rows(ret));
-                //assert(N==num_cols(ret));
-
-                //block_matrix<typename maquis::traits::transpose_view<OtherMatrix>::type, SymmGroup> trv = transpose(left[b1]);
-
-                //const value_type * ptr = &trv[ks[i]](0,0);
-                //maquis::cout << M << " " <<  N << " " << K << " " << ptr
-                //             << " " << &left[b1][ks[i]](0,0) << std::endl;
+                //    ret(m,n) += *(left_mat[i]+K*m+k) * *(&S(0,0)+K*n+k);
 
                 //MKL_Verbose(1);
-                //dgemm_(&tr,&ntr, &M, &N, &K, &one,
-                //       left_mat[i], &M, &S(0,0), &K, &one, &ret(0,0), &M);
+                dgemm_(&tr,&ntr, &M, &N, &K, &one,
+                       left_mat[i], &K, &S(0,0), &K, &one, &ret(0,0), &M);
                 //MKL_Verbose(0);
 
                 //boost::numeric::bindings::blas::gemm(value_type(1), transpose(left[b1])[ks[i]], S, value_type(1), ret); 
-                boost::numeric::bindings::blas::gemm(value_type(1), transpose(left[b1][ks[i]]), S, value_type(1), ret); 
+                //boost::numeric::bindings::blas::gemm(value_type(1), transpose(left[b1][ks[i]]), S, value_type(1), ret); 
             }
             //if (mpo.herm_info.left_skip(b1)) {
             //    index_type b1_eff = mpo.herm_info.left_conj(b1);
