@@ -33,8 +33,8 @@ template <class SymmGroup>
 void dmrg_simulation<SymmGroup>::run(DmrgParameters & parms)
 {
     if (parms["COMPLEX"]) {
-        //dmrg_sim<cmatrix, SymmGroup> sim(parms);
-        //sim.run();
+        dmrg_sim<cmatrix, SymmGroup> sim(parms);
+        sim.run();
     } else {
         dmrg_sim<matrix, SymmGroup> sim(parms);
         sim.run();
