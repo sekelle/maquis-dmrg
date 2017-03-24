@@ -336,7 +336,7 @@ void analyze(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & sp, MPSTensor<M
 
             std::vector<micro_task> const & otasks = it->second;
             if (otasks.size() == 0)           continue;
-            size_t k = left_indices[b1].position(mps_charge, middle_charge);
+            size_t k = left_indices.position(b1, mps_charge, middle_charge);
             if (k == left_indices[b1].size()) continue;
 
             map2 & matrix_groups_ch = matrix_groups[boost::make_tuple(mps_charge, middle_charge)];
@@ -373,9 +373,9 @@ void analyze(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & sp, MPSTensor<M
 
     //unsigned offprobe = 539;
     //unsigned offprobe = 168, blockstart = 168;
-    //unsigned offprobe = 283, blockstart = 181;
-    unsigned offprobe = 490, blockstart = 392;
-    mc = lc;
+    unsigned offprobe = 283, blockstart = 181;
+    //unsigned offprobe = 490, blockstart = 392;
+    //mc = lc;
 
     //unsigned offprobe = 65, blockstart = 60;
 
@@ -654,7 +654,7 @@ int main(int argc, char ** argv)
         MPO<matrix, symm> mpo = load_mpo(argv[4]);
 
         int site = 6;
-        SiteProblem<matrix, smatrix, symm> sp(initial, left, right, mpo[6]);
+        SiteProblem<matrix, smatrix, symm> sp(initial, left, right, mpo[site]);
 
         analyze(sp, initial);
 
