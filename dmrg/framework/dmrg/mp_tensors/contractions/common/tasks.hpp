@@ -80,20 +80,24 @@ public:
     MatrixGroup() {}
     MatrixGroup(unsigned ls, unsigned ms, unsigned rs) : l_size(ls), m_size(ms), r_size(rs) {}
 
-    void add_line(unsigned b1, unsigned k)
+    void add_line(unsigned b1, unsigned k, char transb1)
     {
         // if size is zero or we see a new b1 for the first time and the previous b1 did yield terms
-        if (bs.size() == 0 || (*bs.rbegin() != b1 && tasks.rbegin()->size() > 0))
+        //if (bs.size() == 0 || (*bs.rbegin() != b1 && tasks.rbegin()->size() > 0))
+        if (bs.size() == 0 || tasks.rbegin()->size() > 0)
         {
             bs.push_back(b1);
             ks.push_back(k);
+            trans.push_back(transb1);
             tasks.push_back(std::vector<micro_task>());
         }
         // if the previous b1 didnt yield any terms overwrite it with the new b1
-        else if (*bs.rbegin() != b1 && tasks.rbegin()->size() == 0)
+        //else if (*bs.rbegin() != b1 && tasks.rbegin()->size() == 0)
+        else if (tasks.rbegin()->size() == 0)
         {
             *bs.rbegin() = b1;
             *ks.rbegin() = k;
+            *trans.rbegin() = transb1;
         }
     }
 
@@ -114,10 +118,9 @@ public:
                                bl::_1 + bl::bind(&std::vector<micro_task>::size, bl::_2));
     }
 
-    template <class SmallMatrix, class OtherMatrix>
+    template <class OtherMatrix>
     typename boost::disable_if<boost::is_same<typename OtherMatrix::value_type, double>, Matrix>::type
-    contract(Boundary<OtherMatrix, SymmGroup> const & left, std::vector<Matrix> const & T,
-             MPOTensor<SmallMatrix, SymmGroup> const & mpo) const
+    contract(Boundary<OtherMatrix, SymmGroup> const & left, std::vector<Matrix> const & T) const
     {
         Matrix ret(l_size, r_size);
         Matrix S(m_size, r_size);
@@ -131,10 +134,8 @@ public:
                                                     &T[tasks[i][j].t_index](0,0) + m_size * r_size,
                                                     &S(0,0), tasks[i][j].scale);
 
-            if (mpo.herm_info.left_skip(b1)) {
-                index_type b1_eff = mpo.herm_info.left_conj(b1);
-                boost::numeric::bindings::blas::gemm(value_type(1), left[b1_eff][ks[i]], S, value_type(1), ret);
-            }
+            if (!trans[i])
+                boost::numeric::bindings::blas::gemm(value_type(1), left[b1][ks[i]], S, value_type(1), ret);
             else
                 boost::numeric::bindings::blas::gemm(value_type(1), transpose(left[b1][ks[i]]), S, value_type(1), ret);
         }
@@ -142,15 +143,13 @@ public:
         return ret;
     }
 
-    template <class SmallMatrix, class OtherMatrix>
+    template <class OtherMatrix>
     typename boost::enable_if<boost::is_same<typename OtherMatrix::value_type, double>, Matrix>::type
-    contract(Boundary<OtherMatrix, SymmGroup> const & left, std::vector<Matrix> const & T,
-             MPOTensor<SmallMatrix, SymmGroup> const & mpo) const
+    contract(Boundary<OtherMatrix, SymmGroup> const & left, std::vector<Matrix> const & T) const
     {
         unsigned b1size = tasks.size();
 
         unsigned* b2sz = new unsigned[b1size];
-        bool*     transL = new bool[b1size];
         const value_type** left_mat = new const value_type*[b1size];
         const value_type** t_mat = new const value_type*[T.size()];
 
@@ -165,15 +164,7 @@ public:
             index_type b1 = bs[i];
             b2sz[i] = tasks[i].size();
 
-            if (mpo.herm_info.left_skip(b1)) {
-                transL[i] = false;
-                index_type b1_eff = mpo.herm_info.left_conj(b1);
-                left_mat[i] = &left[b1_eff][ks[i]](0,0);
-            }
-            else {
-                transL[i] = true;
-                left_mat[i] = &left[b1][ks[i]](0,0);
-            }
+            left_mat[i] = &left[b1][ks[i]](0,0);
 
             tidx[i] = new unsigned[tasks[i].size()];
             alpha[i] = new value_type[tasks[i].size()];
@@ -184,10 +175,9 @@ public:
         }
 
         Matrix ret(l_size, r_size);
-        dgemm_ddot(l_size, m_size, r_size, b1size, b2sz, transL, tidx, alpha, left_mat, t_mat, &ret(0,0));
+        dgemm_ddot(l_size, m_size, r_size, b1size, b2sz, &trans[0], tidx, alpha, left_mat, t_mat, &ret(0,0));
 
         delete[] b2sz;
-        delete[] transL;
         delete[] left_mat;
         delete[] t_mat;
         for (unsigned i = 0; i < b1size; ++i) { delete[] tidx[i]; delete[] alpha[i]; }
@@ -204,6 +194,7 @@ public:
 
     std::vector<std::vector<micro_task> > const & get_tasks() const { return tasks; }
     std::vector<index_type> const & get_bs() const { return bs; }
+    std::vector<index_type> const & get_ks() const { return ks; }
 
     unsigned offset;
 
@@ -212,6 +203,7 @@ private:
 
     std::vector<std::vector<micro_task> > tasks;
     std::vector<index_type> bs, ks;
+    std::vector<char> trans;
 };
 
 template <class Matrix, class SymmGroup>

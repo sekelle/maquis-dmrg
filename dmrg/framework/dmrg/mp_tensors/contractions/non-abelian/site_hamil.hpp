@@ -253,7 +253,7 @@ namespace contraction {
                     for (size_t ss2 = 0; ss2 < cg.size(); ++ss2)
                     {
                         if (!cg[ss2].n_tasks()) continue;
-                        typename common::Schedule<Matrix, SymmGroup>::AlignedMatrix C = cg[ss2].contract(left, cg.T, mpo);
+                        typename common::Schedule<Matrix, SymmGroup>::AlignedMatrix C = cg[ss2].contract(left, cg.T);
                         maquis::dmrg::detail::iterator_axpy(&C(0,0), &C(0,0) + num_rows(C) * num_cols(C),
                                                             &destination(0, cg[ss2].offset), value_type(1.0));
                     }

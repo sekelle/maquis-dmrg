@@ -79,7 +79,7 @@ namespace SU2 {
                 unsigned m1_size = left_i[in_mps_block].second;
 
                 typename block_type::mapped_value_type cg(in_mps_block, phys_i[s].second, l_size, m1_size, r_size,
-                                                      out_right_offset);
+                                                          out_right_offset);
 
                 ::SU2::Wigner9jCache<value_type, SymmGroup> w9j(lc, mc, rc);
 
@@ -88,7 +88,9 @@ namespace SU2 {
                 {
                     unsigned left_block = left.position(b1, lc, mc); if (left_block == left[b1].size()) continue;
                     int A = mpo.left_spin(b1).get(); if (!::SU2::triangle(SymmGroup::spin(mc), A, SymmGroup::spin(lc))) continue;
-                    for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(b1, left_block);
+
+                    index_type b1_eff = (mpo.herm_info.left_skip(b1)) ? mpo.herm_info.left_conj(b1) : b1;
+                    for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(b1_eff, left_block, !mpo.herm_info.left_skip(b1));
 
                     for (typename row_proxy::const_iterator row_it = mpo.row(b1).begin(); row_it != mpo.row(b1).end(); ++row_it) {
                         index_type b2 = row_it.index();

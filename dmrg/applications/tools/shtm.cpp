@@ -141,6 +141,7 @@ void print(MatrixGroup<Matrix, SymmGroup> const & mpsb, MPOTensor<SmallMatrix, S
     std::vector<std::vector<typename MatrixGroup<Matrix, SymmGroup>::micro_task> >
         const & tasks = mpsb.get_tasks();
     std::vector<MPOTensor_detail::index_type> const & bs = mpsb.get_bs();
+    std::vector<MPOTensor_detail::index_type> const & ks = mpsb.get_ks();
     int sw = 4;
 
     unsigned cnt = 0;
@@ -175,7 +176,8 @@ void print(MatrixGroup<Matrix, SymmGroup> const & mpsb, MPOTensor<SmallMatrix, S
 
     for (int i = 0; i < bs.size(); ++i)
     {
-        maquis::cout << std::setw(sw) << bs[i] << std::setw(sw) << mpo.left_spin(bs[i]).get() << "| ";
+        //maquis::cout << std::setw(sw) << bs[i] << std::setw(sw) << mpo.left_spin(bs[i]).get() << "| ";
+        maquis::cout << std::setw(sw) << bs[i] << std::setw(sw) << ks[i] << "| ";
         for (amap_t::const_iterator it = b2_col.begin(); it != b2_col.end(); ++it)
         {
             int col = it->second;
