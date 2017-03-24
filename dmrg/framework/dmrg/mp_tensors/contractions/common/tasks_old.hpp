@@ -131,7 +131,7 @@ create_contraction_schedule_old(MPSTensor<Matrix, SymmGroup> const & initial,
         task_capsule<Matrix, SymmGroup> const & tasks = contraction_schedule[b1];
         for (typename map_t::const_iterator it = tasks.begin(); it != tasks.end(); ++it)
         {
-            size_t k = left_indices[b1].position(it->first.second, it->first.first); if (k == left_indices[b1].size()) continue;
+            size_t k = left_indices.position(b1, it->first.second, it->first.first); if (k == left_indices[b1].size()) continue;
 
             sz += (it->second).size();
             for (typename map_t::mapped_type::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2)
