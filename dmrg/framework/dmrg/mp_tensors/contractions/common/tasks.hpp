@@ -115,8 +115,37 @@ public:
     }
 
     template <class SmallMatrix, class OtherMatrix>
-    Matrix contract(Boundary<OtherMatrix, SymmGroup> const & left, std::vector<Matrix> const & T,
-                    MPOTensor<SmallMatrix, SymmGroup> const & mpo) const
+    typename boost::disable_if<boost::is_same<typename OtherMatrix::value_type, double>, Matrix>::type
+    contract(Boundary<OtherMatrix, SymmGroup> const & left, std::vector<Matrix> const & T,
+             MPOTensor<SmallMatrix, SymmGroup> const & mpo) const
+    {
+        Matrix ret(l_size, r_size);
+        Matrix S(m_size, r_size);
+        for (index_type i = 0; i < tasks.size(); ++i)
+        {
+            index_type b1 = bs[i];
+            memset(&S(0,0), 0, m_size * r_size * sizeof(typename Matrix::value_type));
+
+            for (index_type j = 0; j < tasks[i].size(); ++j)
+                maquis::dmrg::detail::iterator_axpy(&T[tasks[i][j].t_index](0,0),
+                                                    &T[tasks[i][j].t_index](0,0) + m_size * r_size,
+                                                    &S(0,0), tasks[i][j].scale);
+
+            if (mpo.herm_info.left_skip(b1)) {
+                index_type b1_eff = mpo.herm_info.left_conj(b1);
+                boost::numeric::bindings::blas::gemm(value_type(1), left[b1_eff][ks[i]], S, value_type(1), ret);
+            }
+            else
+                boost::numeric::bindings::blas::gemm(value_type(1), transpose(left[b1][ks[i]]), S, value_type(1), ret);
+        }
+
+        return ret;
+    }
+
+    template <class SmallMatrix, class OtherMatrix>
+    typename boost::enable_if<boost::is_same<typename OtherMatrix::value_type, double>, Matrix>::type
+    contract(Boundary<OtherMatrix, SymmGroup> const & left, std::vector<Matrix> const & T,
+             MPOTensor<SmallMatrix, SymmGroup> const & mpo) const
     {
         unsigned b1size = tasks.size();
 

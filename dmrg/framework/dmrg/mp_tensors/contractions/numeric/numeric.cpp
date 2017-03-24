@@ -35,17 +35,21 @@
 #include <cassert>
 #include <cstddef>
 #include <cstring>
+#include <malloc.h>
 
 #include "numeric.h"
 
 #define ALIGNMENT 32
 
+
 extern "C" {
-void dgemm_( const char* transa, const char* transb,
-        const int* m, const int* n,
-        const int* k, const double* alpha, const double* a,
-        const int* lda, const double* b, const int* ldb,
-        const double* beta, double* c, const int* ldc );
+    void MKL_Verbose(int);
+
+    void dgemm_( const char* transa, const char* transb,
+            const int* m, const int* n,
+            const int* k, const double* alpha, const double* a,
+            const int* lda, const double* b, const int* ldb,
+            const double* beta, double* c, const int* ldc );
 }
 
 inline void mydaxpy(std::size_t n, double a, const double* x, double* y)
