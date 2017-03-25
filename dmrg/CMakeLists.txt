@@ -160,7 +160,7 @@ macro(configure_matrix_file INPUT OUTBASE VARNAME VARNAME2)
       configure_file(${INPUT} ${SYMM_FILE})
     endforeach(MAT)
   endforeach(SYMM)
-endmacro(configure_matrix_symm_file)
+endmacro(configure_matrix_file)
 
 
 # Adding symmetries definitions
