@@ -41,7 +41,7 @@ namespace contraction {
     typename boost::enable_if<symm_traits::HasSU2<SymmGroup>, std::vector<typename Matrix::value_type> >::type
     conjugate_phases(DualIndex<SymmGroup> const & basis,
                      MPOTensor<Matrix, SymmGroup> const & mpo,
-                     std::size_t k, bool left, bool forward)
+                     std::size_t k, bool left, bool forward, bool transpose = false)
     {
         typedef typename Matrix::value_type value_type;
         typename SymmGroup::subcharge S = (left) ? mpo.left_spin(k).get() : mpo.right_spin(k).get();
@@ -50,8 +50,10 @@ namespace contraction {
 
         for (std::size_t b = 0; b < basis.size(); ++b)
         {
-            value_type scale = ::SU2::conjugate_correction<typename Matrix::value_type, SymmGroup>
-                                 (basis.left_charge(b), basis.right_charge(b), S);
+            value_type scale = (transpose) ? ::SU2::conjugate_correction<typename Matrix::value_type, SymmGroup>
+                                        (basis.right_charge(b), basis.left_charge(b), S)
+                                      : ::SU2::conjugate_correction<typename Matrix::value_type, SymmGroup>
+                                        (basis.left_charge(b), basis.right_charge(b), S);
             if (forward)
                 scale *= (left) ? mpo.herm_info.left_phase(mpo.herm_info.left_conj(k)) 
                                     : mpo.herm_info.right_phase(mpo.herm_info.right_conj(k));
@@ -67,7 +69,7 @@ namespace contraction {
     typename boost::disable_if<symm_traits::HasSU2<SymmGroup>, std::vector<typename Matrix::value_type> >::type
     conjugate_phases(DualIndex<SymmGroup> const & basis,
                      MPOTensor<Matrix, SymmGroup> const & mpo,
-                     std::size_t k, bool left, bool forward)
+                     std::size_t k, bool left, bool forward, bool transpose = false)
     {
         return std::vector<typename Matrix::value_type>(basis.size(), 1.);
     }
@@ -173,6 +175,7 @@ namespace contraction {
         RightIndices(Boundary<OtherMatrix, SymmGroup> const & right,
                      MPOTensor<Matrix, SymmGroup> const & mpo) : base(right.aux_dim())
                                                                , conj_scales(right.aux_dim())
+                                                               , trans_storage(right.aux_dim())
         {
             parallel::scheduler_permute scheduler(mpo.placement_r, parallel::groups_granularity);
 
@@ -184,32 +187,33 @@ namespace contraction {
                 {
                     parallel::guard group(scheduler(b2), parallel::groups_granularity);
 
-                    (*this)[b2] = right[mpo.herm_info.right_conj(b2)].basis().transpose();
-                    conj_scales[b2] = conjugate_phases((*this)[b2], mpo, b2, false, true);
+                    (*this)[b2] = right[mpo.herm_info.right_conj(b2)].basis();
+                    bool transpose = true;
+                    conj_scales[b2] = conjugate_phases((*this)[b2], mpo, b2, false, true, transpose);
+                    trans_storage[b2] = true;
                 }
                 else {
                     parallel::guard group(scheduler(b2), parallel::groups_granularity);
 
                     (*this)[b2] = right[b2].basis();
                     conj_scales[b2] = std::vector<value_type>(right[b2].n_blocks(), value_type(1.));
+                    trans_storage[b2] = false;
                 }
-
-                //DualIndex<SymmGroup> const & di = (*this)[b2];
-                //parallel_critical
-                //for (std::size_t k = 0; k < di.size(); ++k)
-                //{
-                //    charge tlc = di.left_charge(k);
-                //    charge rc = di.right_charge(k);
-                //    std::vector<charge> & rcfixed = deltas[rc];
-                //    if (std::find(rcfixed.begin(), rcfixed.end(), tlc) == rcfixed.end())
-                //        rcfixed.push_back(tlc);
-                //}
             });
         }
 
-    //private:
-        //std::map<charge, std::vector<charge> > deltas;
+        std::size_t position(index_type b2, charge c1, charge c2) const
+        {
+            if(trans_storage[b2])
+                return (*this)[b2].position(c2,c1);
+                //return (*this)[b2].position(c1,c2);
+            else
+                return (*this)[b2].position(c1,c2);
+        }
+
         std::vector<std::vector<value_type> > conj_scales;
+    private:
+        std::vector<char> trans_storage; // vector<bool> not thread safe !!
     };
 
     template<class Matrix, class OtherMatrix, class SymmGroup, class Gemm>

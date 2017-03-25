@@ -36,6 +36,7 @@
 #include <cstddef>
 #include <cstring>
 #include <malloc.h>
+#include <stdint.h>
 
 #include "numeric.h"
 
@@ -60,8 +61,8 @@ inline void mydaxpy(std::size_t n, double a, const double* x, double* y)
   // align
   //std::size_t xv = *reinterpret_cast<std::size_t*>(&x);
   //std::size_t yv = *reinterpret_cast<std::size_t*>(&y);
-  assert((std::uintptr_t)(x) % 32 == 0);
-  assert((std::uintptr_t)(y) % 32 == 0);
+  assert((uintptr_t)(x) % 32 == 0);
+  assert((uintptr_t)(y) % 32 == 0);
 
   std::size_t ndiv4 = n/4;
 

@@ -293,7 +293,7 @@ private:
             unsigned in_offset = boost::get<2>(t_key_vec[pos]);
 
             if (mpo.herm_info.right_skip(b2))
-                multiply(mps.data()[mps_block], transpose(right[mpo.herm_info.right_conj(b2)])[r_block], in_offset, pos);    
+                multiply(mps.data()[mps_block], transpose(right[mpo.herm_info.right_conj(b2)][r_block]), in_offset, pos);
             else
                 multiply(mps.data()[mps_block], right[b2][r_block], in_offset, pos);    
         }

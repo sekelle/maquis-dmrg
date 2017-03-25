@@ -101,7 +101,6 @@ create_contraction_schedule_old(MPSTensor<Matrix, SymmGroup> const & initial,
     schedule_t contraction_schedule(mpo.row_dim());
     MPSBoundaryProductIndices<Matrix, OtherMatrix, SymmGroup> indices(initial.data().basis(), right, mpo);
     LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
-    RightIndices<Matrix, OtherMatrix, SymmGroup> right_indices(right, mpo);
 
     // MPS indices
     Index<SymmGroup> const & physical_i = initial.site_dim(),

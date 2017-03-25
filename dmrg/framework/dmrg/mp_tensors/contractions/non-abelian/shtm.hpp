@@ -107,7 +107,7 @@ namespace SU2 {
                                 charge phys_in = W.basis().left_charge(w_block);
 
                                 charge tlc = SymmGroup::fuse(mc, phys_in);
-                                unsigned right_block = right[b2].position(tlc, rc); if (right_block == right[b2].size()) continue;
+                                unsigned right_block = right.position(b2, tlc, rc); if (right_block == right[b2].size()) continue;
                                 assert(right_i.has(tlc));
 
                                 unsigned m2_size = right_i.size_of_block(tlc);
