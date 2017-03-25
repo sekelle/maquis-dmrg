@@ -2,8 +2,8 @@
  *
  * ALPS MPS DMRG Project
  *
- * Copyright (C) 2014 Institute for Theoretical Physics, ETH Zurich
- *               2011-2011 by Michele Dolfi <dolfim@phys.ethz.ch>
+ * Copyright (C) 2017 Stanford University Department of Chemistry
+ *               2017-2017 by Sebastian Keller <sebkelle@phys.ethz.ch>
  * 
  * This software is part of the ALPS Applications, published under the ALPS
  * Application License; you can use, redistribute it and/or modify it under
@@ -25,8 +25,8 @@
  *****************************************************************************/
 
 #include "dmrg/sim/matrix_types.h"
-#include "dmrg/models/model_factory.ipp"
 
-${MAQUIS_INCLUDE_FACTORIES_${CMAKE_SYMM_GROUP}}
+#include "dmrg_sim.h"
+#include "dmrg_sim.hpp"
 
-impl_model_factory(@CMAKE_MATRIX_TYPE@, @CMAKE_SYMM_GROUP@)
+template class dmrg_sim<@CMAKE_MATRIX_TYPE@, @CMAKE_SYMM_GROUP@>;
