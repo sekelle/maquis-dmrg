@@ -249,15 +249,7 @@ namespace contraction {
                 for (size_t s = 0; s < it->second.size(); ++s)
                 {
                     typename common::Schedule<Matrix, SymmGroup>::block_type::mapped_value_type const & cg = it->second[s];
-                    cg.create_T(ket_tensor, right, mpo);
-                    for (size_t ss2 = 0; ss2 < cg.size(); ++ss2)
-                    {
-                        if (!cg[ss2].n_tasks()) continue;
-                        typename common::Schedule<Matrix, SymmGroup>::AlignedMatrix C = cg[ss2].contract(left, cg.T);
-                        maquis::dmrg::detail::iterator_axpy(&C(0,0), &C(0,0) + num_rows(C) * num_cols(C),
-                                                            &destination(0, cg[ss2].offset), value_type(1.0));
-                    }
-                    cg.drop_T();
+                    cg.contract(ket_tensor, left, right, mpo, &destination(0,0));
                 }
             }
             swap(collector[mps_block], destination);

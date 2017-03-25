@@ -214,7 +214,7 @@ public:
 
     ContractionGroup() {}
     ContractionGroup(unsigned b, unsigned s, unsigned ls, unsigned ms, unsigned rs, unsigned out_offset)
-        : mps_block(b), base(s, typename base::value_type(ls, ms, rs))
+        : mps_block(b), l_size(ls), base(s, typename base::value_type(ls, ms, rs))
     {
         for (unsigned i = 0 ; i < s; ++i)
             (*this)[i].offset = out_offset + i * rs;
@@ -225,6 +225,59 @@ public:
         return std::accumulate(this->begin(), this->end(), 0,
                                bl::_1 + bl::bind(&base::value_type::n_tasks, bl::_2));
     }
+
+    template <class DefaultMatrix, class SmallMatrix, class OtherMatrix>
+    void contract(MPSTensor<DefaultMatrix, SymmGroup> const & mps,
+                  Boundary<OtherMatrix, SymmGroup> const & left,
+                  Boundary<OtherMatrix, SymmGroup> const & right,
+                  MPOTensor<SmallMatrix, SymmGroup> const & mpo,
+                  value_type* output) const
+    {
+        create_T(mps, right, mpo);
+        for (int ss1 = 0; ss1 < this->size(); ++ss1)
+        {
+            if (!(*this)[ss1].n_tasks()) continue;
+            Matrix C = (*this)[ss1].contract(left, T);
+            maquis::dmrg::detail::iterator_axpy(&C(0,0), &C(0,0) + num_rows(C) * num_cols(C),
+                                                output + l_size * (*this)[ss1].offset, value_type(1.0));
+                                                //&destination(0, cg[ss2].offset), value_type(1.0));
+        }        
+        drop_T();
+    }
+    
+    template <class DefaultMatrix, class OtherMatrix>
+    boost::tuple<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t>
+    data_stats(MPSTensor<DefaultMatrix, SymmGroup> const & mps, RightIndices<DefaultMatrix, OtherMatrix, SymmGroup> const & right) const
+    {
+        std::size_t t_move = 0, l_load = 0, lgemm_flops = 0, tgemm_flops = 0, collect=0;
+        for (int i = 0; i < this->size(); ++i)
+        {
+            t_move += (*this)[i].t_move();
+            l_load += (*this)[i].l_load();
+            lgemm_flops += (*this)[i].lgemm_flops();
+            collect += (*this)[i].collect();
+        }
+
+        for (typename std::vector<t_key>::const_iterator it = t_key_vec.begin(); it != t_key_vec.end(); ++it)
+        {
+            unsigned b2 = it->get<0>();
+            unsigned r_block = it->get<1>();
+
+            unsigned m_size = right[b2].left_size(r_block);
+            unsigned r_size = right[b2].right_size(r_block);
+
+            tgemm_flops += 2 * l_size * m_size * r_size;
+        }
+
+        return boost::make_tuple(t_move, l_load, lgemm_flops, tgemm_flops, collect);
+    }
+
+    std::vector<t_key> t_key_vec;
+
+    // invariant: phys_out, phys_offset
+private:
+    unsigned mps_block, l_size;
+    mutable std::vector<Matrix> T;
 
     template <class DefaultMatrix, class SmallMatrix, class OtherMatrix>
     void create_T(MPSTensor<DefaultMatrix, SymmGroup> const & mps, Boundary<OtherMatrix, SymmGroup> const & right,
@@ -247,41 +300,6 @@ public:
     }
 
     void drop_T() const { T = std::vector<Matrix>(); }
-
-    template <class DefaultMatrix, class OtherMatrix>
-    boost::tuple<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t>
-    data_stats(MPSTensor<DefaultMatrix, SymmGroup> const & mps, RightIndices<DefaultMatrix, OtherMatrix, SymmGroup> const & right) const
-    {
-        std::size_t t_move = 0, l_load = 0, lgemm_flops = 0, tgemm_flops = 0, collect=0;
-        for (int i = 0; i < this->size(); ++i)
-        {
-            t_move += (*this)[i].t_move();
-            l_load += (*this)[i].l_load();
-            lgemm_flops += (*this)[i].lgemm_flops();
-            collect += (*this)[i].collect();
-        }
-
-        for (typename std::vector<t_key>::const_iterator it = t_key_vec.begin(); it != t_key_vec.end(); ++it)
-        {
-            unsigned b2 = it->get<0>();
-            unsigned r_block = it->get<1>();
-
-            unsigned l_size = mps.row_dim()[mps_block].second;
-            unsigned m_size = right[b2].left_size(r_block);
-            unsigned r_size = right[b2].right_size(r_block);
-
-            tgemm_flops += 2 * l_size * m_size * r_size;
-        }
-
-        return boost::make_tuple(t_move, l_load, lgemm_flops, tgemm_flops, collect);
-    }
-
-    // invariant: phys_out, phys_offset
-    mutable std::vector<Matrix> T;
-    std::vector<t_key> t_key_vec;
-
-private:
-    unsigned mps_block;
 
     template <class DefaultMatrix, class TMatrix>
     void multiply(DefaultMatrix const & mps_matrix, TMatrix const & trv, unsigned in_offset, unsigned pos) const
