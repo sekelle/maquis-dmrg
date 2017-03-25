@@ -98,6 +98,8 @@ create_contraction_schedule_old(MPSTensor<Matrix, SymmGroup> const & initial,
 
     initial.make_left_paired();
 
+    boost::chrono::high_resolution_clock::time_point now = boost::chrono::high_resolution_clock::now();
+
     schedule_t contraction_schedule(mpo.row_dim());
     MPSBoundaryProductIndices<Matrix, OtherMatrix, SymmGroup> indices(initial.data().basis(), right, mpo);
     LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
@@ -163,6 +165,9 @@ create_contraction_schedule_old(MPSTensor<Matrix, SymmGroup> const & initial,
                                       << " B " << total_mem/1024 << "KB "
                                       << std::endl;
                                       //<< " T " << 8*::utils::size_of(indices.begin(), indices.end())/1024/1024 << "MB "
+    boost::chrono::high_resolution_clock::time_point then = boost::chrono::high_resolution_clock::now();
+    maquis::cout << "Time elapsed in SCHEDULE: " << boost::chrono::duration<double>(then - now).count() << std::endl;
+
     return contraction_schedule;
 }
 
