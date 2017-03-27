@@ -210,7 +210,7 @@ class ContractionGroup : public std::vector<MatrixGroup<Matrix, SymmGroup> >
 public:
     typedef std::vector<MatrixGroup<Matrix, SymmGroup> > base;    
     typedef typename Matrix::value_type value_type;
-    typedef boost::tuple<unsigned, unsigned, unsigned> t_key;
+    typedef unsigned long t_key;
 
     ContractionGroup() {}
     ContractionGroup(unsigned b, unsigned s, unsigned ls, unsigned ms, unsigned rs, unsigned out_offset)
@@ -226,21 +226,19 @@ public:
                                bl::_1 + bl::bind(&base::value_type::n_tasks, bl::_2));
     }
 
-    template <class DefaultMatrix, class SmallMatrix, class OtherMatrix>
+    template <class DefaultMatrix, class OtherMatrix>
     void contract(MPSTensor<DefaultMatrix, SymmGroup> const & mps,
                   Boundary<OtherMatrix, SymmGroup> const & left,
                   Boundary<OtherMatrix, SymmGroup> const & right,
-                  MPOTensor<SmallMatrix, SymmGroup> const & mpo,
                   value_type* output) const
     {
-        create_T(mps, right, mpo);
+        create_T(mps, right);
         for (int ss1 = 0; ss1 < this->size(); ++ss1)
         {
             if (!(*this)[ss1].n_tasks()) continue;
             Matrix C = (*this)[ss1].contract(left, T);
             maquis::dmrg::detail::iterator_axpy(&C(0,0), &C(0,0) + num_rows(C) * num_cols(C),
                                                 output + l_size * (*this)[ss1].offset, value_type(1.0));
-                                                //&destination(0, cg[ss2].offset), value_type(1.0));
         }        
         drop_T();
     }
@@ -260,8 +258,9 @@ public:
 
         for (typename std::vector<t_key>::const_iterator it = t_key_vec.begin(); it != t_key_vec.end(); ++it)
         {
-            unsigned b2 = it->get<0>();
-            unsigned r_block = it->get<1>();
+            unsigned long b2, r_block, offset;
+            char trans;
+            unpack(*it, b2, r_block, offset, trans);
 
             unsigned m_size = right[b2].left_size(r_block);
             unsigned r_size = right[b2].right_size(r_block);
@@ -279,21 +278,20 @@ private:
     unsigned mps_block, l_size;
     mutable std::vector<Matrix> T;
 
-    template <class DefaultMatrix, class SmallMatrix, class OtherMatrix>
-    void create_T(MPSTensor<DefaultMatrix, SymmGroup> const & mps, Boundary<OtherMatrix, SymmGroup> const & right,
-                  MPOTensor<SmallMatrix, SymmGroup> const & mpo) const
+    template <class DefaultMatrix, class OtherMatrix>
+    void create_T(MPSTensor<DefaultMatrix, SymmGroup> const & mps, Boundary<OtherMatrix, SymmGroup> const & right) const
     {
         if (!this->size()) return;
 
         T.resize(t_key_vec.size());
         for (unsigned pos = 0; pos < t_key_vec.size(); ++pos)
         {
-            unsigned b2 = boost::get<0>(t_key_vec[pos]);
-            unsigned r_block = boost::get<1>(t_key_vec[pos]);
-            unsigned in_offset = boost::get<2>(t_key_vec[pos]);
+            unsigned long b2, r_block, in_offset;
+            char trans;
+            unpack(t_key_vec[pos], b2, r_block, in_offset, trans);
 
-            if (mpo.herm_info.right_skip(b2))
-                multiply(mps.data()[mps_block], transpose(right[mpo.herm_info.right_conj(b2)][r_block]), in_offset, pos);
+            if (trans)
+                multiply(mps.data()[mps_block], transpose(right[b2][r_block]), in_offset, pos);
             else
                 multiply(mps.data()[mps_block], right[b2][r_block], in_offset, pos);    
         }

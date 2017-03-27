@@ -249,7 +249,7 @@ namespace contraction {
                 for (size_t s = 0; s < it->second.size(); ++s)
                 {
                     typename common::Schedule<Matrix, SymmGroup>::block_type::mapped_value_type const & cg = it->second[s];
-                    cg.contract(ket_tensor, left, right, mpo, &destination(0,0));
+                    cg.contract(ket_tensor, left, right, &destination(0,0));
                 }
             }
             swap(collector[mps_block], destination);

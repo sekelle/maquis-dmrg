@@ -154,19 +154,16 @@ namespace detail {
         }
     }
 
-    template <class Matrix, class AlignedMatrix, class SymmGroup>
+    template <class Matrix, class AlignedMatrix, class SymmGroup, class Map>
     void op_iterate_shtm(typename operator_selector<Matrix, SymmGroup>::type const & W, std::size_t w_block,
                          typename Matrix::value_type couplings[],
                          typename MPSBlock<AlignedMatrix, SymmGroup>::mapped_value_type & cg,
                          typename MPSBlock<AlignedMatrix, SymmGroup>::mapped_value_type::t_key tq,
                          unsigned m2_size,
-                         typename boost::unordered_map<typename MPSBlock<AlignedMatrix, SymmGroup>
-                                    ::mapped_value_type::t_key, unsigned> & t_map)
+                         Map & t_map)
     {
-        using boost::get;
         typedef typename MPSBlock<Matrix, SymmGroup>::mapped_value_type cgroup;
         typedef typename SparseOperator<Matrix, SymmGroup>::const_iterator block_iterator;
-        typedef typename boost::unordered_map<typename MPSBlock<Matrix, SymmGroup>::mapped_value_type::t_key, unsigned> t_map_t;
 
         std::pair<block_iterator, block_iterator> blocks = W.get_sparse().block(w_block);
 
@@ -184,8 +181,8 @@ namespace detail {
             typename MatrixGroup<Matrix, SymmGroup>::micro_task task;
             task.scale = it->coefficient * couplings[casenr];
 
-            typename cgroup::t_key tq2 = boost::make_tuple(get<0>(tq), get<1>(tq), get<2>(tq) + ss1*m2_size);
-            std::pair<typename t_map_t::iterator, bool> pos = t_map.insert(std::make_pair(tq2, t_map.size()));
+            typename cgroup::t_key tq2 = add_last(tq, ss1*m2_size);
+            std::pair<typename Map::iterator, bool> pos = t_map.insert(std::make_pair(tq2, t_map.size()));
             task.t_index = pos.first->second;
 
             cg[ss2].push_back(task);

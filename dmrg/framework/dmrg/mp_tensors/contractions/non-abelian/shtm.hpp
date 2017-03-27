@@ -57,6 +57,7 @@ namespace SU2 {
         typedef typename common::Schedule<Matrix, SymmGroup>::block_type block_type;
         typedef typename block_type::mapped_value_type cgroup;
         typedef typename cgroup::t_key t_key;
+        typedef std::map<t_key, unsigned> t_map_t;
 
         charge lc = left_i[left_mps_block].first;
         unsigned l_size = left_i[left_mps_block].second;
@@ -83,7 +84,7 @@ namespace SU2 {
 
                 ::SU2::Wigner9jCache<value_type, SymmGroup> w9j(lc, mc, rc);
 
-                boost::unordered_map<t_key, unsigned> t_index;
+                t_map_t t_index;
                 for (index_type b1 = 0; b1 < mpo.row_dim(); ++b1)
                 {
                     unsigned left_block = left.position(b1, lc, mc); if (left_block == left[b1].size()) continue;
@@ -118,7 +119,10 @@ namespace SU2 {
                                                  *  left.conj_scales[b1][left_block];
                                 w9j.set_scale(A, K, Ap, SymmGroup::spin(tlc), scale, couplings);
 
-                                typename block_type::mapped_value_type::t_key tq = boost::make_tuple(b2, right_block, in_offset);
+                                char right_transpose = mpo.herm_info.right_skip(b2);
+                                unsigned b2_eff = (right_transpose) ? mpo.herm_info.right_conj(b2) : b2;
+                                typename block_type::mapped_value_type::t_key tq = pack(b2_eff, right_block, in_offset, right_transpose);
+                                
                                 detail::op_iterate_shtm<Matrix, typename common::Schedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
                                     (W, w_block, couplings, cg, tq, m2_size, t_index);
                             } // w_block
@@ -127,7 +131,7 @@ namespace SU2 {
                 } // b1
 
                 cg.t_key_vec.resize(t_index.size());
-                for (typename boost::unordered_map<t_key, unsigned>::const_iterator kit = t_index.begin(); kit != t_index.end(); ++kit)
+                for (typename t_map_t::const_iterator kit = t_index.begin(); kit != t_index.end(); ++kit)
                     cg.t_key_vec[kit->second] = kit->first;
                 if (cg.n_tasks()) mpsb[mc].push_back(cg);
 
