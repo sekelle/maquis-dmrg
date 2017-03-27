@@ -256,16 +256,17 @@ public:
             collect += (*this)[i].collect();
         }
 
+        unsigned m1_size = mps.row_dim()[mps_block].second;
         for (typename std::vector<t_key>::const_iterator it = t_key_vec.begin(); it != t_key_vec.end(); ++it)
         {
             unsigned long b2, r_block, offset;
             char trans;
             unpack(*it, b2, r_block, offset, trans);
 
-            unsigned m_size = right[b2].left_size(r_block);
+            unsigned m2_size = right[b2].left_size(r_block);
             unsigned r_size = right[b2].right_size(r_block);
 
-            tgemm_flops += 2 * l_size * m_size * r_size;
+            tgemm_flops += 2 * m1_size * m2_size * r_size;
         }
 
         return boost::make_tuple(t_move, l_load, lgemm_flops, tgemm_flops, collect);
@@ -302,13 +303,13 @@ private:
     template <class DefaultMatrix, class TMatrix>
     void multiply(DefaultMatrix const & mps_matrix, TMatrix const & trv, unsigned in_offset, unsigned pos) const
     {
-        unsigned l_size = num_rows(mps_matrix); 
-        unsigned m_size = num_rows(trv); 
+        unsigned m1_size = num_rows(mps_matrix); 
+        unsigned m2_size = num_rows(trv); 
         unsigned r_size = num_cols(trv); 
 
-        T[pos] = Matrix(l_size, r_size, 0);
+        T[pos] = Matrix(m1_size, r_size, 0);
         boost::numeric::bindings::blas::gemm(value_type(1), mps_matrix, trv, value_type(0), T[pos],
-                                             in_offset, 0, 0, m_size, r_size);
+                                             in_offset, 0, 0, m2_size, r_size);
     }
 };
                                                              // size == phys_i.size()
