@@ -281,8 +281,7 @@ private:
     mutable value_type* t_pointer;
 
     template <class DefaultMatrix, class OtherMatrix>
-    //typename boost::disable_if<boost::is_same<typename OtherMatrix::value_type, double>, void>::type
-    void
+    typename boost::disable_if<boost::is_same<typename OtherMatrix::value_type, double>, void>::type
     create_T(MPSTensor<DefaultMatrix, SymmGroup> const & mps, Boundary<OtherMatrix, SymmGroup> const & right) const
     {
         if (!this->size()) return;
@@ -315,7 +314,6 @@ private:
                                              in_offset, 0, 0, m2_size, r_size);
     }
 
-    /*
     template <class DefaultMatrix, class OtherMatrix>
     typename boost::enable_if<boost::is_same<typename OtherMatrix::value_type, double>, void>::type
     create_T(MPSTensor<DefaultMatrix, SymmGroup> const & mps, Boundary<OtherMatrix, SymmGroup> const & right) const
@@ -330,6 +328,8 @@ private:
         char gemmtrans[2] = {'N', 'T'};
         value_type one(1);
         value_type zero(0);
+
+        int M = mps.row_dim()[mps_block].second; 
         const value_type* mpsdata = &mps.data()[mps_block](0,0);
 
         T.resize(t_key_vec.size());
@@ -339,21 +339,16 @@ private:
             char trans;
             bit_twiddling::unpack(t_key_vec[pos], b2, r_block, in_offset, trans);
 
-            int M = mps.row_dim()[mps_block].second; 
             int K = (trans) ? right[b2].basis().right_size(r_block) : right[b2].basis().left_size(r_block); 
             int N = (trans) ? right[b2].basis().left_size(r_block) : right[b2].basis().right_size(r_block);
+            int LDB = right[b2].basis().left_size(r_block);
 
             T[pos] = Matrix(M, N);
 
-            if (trans)
-                dgemm_(&gemmtrans[0], &gemmtrans[1], &M, &N, &K, &one, mpsdata + in_offset * M, &M,
-                       &right[b2][r_block](0,0), &N, &zero, &T[pos](0,0), &M);
-            else
-                dgemm_(&gemmtrans[0], &gemmtrans[0], &M, &N, &K, &one, mpsdata + in_offset * M, &M,
-                       &right[b2][r_block](0,0), &K, &zero, &T[pos](0,0), &M);
+            dgemm_(&gemmtrans[0], &gemmtrans[trans], &M, &N, &K, &one, mpsdata + in_offset * M, &M,
+                   &right[b2][r_block](0,0), &LDB, &zero, &T[pos](0,0), &M);
         }
     }
-    */
 };
                                                              // size == phys_i.size()
 template <class Matrix, class SymmGroup>                     // invariant: mc, m_size
