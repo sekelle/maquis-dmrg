@@ -261,7 +261,7 @@ public:
         {
             unsigned long b2, r_block, offset;
             char trans;
-            unpack(*it, b2, r_block, offset, trans);
+            bit_twiddling::unpack(*it, b2, r_block, offset, trans);
 
             unsigned m2_size = right[b2].left_size(r_block);
             unsigned r_size = right[b2].right_size(r_block);
@@ -278,9 +278,12 @@ public:
 private:
     unsigned mps_block, l_size;
     mutable std::vector<Matrix> T;
+    mutable value_type* t_pointer;
 
     template <class DefaultMatrix, class OtherMatrix>
-    void create_T(MPSTensor<DefaultMatrix, SymmGroup> const & mps, Boundary<OtherMatrix, SymmGroup> const & right) const
+    //typename boost::disable_if<boost::is_same<typename OtherMatrix::value_type, double>, void>::type
+    void
+    create_T(MPSTensor<DefaultMatrix, SymmGroup> const & mps, Boundary<OtherMatrix, SymmGroup> const & right) const
     {
         if (!this->size()) return;
 
@@ -289,7 +292,7 @@ private:
         {
             unsigned long b2, r_block, in_offset;
             char trans;
-            unpack(t_key_vec[pos], b2, r_block, in_offset, trans);
+            bit_twiddling::unpack(t_key_vec[pos], b2, r_block, in_offset, trans);
 
             if (trans)
                 multiply(mps.data()[mps_block], transpose(right[b2][r_block]), in_offset, pos);
@@ -311,6 +314,46 @@ private:
         boost::numeric::bindings::blas::gemm(value_type(1), mps_matrix, trv, value_type(0), T[pos],
                                              in_offset, 0, 0, m2_size, r_size);
     }
+
+    /*
+    template <class DefaultMatrix, class OtherMatrix>
+    typename boost::enable_if<boost::is_same<typename OtherMatrix::value_type, double>, void>::type
+    create_T(MPSTensor<DefaultMatrix, SymmGroup> const & mps, Boundary<OtherMatrix, SymmGroup> const & right) const
+    {
+        if (!this->size()) return;
+
+        //std::size_t t_size = mps.row_dim()[mps_block].second * (*this)[0].r_size;
+        //std::size_t buffer_size = bit_twiddling::round_up<4>(t_size) * t_key_vec.size(); // 32B = 4 doubles
+
+        //t_pointer = (double*)memalign(32, buffer_size * sizeof(double));
+
+        char gemmtrans[2] = {'N', 'T'};
+        value_type one(1);
+        value_type zero(0);
+        const value_type* mpsdata = &mps.data()[mps_block](0,0);
+
+        T.resize(t_key_vec.size());
+        for (unsigned pos = 0; pos < t_key_vec.size(); ++pos)
+        {
+            unsigned long b2, r_block, in_offset;
+            char trans;
+            bit_twiddling::unpack(t_key_vec[pos], b2, r_block, in_offset, trans);
+
+            int M = mps.row_dim()[mps_block].second; 
+            int K = (trans) ? right[b2].basis().right_size(r_block) : right[b2].basis().left_size(r_block); 
+            int N = (trans) ? right[b2].basis().left_size(r_block) : right[b2].basis().right_size(r_block);
+
+            T[pos] = Matrix(M, N);
+
+            if (trans)
+                dgemm_(&gemmtrans[0], &gemmtrans[1], &M, &N, &K, &one, mpsdata + in_offset * M, &M,
+                       &right[b2][r_block](0,0), &N, &zero, &T[pos](0,0), &M);
+            else
+                dgemm_(&gemmtrans[0], &gemmtrans[0], &M, &N, &K, &one, mpsdata + in_offset * M, &M,
+                       &right[b2][r_block](0,0), &K, &zero, &T[pos](0,0), &M);
+        }
+    }
+    */
 };
                                                              // size == phys_i.size()
 template <class Matrix, class SymmGroup>                     // invariant: mc, m_size

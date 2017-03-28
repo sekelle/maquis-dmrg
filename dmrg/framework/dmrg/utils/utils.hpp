@@ -91,32 +91,44 @@ struct compare_pair_inverse
     }
 };
 
-template <typename T>
-bool check_align(T const* const p, unsigned int alignment) {
-    return ((reinterpret_cast<uintptr_t>(static_cast<void const* const>(p))&(alignment-1)) == 0);
-};
-
-
-inline unsigned long pack(unsigned long a, unsigned long b, unsigned long c, char d)
+namespace bit_twiddling
 {
-    return (a << 43) + (b<<22) + (c<<1) + d;
-}
 
-inline void unpack(unsigned long tuple, unsigned long& p1, unsigned long& p2, unsigned long& p3, char& p4)
-{
-    static const unsigned long mask1 = ((1ul<<21)-1)<<1;
-    static const unsigned long mask2 = mask1 << 21;
-    static const unsigned long mask3 = mask2 << 21;
-    p1 = (tuple & mask3) >> 43;
-    p2 = (tuple & mask2) >> 22;
-    p3 = (tuple & mask1) >> 1;
-    p4 = tuple & 1;
-}
+    template <typename T>
+    bool check_align(T const* const p, unsigned int alignment) {
+        return ((reinterpret_cast<uintptr_t>(static_cast<void const* const>(p))&(alignment-1)) == 0);
+    };
 
-inline unsigned long add_last(unsigned long tuple, unsigned long p1)
-{
-    return tuple += (p1<<1);
-}
+    template <unsigned A, typename T>
+    inline T round_up(T x)
+    {
+        // round up x to nearest multiple of A (A must be a power of 2)
+        return (x+(A-1)) & (~(A-1));
+    }
+
+
+    inline unsigned long pack(unsigned long a, unsigned long b, unsigned long c, char d)
+    {
+        return (a << 43) + (b<<22) + (c<<1) + d;
+    }
+
+    inline void unpack(unsigned long tuple, unsigned long& p1, unsigned long& p2, unsigned long& p3, char& p4)
+    {
+        static const unsigned long mask1 = ((1ul<<21)-1)<<1;
+        static const unsigned long mask2 = mask1 << 21;
+        static const unsigned long mask3 = mask2 << 21;
+        p1 = (tuple & mask3) >> 43;
+        p2 = (tuple & mask2) >> 22;
+        p3 = (tuple & mask1) >> 1;
+        p4 = tuple & 1;
+    }
+
+    inline unsigned long add_last(unsigned long tuple, unsigned long p1)
+    {
+        return tuple += (p1<<1);
+    }
+
+} // namespace bit_twiddling
 
 namespace boost { namespace tuples {
 

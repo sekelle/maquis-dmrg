@@ -181,7 +181,7 @@ namespace detail {
             typename MatrixGroup<Matrix, SymmGroup>::micro_task task;
             task.scale = it->coefficient * couplings[casenr];
 
-            typename cgroup::t_key tq2 = add_last(tq, ss1*m2_size);
+            typename cgroup::t_key tq2 = bit_twiddling::add_last(tq, ss1*m2_size);
             std::pair<typename Map::iterator, bool> pos = t_map.insert(std::make_pair(tq2, t_map.size()));
             task.t_index = pos.first->second;
 

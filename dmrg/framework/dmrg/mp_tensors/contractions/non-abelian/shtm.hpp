@@ -121,7 +121,8 @@ namespace SU2 {
 
                                 char right_transpose = mpo.herm_info.right_skip(b2);
                                 unsigned b2_eff = (right_transpose) ? mpo.herm_info.right_conj(b2) : b2;
-                                typename block_type::mapped_value_type::t_key tq = pack(b2_eff, right_block, in_offset, right_transpose);
+                                typename block_type::mapped_value_type::t_key tq
+                                    = bit_twiddling::pack(b2_eff, right_block, in_offset, right_transpose);
                                 
                                 detail::op_iterate_shtm<Matrix, typename common::Schedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
                                     (W, w_block, couplings, cg, tq, m2_size, t_index);
