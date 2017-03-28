@@ -109,9 +109,9 @@ namespace SU2 {
 
                                 charge tlc = SymmGroup::fuse(mc, phys_in);
                                 unsigned right_block = right.position(b2, tlc, rc); if (right_block == right[b2].size()) continue;
-                                assert(right_i.has(tlc));
+                                unsigned mps_block = right_i.position(tlc); if (mps_block == right_i.size()) continue;
 
-                                unsigned m2_size = right_i.size_of_block(tlc);
+                                unsigned m2_size = right_i[mps_block].second;
                                 unsigned in_offset = right_pb(phys_in, tlc);
 
                                 value_type couplings[4];
