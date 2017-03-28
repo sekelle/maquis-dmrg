@@ -53,6 +53,14 @@ extern "C" {
             const double* beta, double* c, const int* ldc );
 }
 
+template <unsigned A, typename T>
+inline T round_up(T x)
+{
+    // round up x to nearest multiple of A (A must be a power of 2)
+    return (x+(A-1)) & (~(A-1));
+}
+
+
 inline void mydaxpy(std::size_t n, double a, const double* x, double* y)
 {
   // broadcast the scale factor into a register
@@ -92,11 +100,12 @@ inline void blas_dgemm(const double* A, const double* B, double* C, int M, int K
 
 
 void dgemm_ddot(unsigned ls, unsigned ms, unsigned rs, unsigned b1size,
-                unsigned* b2sz, const char* transL, unsigned ** tidx, double** alpha, const double** left, const double** t, double* out)
+                unsigned* b2sz, const char* transL, unsigned ** tidx, double** alpha, const double** left, const double* t, double* out)
 {
-    typedef unsigned uint;
+    typedef unsigned long uint;
 
     uint t_size = ms * rs;
+    uint t_size_padded = round_up<4>(t_size);
 
     double * s_buffer = (double*)memalign(ALIGNMENT, t_size * sizeof(double));
     for (uint i = 0; i < b1size; ++i)
@@ -107,7 +116,7 @@ void dgemm_ddot(unsigned ls, unsigned ms, unsigned rs, unsigned b1size,
         for (uint j = 0; j < b2sz[i]; ++j)
         {
             unsigned tpos = tidx_i[j];
-            mydaxpy(t_size, alpha_i[j], t[tpos], s_buffer);
+            mydaxpy(t_size, alpha_i[j], t + tpos * t_size_padded, s_buffer);
         }
 
         blas_dgemm(left[i], s_buffer, out, ls, ms, rs, transL[i]);

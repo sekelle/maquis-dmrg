@@ -91,13 +91,13 @@ struct compare_pair_inverse
     }
 };
 
+template <typename T>
+bool check_align(T const* const p, unsigned int alignment) {
+    return ((reinterpret_cast<uintptr_t>(static_cast<void const* const>(p))&(alignment-1)) == 0);
+};
+
 namespace bit_twiddling
 {
-
-    template <typename T>
-    bool check_align(T const* const p, unsigned int alignment) {
-        return ((reinterpret_cast<uintptr_t>(static_cast<void const* const>(p))&(alignment-1)) == 0);
-    };
 
     template <unsigned A, typename T>
     inline T round_up(T x)
