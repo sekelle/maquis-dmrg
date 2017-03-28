@@ -225,9 +225,7 @@ public:
     }
 
     template <class DefaultMatrix, class OtherMatrix>
-    //typename boost::disable_if<boost::is_same<typename OtherMatrix::value_type, double>, void>::type
-    void
-    contract(MPSTensor<DefaultMatrix, SymmGroup> const & mps,
+    void contract(MPSTensor<DefaultMatrix, SymmGroup> const & mps,
              Boundary<OtherMatrix, SymmGroup> const & left,
              Boundary<OtherMatrix, SymmGroup> const & right,
              value_type* output) const
@@ -243,24 +241,6 @@ public:
         drop_T<value_type>();
     }
 
-    //template <class DefaultMatrix, class OtherMatrix>
-    //typename boost::enable_if<boost::is_same<typename OtherMatrix::value_type, double>, void>::type
-    //contract(MPSTensor<DefaultMatrix, SymmGroup> const & mps,
-    //         Boundary<OtherMatrix, SymmGroup> const & left,
-    //         Boundary<OtherMatrix, SymmGroup> const & right,
-    //         value_type* output) const
-    //{
-    //    create_T(mps, right);
-    //    for (int ss1 = 0; ss1 < this->size(); ++ss1)
-    //    {
-    //        if (!(*this)[ss1].n_tasks()) continue;
-    //        Matrix C = (*this)[ss1].contract(left, t_pointer, t_key_vec.size());
-    //        maquis::dmrg::detail::iterator_axpy(&C(0,0), &C(0,0) + num_rows(C) * num_cols(C),
-    //                                            output + l_size * (*this)[ss1].offset, value_type(1.0));
-    //    }
-    //    free(t_pointer);
-    //}
-    
     template <class DefaultMatrix, class OtherMatrix>
     boost::tuple<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t>
     data_stats(MPSTensor<DefaultMatrix, SymmGroup> const & mps, RightIndices<DefaultMatrix, OtherMatrix, SymmGroup> const & right) const
