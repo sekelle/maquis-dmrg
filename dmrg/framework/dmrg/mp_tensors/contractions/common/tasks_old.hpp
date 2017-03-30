@@ -56,6 +56,7 @@ struct task_capsule : public std::map<
 template <class Matrix, class SymmGroup>
 struct ScheduleOld_ : public std::vector<contraction::common::task_capsule<Matrix, SymmGroup> >
 {
+    typedef SymmGroup symm_t;
     typedef std::vector<contraction::common::task_capsule<Matrix, SymmGroup> > base;
 
     ScheduleOld_(std::size_t dim) : base(dim) {}

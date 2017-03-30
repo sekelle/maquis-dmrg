@@ -285,6 +285,56 @@ void check_contraction(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & sp, M
 //    maquis::cout << std::endl;
 //}
 
+template <class Map, class Schedule, class Li>
+Map convert_to_matrix_group(Schedule const & contraction_schedule, Li const & left_indices)
+{
+    typedef typename Schedule::symm_t::charge charge;
+    typedef typename Schedule::base::value_type::map_t map_t;
+    typedef typename Schedule::base::value_type::micro_task micro_task;
+    typedef typename Schedule::base::value_type::value_type value_type;
+    Map matrix_groups;
+
+    //index_type loop_max = mpo.row_dim();
+    for (int b1 = 0; b1 < contraction_schedule.size(); ++b1)
+    {
+        for (typename map_t::const_iterator it = contraction_schedule[b1].begin();
+                it != contraction_schedule[b1].end(); ++it)
+        {
+            charge mps_charge = it->first.second;
+            charge middle_charge = it->first.first;
+
+            std::vector<micro_task> const & otasks = it->second;
+            if (otasks.size() == 0)           continue;
+            size_t k = left_indices.position(b1, mps_charge, middle_charge);
+            if (k == left_indices[b1].size()) continue;
+
+            typename Map::mapped_type & matrix_groups_ch = matrix_groups[boost::make_tuple(mps_charge, middle_charge)];
+            for (typename std::vector<micro_task>::const_iterator it2 = otasks.begin(); it2 != otasks.end();)
+            {
+                unsigned offset = it2->out_offset;
+                matrix_groups_ch[offset].add_line(b1, k);
+
+                typename std::vector<micro_task>::const_iterator
+                    upper = std::upper_bound(it2, otasks.end(), *it2, task_compare<value_type>());
+                for ( ; it2 != upper; ++it2)
+                {
+                    //  conversion from old micro_task to micro_task_shtm
+                    micro_task task2;
+                    task2.scale = it2->scale;
+                    task2.in_offset = it2->in_offset;
+                    task2.b2 = it2->b2;
+                    task2.k = it2->k;
+                    task2.r_size = it2->r_size;
+                    matrix_groups_ch[offset].push_back(task2);
+                }
+
+                it2 = upper;
+            }
+        }
+    }
+    return matrix_groups;
+}
+
 template <class Matrix, class OtherMatrix, class SymmGroup>
 void analyze(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGroup> const & initial)
 {
@@ -324,48 +374,7 @@ void analyze(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & sp, MPSTensor<M
     typedef boost::tuple<charge, charge> chuple;
     typedef std::map<unsigned, MatrixGroupPrint<Matrix, SymmGroup> > map2;
     typedef std::map<chuple, map2> map1;
-
-    map1 matrix_groups;
-
-    index_type loop_max = mpo.row_dim();
-    for (int b1 = 0; b1 < loop_max; ++b1)
-    {
-        for (typename map_t::const_iterator it = contraction_schedule[b1].begin();
-                it != contraction_schedule[b1].end(); ++it)
-        {
-            charge mps_charge = it->first.second;
-            charge middle_charge = it->first.first;
-
-            std::vector<micro_task> const & otasks = it->second;
-            if (otasks.size() == 0)           continue;
-            size_t k = left_indices.position(b1, mps_charge, middle_charge);
-            if (k == left_indices[b1].size()) continue;
-
-            map2 & matrix_groups_ch = matrix_groups[boost::make_tuple(mps_charge, middle_charge)];
-            for (typename std::vector<micro_task>::const_iterator it2 = otasks.begin(); it2 != otasks.end();)
-            {
-                unsigned offset = it2->out_offset;
-                matrix_groups_ch[offset].add_line(b1, k);
-
-                typename std::vector<micro_task>::const_iterator
-                    upper = std::upper_bound(it2, otasks.end(), *it2, task_compare<value_type>());
-                for ( ; it2 != upper; ++it2)
-                {
-                    //  conversion from old micro_task to micro_task_shtm
-                    micro_task task2;
-                    task2.scale = it2->scale;
-                    task2.in_offset = it2->in_offset;
-                    task2.b2 = it2->b2;
-                    task2.k = it2->k;
-                    task2.r_size = it2->r_size;
-                    matrix_groups_ch[offset].push_back(task2);
-                }
-
-                it2 = upper;
-            }
-        }
-    }
-
+    map1 matrix_groups = convert_to_matrix_group<map1>(contraction_schedule, left_indices);
 
     // testcases: lc,mc,168,168  lc,mc,283,181  lc,lc,283,181
 
@@ -385,6 +394,7 @@ void analyze(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & sp, MPSTensor<M
 
     matrix_groups[boost::make_tuple(lc, mc)][offprobe].print_stats(mpo);
 
+    MPSBlock<AlignedMatrix, symm> mpsb;
     charge phys;
     size_t s = 0;
     for ( ; s < physical_i.size(); ++s)
@@ -399,7 +409,6 @@ void analyze(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & sp, MPSTensor<M
         }
     }
 
-    MPSBlock<AlignedMatrix, symm> mpsb;
     shtm_tasks(mpo, left_indices, right_indices, left_i,
                right_i, physical_i, out_right_pb, left_i.position(lc), mpsb);
 
@@ -407,38 +416,6 @@ void analyze(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & sp, MPSTensor<M
     print(mpsb[mc][s][1], mpo);
 
     typedef typename Schedule<Matrix, SymmGroup>::schedule_t schedule_t;
-
-    if (false)
-    { // bypass site_hamil_shtm test
-        array alc = {{4,2,0}}, amc = {{4,0,0}};
-        charge lc(alc), mc(amc);
-
-        charge phys;
-        size_t s = 0;
-        for ( ; s < physical_i.size(); ++s) {
-            phys = physical_i[s].first;
-            charge rc = SymmGroup::fuse(phys, lc);
-            if ( out_right_pb(phys, rc) == blockstart )
-                break;
-        }
-
-        // T comparison
-        MPSBoundaryProduct<Matrix, OtherMatrix, SymmGroup, ::SU2::SU2Gemms> t(initial, right, mpo);
-        Matrix const & tmat = t[166][50];
-        std::copy(&tmat(0,0), &tmat(10,0), std::ostream_iterator<value_type>(std::cout, " "));
-        maquis::cout << std::endl;
-
-        initial.make_right_paired();
-        mpsb[mc][s].create_T(initial, right, mpo);
-        AlignedMatrix const & cgmat = mpsb[mc][s].T[4];
-        std::copy(&cgmat(0,0), &cgmat(10,0), std::ostream_iterator<value_type>(std::cout, " "));
-        maquis::cout << std::endl;
-
-        // contraction test
-        AlignedMatrix C = mpsb[mc][s][1].contract(left, mpsb[mc][s].T, mpo);
-        std::copy(&C(0,0), &C(10,0), std::ostream_iterator<value_type>(std::cout, " "));
-        maquis::cout << std::endl;
-    }
 
     if (false)
     { // test complete contraction at fixed offset 283 in <4,2,0> mps block
@@ -524,6 +501,7 @@ void analyze(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & sp, MPSTensor<M
     map1 stasks; // [outcharge][outoffset][middlecharge][input_triple]
 
     std::map<charge, unsigned> middle_size;
+    index_type loop_max = mpo.row_dim();
 
     // MPS block
     for (int lb = 0; lb < left_i.size(); ++lb)
@@ -647,6 +625,7 @@ int main(int argc, char ** argv)
 {
     try {
         maquis::cout.precision(10);
+        if (argc != 6) throw std::runtime_error("usage: shtm left right initital ts_mpo site");
 
         Boundary<smatrix, symm> left, right;
         load(left, argv[1]);
@@ -655,7 +634,7 @@ int main(int argc, char ** argv)
         MPSTensor<matrix, symm> initial = load_mps(argv[3]);
         MPO<matrix, symm> mpo = load_mpo(argv[4]);
 
-        int site = 6;
+        int site = boost::lexical_cast<int>(argv[5]);
         SiteProblem<matrix, smatrix, symm> sp(initial, left, right, mpo[site]);
 
         analyze(sp, initial);
