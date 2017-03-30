@@ -43,6 +43,8 @@
 #include "dmrg/optimize/site_problem.h"
 #include "dmrg/mp_tensors/contractions/non-abelian/engine.hpp"
 
+#include "shtm/load.hpp"
+#include "shtm/prop.hpp"
 #include "shtm/ips.hpp"
 // provides MatrixGroupPrint, verbose version used for converting from rbtm schedule types
 #include "shtm/print_util.hpp"
@@ -70,7 +72,7 @@ using namespace contraction::SU2;
 
 typedef storage::constrained<matrix>::type smatrix;
 typedef maquis::traits::aligned_matrix<matrix, maquis::aligned_allocator, 32>::type amatrix;
-
+typedef storage::constrained<amatrix>::type samatrix;
 
 MPO<matrix, symm> load_mpo(std::string file)
 {
@@ -88,14 +90,6 @@ MPSTensor<matrix, symm> load_mps(std::string file)
     alps::hdf5::archive ar(file);
     mps.load(ar);
     return mps;
-}
-
-template <class Loadable>
-void load(Loadable & Data, std::string file)
-{
-    std::ifstream ifs(file.c_str());
-    boost::archive::binary_iarchive iar(ifs, std::ios::binary);
-    iar >> Data; 
 }
 
 //template <class SymmGroup>
@@ -227,7 +221,6 @@ void analyze(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & sp, MPSTensor<M
 
     matrix_groups[boost::make_tuple(lc, mc)][offprobe].print_stats(mpo);
 
-    MPSBlock<AlignedMatrix, symm> mpsb;
     charge phys;
     size_t s = 0;
     for ( ; s < physical_i.size(); ++s)
@@ -242,6 +235,7 @@ void analyze(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & sp, MPSTensor<M
         }
     }
 
+    MPSBlock<AlignedMatrix, SymmGroup> mpsb;
     shtm_tasks(mpo, left_indices, right_indices, left_i,
                right_i, physical_i, out_right_pb, left_i.position(lc), mpsb);
 
@@ -257,7 +251,7 @@ void analyze(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & sp, MPSTensor<M
         size_t mps_block = initial.data().find_block(lc, lc);
         schedule_t shtm_tasks_vec(initial.data().n_blocks());
         shtm_tasks_vec[mps_block] = mpsb;
-        MPSTensor<Matrix, symm> prod = site_hamil_shtm(initial, left, right, mpo, shtm_tasks_vec);
+        MPSTensor<Matrix, SymmGroup> prod = site_hamil_shtm(initial, left, right, mpo, shtm_tasks_vec);
 
         prod.make_right_paired();
         Matrix X = prod.data()[mps_block];    
@@ -278,7 +272,7 @@ void analyze(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & sp, MPSTensor<M
         });
         maquis::cout << "Schedule done\n";
 
-        MPSTensor<Matrix, symm> prod = site_hamil_shtm(initial, left, right, mpo, shtm_tasks_vec);
+        MPSTensor<Matrix, SymmGroup> prod = site_hamil_shtm(initial, left, right, mpo, shtm_tasks_vec);
         prod.make_right_paired();
 
         size_t mps_block = prod.data().find_block(lc, lc);
@@ -290,7 +284,7 @@ void analyze(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & sp, MPSTensor<M
 
         MPSTensor<Matrix, SymmGroup> ref = site_hamil_rbtm(initial, left, right, mpo, contraction_schedule);
         ref.make_right_paired();
-        block_matrix<Matrix, symm> diff = prod.data() - ref.data();
+        block_matrix<Matrix, SymmGroup> diff = prod.data() - ref.data();
 
         maquis::cout << "norm diff" << diff.norm() << std::endl;
     }
@@ -313,8 +307,9 @@ int main(int argc, char ** argv)
         int site = boost::lexical_cast<int>(argv[5]);
         SiteProblem<matrix, smatrix, symm> sp(initial, left, right, mpo[site]);
 
-        analyze(sp, initial);
         input_per_mps(sp, initial, site);
+        prop(sp, initial);
+        //analyze(sp, initial);
 
     } catch (std::exception& e) {
         std::cerr << "Error:" << std::endl << e.what() << std::endl;
