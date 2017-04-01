@@ -267,13 +267,37 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
     std::cout << right.aux_dim() << std::endl;
     std::cout << new_right.aux_dim() << std::endl;
 
+    MPO<Matrix, SymmGroup> whole_mpo;
+    load(whole_mpo, "../chkp.h5/mpo.h5");
+
     // 1. Create Schedule
     // 1. Contract it
 
     {
+        MPOTensor<Matrix, SymmGroup> const & mpo = whole_mpo[5];
+        Boundary<OtherMatrix, SymmGroup> left;
+        load(left, "left_3_5");
+        LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
+
+        MPSTensor<Matrix, SymmGroup> initial;
+        alps::hdf5::archive ar("ssinitial_3_5");
+        initial.load(ar);
+
         initial.make_right_paired();
         DualIndex<SymmGroup> const & ket_basis = initial.data().basis();
         block_matrix<Matrix, SymmGroup> collector(ket_basis);
+
+        // MPS indices
+        Index<SymmGroup> const & physical_i = initial.site_dim(),
+                                 right_i = initial.col_dim();
+        Index<SymmGroup> left_i = initial.row_dim(),
+                         out_right_i = adjoin(physical_i) * right_i;
+
+        common_subset(out_right_i, left_i);
+        ProductBasis<SymmGroup> in_left_pb(physical_i, left_i);
+        ProductBasis<SymmGroup> out_right_pb(physical_i, right_i,
+                boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
+                                -boost::lambda::_1, boost::lambda::_2));
 
         // Schedule
         schedule_t tasks(left_i.size());
@@ -297,7 +321,10 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
                 {
                     typename common::Schedule<Matrix, SymmGroup>::block_type::mapped_value_type const & cg = it->second[s];
                     for (int ssi = 0; ssi < cg.size(); ++ssi)
+                    {
                         std::cout << "s" << s << "," << ssi << ":" << cg[ssi].get_bs().size() << "  ";
+                        //print(cg[ssi], mpo);
+                    }
                     //std::cout << cg[s].n_tasks() << std::endl;
                     //std::cout << cg[s].get_bs().size() << std::endl;
 
@@ -308,10 +335,10 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
             //swap(collector[mps_block], destination);
         }
         //std::cout << collector.n_blocks() << std::endl;
-    }
 
-    MPO<Matrix, SymmGroup> whole_mpo;
-    load(whole_mpo, "../chkp.h5/mpo.h5");
+        MPSTensor<Matrix, SymmGroup> mult = site_hamil_shtm(initial, left, right, mpo, tasks);
+        maquis::cout << mult.data().norm() << std::endl;
+    }
 
     int argc = 2;
     char fname[] = "../di_su2";
