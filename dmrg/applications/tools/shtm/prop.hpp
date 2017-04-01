@@ -41,14 +41,194 @@
 #include "dmrg/optimize/site_problem.h"
 #include "dmrg/mp_tensors/contractions/non-abelian/engine.hpp"
 
+#include "dmrg/utils/DmrgOptions.h"
+#include "dmrg/utils/DmrgParameters.h"
+
+#include "dmrg/optimize/ietl_lanczos_solver.h"
+#include "dmrg/optimize/ietl_jacobi_davidson.h"
+
 #include "load.hpp"
+#include "print_util.hpp"
+#include "ips.hpp"
 
 using namespace contraction;
 using namespace contraction::common;
 using namespace contraction::SU2;
 
+std::string operator * (std::string s, int m)
+{
+    std::string ret("");
+    for (int i=0; i < m; ++i) ret += s;
+    return ret;
+}
+
+template <class Matrix, class SymmGroup>
+void write_mpo(MPO<Matrix, SymmGroup> const & mpo, std::string filename, bool save_space)
+{
+    std::string space(" ");
+
+    for (int p = 0; p < mpo.size(); ++p) {
+        std::ofstream ofs(std::string(filename+boost::lexical_cast<std::string>(p)+".dat").c_str());
+
+        typename MPOTensor<Matrix, SymmGroup>::op_table_ptr op_table = mpo[p].get_operator_table();
+        unsigned maxtag = op_table->size();
+        int padding = 2;
+        if (maxtag < 100 || save_space) padding = 1;
+
+        for (int b1 = 0; b1 < mpo[p].row_dim(); ++b1) {
+            for (int b2 = 0; b2 < mpo[p].col_dim(); ++b2) {
+                if (mpo[p].has(b1, b2))
+                {
+                    MPOTensor_detail::term_descriptor<Matrix, SymmGroup, true> access = mpo[p].at(b1,b2);
+                    int tag = mpo[p].tag_number(b1, b2, 0);
+                    if (access.size() > 1)
+                        ofs << space*(padding-1) << "X" << access.size();
+                    else if (tag < 10)
+                        ofs << space*padding << tag;
+                    else if (tag < 100)
+                        ofs << space*(padding-1) << tag;
+                    else
+                        if (save_space)
+                            if (tag%100 < 10)
+                                ofs << space*padding << tag%100;
+                            else
+                                ofs << tag%100;
+                        else
+                            ofs << tag;
+                }
+                else ofs << space*padding << ".";
+            }
+            ofs << std::endl;
+        }
+
+        ofs << std::endl;
+
+        for (unsigned tag=0; tag<op_table->size(); ++tag) {
+            ofs << "TAG " << tag << std::endl;
+            ofs << " * op :\n" << (*op_table)[tag] << std::endl;
+        }
+    }
+}
+
 template <class Matrix, class OtherMatrix, class SymmGroup>
-void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & sp, MPSTensor<Matrix, SymmGroup> const & initial)
+void single_site_solver()
+{
+    typedef typename Schedule<Matrix, SymmGroup>::AlignedMatrix AlignedMatrix;
+    typedef typename SymmGroup::charge charge;
+    typedef typename Matrix::value_type value_type;
+
+    MPO<Matrix, SymmGroup> whole_mpo;
+    load(whole_mpo, "../chkp.h5/mpo.h5");
+    write_mpo(whole_mpo, "mpo", false);
+
+    int argc = 2;
+    char fname[] = "../di_su2";
+    char * argv[2];
+    argv[0] = fname;
+    argv[1] = fname;
+
+    DmrgOptions opt(argc, argv);
+
+    { // Single site stuff
+
+        Boundary<OtherMatrix, SymmGroup> left5, right;
+        load(left5, "left_3_5");
+        load(right, "right_3_4");
+        MPSTensor<Matrix, SymmGroup> initial5;
+        alps::hdf5::archive ar("ssinitial_3_5");
+        initial5.load(ar);
+
+        MPOTensor<Matrix, SymmGroup> const & mpo = whole_mpo[5]; 
+        MPSTensor<Matrix, SymmGroup> & initial = initial5;
+        Boundary<OtherMatrix, SymmGroup> const & left = left5;
+
+        // MPS indices
+        Index<SymmGroup> const & physical_i = initial.site_dim(),
+                                 right_i = initial.col_dim();
+        Index<SymmGroup> left_i = initial.row_dim(),
+                         out_right_i = adjoin(physical_i) * right_i;
+
+        common_subset(out_right_i, left_i);
+        ProductBasis<SymmGroup> in_left_pb(physical_i, left_i);
+        ProductBasis<SymmGroup> out_right_pb(physical_i, right_i,
+                    boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
+                                    -boost::lambda::_1, boost::lambda::_2));
+
+        LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
+        RightIndices<Matrix, OtherMatrix, SymmGroup> right_indices(right, mpo);
+
+        MPSTensor<Matrix, SymmGroup> mult_rbtm;
+        {
+            typedef typename common::ScheduleOld<Matrix, SymmGroup>::schedule_t schedule_t;
+            schedule_t tasks = create_contraction_schedule_old(initial, left, right, mpo,
+                                                               contraction::SU2::rbtm_tasks<Matrix, OtherMatrix, SymmGroup>);
+
+            mult_rbtm = site_hamil_rbtm(initial, left, right, mpo, tasks);
+            std::cout << "site_hamil_rbtm multiplication" << std::endl;
+            //std::cout << mult << std::endl;
+        }
+
+        // H * psi multiply regroup
+
+        MPSTensor<Matrix, SymmGroup> mult_shtm;
+        {
+            initial.make_right_paired();
+            typedef typename Schedule<Matrix, SymmGroup>::schedule_t schedule_t;
+            typedef typename common::Schedule<Matrix, SymmGroup>::block_type::const_iterator const_iterator;
+
+            schedule_t tasks(left_i.size());
+            unsigned loop_max = initial.row_dim().size();
+            omp_for(unsigned mb, parallel::range<unsigned>(0,loop_max), {
+                shtm_tasks(mpo, left_indices, right_indices, left_i,
+                           right_i, physical_i, out_right_pb, mb, tasks[mb]);
+            });
+
+            //DualIndex<SymmGroup> const & ket_basis = initial.data().basis();
+            //block_matrix<Matrix, SymmGroup> collector(ket_basis);
+            //for(unsigned mps_block = 0; mps_block < loop_max; ++mps_block)
+            //{
+            //    Matrix destination(ket_basis.left_size(mps_block), ket_basis.right_size(mps_block));
+            //    for (const_iterator it = tasks[mps_block].begin(); it != tasks[mps_block].end(); ++it)
+            //    {
+            //        charge mc = it->first;
+            //        std::cout << "MC: " << mc << std::endl;
+            //        for (size_t s = 0; s < it->second.size(); ++s)
+            //        {
+            //            typename common::Schedule<Matrix, SymmGroup>::block_type::mapped_value_type const & cg = it->second[s];
+            //            //print(cg[0], mpo);
+            //            cg.contract(initial, left, right, &destination(0,0));
+            //        }
+            //    }
+            //    swap(collector[mps_block], destination);
+            //}
+            //std::cout << collector << std::endl;
+            
+            mult_shtm = site_hamil_shtm(initial, left, right, mpo, tasks);
+            std::cout << "site_hamil_shtm multiplication" << std::endl;
+            //std::cout << mult << std::endl;
+        }
+
+        // Davidson solver
+
+        //std::cout << initial << std::endl;
+        SiteProblem<Matrix, Matrix, SymmGroup> sp(initial, left, right, mpo);
+        input_per_mps(sp, initial, 5);
+
+        std::cout << std::endl;
+        std::cout << mpo.row_dim() << "x" << mpo.col_dim() << " left " << left.aux_dim() << " right " << right.aux_dim() 
+                  << std::endl;
+        std::cout << std::endl;
+
+        std::pair<double, MPSTensor<Matrix, SymmGroup> > res = solve_ietl_jcd(sp, initial, opt.parms);
+
+        std::cout << res.first + whole_mpo.getCoreEnergy() << " norm diff " << (mult_rbtm - mult_shtm).data().norm() << std::endl;
+        //std::cout << res.second << std::endl;
+
+    } // single site
+}
+
+template <class Matrix, class OtherMatrix, class SymmGroup>
+void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, SymmGroup> const & initial)
 {
     using namespace boost::tuples;
 
@@ -81,7 +261,69 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & sp, MPSTensor<Matr
 
     typedef typename Schedule<Matrix, SymmGroup>::schedule_t schedule_t;
 
-    std::cout << "Prop\n";
+    Boundary<OtherMatrix, SymmGroup> new_right;
+    load(new_right, "right_3_3");
+
+    std::cout << right.aux_dim() << std::endl;
+    std::cout << new_right.aux_dim() << std::endl;
+
+    // 1. Create Schedule
+    // 1. Contract it
+
+    {
+        initial.make_right_paired();
+        DualIndex<SymmGroup> const & ket_basis = initial.data().basis();
+        block_matrix<Matrix, SymmGroup> collector(ket_basis);
+
+        // Schedule
+        schedule_t tasks(left_i.size());
+        unsigned loop_max = left_i.size();
+        omp_for(unsigned mb, parallel::range<unsigned>(0,loop_max), {
+            rshtm_tasks(mpo, left_indices, right_indices, left_i,
+                        right_i, physical_i, out_right_pb, mb, tasks[mb]);
+        });
+        
+        // Contraction
+        typedef typename common::Schedule<Matrix, SymmGroup>::block_type::const_iterator const_iterator;
+        //omp_for(index_type mps_block, parallel::range<index_type>(0,loop_max), {
+        for(unsigned mps_block = 0; mps_block < loop_max; ++mps_block)
+        {
+            Matrix destination(ket_basis.left_size(mps_block), ket_basis.right_size(mps_block));
+            for (const_iterator it = tasks[mps_block].begin(); it != tasks[mps_block].end(); ++it)
+            {
+                charge mc = it->first;
+                std::cout << "MC: " << mc << std::endl;
+                for (size_t s = 0; s < it->second.size(); ++s)
+                {
+                    typename common::Schedule<Matrix, SymmGroup>::block_type::mapped_value_type const & cg = it->second[s];
+                    for (int ssi = 0; ssi < cg.size(); ++ssi)
+                        std::cout << "s" << s << "," << ssi << ":" << cg[ssi].get_bs().size() << "  ";
+                    //std::cout << cg[s].n_tasks() << std::endl;
+                    //std::cout << cg[s].get_bs().size() << std::endl;
+
+                    //cg.contract(initial, left, right, &destination(0,0));
+                }
+                std::cout << std::endl;
+            }
+            //swap(collector[mps_block], destination);
+        }
+        //std::cout << collector.n_blocks() << std::endl;
+    }
+
+    MPO<Matrix, SymmGroup> whole_mpo;
+    load(whole_mpo, "../chkp.h5/mpo.h5");
+
+    int argc = 2;
+    char fname[] = "../di_su2";
+    char * argv[2];
+    argv[0] = fname;
+    argv[1] = fname;
+
+    DmrgOptions opt(argc, argv);
+    std::pair<double, MPSTensor<Matrix, SymmGroup> > res = solve_ietl_jcd(sp, initial, opt.parms);
+    std::cout << res.first + whole_mpo.getCoreEnergy() << std::endl;
+
+    single_site_solver<Matrix, Matrix, SymmGroup>();
 }
 
 #endif

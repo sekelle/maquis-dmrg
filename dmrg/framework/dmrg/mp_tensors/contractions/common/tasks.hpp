@@ -226,9 +226,9 @@ public:
 
     template <class DefaultMatrix, class OtherMatrix>
     void contract(MPSTensor<DefaultMatrix, SymmGroup> const & mps,
-             Boundary<OtherMatrix, SymmGroup> const & left,
-             Boundary<OtherMatrix, SymmGroup> const & right,
-             value_type* output) const
+                  Boundary<OtherMatrix, SymmGroup> const & left,
+                  Boundary<OtherMatrix, SymmGroup> const & right,
+                  value_type* output) const
     {
         create_T(mps, right);
         for (int ss1 = 0; ss1 < this->size(); ++ss1)
@@ -240,6 +240,23 @@ public:
         }        
         drop_T<value_type>();
     }
+
+    //template <class DefaultMatrix, class OtherMatrix>
+    //void contract(MPSTensor<DefaultMatrix, SymmGroup> const & mps,
+    //              Boundary<OtherMatrix, SymmGroup> const & right,
+    //              Boundary<OtherMatrix, SymmGroup> const & new_right,
+    //              typename SymmGroup::charge mc,
+    //              typename SymmGroup::charge lc) const
+    //{
+    //    Matrix bra_matrix;//(l_size, (*this)[0].r_size);
+    //    create_T(mps, right);
+    //    for (int ss1 = 0; ss1 < this->size(); ++ss1)
+    //    {
+    //        if (!(*this)[ss1].n_tasks()) continue;
+    //        (*this)[ss1].contract(bra_matrix, t_pointer, T);
+    //    }        
+    //    drop_T<value_type>();
+    //}
 
     template <class DefaultMatrix, class OtherMatrix>
     boost::tuple<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t>
@@ -414,7 +431,8 @@ struct Schedule_ : public std::vector<MPSBlock<Matrix, SymmGroup> >
 template <class Matrix, class SymmGroup>
 struct Schedule
 {
-    typedef typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, 32>::type AlignedMatrix;
+    //typedef typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, 32>::type AlignedMatrix;
+    typedef Matrix AlignedMatrix;
     typedef typename MatrixGroup<AlignedMatrix, SymmGroup>::micro_task micro_task;
     typedef MPSBlock<AlignedMatrix, SymmGroup> block_type;
     typedef Schedule_<AlignedMatrix, SymmGroup> schedule_t;
