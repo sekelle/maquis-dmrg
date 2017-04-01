@@ -336,8 +336,8 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
         }
         //std::cout << collector.n_blocks() << std::endl;
 
-        MPSTensor<Matrix, SymmGroup> mult = site_hamil_shtm(initial, left, right, mpo, tasks);
-        maquis::cout << mult.data().norm() << std::endl;
+        //MPSTensor<Matrix, SymmGroup> mult = site_hamil_shtm(initial, left, right, mpo, tasks);
+        //maquis::cout << mult.data().norm() << std::endl;
     }
 
     int argc = 2;
