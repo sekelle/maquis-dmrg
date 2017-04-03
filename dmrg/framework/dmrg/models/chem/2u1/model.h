@@ -62,7 +62,6 @@ class qc_model : public model_impl<Matrix, SymmGroup>
 
     typedef typename Lattice::pos_t pos_t;
     typedef typename Matrix::value_type value_type;
-    typedef typename alps::numeric::associated_one_matrix<Matrix>::type one_matrix;
 
 public:
     
