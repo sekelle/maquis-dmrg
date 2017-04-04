@@ -339,7 +339,6 @@ void qc_su2<Matrix, SymmGroup>::create_terms()
     /**********************************************************************/
 
     chem_detail::ChemHelperSU2<Matrix, SymmGroup> ta(parms, lat, tag_handler);
-    alps::numeric::matrix<Lattice::pos_t> idx_ = ta.getIdx();
     std::vector<value_type> matrix_elements = ta.getMatrixElements();
 
     std::vector<int> used_elements(matrix_elements.size(), 0);
@@ -354,10 +353,10 @@ void qc_su2<Matrix, SymmGroup>::create_terms()
     using chem_detail::append;
  
     for (std::size_t m=0; m < matrix_elements.size(); ++m) {
-        int i = idx_(m, 0);
-        int j = idx_(m, 1);
-        int k = idx_(m, 2);
-        int l = idx_(m, 3);
+        int i = ta.idx(m, 0);
+        int j = ta.idx(m, 1);
+        int k = ta.idx(m, 2);
+        int l = ta.idx(m, 3);
 
         // Core electrons energy
         if ( i==-1 && j==-1 && k==-1 && l==-1) {
