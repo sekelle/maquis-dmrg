@@ -29,6 +29,36 @@
 #define QC_CHEM_PARSE_INTEGRALS_H
 
 namespace chem {
+    namespace detail {
+
+        inline void parse_file(std::vector<double> & M, std::vector<int> & I, std::string integral_file)
+        {
+            if (!boost::filesystem::exists(integral_file))
+                throw std::runtime_error("integral_file " + integral_file + " does not exist\n");
+
+            std::ifstream orb_file;
+            orb_file.open(integral_file.c_str());
+            for (int i = 0; i < 4; ++i)
+                orb_file.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
+
+            std::vector<double> raw;
+            std::copy(std::istream_iterator<double>(orb_file), std::istream_iterator<double>(),
+                      std::back_inserter(raw));
+
+            if (raw.size() % 5) throw std::runtime_error("integral parsing failed\n");
+
+            M.resize(raw.size()/5);
+            I.resize(4*raw.size()/5);
+
+            std::vector<double>::iterator it = raw.begin();
+            std::size_t line = 0;
+            while (it != raw.end()) {
+                M[line] = *it++;
+                std::copy(it, it+4, &I[4*line++]);
+                it += 4;
+            }
+        }
+    } // namespace detail
 
     template <class T>
     inline // need inline as this will be compiled in multiple objects and cause linker errors otherwise
@@ -70,33 +100,8 @@ namespace chem {
 
         std::vector<double>         m_raw;
         std::vector<Lattice::pos_t> i_raw;
-        {
-            std::string integral_file = parms["integral_file"];
-            if (!boost::filesystem::exists(integral_file))
-                throw std::runtime_error("integral_file " + integral_file + " does not exist\n");
 
-            std::ifstream orb_file;
-            orb_file.open(integral_file.c_str());
-            for (int i = 0; i < 4; ++i)
-                orb_file.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
-
-            std::vector<double> raw;
-            std::copy(std::istream_iterator<double>(orb_file), std::istream_iterator<double>(),
-                      std::back_inserter(raw));
-
-            if (raw.size() % 5) throw std::runtime_error("integral parsing failed\n");
-
-            m_raw.resize(raw.size()/5);
-            i_raw.resize(4*raw.size()/5);
-
-            std::vector<double>::iterator it = raw.begin();
-            std::size_t line = 0;
-            while (it != raw.end()) {
-                m_raw[line] = *it++;
-                std::copy(it, it+4, &i_raw[4*line++]);
-                it += 4;
-            }
-        }
+        detail::parse_file(m_raw, i_raw, parms["integral_file"]);
 
         // dump the integrals into the result file for reproducibility
         if (parms["donotsave"] == 0)
