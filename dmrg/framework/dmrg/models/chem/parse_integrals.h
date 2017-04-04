@@ -81,40 +81,41 @@ namespace chem_detail {
         std::copy(std::istream_iterator<double>(orb_file), std::istream_iterator<double>(),
                   std::back_inserter(raw));
 
-        idx_.reserve(4 * raw.size()/5);
-        std::vector<double>::iterator it = raw.begin();
-        while (it != raw.end()) {
-            
-            if (std::abs(*it) > parms["integral_cutoff"]){
-                matrix_elements.push_back(*it);
+        if (raw.size() % 5) throw std::runtime_error("integral parsing failed\n");
 
-                int tmp[4];
-                std::transform(it+1, it+5, tmp, boost::lambda::_1-1);
-                IndexTuple aligned = align(reorderer()(tmp[0], inv_order), reorderer()(tmp[1], inv_order),
-                                           reorderer()(tmp[2], inv_order), reorderer()(tmp[3], inv_order));
+        std::vector<double>         m_raw(raw.size()/5);
+        std::vector<Lattice::pos_t> i_raw(4*raw.size()/5);
 
-                std::copy(aligned.begin(), aligned.end(), std::back_inserter(idx_));
+        {
+            std::vector<double>::iterator it = raw.begin();
+            std::size_t line = 0;
+            while (it != raw.end()) {
+                //m_raw.push_back(*it++);
+                m_raw[line] = *it++;
+                //std::copy(it, it+4, std::back_inserter(i_raw));
+                std::copy(it, it+4, &i_raw[4*line++]);
+                it += 4;
             }
-
-            it += 5;
         }
 
         // dump the integrals into the result file for reproducibility
         if (parms["donotsave"] == 0)
         {
-            std::vector<double> m_;
-            std::vector<Lattice::pos_t> i_;
-
-            it = raw.begin();
-            while (it != raw.end()) {
-                m_.push_back(*it++);
-                std::copy(it, it+4, std::back_inserter(i_));
-                it += 4;
-            }
-
             storage::archive ar(parms["resultfile"], "w");
-            ar["/integrals/elements"] << m_;
-            ar["/integrals/indices"] << i_;
+            ar["/integrals/elements"] << m_raw;
+            ar["/integrals/indices"] << i_raw;
+        }
+
+        idx_.reserve(4 * raw.size()/5);
+        for (std::size_t line = 0; line < m_raw.size(); ++line) {
+            if (std::abs(m_raw[line]) > parms["integral_cutoff"]) {
+                matrix_elements.push_back(m_raw[line]);
+
+                IndexTuple aligned = align(reorderer()(i_raw[4*line]-1, inv_order), reorderer()(i_raw[4*line+1]-1, inv_order),
+                                           reorderer()(i_raw[4*line+2]-1, inv_order), reorderer()(i_raw[4*line+3]-1, inv_order));
+
+                std::copy(aligned.begin(), aligned.end(), std::back_inserter(idx_));
+            }
         }
 
         #ifndef NDEBUG
