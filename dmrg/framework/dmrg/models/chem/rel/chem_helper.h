@@ -30,7 +30,7 @@
 
 #include "dmrg/models/chem/parse_integrals.h"
 
-namespace chem_detail {
+namespace chem {
     
     template <typename M, class S>
     class RelChemHelper

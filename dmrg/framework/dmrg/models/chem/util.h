@@ -34,7 +34,7 @@
 #include "dmrg/models/model.h"
 #include "dmrg/models/lattice.h"
 
-namespace chem_detail {
+namespace chem {
 
     template <class SymmGroup>
     struct qn_helper

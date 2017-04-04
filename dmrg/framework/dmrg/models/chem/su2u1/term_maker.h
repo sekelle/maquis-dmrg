@@ -273,7 +273,7 @@ public:
         // These 3 cases produce different S_z spin patterns, which differ along with different index permutations
         // As in standard notation of the Hamiltonian, the first two positions get a creator, the last two a destructor
 
-        chem_detail::IndexTuple key = chem_detail::align(i,j,k,l);
+        chem::IndexTuple key = chem::align(i,j,k,l);
         pos_t i_ = key[0], j_ = key[1], k_ = key[2], l_ = key[3];
 
         if (k_ > l_ && l_ > j_) // eg V_4132

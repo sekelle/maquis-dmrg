@@ -209,14 +209,14 @@ struct transform_mps<Matrix, SymmGroup, typename boost::enable_if<symm_traits::H
     {
         BaseParameters parms;
         parms.set("init_bond_dimension", 1000);
-        parms.set("site_types", chem_detail::infer_site_types(mps_in));
+        parms.set("site_types", chem::infer_site_types(mps_in));
 
         Lattice::pos_t L = mps_in.size();
         typename SymmOut::subcharge irrep = getPG<SymmGroup>()(mps_in[mps_in.size()-1].col_dim()[0].first);
 
         const_mps_init<Matrix, SymmOut> mpsinit(parms,
-                                                chem_detail::make_2u1_site_basis<Matrix, SymmOut>(L, Nup, Ndown, parms["site_types"]),
-                                                chem_detail::make_2u1_initc<SymmOut>(Nup, Ndown, irrep), parms["site_types"]);
+                                                chem::make_2u1_site_basis<Matrix, SymmOut>(L, Nup, Ndown, parms["site_types"]),
+                                                chem::make_2u1_initc<SymmOut>(Nup, Ndown, irrep), parms["site_types"]);
         MPS<Matrix, SymmOut> mps_out(mps_in.size(), mpsinit);
 
         // clean the input MPS, ensure consistent indices across bonds

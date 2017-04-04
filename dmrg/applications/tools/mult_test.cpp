@@ -81,13 +81,13 @@ int main(int argc, char ** argv)
         int Ndown = 2;
         grp::subcharge irrep = 0;
 
-        BaseParameters parms = chem_detail::set_2u1_parameters(L, Nup, Ndown);
+        BaseParameters parms = chem::set_2u1_parameters(L, Nup, Ndown);
         parms.set("init_bond_dimension", 1000);
         parms.set("site_types", "0,0,0,0");
 
         default_mps_init<matrix, grp> mpsinit(parms,
-                                            chem_detail::make_2u1_site_basis<matrix, grp>(L, Nup, Ndown, parms["site_types"]),
-                                            chem_detail::make_2u1_initc<grp>(Nup, Ndown, irrep), parms["site_types"]);
+                                            chem::make_2u1_site_basis<matrix, grp>(L, Nup, Ndown, parms["site_types"]),
+                                            chem::make_2u1_initc<grp>(Nup, Ndown, irrep), parms["site_types"]);
         MPS<matrix, grp> mps(L, mpsinit);
         save("mps.h5", mps);
 
