@@ -46,7 +46,7 @@ namespace chem_detail {
                    boost::shared_ptr<TagHandler<M, S> > tag_handler_)
             : lat(lat_), ident(ident_), fill(fill_), tag_handler(tag_handler_)
         {
-			boost::tie(idx_, matrix_elements) = parse_integrals<value_type,S>(parms, lat);
+			boost::tie(idx_, matrix_elements) = parse_integrals<value_type>(parms, lat);
 
             for (std::size_t m=0; m < matrix_elements.size(); ++m) {
                 IndexTuple pos;

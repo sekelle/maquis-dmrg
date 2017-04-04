@@ -30,7 +30,7 @@
 
 namespace chem_detail {
 
-    template <class T, class SymmGroup>
+    template <class T>
     inline // need inline as this will be compiled in multiple objects and cause linker errors otherwise
     std::pair<alps::numeric::matrix<int>, std::vector<T> >
     parse_integrals(BaseParameters & parms, Lattice const & lat)
@@ -132,15 +132,14 @@ namespace chem_detail {
         return std::make_pair(idx_, matrix_elements);
     }
 
-    // Template specialization for complex numbersi and U1DG symmetry!!
+    // Template specialization for complex numbers
     template <>
     inline // need inline as this will be compiled in multiple objects and cause linker errors otherwise
     std::pair<alps::numeric::matrix<int>, std::vector<std::complex<double> > >
-    parse_integrals <std::complex<double>,U1DG> (BaseParameters & parms, Lattice const & lat)
+    parse_integrals <std::complex<double> > (BaseParameters & parms, Lattice const & lat)
     {
         typedef Lattice::pos_t pos_t;
         typedef std::complex<double> T;
-        typedef U1DG SymmGroup;
 
         std::vector<pos_t> inv_order;
         std::vector<T> matrix_elements;
