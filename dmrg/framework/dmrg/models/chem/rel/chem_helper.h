@@ -48,9 +48,9 @@ namespace chem_detail {
         {
 			boost::tie(idx_, matrix_elements) = parse_integrals<value_type>(parms, lat);
 
-            for (std::size_t m=0; m < matrix_elements.size(); ++m) {
+            for (std::size_t m = 0; m < matrix_elements.size(); ++m) {
                 IndexTuple pos;
-				std::copy(idx_.row(m).first, idx_.row(m).second, pos.begin());
+                std::copy(&idx_[4*m], &idx_[4*m]+4, pos.begin());
                 coefficients[pos] = matrix_elements[m];
             }
         }
@@ -58,7 +58,7 @@ namespace chem_detail {
         std::vector<value_type> & getMatrixElements() { return matrix_elements; }
         
         int idx(int m, int pos) const {
-            return idx_(m,pos);
+            return idx_[4*m + pos];
         }
 
         void commit_terms(std::vector<term_descriptor> & tagterms) {
@@ -133,7 +133,7 @@ namespace chem_detail {
         Lattice const & lat;
 
         std::vector<value_type> matrix_elements;
-        alps::numeric::matrix<Lattice::pos_t> idx_;
+        std::vector<Lattice::pos_t> idx_;
 
         std::map<IndexTuple, value_type> coefficients;
 

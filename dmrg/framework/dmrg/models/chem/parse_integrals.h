@@ -32,14 +32,14 @@ namespace chem_detail {
 
     template <class T>
     inline // need inline as this will be compiled in multiple objects and cause linker errors otherwise
-    std::pair<alps::numeric::matrix<int>, std::vector<T> >
+    std::pair<std::vector<int>, std::vector<T> >
     parse_integrals(BaseParameters & parms, Lattice const & lat)
     {
         typedef Lattice::pos_t pos_t;
 
         std::vector<pos_t> inv_order;
         std::vector<T> matrix_elements;
-        alps::numeric::matrix<Lattice::pos_t> idx_;
+        std::vector<int> idx_;
 
         struct reorderer
         {
@@ -79,30 +79,24 @@ namespace chem_detail {
 
         std::vector<double> raw;
         std::copy(std::istream_iterator<double>(orb_file), std::istream_iterator<double>(),
-                    std::back_inserter(raw));
+                  std::back_inserter(raw));
 
-        //idx_.resize(raw.size()/5, 4);
-        idx_.resize(4, raw.size()/5);
+        idx_.reserve(4 * raw.size()/5);
         std::vector<double>::iterator it = raw.begin();
-        int col = 0;
         while (it != raw.end()) {
             
             if (std::abs(*it) > parms["integral_cutoff"]){
-                matrix_elements.push_back(*it++);
-                std::vector<int> tmp;
-                std::transform(it, it+4, std::back_inserter(tmp), boost::lambda::_1-1);
+                matrix_elements.push_back(*it);
 
+                int tmp[4];
+                std::transform(it+1, it+5, tmp, boost::lambda::_1-1);
                 IndexTuple aligned = align(reorderer()(tmp[0], inv_order), reorderer()(tmp[1], inv_order),
                                            reorderer()(tmp[2], inv_order), reorderer()(tmp[3], inv_order));
-                idx_(0, col) = aligned[0];
-                idx_(1, col) = aligned[1];
-                idx_(2, col) = aligned[2];
-                idx_(3, col) = aligned[3];
-            }
-            else { it++; idx_.remove_cols(col--); }
 
-            it += 4;
-            col++;
+                std::copy(aligned.begin(), aligned.end(), std::back_inserter(idx_));
+            }
+
+            it += 5;
         }
 
         // dump the integrals into the result file for reproducibility
@@ -126,7 +120,7 @@ namespace chem_detail {
         #ifndef NDEBUG
         for (std::size_t m = 0; m < matrix_elements.size(); ++m)
         {
-            assert( *std::max_element(idx_.elements().first, idx_.elements().second) <= lat.size() );
+            assert( *std::max_element(idx_.begin(), idx_.end()) <= lat.size() );
         }
         #endif
         
@@ -136,7 +130,7 @@ namespace chem_detail {
     // Template specialization for complex numbers
     template <>
     inline // need inline as this will be compiled in multiple objects and cause linker errors otherwise
-    std::pair<alps::numeric::matrix<int>, std::vector<std::complex<double> > >
+    std::pair<std::vector<int>, std::vector<std::complex<double> > >
     parse_integrals <std::complex<double> > (BaseParameters & parms, Lattice const & lat)
     {
         typedef Lattice::pos_t pos_t;
@@ -144,7 +138,7 @@ namespace chem_detail {
 
         std::vector<pos_t> inv_order;
         std::vector<T> matrix_elements;
-        alps::numeric::matrix<Lattice::pos_t> idx_;
+        std::vector<Lattice::pos_t> idx_;
 
         struct reorderer
         {
@@ -186,14 +180,13 @@ namespace chem_detail {
         std::copy(std::istream_iterator<double>(orb_file), std::istream_iterator<double>(),
                     std::back_inserter(raw));
 
-        idx_.resize(raw.size()/6, 4);
+        idx_.reserve(4*raw.size()/6);
         std::vector<double>::iterator it = raw.begin();
-        int row = 0;
         while (it != raw.end()) {
 
             // create complex number
-            double re = *it++;
-            double im = *it++;
+            double re = *it;
+            double im = *(it+1);
             T integral_value(re, im);
 
             //DEBUG
@@ -202,19 +195,17 @@ namespace chem_detail {
             if (std::abs(integral_value) > parms["integral_cutoff"]){
                 matrix_elements.push_back(integral_value);
                 std::vector<int> tmp;
-                std::transform(it, it+4, std::back_inserter(tmp), boost::lambda::_1-1);
+                std::transform(it+2, it+6, std::back_inserter(tmp), boost::lambda::_1-1);
 
                 IndexTuple aligned(reorderer()(tmp[0], inv_order), reorderer()(tmp[1], inv_order),
                                    reorderer()(tmp[2], inv_order), reorderer()(tmp[3], inv_order));
-                idx_(row, 0) = aligned[0];
-                idx_(row, 1) = aligned[1];
-                idx_(row, 2) = aligned[2];
-                idx_(row, 3) = aligned[3];
+                idx_.push_back(aligned[0]);
+                idx_.push_back(aligned[1]);
+                idx_.push_back(aligned[2]);
+                idx_.push_back(aligned[3]);
             }
-            else { idx_.remove_rows(row--); }
 
-            it += 4;
-            row++;
+            it += 6;
         }
 
         // dump the integrals into the result file for reproducibility
@@ -242,7 +233,7 @@ namespace chem_detail {
         #ifndef NDEBUG
         for (std::size_t m = 0; m < matrix_elements.size(); ++m)
         {
-            assert( *std::max_element(idx_.elements().first, idx_.elements().second) <= lat.size() );
+            assert( *std::max_element(idx_.begin(), idx_.end()) <= lat.size() );
         }
         #endif
 
