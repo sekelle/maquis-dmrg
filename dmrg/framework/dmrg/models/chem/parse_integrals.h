@@ -81,9 +81,10 @@ namespace chem_detail {
         std::copy(std::istream_iterator<double>(orb_file), std::istream_iterator<double>(),
                     std::back_inserter(raw));
 
-        idx_.resize(raw.size()/5, 4);
+        //idx_.resize(raw.size()/5, 4);
+        idx_.resize(4, raw.size()/5);
         std::vector<double>::iterator it = raw.begin();
-        int row = 0;
+        int col = 0;
         while (it != raw.end()) {
             
             if (std::abs(*it) > parms["integral_cutoff"]){
@@ -93,15 +94,15 @@ namespace chem_detail {
 
                 IndexTuple aligned = align(reorderer()(tmp[0], inv_order), reorderer()(tmp[1], inv_order),
                                            reorderer()(tmp[2], inv_order), reorderer()(tmp[3], inv_order));
-                idx_(row, 0) = aligned[0];
-                idx_(row, 1) = aligned[1];
-                idx_(row, 2) = aligned[2];
-                idx_(row, 3) = aligned[3];
+                idx_(0, col) = aligned[0];
+                idx_(1, col) = aligned[1];
+                idx_(2, col) = aligned[2];
+                idx_(3, col) = aligned[3];
             }
-            else { it++; idx_.remove_rows(row--); }
+            else { it++; idx_.remove_cols(col--); }
 
             it += 4;
-            row++;
+            col++;
         }
 
         // dump the integrals into the result file for reproducibility

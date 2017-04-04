@@ -47,7 +47,7 @@ namespace chem_detail {
 
             for (std::size_t m=0; m < matrix_elements.size(); ++m) {
                 IndexTuple pos;
-                std::copy(idx_.row(m).first, idx_.row(m).second, pos.begin());
+                std::copy(idx_.col(m).first, idx_.col(m).second, pos.begin());
                 coefficients[pos] = matrix_elements[m];
             }
         }
@@ -56,7 +56,7 @@ namespace chem_detail {
         alps::numeric::matrix<Lattice::pos_t> const & getIdx() const { return idx_; }
         
         int idx(int m, int pos) const {
-            return idx_(m,pos);
+            return idx_(pos, m);
         }
 
         void commit_terms(std::vector<term_descriptor> & tagterms) {
