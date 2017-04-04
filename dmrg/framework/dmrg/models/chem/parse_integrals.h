@@ -32,7 +32,7 @@ namespace chem_detail {
 
     template <class T, class SymmGroup>
     inline // need inline as this will be compiled in multiple objects and cause linker errors otherwise
-    std::pair<alps::numeric::matrix<Lattice::pos_t>, std::vector<T> >
+    std::pair<alps::numeric::matrix<int>, std::vector<T> >
     parse_integrals(BaseParameters & parms, Lattice const & lat)
     {
         typedef Lattice::pos_t pos_t;
@@ -135,7 +135,7 @@ namespace chem_detail {
     // Template specialization for complex numbersi and U1DG symmetry!!
     template <>
     inline // need inline as this will be compiled in multiple objects and cause linker errors otherwise
-    std::pair<alps::numeric::matrix<Lattice::pos_t>, std::vector<std::complex<double> > >
+    std::pair<alps::numeric::matrix<int>, std::vector<std::complex<double> > >
     parse_integrals <std::complex<double>,U1DG> (BaseParameters & parms, Lattice const & lat)
     {
         typedef Lattice::pos_t pos_t;
@@ -204,8 +204,8 @@ namespace chem_detail {
                 std::vector<int> tmp;
                 std::transform(it, it+4, std::back_inserter(tmp), boost::lambda::_1-1);
 
-                IndexTuple aligned = align<SymmGroup>(reorderer()(tmp[0], inv_order), reorderer()(tmp[1], inv_order),
-                                           reorderer()(tmp[2], inv_order), reorderer()(tmp[3], inv_order));
+                IndexTuple aligned(reorderer()(tmp[0], inv_order), reorderer()(tmp[1], inv_order),
+                                   reorderer()(tmp[2], inv_order), reorderer()(tmp[3], inv_order));
                 idx_(row, 0) = aligned[0];
                 idx_(row, 1) = aligned[1];
                 idx_(row, 2) = aligned[2];
