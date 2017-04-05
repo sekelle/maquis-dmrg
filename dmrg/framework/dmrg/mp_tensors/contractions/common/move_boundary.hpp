@@ -315,6 +315,13 @@ namespace contraction {
                 if (mpo.herm_info.left_skip(b1)) continue;
                 Kernel()(b1, ret[b1], right, t, mpo, ket_cpy.data().basis(), left_i, out_right_i, in_left_pb, out_right_pb);
 
+                if (b1==10)
+                {
+                    maquis::cout << "reference S\n";
+                    maquis::cout << ret[b1] << std::endl;
+                    maquis::cout << "reference bra\n";
+                    maquis::cout << bra_conj << std::endl;
+                }
                 block_matrix<Matrix, SymmGroup> tmp;
                 typename Gemm::gemm()(ret[b1], transpose(bra_conj), tmp, MPOTensor_detail::get_spin(mpo, b1, true));
                 //gemm(ret[b1], transpose(bra_conj), tmp, parallel::scheduler_size_indexed(ret[b1]));

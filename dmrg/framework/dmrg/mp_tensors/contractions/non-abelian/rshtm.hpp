@@ -87,11 +87,12 @@ namespace SU2 {
                 t_map_t t_index;
                 for (index_type b1 = 0; b1 < mpo.row_dim(); ++b1)
                 {
-                    unsigned left_block = left.position(b1, lc, mc); if (left_block == left[b1].size()) continue;
-                    //unsigned left_block = 0;
+                    //unsigned left_block = left.position(b1, lc, mc); if (left_block == left[b1].size()) continue;
+                    unsigned left_block = 0;
                     int A = mpo.left_spin(b1).get(); if (!::SU2::triangle(SymmGroup::spin(mc), A, SymmGroup::spin(lc))) continue;
 
-                    index_type b1_eff = (mpo.herm_info.left_skip(b1)) ? mpo.herm_info.left_conj(b1) : b1;
+                    //index_type b1_eff = (mpo.herm_info.left_skip(b1)) ? mpo.herm_info.left_conj(b1) : b1;
+                    index_type b1_eff = b1;
                     for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(b1_eff, left_block, !mpo.herm_info.left_skip(b1));
 
                     for (typename row_proxy::const_iterator row_it = mpo.row(b1).begin(); row_it != mpo.row(b1).end(); ++row_it) {

@@ -77,6 +77,7 @@ class MatrixGroup
 public:
 
     typedef typename detail::micro_task_shtm<value_type> micro_task;
+    typedef typename SymmGroup::charge charge;
 
     MatrixGroup() {}
     MatrixGroup(unsigned ls, unsigned ms, unsigned rs) : l_size(ls), m_size(ms), r_size(rs) {}
@@ -181,6 +182,30 @@ public:
         return ret;
     }       
 
+    template <class OtherMatrix>
+    //typename boost::disable_if<boost::is_same<typename OtherMatrix::value_type, double>, Matrix>::type
+    void
+    prop(Matrix const & bra, const value_type* t_pointer, std::vector<Matrix> const & T, Boundary<OtherMatrix, SymmGroup> & ret,
+         std::vector<unsigned> const & b_to_o, charge mc, charge lc) const
+    {
+        Matrix S(m_size, r_size);
+        for (index_type i = 0; i < tasks.size(); ++i)
+        {
+            index_type b1 = bs[i];
+            memset(&S(0,0), 0, m_size * r_size * sizeof(typename Matrix::value_type));
+
+            for (index_type j = 0; j < tasks[i].size(); ++j)
+                maquis::dmrg::detail::iterator_axpy(&T[tasks[i][j].t_index](0,0),
+                                                    &T[tasks[i][j].t_index](0,0) + m_size * r_size,
+                                                    &S(0,0), tasks[i][j].scale);
+
+            //maquis::cout << m_size << " " << r_size << " " << num_cols(bra) << " " << num_rows(bra) << " " << num_rows(ret[b1][b_to_o[b1]])
+            //             << " " << num_cols(ret[b1][b_to_o[b1]]) << std::endl;
+            //boost::numeric::bindings::blas::gemm(value_type(1), S, transpose(bra), value_type(1), ret[b1][b_to_o[b1]]);
+            ret[b1].match_and_add_block(S, mc, lc);
+        }
+    }
+
     std::size_t t_move()      const { return n_tasks() * 8 * m_size * r_size; }
     std::size_t l_load()      const { return (n_tasks()) ? tasks.size() * 8 * l_size * m_size : 0; }
     std::size_t lgemm_flops() const { return (n_tasks()) ? tasks.size() * 2 * l_size * m_size * r_size : 0; }
@@ -209,6 +234,7 @@ public:
     typedef std::vector<MatrixGroup<Matrix, SymmGroup> > base;    
     typedef typename Matrix::value_type value_type;
     typedef unsigned long t_key;
+    typedef typename SymmGroup::charge charge;
 
     ContractionGroup() {}
     ContractionGroup(unsigned b, unsigned s, unsigned ls, unsigned ms, unsigned rs, unsigned out_offset)
@@ -241,22 +267,23 @@ public:
         drop_T<value_type>();
     }
 
-    //template <class DefaultMatrix, class OtherMatrix>
-    //void contract(MPSTensor<DefaultMatrix, SymmGroup> const & mps,
-    //              Boundary<OtherMatrix, SymmGroup> const & right,
-    //              Boundary<OtherMatrix, SymmGroup> const & new_right,
-    //              typename SymmGroup::charge mc,
-    //              typename SymmGroup::charge lc) const
-    //{
-    //    Matrix bra_matrix;//(l_size, (*this)[0].r_size);
-    //    create_T(mps, right);
-    //    for (int ss1 = 0; ss1 < this->size(); ++ss1)
-    //    {
-    //        if (!(*this)[ss1].n_tasks()) continue;
-    //        (*this)[ss1].contract(bra_matrix, t_pointer, T);
-    //    }        
-    //    drop_T<value_type>();
-    //}
+    template <class DefaultMatrix, class OtherMatrix>
+    void prop(MPSTensor<DefaultMatrix, SymmGroup> const & mps,
+              DefaultMatrix const & bra_matrix,
+              Boundary<OtherMatrix, SymmGroup> const & right,
+              Boundary<OtherMatrix, SymmGroup> & new_right,
+              std::vector<unsigned> const & b_to_o,
+              charge mc, charge lc) const
+    {
+        create_T_generic(mps, right);
+        for (int ss1 = 0; ss1 < this->size(); ++ss1)
+        {
+            if (!(*this)[ss1].n_tasks()) continue;
+            (*this)[ss1].prop(bra_matrix, t_pointer, T, new_right, b_to_o, mc, lc);
+        }        
+        T = std::vector<Matrix>(); 
+        //drop_T<value_type>();
+    }
 
     template <class DefaultMatrix, class OtherMatrix>
     boost::tuple<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t>
@@ -296,8 +323,14 @@ private:
     mutable value_type* t_pointer;
 
     template <class DefaultMatrix, class OtherMatrix>
-    typename boost::disable_if<boost::is_same<typename OtherMatrix::value_type, double>, void>::type
+    inline typename boost::disable_if<boost::is_same<typename OtherMatrix::value_type, double>, void>::type
     create_T(MPSTensor<DefaultMatrix, SymmGroup> const & mps, Boundary<OtherMatrix, SymmGroup> const & right) const
+    {
+        create_T_generic(mps, right);
+    }
+
+    template <class DefaultMatrix, class OtherMatrix>
+    void create_T_generic(MPSTensor<DefaultMatrix, SymmGroup> const & mps, Boundary<OtherMatrix, SymmGroup> const & right) const
     {
         if (!this->size()) return;
 

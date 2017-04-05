@@ -275,7 +275,8 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
 
     {
         MPOTensor<Matrix, SymmGroup> const & mpo = whole_mpo[5];
-        Boundary<OtherMatrix, SymmGroup> left;
+        Boundary<OtherMatrix, SymmGroup> left, right_prop;
+        right_prop.resize(mpo.row_dim());
         load(left, "left_3_5");
         LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
 
@@ -285,7 +286,6 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
 
         initial.make_right_paired();
         DualIndex<SymmGroup> const & ket_basis = initial.data().basis();
-        block_matrix<Matrix, SymmGroup> collector(ket_basis);
 
         // MPS indices
         Index<SymmGroup> const & physical_i = initial.site_dim(),
@@ -299,7 +299,14 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
                 boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
                                 -boost::lambda::_1, boost::lambda::_2));
 
+        // reference
+        std::cout << "Target\n";
+        Boundary<OtherMatrix, SymmGroup> new_right_control
+            = Engine<Matrix, OtherMatrix, SymmGroup>::overlap_mpo_right_step(initial, initial, right, mpo);
+        std::cout << new_right_control[10] << std::endl;
+
         // Schedule
+        initial.make_right_paired();
         schedule_t tasks(left_i.size());
         unsigned loop_max = left_i.size();
         omp_for(unsigned mb, parallel::range<unsigned>(0,loop_max), {
@@ -312,29 +319,75 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
         //omp_for(index_type mps_block, parallel::range<index_type>(0,loop_max), {
         for(unsigned mps_block = 0; mps_block < loop_max; ++mps_block)
         {
-            Matrix destination(ket_basis.left_size(mps_block), ket_basis.right_size(mps_block));
+            charge lc = left_i[mps_block].first; 
+            size_t l_size = left_i[mps_block].second; 
+
+            // cut out phys component of MPS(lc, lc)
+            Matrix bra_mps[physical_i.size()];
+            //maquis::cout << "initial" << initial.data()[mps_block] << std::endl;
+            for (size_t s = 0; s < physical_i.size(); ++s)
+            {
+                charge phys = physical_i[s].first;
+                charge rc = SymmGroup::fuse(lc, phys);
+                if (!right_i.has(rc)) continue;
+                
+                size_t right_offset = out_right_pb(phys, rc);
+                size_t r_size = right_i.size_of_block(rc);
+                bra_mps[s] = Matrix(l_size, r_size); 
+                std::copy(&initial.data()[mps_block](0, right_offset),
+                          &initial.data()[mps_block](0, right_offset) + l_size * r_size, &bra_mps[s](0,0));
+
+                //std::cout << "bra" << s << " " << bra_mps[s] << " " << std::endl;
+            }
+
+            // mc loop, fixed lc
             for (const_iterator it = tasks[mps_block].begin(); it != tasks[mps_block].end(); ++it)
             {
                 charge mc = it->first;
-                std::cout << "MC: " << mc << std::endl;
+                size_t m_size = left_i.size_of_block(mc);
+                std::cout << "MC: " << mc << " LC: " << lc << std::endl;
+
+                for(size_t b = 0; b < new_right.aux_dim(); ++b) {
+                    if (new_right[b].has_block(mc, lc)) {
+                        assert(num_rows(new_right[b](mc, lc)) == m_size);
+                        assert(num_cols(new_right[b](mc, lc)) == l_size);
+                    }
+                }
+
+                // ContractionGroup
+                std::vector<unsigned> b_to_o(right_prop.aux_dim());
                 for (size_t s = 0; s < it->second.size(); ++s)
                 {
+                    charge phys = physical_i[s].first;
+                    charge rc = SymmGroup::fuse(lc, phys);
+                    //if (!right_i.has(rc)) continue;
+
                     typename common::Schedule<Matrix, SymmGroup>::block_type::mapped_value_type const & cg = it->second[s];
-                    for (int ssi = 0; ssi < cg.size(); ++ssi)
+
+                    // prepare output for all MatrixGroups
+                    for (size_t ssi = 0; ssi < cg.size(); ++ssi)
                     {
                         std::cout << "s" << s << "," << ssi << ":" << cg[ssi].get_bs().size() << "  ";
+                        std::vector<unsigned> const & bs = cg[ssi].get_bs();
+                        for (size_t bsi = 0; bsi < bs.size(); ++bsi)
+                        {
+                            size_t o = right_prop[bs[bsi]].find_block(mc, lc);
+                            if (o == right_prop[bs[bsi]].n_blocks())
+                                o = right_prop[bs[bsi]].insert_block(Matrix(m_size, l_size), mc, lc);
+                            b_to_o[bs[bsi]] = o; 
+                        }
                         //print(cg[ssi], mpo);
                     }
                     //std::cout << cg[s].n_tasks() << std::endl;
                     //std::cout << cg[s].get_bs().size() << std::endl;
 
-                    //cg.contract(initial, left, right, &destination(0,0));
+                    cg.prop(initial, bra_mps[s], right, right_prop, b_to_o, mc, lc);
                 }
                 std::cout << std::endl;
             }
-            //swap(collector[mps_block], destination);
         }
-        //std::cout << collector.n_blocks() << std::endl;
+        std::cout << "trial\n";
+        std::cout << right_prop[10] << std::endl;
 
         //MPSTensor<Matrix, SymmGroup> mult = site_hamil_shtm(initial, left, right, mpo, tasks);
         //maquis::cout << mult.data().norm() << std::endl;
