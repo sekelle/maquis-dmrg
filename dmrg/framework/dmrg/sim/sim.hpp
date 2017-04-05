@@ -240,11 +240,39 @@ void sim<Matrix, SymmGroup>::measure(std::string archive_path, measurements_type
     }
 }
 
+namespace detail {
+
+    template <bool PointGroup>
+    struct SiteTypes
+    {
+        std::string operator() (DmrgParameters & parms) const
+        {
+            int L = parms["L"];
+            std::string ret(2*L, '0');
+            for (int i = 1; i < ret.size(); i+=2)
+                ret.replace(i, 1, 1, ',');
+            return ret;
+        }
+    };
+
+    template <>
+    struct SiteTypes<true>
+    {
+        std::string operator() (DmrgParameters & parms) const
+        {
+            throw std::runtime_error(std::string("passing integrals without an fcidump file needs definition ") +
+                                     std::string("of site types in parameters for symmetries with point groups\n"));
+            return std::string();
+        }
+    };
+}
 
 template <class Matrix, class SymmGroup>
 DmrgParameters sim<Matrix, SymmGroup>::complete_parameters(DmrgParameters parms)
 {
-    if (parms.is_set("integral_file") && boost::filesystem::exists(parms.template get<std::string>("integral_file")))
+
+    if (parms.is_set("integral_file") && boost::filesystem::exists(parms.template get<std::string>("integral_file"))
+        && !parms.is_set("site_types"))
     {
         // extract the site types from the integral (FCIDUMP) file
         std::ifstream orb_file;
@@ -258,13 +286,17 @@ DmrgParameters sim<Matrix, SymmGroup>::complete_parameters(DmrgParameters parms)
 
         std::vector<std::string> split_line;
         boost::split(split_line, line, boost::is_any_of("="));
+        std::string sitetypes = split_line[1];
+        sitetypes.erase(sitetypes.size()-1); // delete trailing null
+        for (int i = 0; i < sitetypes.size(); i+=2) sitetypes[i]--;
 
         // record the site_types in parameters
-        //model.set("site_types", split_line[1]);
-        //irreps = parse_irreps(split_line[1]);
+        parms.set("site_types", sitetypes);
     }
     else if (parms.is_set("integrals"))
     {
+        if (!parms.is_set("site_types"))
+            parms.set("site_types", detail::SiteTypes<symm_traits::HasPG<SymmGroup>::value>()(parms));
     }
     else
         throw std::runtime_error("either integral_file or integrals need to be specified in input parameters\n");

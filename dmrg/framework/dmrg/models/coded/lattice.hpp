@@ -166,33 +166,8 @@ public:
             for (subcharge p = 0; p < L; ++p)
                 irreps[p] = symm_vec[order[p]];
         }
-        else if (model.is_set("integral_file")
-                 && boost::filesystem::exists(model.template get<std::string>("integral_file"))
-                )
-        {
-            std::ifstream orb_file;
-            orb_file.open(model["integral_file"].c_str());
-            orb_file.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
-
-            std::string line;
-            std::getline(orb_file, line);
-
-            orb_file.close();
-
-            std::vector<std::string> split_line;
-            boost::split(split_line, line, boost::is_any_of("="));
-            split_line[1].erase(split_line[1].size()-1); // delete trailing null
-
-            // record the site_types in parameters
-            model.set("site_types", split_line[1]);
-
-            std::vector<subcharge> symm_vec = model["site_types"];
-            assert(L == symm_vec.size());
-            for (subcharge p = 0; p < L; ++p)
-                irreps[p] = symm_vec[order[p]]-1;
-        }
         else
-            throw std::runtime_error("\"integral_file\" in model input file or site_types is not set\n");
+            throw std::runtime_error("Lattice constructor: \"site_types\" is not set\n");
 
         maximum_vertex = *std::max_element(irreps.begin(), irreps.end());
     }
