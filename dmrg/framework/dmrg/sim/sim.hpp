@@ -28,7 +28,7 @@
 
 template <class Matrix, class SymmGroup>
 sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_)
-: parms(parms_)
+: parms(complete_parameters(parms_))
 , init_sweep(0)
 , init_site(-1)
 , restore(false)
@@ -240,3 +240,34 @@ void sim<Matrix, SymmGroup>::measure(std::string archive_path, measurements_type
     }
 }
 
+
+template <class Matrix, class SymmGroup>
+DmrgParameters sim<Matrix, SymmGroup>::complete_parameters(DmrgParameters parms)
+{
+    if (parms.is_set("integral_file") && boost::filesystem::exists(parms.template get<std::string>("integral_file")))
+    {
+        // extract the site types from the integral (FCIDUMP) file
+        std::ifstream orb_file;
+        orb_file.open(parms["integral_file"].c_str());
+        orb_file.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
+
+        std::string line;
+        std::getline(orb_file, line);
+
+        orb_file.close();
+
+        std::vector<std::string> split_line;
+        boost::split(split_line, line, boost::is_any_of("="));
+
+        // record the site_types in parameters
+        //model.set("site_types", split_line[1]);
+        //irreps = parse_irreps(split_line[1]);
+    }
+    else if (parms.is_set("integrals"))
+    {
+    }
+    else
+        throw std::runtime_error("either integral_file or integrals need to be specified in input parameters\n");
+
+    return parms;
+}
