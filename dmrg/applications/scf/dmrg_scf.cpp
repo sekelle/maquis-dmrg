@@ -24,14 +24,19 @@
  *
  *****************************************************************************/
 
+#include <string>
+#include <cstring>
+#include <iostream>
+#include <sys/time.h>
+#include <sys/stat.h>
+
+#include <boost/filesystem.hpp>
+
 #include "utils/io.hpp"
 #include "dmrg/utils/DmrgOptions.h"
 #include "simulation.h"
 #include "dmrg/sim/symmetry_factory.h"
 
-#include <iostream>
-#include <sys/time.h>
-#include <sys/stat.h>
 
 void optimize_and_measure(DmrgOptions & opt, std::string name, std::vector<double> & results,
                                                                std::vector<std::vector<int> > & labels)
@@ -68,6 +73,46 @@ void optimize_and_measure(DmrgOptions & opt, std::string name, std::vector<doubl
     }
 }
 
+void parse_file(std::vector<double> & M, std::vector<int> & I, std::string integral_file)
+{
+    if (!boost::filesystem::exists(integral_file))
+        throw std::runtime_error("integral_file " + integral_file + " does not exist\n");
+
+    std::ifstream orb_file;
+    orb_file.open(integral_file.c_str());
+    for (int i = 0; i < 4; ++i)
+        orb_file.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
+
+    std::vector<double> raw;
+    std::copy(std::istream_iterator<double>(orb_file), std::istream_iterator<double>(),
+              std::back_inserter(raw));
+
+    if (raw.size() % 5) throw std::runtime_error("integral parsing failed\n");
+
+    M.resize(raw.size()/5);
+    I.resize(4*raw.size()/5);
+
+    std::vector<double>::iterator it = raw.begin();
+    std::size_t line = 0;
+    while (it != raw.end()) {
+        M[line] = *it++;
+        std::copy(it, it+4, &I[4*line++]);
+        it += 4;
+    }
+}
+
+std::string pack_integrals(std::vector<double> & integrals, std::vector<int> & indices)
+{
+    std::size_t mspace = integrals.size() * sizeof(double);
+    std::size_t ispace = indices.size() * sizeof(int);
+
+    std::string ret(mspace + ispace, '0');
+    memcpy(&ret[0], &integrals[0], mspace);
+    memcpy(&ret[mspace], &indices[0], ispace);
+
+    return ret;
+}
+
 int main(int argc, char ** argv)
 {
     std::cout << "  QCMaquis - Quantum Chemical Density Matrix Renormalization group\n"
@@ -83,6 +128,13 @@ int main(int argc, char ** argv)
     std::vector<std::vector<int> > labels;
 
     DmrgOptions opt(argc, argv);
+
+    std::vector<double> integrals;
+    std::vector<int> indices;
+
+    parse_file(integrals, indices, opt.parms["integral_file"]);
+    opt.parms.set("integrals", pack_integrals(integrals, indices));
+    //opt.parms["integral_file"] = "";
 
     // labels are not yet adjusted to orbital ordering
     optimize_and_measure(opt, "oneptdm", results, labels);

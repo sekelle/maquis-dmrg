@@ -28,6 +28,8 @@
 #ifndef QC_CHEM_PARSE_INTEGRALS_H
 #define QC_CHEM_PARSE_INTEGRALS_H
 
+#include <cstring>
+
 namespace chem {
     namespace detail {
 
@@ -57,6 +59,21 @@ namespace chem {
                 std::copy(it, it+4, &I[4*line++]);
                 it += 4;
             }
+        }
+
+        inline void parse_buffer(std::vector<double> & M, std::vector<int> & I, std::string buffer)
+        {
+            std::size_t line_size = (sizeof(double) + 4*sizeof(int));
+            if (buffer.size() % line_size) throw std::runtime_error("integral buffer parsing failed\n");
+            std::size_t nlines = buffer.size() / line_size;
+
+            M.resize(nlines);
+            I.resize(4*nlines);
+
+            std::size_t nbytes_integrals = nlines * sizeof(double);
+            std::size_t nbytes_indices = 4 * nlines * sizeof(int);
+            memcpy(&M[0], &buffer[0], nbytes_integrals);
+            memcpy(&I[0], &buffer[nbytes_integrals], nbytes_indices);
         }
     } // namespace detail
 
@@ -101,7 +118,10 @@ namespace chem {
         std::vector<double>         m_raw;
         std::vector<Lattice::pos_t> i_raw;
 
-        detail::parse_file(m_raw, i_raw, parms["integral_file"]);
+        if (parms.is_set("integrals"))
+            detail::parse_buffer(m_raw, i_raw, parms["integrals"]);
+        else
+            detail::parse_file(m_raw, i_raw, parms["integral_file"]);
 
         // dump the integrals into the result file for reproducibility
         if (parms["donotsave"] == 0)
