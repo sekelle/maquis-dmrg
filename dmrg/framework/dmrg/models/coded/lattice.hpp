@@ -158,11 +158,18 @@ public:
             std::for_each(order.begin(), order.end(), boost::lambda::_1 = boost::lambda::_1 -1);
         }
 
-        if (model.is_set("integral_file")) {
-            std::string integral_file = model["integral_file"];
-            if (!boost::filesystem::exists(integral_file))
-                throw std::runtime_error("integral_file " + integral_file + " does not exist\n");
-
+        if (model.is_set("site_types"))
+        {
+            std::vector<subcharge> symm_vec = model["site_types"];
+        
+            assert(L == symm_vec.size());
+            for (subcharge p = 0; p < L; ++p)
+                irreps[p] = symm_vec[order[p]];
+        }
+        else if (model.is_set("integral_file")
+                 && boost::filesystem::exists(model.template get<std::string>("integral_file"))
+                )
+        {
             std::ifstream orb_file;
             orb_file.open(model["integral_file"].c_str());
             orb_file.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
@@ -174,18 +181,15 @@ public:
 
             std::vector<std::string> split_line;
             boost::split(split_line, line, boost::is_any_of("="));
+            split_line[1].erase(split_line[1].size()-1); // delete trailing null
 
             // record the site_types in parameters
             model.set("site_types", split_line[1]);
-            irreps = parse_irreps(split_line[1]);
-        }
-        else if (model.is_set("site_types"))
-        {
+
             std::vector<subcharge> symm_vec = model["site_types"];
-        
             assert(L == symm_vec.size());
             for (subcharge p = 0; p < L; ++p)
-                irreps[p] = symm_vec[order[p]];
+                irreps[p] = symm_vec[order[p]]-1;
         }
         else
             throw std::runtime_error("\"integral_file\" in model input file or site_types is not set\n");
@@ -241,23 +245,6 @@ public:
     }
 
 private:
-
-    std::vector<subcharge> parse_irreps(std::string input)
-    {
-        std::vector<subcharge> symm_vec, ret(L, 0);
-
-        std::replace(input.begin(), input.end(), ',', ' ');
-        std::istringstream iss(input);
-        subcharge number;
-        while( iss >> number )
-            symm_vec.push_back(number-1);
-        
-        assert(L == symm_vec.size());
-        for (subcharge p = 0; p < L; ++p)
-            ret[p] = symm_vec[order[p]];
-
-        return ret;
-    }
 
     std::string site_label (int i) const
     {
