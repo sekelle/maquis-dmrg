@@ -52,8 +52,8 @@ private:
         
         add_option("COMPLEX", "use complex numbers", value(false));
 
-        add_option("truncation_initial", "Initial value for the truncation error", value(1e-16));
-        add_option("truncation_final", "Final value for the truncation", value(1e-16));
+        add_option("truncation_initial", "Initial value for the truncation error", value(1e-7));
+        add_option("truncation_final", "Final value for the truncation", value(1e-7));
         
         add_option("init_bond_dimension", "", value(5));
         add_option("max_bond_dimension", "");
@@ -67,9 +67,10 @@ private:
         add_option("alpha_final", "", value(1e-8));
         
         add_option("eigensolver", "", value("IETL_JCD"));
-        add_option("ietl_jcd_tol", "", value(1e-8));
+        add_option("ietl_jcd_tol", "", value(1e-7));
         add_option("ietl_jcd_gmres", "", value(0));
-        add_option("ietl_jcd_maxiter", "", value(8));
+        add_option("ietl_jcd_maxiter", "", value(9));
+        add_option("integral_cutoff", "Ignore electron integrals below a certain magnitude", value(1.e-20));
         
         add_option("nsweeps", "");
         add_option("nmainsweeps", "", 0);
@@ -106,9 +107,9 @@ private:
         add_option("init_basis_state", "local indexes for basis state init", value(""));
         add_option("ci_level", "number of electrons excited from HF determinant", "1,2,3,4,5,6");
 
-        add_option("symmetry", "none, u1 or 2u1", value("u1"));
-        add_option("lattice_library", "", value("alps"));
-        add_option("model_library", "", value("alps"));
+        add_option("symmetry", "none, u1, 2u1, 2u1pg, su2u1, su2u1pg, u1dg", value("su2u1pg"));
+        add_option("lattice_library", "", value("coded"));
+        add_option("model_library", "", value("coded"));
         add_option("model_file", "path to model parameters", value(""));
         
         add_option("beta_mode", "", value(0));
@@ -121,6 +122,9 @@ private:
         add_option("MEASURE[EnergyVariance]", "", value(0));
         add_option("MEASURE[Entropy]", "", value(false));
         add_option("MEASURE[Renyi2]", "", value(false));
+
+        add_option("MODEL", "", value("quantum_chemistry"));
+        add_option("LATTICE", "", value("orbitals"));
     }
     
 };
@@ -147,8 +151,8 @@ private:
     {
         using parameters::value;
         
-        add_option("MODEL", "");
-        add_option("LATTICE", "");
+        add_option("MODEL", "", value("quantum_chemistry"));
+        add_option("LATTICE", "", value("orbitals"));
         add_option("alps_lattice", "");
         
         add_option("L", "");
@@ -210,8 +214,6 @@ private:
         add_option("orbital_order", "comma separated list of orbital numbers");
         add_option("hf_occ", "comma separated list of orbital occupancies for Hartree Fock initial state");
 
-        add_option("integral_cutoff", "Ignore electron integrals below a certain magnitude", value(1.e-20));
-        
         add_option("MEASURE_CONTINUUM[Psi energy]", "", value(false));
         add_option("MEASURE_CONTINUUM[Density]", "", value(true));
         add_option("MEASURE_CONTINUUM[Local density]", "", value(true));
