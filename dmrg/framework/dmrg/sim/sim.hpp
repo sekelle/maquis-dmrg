@@ -83,9 +83,8 @@ sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_)
             std::string previous_hash;
             ar_props["/integral_hash"] >> previous_hash;
 
-            std::string int_file = parms["integral_file"];
-            std::string hash = md5sum(int_file);
-
+            std::string hash = (parms.is_set("integral_file")) ? md5sum(parms["integral_file"], true)
+                                                               : md5sum(parms["integrals"], false);
             if (hash == previous_hash)
                 restore_mpo = true;
             else
@@ -114,7 +113,8 @@ sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_)
             mpo_ar << mpo;
 
             storage::archive ar(chkpfile+"/props.h5", "w");
-            std::string hash = md5sum(parms["integral_file"]);
+            std::string hash = (parms.is_set("integral_file")) ? md5sum(parms["integral_file"], true)
+                                                               : md5sum(parms["integrals"], false);
             ar["/integral_hash"] << hash;
         }
     }

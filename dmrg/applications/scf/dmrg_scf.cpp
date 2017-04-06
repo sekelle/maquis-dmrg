@@ -134,7 +134,8 @@ int main(int argc, char ** argv)
 
     parse_file(integrals, indices, opt.parms["integral_file"]);
     opt.parms.set("integrals", pack_integrals(integrals, indices));
-    opt.parms["integral_file"] = "";
+    opt.parms.erase("integral_file");
+    //opt.parms["integral_file"] = "";
 
     // labels are not yet adjusted to orbital ordering
     optimize_and_measure(opt, "oneptdm", results, labels);
