@@ -49,17 +49,13 @@ void optimize_and_measure(DmrgOptions & opt, std::string name, std::vector<doubl
         gettimeofday(&now, NULL);
         
         try {
+
             dmrg_simulation_traits::shared_ptr sim = dmrg::symmetry_factory<dmrg_simulation_traits>(opt.parms);
             sim->run(opt.parms);
-        } catch (std::exception & e) {
-            maquis::cerr << "Exception thrown!" << std::endl;
-            maquis::cerr << e.what() << std::endl;
-            exit(1);
-        }
-        
-        try {
-            measure_simulation_traits::shared_ptr sim = dmrg::symmetry_factory<measure_simulation_traits>(opt.parms);
-            sim->measure_observable(opt.parms, name, results, labels);
+
+            measure_simulation_traits::shared_ptr m_sim = dmrg::symmetry_factory<measure_simulation_traits>(opt.parms);
+            m_sim->measure_observable(opt.parms, name, results, labels);
+
         } catch (std::exception & e) {
             maquis::cerr << "Exception thrown!" << std::endl;
             maquis::cerr << e.what() << std::endl;
@@ -135,7 +131,6 @@ int main(int argc, char ** argv)
     parse_file(integrals, indices, opt.parms["integral_file"]);
     opt.parms.set("integrals", pack_integrals(integrals, indices));
     opt.parms.erase("integral_file");
-    //opt.parms["integral_file"] = "";
 
     // labels are not yet adjusted to orbital ordering
     optimize_and_measure(opt, "oneptdm", results, labels);
