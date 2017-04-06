@@ -30,7 +30,7 @@
 
 template <class Matrix, class SymmGroup>
 measure_sim<Matrix, SymmGroup>::measure_sim(DmrgParameters & parms_)
-: base(parms_) { }
+: base(parms_, true) { }
     
 template <class Matrix, class SymmGroup>
 void measure_sim<Matrix, SymmGroup>::run()

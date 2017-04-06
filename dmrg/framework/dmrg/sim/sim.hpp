@@ -27,7 +27,7 @@
 
 
 template <class Matrix, class SymmGroup>
-sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_)
+sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_, bool measure_on_mps)
 : parms(complete_parameters(parms_))
 , init_sweep(0)
 , init_site(-1)
@@ -69,6 +69,8 @@ sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_)
                 maquis::cout << "A fresh simulation will start." << std::endl;
             }
         }
+        else
+            if (measure_on_mps) throw std::runtime_error(std::string("cannot find checkpoint file ") + chkpfile + "\n");
     }
 
     bool restore_mpo = false;

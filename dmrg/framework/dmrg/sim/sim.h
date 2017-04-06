@@ -77,7 +77,7 @@ public:
 template <class Matrix, class SymmGroup>
 class sim : public abstract_sim {
 public:
-    sim(DmrgParameters const &);
+    sim(DmrgParameters const &, bool = false);
     virtual ~sim();
     
     virtual void run() =0;
