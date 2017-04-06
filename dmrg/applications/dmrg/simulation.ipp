@@ -30,7 +30,7 @@
 #include "simulation.h"
 
 template <class SymmGroup>
-void dmrg_simulation<SymmGroup>::run(DmrgParameters & parms)
+void simulation<SymmGroup>::run(DmrgParameters & parms)
 {
     if (parms["COMPLEX"]) {
 #ifdef HAVE_COMPLEX

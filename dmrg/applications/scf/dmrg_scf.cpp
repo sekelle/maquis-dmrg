@@ -50,10 +50,10 @@ void optimize_and_measure(DmrgOptions & opt, std::string name, std::vector<doubl
         
         try {
 
-            dmrg_simulation_traits::shared_ptr sim = dmrg::symmetry_factory<dmrg_simulation_traits>(opt.parms);
-            sim->run(opt.parms);
+            //simulation_traits::shared_ptr sim = dmrg::symmetry_factory<simulation_traits>(opt.parms);
+            //sim->run(opt.parms);
 
-            measure_simulation_traits::shared_ptr m_sim = dmrg::symmetry_factory<measure_simulation_traits>(opt.parms);
+            simulation_traits::shared_ptr m_sim = dmrg::symmetry_factory<simulation_traits>(opt.parms);
             m_sim->measure_observable(opt.parms, name, results, labels);
 
         } catch (std::exception & e) {
