@@ -74,6 +74,9 @@ sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_, bool measure_on_mps)
     }
 
     bool restore_mpo = false;
+    bool have_integrals = parms.is_set("integral_file") || parms.is_set("integrals");
+
+    if (have_integrals)
     {
         boost::filesystem::path p(chkpfile);
         if (boost::filesystem::exists(p) && boost::filesystem::exists(p / "mpo.h5"))
@@ -106,7 +109,7 @@ sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_, bool measure_on_mps)
     {
         mpo = make_mpo(lat, model);
 
-        if (!dns)
+        if (!dns && have_integrals)
         {
             if (!boost::filesystem::exists(chkpfile)) boost::filesystem::create_directory(chkpfile);
 
@@ -272,35 +275,42 @@ namespace detail {
 template <class Matrix, class SymmGroup>
 DmrgParameters sim<Matrix, SymmGroup>::complete_parameters(DmrgParameters parms)
 {
+    if (parms.is_set("integral_file") && parms.is_set("integrals"))
+        throw std::runtime_error("cannot specify both integral_file and integrals as input parameters\n");
 
-    if (parms.is_set("integral_file") && boost::filesystem::exists(parms.template get<std::string>("integral_file"))
-        && !parms.is_set("site_types"))
+    if (parms.is_set("integral_file"))
     {
-        // extract the site types from the integral (FCIDUMP) file
-        std::ifstream orb_file;
-        orb_file.open(parms["integral_file"].c_str());
-        orb_file.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
+        if (!boost::filesystem::exists(parms.template get<std::string>("integral_file")))
+            throw std::runtime_error(std::string("integral_file ") + parms["integral_file"].as<std::string>() + " does not exist :(\n");
+            
+        if (!parms.is_set("site_types")) // don't overwrite if specified in input
+        {
+            // extract the site types from the integral (FCIDUMP) file
+            std::ifstream orb_file;
+            orb_file.open(parms["integral_file"].c_str());
+            orb_file.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
 
-        std::string line;
-        std::getline(orb_file, line);
+            std::string line;
+            std::getline(orb_file, line);
 
-        orb_file.close();
+            orb_file.close();
 
-        std::vector<std::string> split_line;
-        boost::split(split_line, line, boost::is_any_of("="));
-        std::string sitetypes = split_line[1];
-        sitetypes.erase(sitetypes.size()-1); // delete trailing null
-        for (int i = 0; i < sitetypes.size(); i+=2) sitetypes[i]--;
+            std::vector<std::string> split_line;
+            boost::split(split_line, line, boost::is_any_of("="));
+            std::string sitetypes = split_line[1];
+            sitetypes.erase(sitetypes.size()-1); // delete trailing null
+            for (int i = 0; i < sitetypes.size(); i+=2) sitetypes[i]--;
 
-        // record the site_types in parameters
-        parms.set("site_types", sitetypes);
+            // record the site_types in parameters
+            parms.set("site_types", sitetypes);
+        }
     }
     else if (parms.is_set("integrals"))
     {
         if (!parms.is_set("site_types"))
             parms.set("site_types", detail::SiteTypes<symm_traits::HasPG<SymmGroup>::value>()(parms));
     }
-    else
+    else if (parms["MODEL"] == "quantum_chemistry")
         throw std::runtime_error("either integral_file or integrals need to be specified in input parameters\n");
 
     return parms;
