@@ -76,19 +76,4 @@ void measure_sim<Matrix, SymmGroup>::run()
     #endif
 }
 
-template <class Matrix, class SymmGroup>
-void measure_sim<Matrix, SymmGroup>::measure_observable(std::string name_, std::vector<typename Matrix::value_type> & results,
-                                                        std::vector<std::vector<Lattice::pos_t> > & labels)
-{
-    for (typename measurements_type::iterator it = all_measurements.begin(); it != all_measurements.end(); ++it)
-    {
-        if (it->name() == name_)
-        {
-            maquis::cout << "Measuring " << it->name() << std::endl;
-            it->evaluate(mps);
-            it->extract(results, labels);
-        }
-    }
-}
-
 #endif

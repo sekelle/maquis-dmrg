@@ -3,7 +3,7 @@ add_definitions(-DHAVE_ALPS_HDF5 -DDISABLE_MATRIX_ELEMENT_ITERATOR_WARNING -DALP
 enable_omp_if_found()
 include_directories(. ${CMAKE_CURRENT_BINARY_DIR})
 
-set(SCF_APP_LIBRARIES optimizer measure dmrg_models dmrg_utils ${DMRG_LIBRARIES} ${OPENSSL_LIBRARIES})
+set(SCF_APP_LIBRARIES optimizer dmrg_models dmrg_utils ${DMRG_LIBRARIES} ${OPENSSL_LIBRARIES})
 
 if(USE_AMBIENT)
   compile_with_ambient()

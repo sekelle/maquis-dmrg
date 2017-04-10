@@ -132,6 +132,22 @@ dmrg_sim<Matrix, SymmGroup>::~dmrg_sim()
 }
 
 template <class Matrix, class SymmGroup>
+void dmrg_sim<Matrix, SymmGroup>::measure_observable(std::string name_, std::vector<typename Matrix::value_type> & results,
+                                                     std::vector<std::vector<Lattice::pos_t> > & labels)
+{
+    mps.normalize_left();
+    for (typename measurements_type::iterator it = all_measurements.begin(); it != all_measurements.end(); ++it)
+    {
+        if (it->name() == name_)
+        {
+            maquis::cout << "Measuring " << it->name() << std::endl;
+            it->evaluate(mps);
+            it->extract(results, labels);
+        }
+    }
+}
+
+template <class Matrix, class SymmGroup>
 std::string dmrg_sim<Matrix, SymmGroup>::results_archive_path(int sweep) const
 {
     status_type status;

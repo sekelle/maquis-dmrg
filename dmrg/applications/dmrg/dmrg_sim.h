@@ -64,6 +64,9 @@ public:
     
     ~dmrg_sim();
 
+    void measure_observable(std::string name_, std::vector<typename Matrix::value_type> & results,
+                            std::vector<std::vector<Lattice::pos_t> > & labels);
+
 private:
     std::string results_archive_path(int sweep) const;
     void checkpoint_simulation(MPS<Matrix, SymmGroup> const& state, int sweep, int site);

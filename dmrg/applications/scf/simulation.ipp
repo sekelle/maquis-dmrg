@@ -27,7 +27,6 @@
 #include "dmrg/sim/matrix_types.h"
 
 #include "../dmrg/dmrg_sim.h"
-#include "../measure/measure_sim.h"
 #include "simulation.h"
 
 template <class SymmGroup>
@@ -55,10 +54,9 @@ void simulation<SymmGroup>::measure_observable(DmrgParameters & parms, std::stri
         throw std::runtime_error("extraction of complex observables not implemented\n");
     } else {
 
-        dmrg_sim<matrix, SymmGroup> dsim(parms);
-        dsim.run();
+        dmrg_sim<matrix, SymmGroup> sim(parms);
 
-        measure_sim<matrix, SymmGroup> msim(parms);
-        msim.measure_observable(name, results, labels);
+        sim.run();
+        sim.measure_observable(name, results, labels);
     }
 }
