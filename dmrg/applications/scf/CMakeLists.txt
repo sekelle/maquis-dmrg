@@ -15,7 +15,7 @@ get_symm_files(APPEND SCF_SYMM_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/simulation_s
 
 
 # *** Targets
-add_executable(dmrg_scf dmrg_scf.cpp ${SCF_SYMM_SOURCES})
+add_executable(dmrg_scf dmrg_scf.cpp interface.cpp ${SCF_SYMM_SOURCES})
 target_link_libraries(dmrg_scf ${SCF_APP_LIBRARIES})
 
 # *** Install
