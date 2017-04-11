@@ -2,8 +2,8 @@
  *
  * ALPS MPS DMRG Project
  *
- * Copyright (C) 2014 Institute for Theoretical Physics, ETH Zurich
- *               2011-2013 by Michele Dolfi <dolfim@phys.ethz.ch>
+ * Copyright (C) 2017 Stanford University Department of Chemistry
+ *               2017-2017 by Sebastian Keller <sebkelle@phys.ethz.ch>
  *
  * This software is part of the ALPS Applications, published under the ALPS
  * Application License; you can use, redistribute it and/or modify it under
@@ -29,7 +29,11 @@
 
 #include <boost/shared_ptr.hpp>
 
-struct simulation_base {
+#include "dmrg/sim/matrix.fwd.h"
+#include "../dmrg/dmrg_sim.fwd.h"
+
+class simulation_base {
+public:
     virtual ~simulation_base() {}
     virtual void run(DmrgParameters & parms) =0;
     virtual void measure_observable(DmrgParameters & parms, std::string name,
@@ -37,10 +41,14 @@ struct simulation_base {
 };
 
 template <class SymmGroup>
-struct simulation : public simulation_base {
+class simulation : public simulation_base {
+public:
     void run(DmrgParameters & parms);
     void measure_observable(DmrgParameters & parms, std::string name,
                             std::vector<double> & results, std::vector<std::vector<int> > & labels);
+private:
+    boost::shared_ptr<dmrg_sim<matrix, SymmGroup> > sim_ptr_real;
+    boost::shared_ptr<dmrg_sim<cmatrix, SymmGroup> > sim_ptr_complex;
 };
 
 struct simulation_traits {

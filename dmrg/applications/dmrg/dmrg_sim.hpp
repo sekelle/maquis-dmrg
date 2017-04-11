@@ -28,6 +28,7 @@
 #ifndef APP_DMRG_SIM_HPP
 #define APP_DMRG_SIM_HPP
 
+#include "dmrg_sim.h"
 
 template <class Matrix, class SymmGroup>
 dmrg_sim<Matrix, SymmGroup>::dmrg_sim(DmrgParameters & parms_)

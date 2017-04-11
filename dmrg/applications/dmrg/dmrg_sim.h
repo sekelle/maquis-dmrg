@@ -38,6 +38,7 @@
 #include "dmrg/sim/sim.h"
 #include "dmrg/optimize/optimize.h"
 
+#include "dmrg_sim.fwd.h"
 
 template <class Matrix, class SymmGroup>
 class dmrg_sim : public sim<Matrix, SymmGroup> {
@@ -71,7 +72,5 @@ private:
     std::string results_archive_path(int sweep) const;
     void checkpoint_simulation(MPS<Matrix, SymmGroup> const& state, int sweep, int site);
 };
-
-//#include "dmrg_sim.hpp"
 
 #endif

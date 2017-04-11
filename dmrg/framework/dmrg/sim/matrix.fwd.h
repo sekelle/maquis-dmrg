@@ -2,7 +2,7 @@
  *
  * ALPS MPS DMRG Project
  *
- * Copyright (C) 2017 Stanford University Departement of Chemistry
+ * Copyright (C) 2017 Stanford University Department of Chemistry
  *               2017-2017 by Sebastian Keller <sebkelle@phys.ethz.ch>
  *
  * This software is part of the ALPS Applications, published under the ALPS
@@ -24,38 +24,23 @@
  *
  *****************************************************************************/
 
-#include "dmrg/sim/matrix_types.h"
+#ifndef MATRIX_FWD_H
+#define MATRIX_FWD_H
 
-#include "../dmrg/dmrg_sim.h"
-#include "simulation.h"
+#include <vector>
+#include <complex>
 
-template <class SymmGroup>
-void simulation<SymmGroup>::run(DmrgParameters & parms)
+namespace alps
 {
-    if (parms["COMPLEX"]) {
-#ifdef HAVE_COMPLEX
-        dmrg_sim<cmatrix, SymmGroup> sim(parms);
-        sim.run();
-#else
-        throw std::runtime_error("compilation of complex numbers not enabled, check your compile options\n");
+    namespace numeric
+    {
+        template <class T, class MemoryBlock> class matrix;
+    }
+}
+
+// Forward declaration for matrix, need to specifiy the Memory Block default argument
+// Ideally, ALPS should provide a forward declaration header with the default template argument
+typedef alps::numeric::matrix<double, std::vector<double> >               matrix;
+typedef alps::numeric::matrix<std::complex<double>, std::vector<double> > cmatrix;
+
 #endif
-    } else {
-        dmrg_sim<matrix, SymmGroup> sim(parms);
-        sim.run();
-    }
-}
-
-template <class SymmGroup>
-void simulation<SymmGroup>::measure_observable(DmrgParameters & parms, std::string name,
-                                               std::vector<double> & results,
-                                               std::vector<std::vector<Lattice::pos_t> > & labels)
-{
-    if (parms["COMPLEX"]) {
-        throw std::runtime_error("extraction of complex observables not implemented\n");
-    } else {
-
-        sim_ptr_real.reset(new dmrg_sim<matrix, SymmGroup>(parms));
-        sim_ptr_real->run(); 
-        sim_ptr_real->measure_observable(name, results, labels); 
-    }
-}
