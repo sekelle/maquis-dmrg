@@ -158,28 +158,7 @@ public:
             std::for_each(order.begin(), order.end(), boost::lambda::_1 = boost::lambda::_1 -1);
         }
 
-        if (model.is_set("integral_file")) {
-            std::string integral_file = model["integral_file"];
-            if (!boost::filesystem::exists(integral_file))
-                throw std::runtime_error("integral_file " + integral_file + " does not exist\n");
-
-            std::ifstream orb_file;
-            orb_file.open(model["integral_file"].c_str());
-            orb_file.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
-
-            std::string line;
-            std::getline(orb_file, line);
-
-            orb_file.close();
-
-            std::vector<std::string> split_line;
-            boost::split(split_line, line, boost::is_any_of("="));
-
-            // record the site_types in parameters
-            model.set("site_types", split_line[1]);
-            irreps = parse_irreps(split_line[1]);
-        }
-        else if (model.is_set("site_types"))
+        if (model.is_set("site_types"))
         {
             std::vector<subcharge> symm_vec = model["site_types"];
         
@@ -188,7 +167,7 @@ public:
                 irreps[p] = symm_vec[order[p]];
         }
         else
-            throw std::runtime_error("\"integral_file\" in model input file or site_types is not set\n");
+            throw std::runtime_error("Lattice constructor: \"site_types\" is not set\n");
 
         maximum_vertex = *std::max_element(irreps.begin(), irreps.end());
     }
@@ -241,23 +220,6 @@ public:
     }
 
 private:
-
-    std::vector<subcharge> parse_irreps(std::string input)
-    {
-        std::vector<subcharge> symm_vec, ret(L, 0);
-
-        std::replace(input.begin(), input.end(), ',', ' ');
-        std::istringstream iss(input);
-        subcharge number;
-        while( iss >> number )
-            symm_vec.push_back(number-1);
-        
-        assert(L == symm_vec.size());
-        for (subcharge p = 0; p < L; ++p)
-            ret[p] = symm_vec[order[p]];
-
-        return ret;
-    }
 
     std::string site_label (int i) const
     {

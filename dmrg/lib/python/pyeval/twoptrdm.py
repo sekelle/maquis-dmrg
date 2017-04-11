@@ -40,7 +40,7 @@ def load_2rdm(inputfile):
     return rdm
 
 def load_2rdm_matrix(rdm):
-    L = rdm.props['L']
+    L = int(rdm.props['L'])
     odm = np.zeros([L,L,L,L])
 
     for lab, val in zip(rdm.x, rdm.y[0]):
@@ -49,41 +49,36 @@ def load_2rdm_matrix(rdm):
         k = lab[2]
         l = lab[3]
 
+        track = False
+        if i==8 and j==k==l==7:
+            track = True
+
         odm[i,j,k,l] = val
 
-        if l!=k:
+        if l != k or i != j:
             odm[j,i,l,k] = val
 
-        if not min(i,j) == min(l,k):
+        if min(i,j) != min(l,k) or max(i,j) != max(l,k):
             odm[k,l,i,j] = val
-            if k!=l:
+            if l != k or i != j:
                 odm[l,k,j,i] = val
 
     return odm
 
-def print_2rdm(rdm):
-    #fmt = '% -016.10E'
+def print_2rdm_matrix(rdm):
     fmt = '%e'
 
-    for lab, val in zip(rdm.x, rdm.y[0]):
-        i = lab[0]
-        j = lab[1]
-        k = lab[2]
-        l = lab[3]
+    assert (rdm.shape[0] == rdm.shape[1] == rdm.shape[2] == rdm.shape[3])
+    L = rdm.shape[0]
 
-        print i,j,k,l, fmt%val
-
-        # print duplicates
-        if l!=k:
-            print j,i,l,k, fmt%val
-
-        if not min(i,j) == min(l,k):
-            print k,l,i,j, fmt%val
-            if k!=l:
-                print l,k,j,i, fmt%val
+    irange = np.arange(L)
+    idx = [ (i,j,k,l) for i in irange for j in irange for k in irange for l in irange ]
+    for (i,j,k,l) in idx:
+        print i,j,k,l, fmt%rdm[i,j,k,l]
 
 if __name__ == '__main__':
     inputfile = sys.argv[1]
 
-    rdm = load_2rdm(inputfile)
-    print_2rdm(rdm)
+    rdm_dataset = load_2rdm(inputfile)
+    rdm = load_2rdm_matrix(rdm_dataset)
+    print_2rdm_matrix(rdm)

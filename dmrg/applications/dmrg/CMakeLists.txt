@@ -3,7 +3,7 @@ add_definitions(-DHAVE_ALPS_HDF5 -DDISABLE_MATRIX_ELEMENT_ITERATOR_WARNING -DALP
 enable_omp_if_found()
 include_directories(. ${CMAKE_CURRENT_BINARY_DIR})
 
-set(DMRG_APP_LIBRARIES dmrg_models dmrg_utils numeric ${DMRG_LIBRARIES} ${OPENSSL_LIBRARIES})
+set(DMRG_APP_LIBRARIES dmrg_models dmrg_utils ${DMRG_LIBRARIES} ${OPENSSL_LIBRARIES})
 
 if(USE_AMBIENT)
   compile_with_ambient()
@@ -12,16 +12,17 @@ endif(USE_AMBIENT)
 # *** Configure symmetries
 configure_matrix_file("simulation_symm/dmrg_sim_tpl.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/simulation_symm/dmrg_sim_{MATRIX}_{SYMM}.cpp"
                        CMAKE_MATRIX_TYPE CMAKE_SYMM_GROUP)
-get_matrix_files(APPEND DMRG_SYMM_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/simulation_symm/dmrg_sim_{MATRIX}_{SYMM}.cpp")
+get_matrix_files(APPEND DMRGSIM_SYMM_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/simulation_symm/dmrg_sim_{MATRIX}_{SYMM}.cpp")
 
 configure_symm_file("simulation_symm/simulation_tpl.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/simulation_symm/simulation_{SYMM}.cpp" CMAKE_SYMM_GROUP)
-get_symm_files(APPEND DMRG_SYMM_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/simulation_symm/simulation_{SYMM}.cpp")
+get_symm_files(APPEND SIMULATION_SYMM_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/simulation_symm/simulation_{SYMM}.cpp")
 
-add_library(optimizer STATIC ${DMRG_SYMM_SOURCES})
+add_library(optimizer STATIC ${DMRGSIM_SYMM_SOURCES})
+target_link_libraries(optimizer numeric)
 
 
 # *** Targets
-add_executable(dmrg dmrg.cpp)
+add_executable(dmrg dmrg.cpp ${SIMULATION_SYMM_SOURCES})
 target_link_libraries(dmrg optimizer ${DMRG_APP_LIBRARIES})
 
 # *** Install
