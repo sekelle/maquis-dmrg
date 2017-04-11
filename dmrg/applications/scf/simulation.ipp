@@ -34,14 +34,14 @@ void simulation<SymmGroup>::run(DmrgParameters & parms)
 {
     if (parms["COMPLEX"]) {
 #ifdef HAVE_COMPLEX
-        dmrg_sim<cmatrix, SymmGroup> sim(parms);
-        sim.run();
+        sim_ptr_complex.reset(new dmrg_sim<cmatrix, SymmGroup>(parms));
+        sim_ptr_complex->run();
 #else
         throw std::runtime_error("compilation of complex numbers not enabled, check your compile options\n");
 #endif
     } else {
-        dmrg_sim<matrix, SymmGroup> sim(parms);
-        sim.run();
+        sim_ptr_real.reset(new dmrg_sim<matrix, SymmGroup>(parms));
+        sim_ptr_real->run();
     }
 }
 
@@ -53,9 +53,6 @@ void simulation<SymmGroup>::measure_observable(DmrgParameters & parms, std::stri
     if (parms["COMPLEX"]) {
         throw std::runtime_error("extraction of complex observables not implemented\n");
     } else {
-
-        sim_ptr_real.reset(new dmrg_sim<matrix, SymmGroup>(parms));
-        sim_ptr_real->run(); 
         sim_ptr_real->measure_observable(name, results, labels); 
     }
 }
