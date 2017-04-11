@@ -37,35 +37,49 @@
 #include "simulation.h"
 #include "dmrg/sim/symmetry_factory.h"
 
-
-void optimize_and_measure(DmrgOptions & opt, std::string name, std::vector<double> & results,
-                                                               std::vector<std::vector<int> > & labels)
+class DmrgInterface
 {
-    if (opt.valid) {
-        
-        maquis::cout.precision(10);
-        
-        timeval now, then, snow, sthen;
-        gettimeofday(&now, NULL);
-        
-        try {
+public:
+    DmrgInterface(DmrgOptions & opt_) : opt(opt_)
+                                      , sim(dmrg::symmetry_factory<simulation_traits>(opt.parms))
+    { }
 
-            simulation_traits::shared_ptr sim = dmrg::symmetry_factory<simulation_traits>(opt.parms);
-            sim->run(opt.parms);
-            sim->measure_observable(opt.parms, name, results, labels);
+    void optimize()
+    {
+        if (opt.valid) {
+            
+            maquis::cout.precision(10);
+            
+            timeval now, then, snow, sthen;
+            gettimeofday(&now, NULL);
+            
+            try {
+                sim->run(opt.parms);
 
-        } catch (std::exception & e) {
-            maquis::cerr << "Exception thrown!" << std::endl;
-            maquis::cerr << e.what() << std::endl;
-            exit(1);
+            } catch (std::exception & e) {
+                maquis::cerr << "Exception thrown!" << std::endl;
+                maquis::cerr << e.what() << std::endl;
+                exit(1);
+            }
+            
+            gettimeofday(&then, NULL);
+            double elapsed = then.tv_sec-now.tv_sec + 1e-6 * (then.tv_usec-now.tv_usec);
+            
+            maquis::cout << "Task took " << elapsed << " seconds." << std::endl;
         }
-        
-        gettimeofday(&then, NULL);
-        double elapsed = then.tv_sec-now.tv_sec + 1e-6 * (then.tv_usec-now.tv_usec);
-        
-        maquis::cout << "Task took " << elapsed << " seconds." << std::endl;
     }
-}
+
+    void measure(std::string name,
+                 std::vector<double> & results,
+                 std::vector<std::vector<int> > & labels)
+    {
+        sim->measure_observable(opt.parms, name, results, labels);
+    }
+
+private:
+    DmrgOptions opt;
+    simulation_traits::shared_ptr sim;
+};
 
 void parse_file(std::vector<double> & M, std::vector<int> & I, std::string integral_file)
 {
@@ -131,7 +145,9 @@ int main(int argc, char ** argv)
     opt.parms.erase("integral_file");
 
     // labels are not yet adjusted to orbital ordering
-    optimize_and_measure(opt, "oneptdm", results, labels);
+    DmrgInterface solver(opt);
+    solver.optimize();
+    solver.measure("oneptdm", results, labels);
 
     std::copy(results.begin(), results.end(), std::ostream_iterator<double>(std::cout, " "));
     maquis::cout << std::endl;
