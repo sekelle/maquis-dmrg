@@ -32,18 +32,29 @@
 #include <sstream>
 #include <fstream>
 
-std::string md5sum(std::string fname)
+std::string md5sum(std::string fname, bool from_file)
 {
     MD5_CTX ctx;
     MD5_Init(&ctx);
 
-    //std::ifstream ifs(fname, std::ios::binary);
-    std::ifstream ifs(fname.c_str());
-    
-    char file_buffer[4096];
-    while (ifs.read(file_buffer, sizeof(file_buffer)) || ifs.gcount()) {
-        MD5_Update(&ctx, file_buffer, ifs.gcount());
+    if (from_file)
+    {
+        std::ifstream ifs(fname.c_str());
+        
+        char file_buffer[4096];
+        while (ifs.read(file_buffer, sizeof(file_buffer)) || ifs.gcount()) {
+            MD5_Update(&ctx, file_buffer, ifs.gcount());
+        }
     }
+    else
+    {
+        for (std::size_t b = 0; b < fname.size()/4096; ++b)
+            MD5_Update(&ctx, &fname[b*4096], 4096);
+
+        std::size_t remainder = fname.size() % 4096;
+        MD5_Update(&ctx, &fname[4096*(fname.size()/4096)], remainder);
+    }
+
     unsigned char digest[MD5_DIGEST_LENGTH] = {};
     MD5_Final(digest, &ctx);
     

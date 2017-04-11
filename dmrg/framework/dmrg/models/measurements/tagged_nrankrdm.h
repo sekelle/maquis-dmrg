@@ -585,7 +585,8 @@ namespace measurements {
                         if(not measurements_details::checkpg<SymmGroup>()(terms[0], tag_handler_local, lattice))
                                continue;
                         
-                        generate_mpo::TaggedMPOMaker<Matrix, SymmGroup> mpo_m(lattice, op_collection.ident.no_couple, op_collection.ident_full.no_couple,
+                        generate_mpo::TaggedMPOMaker<Matrix, SymmGroup> mpo_m(lattice, op_collection.ident.no_couple,
+                                                                              op_collection.ident_full.no_couple,
                                                                               op_collection.fill.no_couple, tag_handler_local, terms);
                         MPO<Matrix, SymmGroup> mpo = mpo_m.create_mpo();
                         typename MPS<Matrix, SymmGroup>::scalar_type value = expval(bra_mps, ket_mps, mpo);
@@ -593,7 +594,6 @@ namespace measurements {
                         dct.push_back(value);
                         num_labels.push_back(positions);
                     }
-
                 }
 
                 std::vector<std::string> lbt = label_strings(lattice,  num_labels);

@@ -34,21 +34,17 @@
 struct simulation_base {
     virtual ~simulation_base() {}
     virtual void run(DmrgParameters & parms) =0;
-    virtual void measure_observable(DmrgParameters & parms, std::string name,
-                                    std::vector<double> & results, std::vector<std::vector<int> > & labels) {}
 };
 
 template <class SymmGroup>
-struct measure_simulation : public simulation_base {
+struct simulation : public simulation_base {
     void run(DmrgParameters & parms);
-    void measure_observable(DmrgParameters & parms, std::string name,
-                            std::vector<double> & results, std::vector<std::vector<int> > & labels);
 };
 
-struct measure_simulation_traits {
+struct simulation_traits {
     typedef boost::shared_ptr<simulation_base> shared_ptr;
     template <class SymmGroup> struct F {
-        typedef measure_simulation<SymmGroup> type;
+        typedef simulation<SymmGroup> type;
     };
 };
 

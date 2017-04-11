@@ -27,8 +27,8 @@
 
 
 template <class Matrix, class SymmGroup>
-sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_)
-: parms(parms_)
+sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_, bool measure_on_mps)
+: parms(complete_parameters(parms_))
 , init_sweep(0)
 , init_site(-1)
 , restore(false)
@@ -69,9 +69,14 @@ sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_)
                 maquis::cout << "A fresh simulation will start." << std::endl;
             }
         }
+        else
+            if (measure_on_mps) throw std::runtime_error(std::string("cannot find checkpoint file ") + chkpfile + "\n");
     }
 
     bool restore_mpo = false;
+    bool have_integrals = parms.is_set("integral_file") || parms.is_set("integrals");
+
+    if (have_integrals)
     {
         boost::filesystem::path p(chkpfile);
         if (boost::filesystem::exists(p) && boost::filesystem::exists(p / "mpo.h5"))
@@ -83,9 +88,8 @@ sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_)
             std::string previous_hash;
             ar_props["/integral_hash"] >> previous_hash;
 
-            std::string int_file = parms["integral_file"];
-            std::string hash = md5sum(int_file);
-
+            std::string hash = (parms.is_set("integral_file")) ? md5sum(parms["integral_file"], true)
+                                                               : md5sum(parms["integrals"], false);
             if (hash == previous_hash)
                 restore_mpo = true;
             else
@@ -105,7 +109,7 @@ sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_)
     {
         mpo = make_mpo(lat, model);
 
-        if (!dns)
+        if (!dns && have_integrals)
         {
             if (!boost::filesystem::exists(chkpfile)) boost::filesystem::create_directory(chkpfile);
 
@@ -114,7 +118,8 @@ sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_)
             mpo_ar << mpo;
 
             storage::archive ar(chkpfile+"/props.h5", "w");
-            std::string hash = md5sum(parms["integral_file"]);
+            std::string hash = (parms.is_set("integral_file")) ? md5sum(parms["integral_file"], true)
+                                                               : md5sum(parms["integrals"], false);
             ar["/integral_hash"] << hash;
         }
     }
@@ -240,3 +245,73 @@ void sim<Matrix, SymmGroup>::measure(std::string archive_path, measurements_type
     }
 }
 
+namespace detail {
+
+    template <bool PointGroup>
+    struct SiteTypes
+    {
+        std::string operator() (DmrgParameters & parms) const
+        {
+            int L = parms["L"];
+            std::string ret(2*L, '0');
+            for (int i = 1; i < ret.size(); i+=2)
+                ret.replace(i, 1, 1, ',');
+            return ret;
+        }
+    };
+
+    template <>
+    struct SiteTypes<true>
+    {
+        std::string operator() (DmrgParameters & parms) const
+        {
+            throw std::runtime_error(std::string("passing integrals without an fcidump file needs definition ") +
+                                     std::string("of site types in parameters for symmetries with point groups\n"));
+            return std::string();
+        }
+    };
+}
+
+template <class Matrix, class SymmGroup>
+DmrgParameters sim<Matrix, SymmGroup>::complete_parameters(DmrgParameters parms)
+{
+    if (parms.is_set("integral_file") && parms.is_set("integrals"))
+        throw std::runtime_error("cannot specify both integral_file and integrals as input parameters\n");
+
+    if (parms.is_set("integral_file"))
+    {
+        if (!boost::filesystem::exists(parms.template get<std::string>("integral_file")))
+            throw std::runtime_error(std::string("integral_file ") + parms["integral_file"].as<std::string>() + " does not exist :(\n");
+            
+        if (!parms.is_set("site_types")) // don't overwrite if specified in input
+        {
+            // extract the site types from the integral (FCIDUMP) file
+            std::ifstream orb_file;
+            orb_file.open(parms["integral_file"].c_str());
+            orb_file.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
+
+            std::string line;
+            std::getline(orb_file, line);
+
+            orb_file.close();
+
+            std::vector<std::string> split_line;
+            boost::split(split_line, line, boost::is_any_of("="));
+            std::string sitetypes = split_line[1];
+            sitetypes.erase(sitetypes.size()-1); // delete trailing null
+            for (int i = 0; i < sitetypes.size(); i+=2) sitetypes[i]--;
+
+            // record the site_types in parameters
+            parms.set("site_types", sitetypes);
+        }
+    }
+    else if (parms.is_set("integrals"))
+    {
+        if (!parms.is_set("site_types"))
+            parms.set("site_types", detail::SiteTypes<symm_traits::HasPG<SymmGroup>::value>()(parms));
+    }
+    else if (parms["MODEL"] == "quantum_chemistry")
+        throw std::runtime_error("either integral_file or integrals need to be specified in input parameters\n");
+
+    return parms;
+}

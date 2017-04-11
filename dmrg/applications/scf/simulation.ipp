@@ -2,8 +2,8 @@
  *
  * ALPS MPS DMRG Project
  *
- * Copyright (C) 2014 Institute for Theoretical Physics, ETH Zurich
- *               2011-2013 by Michele Dolfi <dolfim@phys.ethz.ch>
+ * Copyright (C) 2017 Stanford University Departement of Chemistry
+ *               2017-2017 by Sebastian Keller <sebkelle@phys.ethz.ch>
  *
  * This software is part of the ALPS Applications, published under the ALPS
  * Application License; you can use, redistribute it and/or modify it under
@@ -26,7 +26,7 @@
 
 #include "dmrg/sim/matrix_types.h"
 
-#include "measure_sim.h"
+#include "../dmrg/dmrg_sim.h"
 #include "simulation.h"
 
 template <class SymmGroup>
@@ -34,14 +34,25 @@ void simulation<SymmGroup>::run(DmrgParameters & parms)
 {
     if (parms["COMPLEX"]) {
 #ifdef HAVE_COMPLEX
-        measure_sim<cmatrix, SymmGroup> sim(parms);
-        sim.run();
+        sim_ptr_complex.reset(new dmrg_sim<cmatrix, SymmGroup>(parms));
+        sim_ptr_complex->run();
 #else
         throw std::runtime_error("compilation of complex numbers not enabled, check your compile options\n");
 #endif
-
     } else {
-        measure_sim<matrix, SymmGroup> sim(parms);
-        sim.run();
+        sim_ptr_real.reset(new dmrg_sim<matrix, SymmGroup>(parms));
+        sim_ptr_real->run();
+    }
+}
+
+template <class SymmGroup>
+void simulation<SymmGroup>::measure_observable(DmrgParameters & parms, std::string name,
+                                               std::vector<double> & results,
+                                               std::vector<std::vector<Lattice::pos_t> > & labels)
+{
+    if (parms["COMPLEX"]) {
+        throw std::runtime_error("extraction of complex observables not implemented\n");
+    } else {
+        sim_ptr_real->measure_observable(name, results, labels); 
     }
 }

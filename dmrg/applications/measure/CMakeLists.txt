@@ -15,12 +15,12 @@ configure_matrix_file("simulation_symm/measure_sim_tpl.cpp.in" "${CMAKE_CURRENT_
 get_matrix_files(APPEND MEASURE_SYMM_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/simulation_symm/measure_sim_{MATRIX}_{SYMM}.cpp")
 
 configure_symm_file("simulation_symm/simulation_tpl.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/simulation_symm/simulation_{SYMM}.cpp" CMAKE_SYMM_GROUP)
-get_symm_files(APPEND MEASURE_SYMM_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/simulation_symm/simulation_{SYMM}.cpp")
+get_symm_files(APPEND SIMULATION_SYMM_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/simulation_symm/simulation_{SYMM}.cpp")
 
 add_library(measure STATIC ${MEASURE_SYMM_SOURCES})
 
 # *** Targets
-add_executable(dmrg_meas measure.cpp)
+add_executable(dmrg_meas measure.cpp ${SIMULATION_SYMM_SOURCES})
 target_link_libraries(dmrg_meas measure ${DMRG_APP_LIBRARIES})
 
 # *** Install

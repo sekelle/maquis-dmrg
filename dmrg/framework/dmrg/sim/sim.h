@@ -77,7 +77,7 @@ public:
 template <class Matrix, class SymmGroup>
 class sim : public abstract_sim {
 public:
-    sim(DmrgParameters const &);
+    sim(DmrgParameters const &, bool = false);
     virtual ~sim();
     
     virtual void run() =0;
@@ -90,9 +90,11 @@ protected:
     
     measurements_type iteration_measurements(int sweep);
     virtual void measure(std::string archive_path, measurements_type & meas);
+
     // TODO: can be made const, now only problem are parameters
-    
     virtual void checkpoint_simulation(MPS<Matrix, SymmGroup> const& state, status_type const&);
+
+    static DmrgParameters complete_parameters(DmrgParameters);
     
 protected:
     DmrgParameters parms;

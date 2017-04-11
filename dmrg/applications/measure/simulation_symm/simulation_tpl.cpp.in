@@ -25,4 +25,4 @@
  *****************************************************************************/
 
 #include "simulation.ipp"
-template class measure_simulation<@CMAKE_SYMM_GROUP@>;
+template class simulation<@CMAKE_SYMM_GROUP@>;
