@@ -15,6 +15,7 @@ get_symm_files(APPEND SCF_SYMM_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/simulation_s
 
 add_library(dmrg_simulation STATIC ${SCF_SYMM_SOURCES})
 target_link_libraries(dmrg_simulation optimizer ${SCF_APP_LIBRARIES})
+set_property(TARGET dmrg_simulation PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 
 # *** Targets
 add_executable(dmrg_scf dmrg_scf.cpp interface.cpp)
