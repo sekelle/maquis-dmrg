@@ -27,4 +27,4 @@ target_link_libraries(dmrg optimizer ${DMRG_APP_LIBRARIES})
 # *** Install
 install(TARGETS dmrg RUNTIME DESTINATION bin COMPONENT applications)
 install(TARGETS optimizer EXPORT DMRGTargets COMPONENT libraries DESTINATION lib)
-export(TARGETS optimizer FILE "${PROJECT_BINARY_DIR}/DMRGTargets.cmake")
+export(TARGETS optimizer APPEND FILE "${PROJECT_BINARY_DIR}/DMRGTargets.cmake")
