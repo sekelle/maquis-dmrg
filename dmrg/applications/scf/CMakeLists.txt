@@ -23,5 +23,5 @@ target_link_libraries(dmrg_scf dmrg_simulation)
 
 # *** Install
 install(TARGETS dmrg_scf RUNTIME DESTINATION bin COMPONENT applications)
-install(TARGETS dmrg_simulation COMPONENT libraries DESTINATION lib)
+install(TARGETS dmrg_simulation EXPORT DMRGTargets COMPONENT libraries DESTINATION lib)
 export(TARGETS dmrg_simulation FILE "${PROJECT_BINARY_DIR}/DMRGTargets.cmake")
