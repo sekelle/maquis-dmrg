@@ -530,7 +530,6 @@ namespace measurements {
                 }
 
                 // the lattice knows the ordering and provides the correct orbital label for each position
-                //std::vector<std::string> lbt = label_strings(lattice,  num_labels);
                 std::vector<std::string> lbt = label_strings(num_labels);
 
                 // save results and labels
@@ -603,7 +602,6 @@ namespace measurements {
                     }
                 }
 
-                //std::vector<std::string> lbt = label_strings(lattice,  num_labels);
                 std::vector<std::string> lbt = label_strings(num_labels);
 
                 // save results and labels
