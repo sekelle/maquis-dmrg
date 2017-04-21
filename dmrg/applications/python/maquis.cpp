@@ -26,6 +26,8 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
+#include <map>
 
 #include <boost/python.hpp>
 
@@ -34,6 +36,8 @@
 #include "../scf/simulation.h"
 
 using namespace boost::python;
+
+void export_collections();
 
 class Interface
 {
@@ -88,8 +92,27 @@ public:
         maquis::cout << "Task took " << elapsed << " seconds." << std::endl;
     }
 
+    void measure(std::string name)
+    {
+        sim->measure_observable(parms, name, observables["name"], labels["name"]);
+    } 
+
+    std::vector<double> getObservable(std::string name)
+    {
+        return observables["name"];
+    }
+
+    std::vector<std::vector<int> > getLabels(std::string name)
+    {
+        return labels["name"];
+    }
+
 private:
     DmrgParameters parms;
+
+    std::map<std::string, std::vector<double> > observables;
+    std::map<std::string, std::vector<std::vector<int> > > labels;
+
     simulation_traits::shared_ptr sim;
 };
 
@@ -122,10 +145,16 @@ object SetParameters(tuple args, dict kwargs)
 
 BOOST_PYTHON_MODULE(maquis)
 {
+    export_collections();
+
     class_<Interface>("interface")
         .def(init<dict>())
         .def("SetParameters", raw_function(&SetParameters, 1))
         .def("value", &Interface::value)
-        .def("optimize", &Interface::optimize);
+        .def("optimize", &Interface::optimize)
+        .def("measure", &Interface::measure)
+        .def("getObservable", &Interface::getObservable)
+        .def("getLabels", &Interface::getLabels)
+        ;
 }
 
