@@ -96,7 +96,7 @@ int main(int argc, char ** argv)
     opt.parms.set("integrals", pack_integrals(integrals, indices));
     opt.parms.erase("integral_file");
 
-    // labels are not yet adjusted to orbital ordering
+    // labels adjusted to orbital ordering
     DmrgInterface solver(opt);
     solver.optimize();
     solver.measure("oneptdm", results, labels);
