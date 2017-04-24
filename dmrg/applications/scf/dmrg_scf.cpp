@@ -27,59 +27,11 @@
 #include <string>
 #include <cstring>
 #include <iostream>
-#include <sys/time.h>
-#include <sys/stat.h>
 
 #include <boost/filesystem.hpp>
 
-#include "utils/io.hpp"
 #include "dmrg/utils/DmrgOptions.h"
-#include "simulation.h"
-#include "dmrg/sim/symmetry_factory.h"
-
-class DmrgInterface
-{
-public:
-    DmrgInterface(DmrgOptions & opt_) : opt(opt_)
-                                      , sim(dmrg::symmetry_factory<simulation_traits>(opt.parms))
-    { }
-
-    void optimize()
-    {
-        if (opt.valid) {
-            
-            maquis::cout.precision(10);
-            
-            timeval now, then, snow, sthen;
-            gettimeofday(&now, NULL);
-            
-            try {
-                sim->run(opt.parms);
-
-            } catch (std::exception & e) {
-                maquis::cerr << "Exception thrown!" << std::endl;
-                maquis::cerr << e.what() << std::endl;
-                exit(1);
-            }
-            
-            gettimeofday(&then, NULL);
-            double elapsed = then.tv_sec-now.tv_sec + 1e-6 * (then.tv_usec-now.tv_usec);
-            
-            maquis::cout << "Task took " << elapsed << " seconds." << std::endl;
-        }
-    }
-
-    void measure(std::string name,
-                 std::vector<double> & results,
-                 std::vector<std::vector<int> > & labels)
-    {
-        sim->measure_observable(opt.parms, name, results, labels);
-    }
-
-private:
-    DmrgOptions opt;
-    simulation_traits::shared_ptr sim;
-};
+#include "interface.h"
 
 void parse_file(std::vector<double> & M, std::vector<int> & I, std::string integral_file)
 {
@@ -144,11 +96,11 @@ int main(int argc, char ** argv)
     opt.parms.set("integrals", pack_integrals(integrals, indices));
     opt.parms.erase("integral_file");
 
-    // labels are not yet adjusted to orbital ordering
+    // labels adjusted to orbital ordering
     DmrgInterface solver(opt);
     solver.optimize();
     solver.measure("oneptdm", results, labels);
 
     std::copy(results.begin(), results.end(), std::ostream_iterator<double>(std::cout, " "));
-    maquis::cout << std::endl;
+    std::cout << std::endl;
 }

@@ -18,6 +18,7 @@ configure_symm_file("simulation_symm/simulation_tpl.cpp.in" "${CMAKE_CURRENT_BIN
 get_symm_files(APPEND SIMULATION_SYMM_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/simulation_symm/simulation_{SYMM}.cpp")
 
 add_library(optimizer STATIC ${DMRGSIM_SYMM_SOURCES})
+set_property(TARGET optimizer PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 
 
 # *** Targets
@@ -26,5 +27,5 @@ target_link_libraries(dmrg optimizer ${DMRG_APP_LIBRARIES})
 
 # *** Install
 install(TARGETS dmrg RUNTIME DESTINATION bin COMPONENT applications)
-install(TARGETS optimizer COMPONENT libraries DESTINATION lib)
-export(TARGETS optimizer FILE "${PROJECT_BINARY_DIR}/DMRGTargets.cmake")
+install(TARGETS optimizer EXPORT DMRGTargets COMPONENT libraries DESTINATION lib)
+export(TARGETS optimizer APPEND FILE "${PROJECT_BINARY_DIR}/DMRGTargets.cmake")

@@ -197,6 +197,8 @@ public:
             return boost::any( site_label(order[pos[0]]) );
         else if (property == "label" && pos.size() == 2)
             return boost::any( bond_label(order[pos[0]], order[pos[1]]) );
+        else if (property == "nlabel" && pos.size() == 1)
+            return boost::any(order[pos[0]]);
         else if (property == "type" && pos.size() == 1)
             return boost::any( irreps[pos[0]] );
         else if (property == "type" && pos.size() == 2)

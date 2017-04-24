@@ -62,3 +62,5 @@ endif(BUILD_EXAMPLES)
 if(DMRG_HAS_NU1 AND BUILD_ALPS_APPS)
   add_subdirectory(alps)
 endif(DMRG_HAS_NU1 AND BUILD_ALPS_APPS)
+
+add_subdirectory(python)
