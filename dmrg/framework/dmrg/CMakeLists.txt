@@ -59,7 +59,7 @@ add_library(dmrg_models STATIC ${DMRG_MODELS_SOURCES})
 
 add_library(numeric STATIC mp_tensors/contractions/numeric/numeric.cpp)
 
-set_property(TARGET dmrg_utils dmrg_models PROPERTY POSITION_INDEPENDENT_CODE TRUE)
+set_property(TARGET dmrg_utils dmrg_models numeric PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 
 # *** Install
 
