@@ -198,8 +198,18 @@ namespace contraction {
         site_hamil2(MPSTensor<Matrix, SymmGroup> ket_tensor,
                     Boundary<OtherMatrix, SymmGroup> const & left,
                     Boundary<OtherMatrix, SymmGroup> const & right,
+                    MPOTensor<Matrix, SymmGroup> const & mpo)
+        {
+                    schedule_t tasks = right_contraction_schedule(ket_tensor, left, right, mpo);
+                    return site_hamil2(ket_tensor, left, right, mpo, tasks);
+        }
+
+        static MPSTensor<Matrix, SymmGroup>
+        site_hamil2(MPSTensor<Matrix, SymmGroup> ket_tensor,
+                    Boundary<OtherMatrix, SymmGroup> const & left,
+                    Boundary<OtherMatrix, SymmGroup> const & right,
                     MPOTensor<Matrix, SymmGroup> const & mpo,
-                    std::vector<SU2::task_capsule<Matrix, SymmGroup> > const & tasks);
+                    schedule_t const & tasks);
     };
 
 } // namespace contraction
