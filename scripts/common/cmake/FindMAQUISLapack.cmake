@@ -22,6 +22,9 @@ if(${BLAS_LAPACK_SELECTOR} MATCHES "mkl_sequential")
   endif(NOT DEFINED ENV{MKLROOT})
 
   set(MKL $ENV{MKLROOT})
+  if(${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
+    set(MKL $ENV{MKLROOT}/lib/intel64/)
+  endif()
   set(MKLSTATIC "-Wl,--start-group ${MKL}/libmkl_intel_lp64.a ${MKL}/libmkl_core.a ${MKL}/libmkl_sequential.a -Wl,--end-group")
   
   if(NOT APPLE)

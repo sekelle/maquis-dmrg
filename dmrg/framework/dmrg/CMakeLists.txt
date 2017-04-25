@@ -58,6 +58,7 @@ add_library(dmrg_utils STATIC block_matrix/symmetry.cpp utils/utils.cpp utils/Dm
 add_library(dmrg_models STATIC ${DMRG_MODELS_SOURCES})
 
 add_library(numeric STATIC mp_tensors/contractions/numeric/numeric.cpp)
+target_link_libraries(dmrg_models numeric)
 
 set_property(TARGET dmrg_utils dmrg_models numeric PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 
