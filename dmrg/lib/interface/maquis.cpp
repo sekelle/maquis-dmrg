@@ -33,7 +33,7 @@
 
 #include "dmrg/utils/DmrgParameters.h"
 #include "dmrg/sim/symmetry_factory.h"
-#include "../scf/simulation.h"
+#include "../../applications/scf/simulation.h"
 
 using namespace boost::python;
 
@@ -143,7 +143,7 @@ object SetParameters(tuple args, dict kwargs)
     return object();
 }
 
-BOOST_PYTHON_MODULE(maquis)
+BOOST_PYTHON_MODULE(libmaquis)
 {
     export_collections();
 

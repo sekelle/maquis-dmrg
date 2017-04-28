@@ -34,6 +34,7 @@ set(BUILD_SYMMETRIES "U1;TwoU1;TwoU1PG;NONE" CACHE STRINGS "List of symmetry
 to include in the build objects. U1, TwoU1, TwoU1PG, NU1, Z2, SU2U1, SU2U1PG and NONE are currently available.")
 set(DMRG_NUMSYMM 6 CACHE INT "Maximum number of U1 symmetries.")
 
+option(BUILD_INTERFACE_LIBS "Build libraries for interfacing DMRG to C++ and python" ON)
 option(COMPLEX "compile dmrg for complex numbers" ON)
 
 option(ENABLE_ALPS_MODELS "Enable binding with ALPS lattices and models" ON)
@@ -433,6 +434,10 @@ if(REGRESSION_PERFORMANCE_TESTS)
   #add_subdirectory(${BENCHMARKS_DIR} benchmarks_refs)
 endif(REGRESSION_PERFORMANCE_TESTS)
 
+# *** python interface
+if(BUILD_INTERFACE_LIBS)
+    add_subdirectory(lib/interface)
+endif(BUILD_INTERFACE_LIBS)
 
 ######################################################################
 # DMRG exports
