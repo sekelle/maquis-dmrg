@@ -10,7 +10,7 @@ set(PYTHON_APP_LIBRARIES dmrg_simulation python2.7)
 add_library(maquis SHARED export_collections.cpp maquis.cpp)
 target_link_libraries(maquis ${PYTHON_APP_LIBRARIES})
 set_property(TARGET maquis PROPERTY POSITION_INDEPENDENT_CODE TRUE)
-set_target_properties(maquis PROPERTIES PREFIX "")
+#set_target_properties(maquis PROPERTIES PREFIX "")
 
 # *** Install
-install(TARGETS maquis COMPONENT libraries DESTINATION lib)
+install(TARGETS maquis COMPONENT libraries DESTINATION lib/python/maquis)

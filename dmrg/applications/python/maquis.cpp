@@ -143,7 +143,7 @@ object SetParameters(tuple args, dict kwargs)
     return object();
 }
 
-BOOST_PYTHON_MODULE(maquis)
+BOOST_PYTHON_MODULE(libmaquis)
 {
     export_collections();
 
