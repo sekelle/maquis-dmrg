@@ -34,7 +34,7 @@
 #include "dmrg/models/model.h"
 #include "dmrg/models/lattice.h"
 
-namespace chem_detail {
+namespace chem {
 
     template <class SymmGroup>
     struct qn_helper
@@ -107,7 +107,6 @@ namespace chem_detail {
         }
     };
 
-	template <class SymmGroup>
     inline IndexTuple align(int i, int j, int k, int l) {
         if (i<j) std::swap(i,j);
         if (k<l) std::swap(k,l);
@@ -116,14 +115,8 @@ namespace chem_detail {
         return IndexTuple(i,j,k,l);
     }
     
-	template <>
-    inline IndexTuple align<U1DG>(int i, int j, int k, int l) {
-        return IndexTuple(i,j,k,l);
-    }
-    
-	template <class SymmGroup>
     inline IndexTuple align(IndexTuple const & rhs) {
-        return align<SymmGroup>(rhs[0], rhs[1], rhs[2], rhs[3]);
+        return align(rhs[0], rhs[1], rhs[2], rhs[3]);
     }
 
     inline int sign(IndexTuple const & idx)

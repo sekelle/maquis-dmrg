@@ -58,7 +58,9 @@ namespace SU2 {
         for (typename col_proxy::const_iterator col_it = col_b2.begin(); col_it != col_b2.end(); ++col_it) {
             index_type b1 = col_it.index();
 
-            block_matrix<Matrix, SymmGroup> const & T = left_mult_mps[b1];
+            block_matrix<Matrix, SymmGroup> local;
+            block_matrix<Matrix, SymmGroup> const & T = left_mult_mps.at(b1, local);
+
             MPOTensor_detail::term_descriptor<Matrix, SymmGroup, true> access = mpo.at(b1,b2);
 
         for (std::size_t op_index = 0; op_index < access.size(); ++op_index)
@@ -111,7 +113,6 @@ namespace SU2 {
                     size_t l_size = T.basis().left_size(t_block);
 
                     detail::rbtm_blocked<Matrix, SymmGroup>(T[t_block], ret[o], W, in_right_offset, out_right_offset, l_size, r_size, w_block, couplings);
-
                 } // wblock
             } // lblock
         } // op_index

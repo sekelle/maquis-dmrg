@@ -29,12 +29,15 @@
 
 #include <vector>
 #include <set>
+#include <boost/serialization/vector.hpp>
 
 #include "dmrg/mp_tensors/mpotensor.h"
 
 template<class Matrix, class SymmGroup, typename = void>
 class MPO : public std::vector<MPOTensor<Matrix, SymmGroup> >
 {
+    typedef std::vector<MPOTensor<Matrix, SymmGroup> > base;
+
 public:
     typedef MPOTensor<Matrix, SymmGroup> elem_type;
 
@@ -79,6 +82,14 @@ private:
     std::vector<std::map<std::size_t, typename SymmGroup::charge> > bond_index_charges;
     std::vector<Index<SymmGroup> > bond_indices;
     double core_energy;
+
+    friend class boost::serialization::access;
+
+    template <class Archive>
+    void serialize(Archive & ar, const unsigned version)
+    {
+        ar & core_energy & boost::serialization::base_object<base>(*this);
+    }
     
     void calc_charges()
     {
@@ -405,6 +416,8 @@ class MPO<Matrix, SymmGroup, typename boost::enable_if<
                                                       >::type>
     : public std::vector<MPOTensor<Matrix, SymmGroup> >
 {
+    typedef std::vector<MPOTensor<Matrix, SymmGroup> > base;
+
 public:
     typedef MPOTensor<Matrix, SymmGroup> elem_type;
 
@@ -426,6 +439,14 @@ public:
 
 private:
     double core_energy;
+
+    friend class boost::serialization::access;
+
+    template <class Archive>
+    void serialize(Archive & ar, const unsigned version)
+    {
+        ar & core_energy & boost::serialization::base_object<base>(*this);
+    }
 };
 
 #endif

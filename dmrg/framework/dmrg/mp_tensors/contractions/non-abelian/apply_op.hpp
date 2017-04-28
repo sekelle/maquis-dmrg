@@ -35,6 +35,8 @@
 #include "dmrg/mp_tensors/contractions/non-abelian/functors.h"
 #include "dmrg/mp_tensors/contractions/non-abelian/micro_kernels.hpp"
 
+#include "dmrg/mp_tensors/contractions/non-abelian/gemm.hpp"
+
 namespace contraction {
 namespace SU2 {
 
@@ -60,7 +62,9 @@ namespace SU2 {
         for (typename col_proxy::const_iterator col_it = col_b2.begin(); col_it != col_b2.end(); ++col_it) {
             index_type b1 = col_it.index();
 
-            block_matrix<Matrix, SymmGroup> const & T = left_mult_mps[b1];
+            block_matrix<Matrix, SymmGroup> local;
+            block_matrix<Matrix, SymmGroup> const & T = left_mult_mps.at(b1, local);
+
             MPOTensor_detail::term_descriptor<Matrix, SymmGroup, true> access = mpo.at(b1,b2);
 
         for (std::size_t op_index = 0; op_index < access.size(); ++op_index)
@@ -109,7 +113,6 @@ namespace SU2 {
                     size_t l_size = T.basis().left_size(t_block);
 
                     detail::lbtm<Matrix, SymmGroup>(T[t_block], ret[o], W, in_right_offset, out_left_offset, l_size, r_size, w_block, couplings);
-
                 } // wblock
             } // lblock
         } // op_index
@@ -138,7 +141,9 @@ namespace SU2 {
         for (typename row_proxy::const_iterator row_it = row_b1.begin(); row_it != row_b1.end(); ++row_it) {
             index_type b2 = row_it.index();
 
-            block_matrix<Matrix, SymmGroup> const & T = right_mult_mps[b2];
+            block_matrix<Matrix, SymmGroup> local;
+            block_matrix<Matrix, SymmGroup> const & T = right_mult_mps.at(b2, local);
+
             MPOTensor_detail::term_descriptor<Matrix, SymmGroup, true> access = mpo.at(b1,b2);
 
         for (std::size_t op_index = 0; op_index < access.size(); ++op_index)
@@ -185,7 +190,6 @@ namespace SU2 {
                     size_t r_size = T.basis().right_size(t_block);
 
                     detail::rbtm<Matrix, SymmGroup>(T[t_block], ret[o], W, in_left_offset, out_right_offset, l_size, r_size, w_block, couplings);
-
                 } // wblock
             } // ket block
         } // op_index

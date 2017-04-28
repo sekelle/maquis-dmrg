@@ -42,7 +42,6 @@ namespace contraction {
         typedef typename SymmGroup::charge charge;
         typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
 
-        //std::vector<block_matrix<Matrix, SymmGroup> > t
         contraction::common::BoundaryMPSProduct<Matrix, OtherMatrix, SymmGroup, abelian::Gemms> t(ket_tensor, left, mpo);
 
         Index<SymmGroup> const & physical_i = ket_tensor.site_dim(),

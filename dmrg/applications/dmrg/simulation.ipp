@@ -33,8 +33,12 @@ template <class SymmGroup>
 void simulation<SymmGroup>::run(DmrgParameters & parms)
 {
     if (parms["COMPLEX"]) {
+#ifdef HAVE_COMPLEX
         dmrg_sim<cmatrix, SymmGroup> sim(parms);
         sim.run();
+#else
+        throw std::runtime_error("compilation of complex numbers not enabled, check your compile options\n");
+#endif
     } else {
         dmrg_sim<matrix, SymmGroup> sim(parms);
         sim.run();

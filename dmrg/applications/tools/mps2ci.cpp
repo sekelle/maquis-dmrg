@@ -123,11 +123,11 @@ int main(int argc, char ** argv)
     grp::subcharge Ndown = mps[L-1].col_dim()[0].first[1];
 
     BaseParameters parms;
-    parms.set("site_types", chem_detail::infer_site_types(mps));
+    parms.set("site_types", chem::infer_site_types(mps));
     
     // extract physical basis for every site from MPS
     std::vector<grp::subcharge> irreps = parms["site_types"];
-    std::vector<Index<grp> > per_site, phys_dims = chem_detail::make_2u1_site_basis<matrix, grp>(L, Nup, Ndown, parms["site_types"]);
+    std::vector<Index<grp> > per_site, phys_dims = chem::make_2u1_site_basis<matrix, grp>(L, Nup, Ndown, parms["site_types"]);
     for (pos_t q = 0; q < L; ++q)
         per_site.push_back(phys_dims[irreps[q]]);
     

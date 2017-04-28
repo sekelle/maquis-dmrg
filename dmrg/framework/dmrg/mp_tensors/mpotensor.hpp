@@ -74,6 +74,23 @@ MPOTensor<Matrix, SymmGroup>::MPOTensor(index_type ld
         operator_table = op_table_ptr(new OPTable<Matrix, SymmGroup>());
     }
 
+    // provide information about number of non-zeros in rows and columns
+    row_non_zeros.resize(row_dim());
+    col_non_zeros.resize(col_dim());
+    for (index_type b2 = 0; b2 < col_dim(); ++b2)
+    {
+        col_proxy col_b2 = column(b2);
+        for (typename col_proxy::const_iterator col_it = col_b2.begin(); col_it != col_b2.end(); ++col_it)
+        {
+            index_type b1 = col_it.index();
+            row_non_zeros[b1]++;
+            col_non_zeros[b2]++;
+        }
+    }
+    num_one_rows_ = std::count(row_non_zeros.begin(), row_non_zeros.end(), 1);
+    num_one_cols_ = std::count(col_non_zeros.begin(), col_non_zeros.end(), 1);
+    //maquis::cout << "nr1r: " << row_dim() - num_one_rows_ << " nr1c: " << col_dim() - num_one_cols_ << std::endl;
+
     // if the optional Hermitian object h_ is valid, adopt it
     if (h_.left_size() == left_i && h_.right_size() == right_i)
         herm_info = h_;
@@ -137,6 +154,30 @@ typename MPOTensor<Matrix, SymmGroup>::spin_index const & MPOTensor<Matrix, Symm
     return right_spins;
 }
 
+template<class Matrix, class SymmGroup>
+typename MPOTensor<Matrix, SymmGroup>::index_type MPOTensor<Matrix, SymmGroup>::num_row_non_zeros(index_type row_i) const
+{
+    return row_non_zeros[row_i];
+}
+
+template<class Matrix, class SymmGroup>
+typename MPOTensor<Matrix, SymmGroup>::index_type MPOTensor<Matrix, SymmGroup>::num_col_non_zeros(index_type col_i) const
+{
+    return col_non_zeros[col_i];
+}
+
+template<class Matrix, class SymmGroup>
+typename MPOTensor<Matrix, SymmGroup>::index_type MPOTensor<Matrix, SymmGroup>::num_one_rows() const
+{
+    return num_one_rows_;
+}
+
+template<class Matrix, class SymmGroup>
+typename MPOTensor<Matrix, SymmGroup>::index_type MPOTensor<Matrix, SymmGroup>::num_one_cols() const
+{
+    return num_one_cols_;
+}
+
 // warning: this method allows to (indirectly) change the op in the table, all tags pointing to it will
 //          get a modified matrix!
 //          better design needed
@@ -193,9 +234,6 @@ MPOTensor<Matrix, SymmGroup>::tag_number(index_type left_index, index_type right
 }
 
 
-template<class T>
-void pprint(T val) { maquis::cout << val.first << std::endl; }
-
 template<class Matrix, class SymmGroup>
 void MPOTensor<Matrix, SymmGroup>::multiply_by_scalar(value_type v)
 {
@@ -229,3 +267,12 @@ typename MPOTensor<Matrix, SymmGroup>::index_type MPOTensor<Matrix, SymmGroup>::
 {
     return right_i;
 }
+
+template<class Matrix, class SymmGroup>
+template<class Archive>
+void MPOTensor<Matrix, SymmGroup>::serialize(Archive & ar, const unsigned int version)
+{
+    ar & herm_info & left_i & right_i & left_spins & right_spins
+       & row_non_zeros & col_non_zeros & col_tags & row_index & operator_table;
+}
+

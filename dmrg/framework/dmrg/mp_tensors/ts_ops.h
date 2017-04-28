@@ -111,7 +111,7 @@ MPOTensor<MPSMatrix, SymmGroup> make_twosite_mpo(MPOTensor<MPOMatrix, SymmGroup>
     typedef typename OPTable<MPOMatrix, SymmGroup>::tag_type tag_type;
     typedef typename OPTable<MPOMatrix, SymmGroup>::op_t op_t;
     typedef typename MPSMatrix::value_type value_type;
-    typedef std::vector<boost::tuple<index_type, index_type, tag_type, value_type> > prempo_t;
+    typedef typename MPOTensor<MPOMatrix, SymmGroup>::prempo_t prempo_t;
 
     KronHandler<MPOMatrix, SymmGroup> kron_handler(mpo1.get_operator_table());
     prempo_t prempo;

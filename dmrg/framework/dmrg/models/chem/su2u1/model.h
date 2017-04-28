@@ -62,7 +62,6 @@ class qc_su2 : public model_impl<Matrix, SymmGroup>
 
     typedef typename Lattice::pos_t pos_t;
     typedef typename Matrix::value_type value_type;
-    typedef typename alps::numeric::associated_one_matrix<Matrix>::type one_matrix;
 
 public:
     
@@ -93,7 +92,7 @@ public:
 
     typename SymmGroup::charge total_quantum_numbers(BaseParameters & parms_) const
     {
-        return chem_detail::qn_helper<SymmGroup>().total_qn(parms_);
+        return chem::qn_helper<SymmGroup>().total_qn(parms_);
     }
 
     tag_type get_operator_tag(std::string const & name, size_t type) const

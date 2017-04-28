@@ -37,8 +37,9 @@ foreach(SYMM ${BUILD_SYMMETRIES})
     add_line_to(MAQUIS_INCLUDE_FACTORIES_${GROUP_NAME} "#include \"dmrg/${TRIAL_INCLUDE_FACTORY}\"")
   endif()
 endforeach(SYMM)
-configure_symm_file("models/model_factory_symm/model_factory_tpl.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/models/model_factory_symm/model_factory_{SYMM}.cpp" CMAKE_SYMM_GROUP)
-get_symm_files(APPEND DMRG_MODELS_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/models/model_factory_symm/model_factory_{SYMM}.cpp")
+
+configure_matrix_file("models/model_factory_symm/model_factory_tpl.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/models/model_factory_symm/model_factory_{MATRIX}_{SYMM}.cpp" CMAKE_MATRIX_TYPE CMAKE_SYMM_GROUP)
+get_matrix_files(APPEND DMRG_MODELS_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/models/model_factory_symm/model_factory_{MATRIX}_{SYMM}.cpp")
 
 ## ALPS model library
 if(ENABLE_ALPS_MODELS)
@@ -53,7 +54,7 @@ endif(ENABLE_LL_MODELS)
 
 
 # *** Libraries
-add_library(dmrg_utils STATIC block_matrix/symmetry.cpp utils/utils.cpp utils/DmrgOptions.cpp utils/time_stopper.cpp utils/proc_statm.cpp utils/proc_status.cpp)
+add_library(dmrg_utils STATIC block_matrix/symmetry.cpp utils/utils.cpp utils/DmrgOptions.cpp utils/time_stopper.cpp utils/proc_statm.cpp utils/proc_status.cpp utils/md5.cpp)
 add_library(dmrg_models STATIC ${DMRG_MODELS_SOURCES})
 
 set_property(TARGET dmrg_utils dmrg_models PROPERTY POSITION_INDEPENDENT_CODE TRUE)

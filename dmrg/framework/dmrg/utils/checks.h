@@ -37,6 +37,9 @@ namespace checks {
 
     inline void symmetry_check(BaseParameters & parms, std::string chkpfile)
     {
+        if (!boost::filesystem::exists(chkpfile+"/props.h5"))
+            throw std::runtime_error("Corrupted checkpoint file: found mpo but no properties\n");
+
         storage::archive ar_in(chkpfile+"/props.h5");
         BaseParameters chkp_parms;
         ar_in["/parameters"] >> chkp_parms;

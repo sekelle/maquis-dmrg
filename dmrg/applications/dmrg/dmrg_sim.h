@@ -38,6 +38,7 @@
 #include "dmrg/sim/sim.h"
 #include "dmrg/optimize/optimize.h"
 
+#include "dmrg_sim.fwd.h"
 
 template <class Matrix, class SymmGroup>
 class dmrg_sim : public sim<Matrix, SymmGroup> {
@@ -58,122 +59,18 @@ class dmrg_sim : public sim<Matrix, SymmGroup> {
     
 public:
     
-    dmrg_sim (DmrgParameters & parms_)
-    : base(parms_)
-    { }
+    dmrg_sim (DmrgParameters & parms_);
     
-    void run()
-    {
-        int meas_each = parms["measure_each"];
-        int chkp_each = parms["chkp_each"];
-        
-        /// MPO creation
-        if (parms["MODEL"] == std::string("quantum_chemistry") && parms["use_compressed"])
-            throw std::runtime_error("chem compression has been disabled");
-        MPO<Matrix, SymmGroup> mpoc = mpo;
-        if (parms["use_compressed"])
-            mpoc.compress(1e-12);
-
-        /// Optimizer initialization
-        boost::shared_ptr<opt_base_t> optimizer;
-        if (parms["optimization"] == "singlesite")
-        {
-            optimizer.reset( new ss_optimize<Matrix, SymmGroup, storage::disk>
-                            (mps, mpoc, parms, stop_callback, init_site) );
-        }
-        else if(parms["optimization"] == "twosite")
-        {
-            optimizer.reset( new ts_optimize<Matrix, SymmGroup, storage::disk>
-                            (mps, mpoc, parms, stop_callback, init_site) );
-        }
-        else {
-            throw std::runtime_error("Don't know this optimizer");
-        }
-        
-        measurements_type always_measurements = this->iteration_measurements(init_sweep);
-        
-        try {
-            for (int sweep=init_sweep; sweep < parms["nsweeps"]; ++sweep) {
-                // TODO: introduce some timings
-                
-                optimizer->sweep(sweep, Both);
-                storage::disk::sync();
-
-                bool converged = false;
-                
-                if ((sweep+1) % meas_each == 0 || (sweep+1) == parms["nsweeps"])
-                {
-                    /// write iteration results
-                    {
-                        storage::archive ar(rfile, "w");
-                        ar[results_archive_path(sweep) + "/parameters"] << parms;
-                        ar[results_archive_path(sweep) + "/results"] << optimizer->iteration_results();
-                        // ar[results_archive_path(sweep) + "/results/Runtime/mean/value"] << std::vector<double>(1, elapsed_sweep + elapsed_measure);
-
-                        // stop simulation if an energy threshold has been specified
-                        int prev_sweep = sweep - meas_each;
-                        if (prev_sweep >= 0 && parms["conv_thresh"] > 0.)
-                        {
-                            typedef typename maquis::traits::real_type<Matrix>::type real_type;
-                            std::vector<real_type> energies;
-
-                            ar[results_archive_path(sweep) + "/results/Energy/mean/value"] >> energies;
-                            real_type emin = *std::min_element(energies.begin(), energies.end());
-                            ar[results_archive_path(prev_sweep) + "/results/Energy/mean/value"] >> energies;
-                            real_type emin_prev = *std::min_element(energies.begin(), energies.end());
-                            real_type e_diff = std::abs(emin - emin_prev);
-
-                            if (e_diff < parms["conv_thresh"])
-                                converged = true;
-                        }
-                    }
-                    
-                    /// measure observables specified in 'always_measure'
-                    if (always_measurements.size() > 0)
-                        this->measure(this->results_archive_path(sweep) + "/results/", always_measurements);
-                }
-                
-                /// write checkpoint
-                bool stopped = stop_callback() || converged;
-                if (stopped || (sweep+1) % chkp_each == 0 || (sweep+1) == parms["nsweeps"])
-                    checkpoint_simulation(mps, sweep, -1);
-                
-                if (stopped) break;
-            }
-        } catch (dmrg::time_limit const& e) {
-            maquis::cout << e.what() << " checkpointing partial result." << std::endl;
-            checkpoint_simulation(mps, e.sweep(), e.site());
-            
-            {
-                storage::archive ar(rfile, "w");
-                ar[results_archive_path(e.sweep()) + "/parameters"] << parms;
-                ar[results_archive_path(e.sweep()) + "/results"] << optimizer->iteration_results();
-                // ar[results_archive_path(e.sweep()) + "/results/Runtime/mean/value"] << std::vector<double>(1, elapsed_sweep + elapsed_measure);
-            }
-        }
-    }
+    void run();
     
-    ~dmrg_sim()
-    {
-        storage::disk::sync();
-    }
+    ~dmrg_sim();
+
+    void measure_observable(std::string name_, std::vector<typename Matrix::value_type> & results,
+                            std::vector<std::vector<Lattice::pos_t> > & labels);
 
 private:
-    std::string results_archive_path(int sweep) const
-    {
-        status_type status;
-        status["sweep"] = sweep;
-        return base::results_archive_path(status);
-    }
-    
-    void checkpoint_simulation(MPS<Matrix, SymmGroup> const& state, int sweep, int site)
-    {
-        status_type status;
-        status["sweep"] = sweep;
-        status["site"]  = site;
-        return base::checkpoint_simulation(state, status);
-    }
-
+    std::string results_archive_path(int sweep) const;
+    void checkpoint_simulation(MPS<Matrix, SymmGroup> const& state, int sweep, int site);
 };
 
 #endif

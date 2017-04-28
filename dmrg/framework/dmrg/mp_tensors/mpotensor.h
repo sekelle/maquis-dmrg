@@ -33,6 +33,8 @@
 #include <iterator>
 #include <boost/numeric/ublas/matrix_sparse.hpp>
 #include <boost/numeric/ublas/matrix_proxy.hpp>
+#include <boost/serialization/set.hpp>
+#include <boost/serialization/shared_ptr.hpp>
 
 #include "dmrg/block_matrix/block_matrix.h"
 #include "dmrg/block_matrix/indexing.h"
@@ -44,7 +46,7 @@ template<class Matrix, class SymmGroup>
 class MPOTensor
 {
 public:
-    typedef std::size_t index_type;
+    typedef MPOTensor_detail::index_type index_type;
     typedef typename Matrix::value_type value_type;
     typedef typename maquis::traits::scalar_type<Matrix>::type scalar_type;
 
@@ -67,7 +69,7 @@ public:
     typedef MPOTensor_detail::row_proxy<typename RowIndex::value_type::const_iterator> row_proxy;
     typedef boost::numeric::ublas::matrix_column<const CSCMatrix> col_proxy;
 
-    typedef std::vector<boost::tuple<std::size_t, std::size_t, tag_type, value_type> > prempo_t;
+    typedef std::vector<boost::tuple<index_type, index_type, tag_type, value_type> > prempo_t;
     typedef SpinDescriptor<typename symm_traits::SymmType<SymmGroup>::type> spin_desc_t;
     typedef std::vector<spin_desc_t> spin_index;
     
@@ -110,6 +112,10 @@ public:
     spin_desc_t right_spin(index_type right_index) const;
     spin_index const & row_spin_dim() const;
     spin_index const & col_spin_dim() const;
+    index_type num_row_non_zeros(index_type row_i) const;
+    index_type num_col_non_zeros(index_type col_i) const;
+    index_type num_one_rows() const;
+    index_type num_one_cols() const;
 
     mutable std::vector<int> placement_l;
     mutable std::vector<int> placement_r;
@@ -118,8 +124,16 @@ public:
 
     MPOTensor_detail::Hermitian herm_info;
 private:
+
+    friend class boost::serialization::access;
+
+    template <class Archive>
+    void serialize(Archive & ar, const unsigned int version);
+
     index_type left_i, right_i;
     spin_index left_spins, right_spins;
+    std::vector<index_type> row_non_zeros, col_non_zeros;
+    index_type num_one_rows_, num_one_cols_;
 
     CSCMatrix col_tags;
     RowIndex row_index;

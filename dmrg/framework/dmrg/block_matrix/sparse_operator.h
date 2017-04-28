@@ -37,7 +37,7 @@ namespace sparse_detail {
     public:
         typedef unsigned index_type;
 
-        Entry();
+        Entry() {};
         Entry(index_type r, index_type c, T coeff)
         : row(r), col(c), coefficient(coeff)
         {
@@ -45,6 +45,15 @@ namespace sparse_detail {
 
         index_type row, col;
         T coefficient;
+
+    private:
+        friend class boost::serialization::access;
+
+        template <class Archive>
+        void serialize(Archive & ar, const unsigned version)
+        {
+            ar & row & col & coefficient;
+        }
     };
 
     template <class T, class SymmGroup>
@@ -53,7 +62,7 @@ namespace sparse_detail {
         typedef typename SymmGroup::subcharge subcharge;
         typedef unsigned index_type;
 
-        Entry();
+        Entry() {};
         Entry(index_type r, index_type c, subcharge rspin, subcharge cspin, T coeff)
         : row(r), col(c), row_spin(rspin), col_spin(cspin), coefficient(coeff)
         {
@@ -62,6 +71,15 @@ namespace sparse_detail {
         index_type row, col;
         subcharge row_spin, col_spin;
         T coefficient;
+
+    private:
+        friend class boost::serialization::access;
+
+        template <class Archive>
+        void serialize(Archive & ar, const unsigned version)
+        {
+            ar & row & col & coefficient & row_spin & col_spin;
+        }
     };
 
 } // namespace sparse detail
@@ -108,7 +126,6 @@ public:
             for (std::size_t ss2 = 0; ss2 < num_cols(bm[b]); ++ss2)
                 if (bm[b](ss1,ss2) != float_type()) {
                     data_.push_back(value_type(ss1, ss2, bm[b](ss1,ss2)));
-                    //data_.push_back(value_type(ss1, ss2, left_spins.at(ss1), right_spins.at(ss2), bm[b](ss1,ss2)));
                     ++entry_counter;
                 }
         }
@@ -117,6 +134,14 @@ public:
     }
 
 private:
+    friend class boost::serialization::access;
+
+    template <class Archive>
+    void serialize(Archive & ar, const unsigned version)
+    {
+        ar & blocks_ & data_;
+    }
+
     std::vector<int> blocks_;
     std::vector<value_type> data_;
 };
@@ -166,7 +191,6 @@ public:
             for (std::size_t ss2 = 0; ss2 < num_cols(bm[b]); ++ss2)
                 if (bm[b](ss1,ss2) != float_type()) {
                     data_.push_back(value_type(ss1, ss2, left_spins[ss1], right_spins[ss2], bm[b](ss1,ss2)));
-                    //data_.push_back(value_type(ss1, ss2, left_spins.at(ss1), right_spins.at(ss2), bm[b](ss1,ss2)));
                     ++entry_counter;
                 }
         }
@@ -181,6 +205,13 @@ public:
     }
 
 private:
+    friend class boost::serialization::access;
+
+    template <class Archive>
+    void serialize(Archive & ar, const unsigned version)
+    {
+        ar & blocks_ & data_;
+    }
 
     std::vector<int> blocks_;
     std::vector<value_type> data_;

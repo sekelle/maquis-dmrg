@@ -30,7 +30,7 @@
 
 #include "dmrg/models/chem/parse_integrals.h"
 
-namespace chem_detail {
+namespace chem {
 
     template <typename M, class S>
     class ChemHelperSU2
@@ -43,20 +43,19 @@ namespace chem_detail {
         ChemHelperSU2(BaseParameters & parms, Lattice const & lat, boost::shared_ptr<TagHandler<M, S> > tag_handler_) 
             : tag_handler(tag_handler_)
         {
-            boost::tie(idx_, matrix_elements) = parse_integrals<value_type, S>(parms, lat);
+            boost::tie(idx_, matrix_elements) = parse_integrals<value_type>(parms, lat);
 
-            for (std::size_t m=0; m < matrix_elements.size(); ++m) {
+            for (std::size_t m = 0; m < matrix_elements.size(); ++m) {
                 IndexTuple pos;
-                std::copy(idx_.row(m).first, idx_.row(m).second, pos.begin());
+                std::copy(&idx_[4*m], &idx_[4*m]+4, pos.begin());
                 coefficients[pos] = matrix_elements[m];
             }
         }
 
         std::vector<value_type> const & getMatrixElements() const { return matrix_elements; }
-        alps::numeric::matrix<Lattice::pos_t> const & getIdx() const { return idx_; }
         
         int idx(int m, int pos) const {
-            return idx_(m,pos);
+            return idx_[4*m + pos];
         }
 
         void commit_terms(std::vector<term_descriptor> & tagterms) {
@@ -113,7 +112,7 @@ namespace chem_detail {
         boost::shared_ptr<TagHandler<M, S> > tag_handler;
 
         std::vector<value_type> matrix_elements;
-        alps::numeric::matrix<Lattice::pos_t> idx_;
+        std::vector<Lattice::pos_t> idx_;
 
         std::map<IndexTuple, value_type> coefficients;
 

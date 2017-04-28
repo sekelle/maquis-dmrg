@@ -1,5 +1,6 @@
 
 option(BUILD_DMRG "Build DMRG Apps" ON)
+option(BUILD_SCF "Build DMRG-SCF App" OFF)
 option(BUILD_TIME_EVOLUTION "Build DMRG-Time evolution Apps" ON)
 option(BUILD_ALPS_APPS "Build ALPS applications (requires NU1 symmetry)" ON)
 option(BUILD_TOOLS "Build tools" ON)
@@ -20,6 +21,12 @@ else(BUILD_DMRG)
   add_subdirectory(measure EXCLUDE_FROM_ALL)
   add_subdirectory(init EXCLUDE_FROM_ALL)
 endif(BUILD_DMRG)
+
+if (BUILD_SCF)
+  add_subdirectory(scf)
+else(BUILD_SCF)
+  add_subdirectory(scf EXCLUDE_FROM_ALL)
+endif(BUILD_SCF)
 
 if(BUILD_TIME_EVOLUTION)
   add_subdirectory(time_evolution)
@@ -55,3 +62,5 @@ endif(BUILD_EXAMPLES)
 if(DMRG_HAS_NU1 AND BUILD_ALPS_APPS)
   add_subdirectory(alps)
 endif(DMRG_HAS_NU1 AND BUILD_ALPS_APPS)
+
+add_subdirectory(python)
