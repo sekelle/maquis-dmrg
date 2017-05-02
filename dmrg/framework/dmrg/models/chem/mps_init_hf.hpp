@@ -167,8 +167,8 @@ struct hf_mps_init<Matrix, SymmGroup, typename boost::enable_if< symm_traits::Ha
 
     void operator()(MPS<Matrix, SymmGroup> & mps)
     {
-        //di.init_sectors(mps, 5, false, 1.0);
-        di.init_sectors(mps, 5, true);
+        di.init_sectors(mps, 5, false, 1.0);
+        //di.init_sectors(mps, 5, true);
 
         std::vector<std::size_t> hf_init = parms["hf_occ"];
 
@@ -188,7 +188,7 @@ struct hf_mps_init<Matrix, SymmGroup, typename boost::enable_if< symm_traits::Ha
         bond_charges.insert(SymmGroup::IdentityCharge);
         for (pos_t i = 0; i < mps.length(); ++i)
         {
-            mps[i].multiply_by_scalar(0.001);
+            mps[i].multiply_by_scalar(0.000);
 
             size_t sc_input = hf_init[order[i]];
             container_type site_charges;
@@ -225,12 +225,12 @@ struct hf_mps_init<Matrix, SymmGroup, typename boost::enable_if< symm_traits::Ha
                         next_bond_charges.insert(sector);
                 }
 
-            //#ifndef NDEBUG
+            #ifndef NDEBUG
             for (typename container_type::const_iterator it = next_bond_charges.begin(); it != next_bond_charges.end(); ++it)
                 maquis::cout << "site " << i << " activating sector " << *it << std::endl;
 
             maquis::cout << std::endl;
-            //#endif
+            #endif
 
             //mps[i].multiply_by_scalar(0.0);
             mps[i].make_right_paired();
