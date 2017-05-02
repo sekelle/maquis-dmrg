@@ -30,7 +30,7 @@
 
 #include "dmrg/models/chem/parse_integrals.h"
 
-namespace chem_detail {
+namespace chem {
 
     template <typename M, class S>
     class ChemHelper
@@ -46,11 +46,11 @@ namespace chem_detail {
                    , boost::shared_ptr<TagHandler<M, S> > tag_handler_) 
             : lat(lat_), ident(ident_), fill(fill_), tag_handler(tag_handler_)
         {
-            boost::tie(idx_, matrix_elements) = parse_integrals<value_type,S>(parms, lat);
+            boost::tie(idx_, matrix_elements) = parse_integrals<value_type>(parms, lat);
 
             for (std::size_t m=0; m < matrix_elements.size(); ++m) {
                 IndexTuple pos;
-                std::copy(idx_.row(m).first, idx_.row(m).second, pos.begin());
+                std::copy(&idx_[4*m], &idx_[4*m]+4, pos.begin());
                 coefficients[pos] = matrix_elements[m];
             }
         }
@@ -58,7 +58,7 @@ namespace chem_detail {
         std::vector<value_type> & getMatrixElements() { return matrix_elements; }
         
         int idx(int m, int pos) const {
-            return idx_(m,pos);
+            return idx_[4*m + pos];
         }
 
         void commit_terms(std::vector<term_descriptor> & tagterms) {
@@ -145,13 +145,13 @@ namespace chem_detail {
                 if (self > twin) {
                 
                     term_descriptor
-                    term = TermMaker<M, S>::four_term(ident, fill, coefficients[align<S>(i,j,k,l)], i,k,l,j,
+                    term = TermMaker<M, S>::four_term(ident, fill, coefficients[align(i,j,k,l)], i,k,l,j,
                                                       op_i, op_k, op_l, op_j, tag_handler, lat);
                     term_descriptor
-                    term_twin = TermMaker<M, S>::four_term(ident, fill, coefficients[align<S>(twin)], twin[0],twin[2],twin[3],twin[1],
+                    term_twin = TermMaker<M, S>::four_term(ident, fill, coefficients[align(twin)], twin[0],twin[2],twin[3],twin[1],
                                                            op_i, op_k, op_l, op_j, tag_handler, lat);
 
-                    //term.coeff += value_type(sign(twin)) * coefficients[align<S>(twin)];
+                    //term.coeff += value_type(sign(twin)) * coefficients[align(twin)];
                     term.coeff += term_twin.coeff;
 
                     tagterms.push_back(term);
@@ -159,7 +159,7 @@ namespace chem_detail {
                 //else: we already have the term
             }
             else {
-                tagterms.push_back( TermMaker<M, S>::four_term(ident, fill, coefficients[align<S>(i,j,k,l)], i,k,l,j,
+                tagterms.push_back( TermMaker<M, S>::four_term(ident, fill, coefficients[align(i,j,k,l)], i,k,l,j,
                                    op_i, op_k, op_l, op_j, tag_handler, lat) );
             }
         }
@@ -172,7 +172,7 @@ namespace chem_detail {
         Lattice const & lat;
 
         std::vector<value_type> matrix_elements;
-        alps::numeric::matrix<Lattice::pos_t> idx_;
+        std::vector<Lattice::pos_t> idx_;
         std::vector<Lattice::pos_t> order;
         std::vector<Lattice::pos_t> inv_order;
 

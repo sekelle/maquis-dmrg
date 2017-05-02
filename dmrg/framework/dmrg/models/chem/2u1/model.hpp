@@ -184,7 +184,7 @@ template <class Matrix, class SymmGroup>
 void qc_model<Matrix, SymmGroup>::create_terms()
 {
 
-    chem_detail::ChemHelper<Matrix, SymmGroup> term_assistant(parms, lat, ident, fill, tag_handler);
+    chem::ChemHelper<Matrix, SymmGroup> term_assistant(parms, lat, ident, fill, tag_handler);
     std::vector<value_type> & matrix_elements = term_assistant.getMatrixElements();
 
     std::vector<int> used_elements(matrix_elements.size(), 0);

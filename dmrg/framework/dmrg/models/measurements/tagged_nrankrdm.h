@@ -524,11 +524,13 @@ namespace measurements {
                     typename MPS<Matrix, SymmGroup>::scalar_type value = expval(bra_mps, ket_mps, mpo);
 
                     dct.push_back(value);
+                    positions[0] = lattice.get_prop<pos_t>("nlabel", positions[0]);
+                    positions[1] = lattice.get_prop<pos_t>("nlabel", positions[1]);
                     num_labels.push_back(positions);
                 }
 
                 // the lattice knows the ordering and provides the correct orbital label for each position
-                std::vector<std::string> lbt = label_strings(lattice,  num_labels);
+                std::vector<std::string> lbt = label_strings(num_labels);
 
                 // save results and labels
                 #ifdef MAQUIS_OPENMP
@@ -571,6 +573,7 @@ namespace measurements {
 
                 std::vector<typename MPS<Matrix, SymmGroup>::scalar_type> dct;
                 std::vector<std::vector<pos_t> > num_labels;
+                num_labels.reserve(lattice.size() * lattice.size());
 
                 for (pos_t p3 = subref; p3 < lattice.size(); ++p3)
                 { 
@@ -585,18 +588,21 @@ namespace measurements {
                         if(not measurements_details::checkpg<SymmGroup>()(terms[0], tag_handler_local, lattice))
                                continue;
                         
-                        generate_mpo::TaggedMPOMaker<Matrix, SymmGroup> mpo_m(lattice, op_collection.ident.no_couple, op_collection.ident_full.no_couple,
+                        generate_mpo::TaggedMPOMaker<Matrix, SymmGroup> mpo_m(lattice, op_collection.ident.no_couple,
+                                                                              op_collection.ident_full.no_couple,
                                                                               op_collection.fill.no_couple, tag_handler_local, terms);
                         MPO<Matrix, SymmGroup> mpo = mpo_m.create_mpo();
                         typename MPS<Matrix, SymmGroup>::scalar_type value = expval(bra_mps, ket_mps, mpo);
 
                         dct.push_back(value);
+                        std::transform(positions.begin(), positions.end(), positions.begin(),
+                                       boost::bind(static_cast<pos_t(Lattice::*)(std::string, pos_t) const>(&Lattice::get_prop),
+                                                   &lattice, std::string("nlabel"), boost::lambda::_1));
                         num_labels.push_back(positions);
                     }
-
                 }
 
-                std::vector<std::string> lbt = label_strings(lattice,  num_labels);
+                std::vector<std::string> lbt = label_strings(num_labels);
 
                 // save results and labels
                 #ifdef MAQUIS_OPENMP

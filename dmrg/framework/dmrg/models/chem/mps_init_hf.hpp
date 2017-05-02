@@ -45,6 +45,7 @@ struct hf_mps_init : public mps_initializer<Matrix, SymmGroup>
     {}
 
     typedef Lattice::pos_t pos_t;
+    typedef typename SymmGroup::charge charge;
     typedef std::size_t size_t;
 
     void operator()(MPS<Matrix, SymmGroup> & mps)
@@ -65,30 +66,51 @@ struct hf_mps_init : public mps_initializer<Matrix, SymmGroup>
         if (hf_init.size() != mps.length())
             throw std::runtime_error("HF occupation vector length != MPS length\n");
 
-        typename SymmGroup::charge max_charge = SymmGroup::IdentityCharge;
+        charge max_charge = SymmGroup::IdentityCharge;
         for (pos_t i = 0; i < mps.length(); ++i)
         {
             mps[i].multiply_by_scalar(0.0);
+            mps[i].make_right_paired();
+            Index<SymmGroup> const & physical_i = mps[i].site_dim();
+            Index<SymmGroup> const & left_i = mps[i].row_dim();
+            Index<SymmGroup> const & right_i = mps[i].col_dim();
 
+            ProductBasis<SymmGroup> right_pb(physical_i, right_i,
+                                             boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
+                                             -boost::lambda::_1, boost::lambda::_2));
+
+            // HF input
             size_t sc_input = hf_init[order[i]];
-            typename SymmGroup::charge site_charge(0);
-
+            charge site_charge(0);
 			size_t loc_dim = phys_dims[0].size();
 
             if (sc_input > loc_dim)
-                throw std::runtime_error(
-                    "The hf occ exceeds local basis dimension\n"
-                );
-
+                throw std::runtime_error("The hf occ exceeds local basis dimension\n");
 			site_charge = phys_dims[site_types[i]][loc_dim-sc_input].first;
-
             max_charge = SymmGroup::fuse(max_charge, site_charge);
+
+            // activate local occupation in all sectors
+            for (int l = 0; l < left_i.size(); ++l)
+            {
+                charge lc = left_i[l].first;
+                size_t lsize = left_i[l].second;
+                for (int s = 0; s < physical_i.size(); ++s)
+                {
+                    charge phys = physical_i[s].first; if (phys != site_charge) continue;
+                    charge rc = SymmGroup::fuse(phys, lc);   if (!right_i.has(rc)) continue;
+
+                    size_t right_offset = right_pb(phys, rc);
+                    size_t rsize = right_i.size_of_block(rc);
+
+                    std::fill(&mps[i].data()[l](0, right_offset),
+                              &mps[i].data()[l](0, right_offset) + lsize * rsize, 1.0);
+                }
+            }
 
             #ifndef NDEBUG
             maquis::cout << "site " << i << " activating sector " << max_charge << std::endl;
             #endif
 
-            // Set largest charge sector = all 1
             size_t max_pos = mps[i].data().left_basis().position(max_charge);
             if (max_pos >= mps[i].data().n_blocks()) {
                 maquis::cout << "ERROR: Symmetry block " << max_charge << " not found\n";
@@ -99,10 +121,12 @@ struct hf_mps_init : public mps_initializer<Matrix, SymmGroup>
                 maquis::cout << "This error occurs if the specified HF determinant is not in the same symmetry sector as the target state\n";
                 exit(1);
             }
-            Matrix & mfirst = mps[i].data()[max_pos];
-            size_t nrow = mfirst.num_rows();
-            size_t ncol = mfirst.num_cols();
-            mps[i].data()[max_pos] = Matrix(nrow, ncol, 1.);
+
+            //Matrix & mfirst = mps[i].data()[max_pos];
+            //size_t nrow = mfirst.num_rows();
+            //size_t ncol = mfirst.num_cols();
+            // Set largest charge sector = all 1
+            //mps[i].data()[max_pos] = Matrix(nrow, ncol, 1.);
 
             mps[i].multiply_by_scalar(1. / mps[i].scalar_norm());
         }
@@ -144,6 +168,7 @@ struct hf_mps_init<Matrix, SymmGroup, typename boost::enable_if< symm_traits::Ha
     void operator()(MPS<Matrix, SymmGroup> & mps)
     {
         di.init_sectors(mps, 5, false, 1.0);
+        //di.init_sectors(mps, 5, true);
 
         std::vector<std::size_t> hf_init = parms["hf_occ"];
 
@@ -163,7 +188,7 @@ struct hf_mps_init<Matrix, SymmGroup, typename boost::enable_if< symm_traits::Ha
         bond_charges.insert(SymmGroup::IdentityCharge);
         for (pos_t i = 0; i < mps.length(); ++i)
         {
-            mps[i].multiply_by_scalar(0.0);
+            mps[i].multiply_by_scalar(0.000);
 
             size_t sc_input = hf_init[order[i]];
             container_type site_charges;
@@ -207,25 +232,53 @@ struct hf_mps_init<Matrix, SymmGroup, typename boost::enable_if< symm_traits::Ha
             maquis::cout << std::endl;
             #endif
 
-            for (typename container_type::const_iterator it = next_bond_charges.begin(); it != next_bond_charges.end(); ++it)
-            {
-                charge max_charge = *it;
-                size_t max_pos = mps[i].data().left_basis().position(max_charge);
-                if (max_pos >= mps[i].data().n_blocks()) {
-                    maquis::cout << "ERROR: Symmetry block " << max_charge << " not found\n";
-                    maquis::cout << "site " << i << ", cumulated_charge "
-                             << max_charge << ", block_pos: "
-                             << max_pos << ", number of blocks: " << mps[i].data().n_blocks() << std::endl;
+            //mps[i].multiply_by_scalar(0.0);
+            mps[i].make_right_paired();
+            Index<SymmGroup> const & physical_i = mps[i].site_dim();
+            Index<SymmGroup> const & left_i = mps[i].row_dim();
+            Index<SymmGroup> const & right_i = mps[i].col_dim();
 
-                    maquis::cout << "This error occurs if the specified HF determinant is not in the same symmetry sector as the target state\n";
-                    exit(1);
+            ProductBasis<SymmGroup> right_pb(physical_i, right_i,
+                                             boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
+                                             -boost::lambda::_1, boost::lambda::_2));
+
+            // activate local occupation in all sectors
+            for (int l = 0; l < left_i.size(); ++l)
+            {
+                charge lc = left_i[l].first;
+                size_t lsize = left_i[l].second;
+                for (int s = 0; s < physical_i.size(); ++s)
+                {
+                    charge phys = physical_i[s].first;       if (site_charges.count(phys) == 0) continue;
+                    charge rc = SymmGroup::fuse(phys, lc);   if (!right_i.has(rc)) continue;
+
+                    size_t right_offset = right_pb(phys, rc);
+                    size_t rsize = right_i.size_of_block(rc);
+
+                    std::fill(&mps[i].data()[l](0, right_offset),
+                              &mps[i].data()[l](0, right_offset) + lsize * rsize, 1.0);
                 }
-                Matrix & mfirst = mps[i].data()[max_pos];
-                size_t nrow = mfirst.num_rows();
-                size_t ncol = mfirst.num_cols();
-                // Set current charge sector = all 1
-                mps[i].data()[max_pos] = Matrix(nrow, ncol, 1.);
             }
+
+            //for (typename container_type::const_iterator it = next_bond_charges.begin(); it != next_bond_charges.end(); ++it)
+            //{
+            //    charge max_charge = *it;
+            //    size_t max_pos = mps[i].data().left_basis().position(max_charge);
+            //    if (max_pos >= mps[i].data().n_blocks()) {
+            //        maquis::cout << "ERROR: Symmetry block " << max_charge << " not found\n";
+            //        maquis::cout << "site " << i << ", cumulated_charge "
+            //                 << max_charge << ", block_pos: "
+            //                 << max_pos << ", number of blocks: " << mps[i].data().n_blocks() << std::endl;
+
+            //        maquis::cout << "This error occurs if the specified HF determinant is not in the same symmetry sector as the target state\n";
+            //        exit(1);
+            //    }
+            //    Matrix & mfirst = mps[i].data()[max_pos];
+            //    size_t nrow = mfirst.num_rows();
+            //    size_t ncol = mfirst.num_cols();
+            //    // Set current charge sector = all 1
+            //    mps[i].data()[max_pos] = Matrix(nrow, ncol, 1.);
+            //}
 
             mps[i].multiply_by_scalar(1. / mps[i].scalar_norm());
             std::swap(next_bond_charges, bond_charges);

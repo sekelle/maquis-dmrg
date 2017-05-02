@@ -2,8 +2,8 @@
  *
  * ALPS MPS DMRG Project
  *
- * Copyright (C) 2014 Institute for Theoretical Physics, ETH Zurich
- *               2011-2013 by Michele Dolfi <dolfim@phys.ethz.ch>
+ * Copyright (C) 2017 Stanford University Departement of Chemistry
+ *               2017-2017 by Sebastian Keller <sebkelle@phys.ethz.ch>
  * 
  * This software is part of the ALPS Applications, published under the ALPS
  * Application License; you can use, redistribute it and/or modify it under
@@ -24,27 +24,22 @@
  *
  *****************************************************************************/
 
-#include "utils/io.hpp" // has to be first include because of impi
-#include "dmrg/utils/DmrgOptions.h"
-#include "simulation.h"
-#include "dmrg/sim/symmetry_factory.h"
-
 #include <iostream>
 #include <sys/time.h>
 #include <sys/stat.h>
 
-int main(int argc, char ** argv)
-{
-    std::cout << "  QCMaquis - Quantum Chemical Density Matrix Renormalization group\n"
-              << "  available from http://www.reiher.ethz.ch/software\n"
-              << "  based on the ALPS MPS codes from http://alps.comp-phys.org/\n"
-              << "  copyright (c) 2015 Laboratory of Physical Chemistry, ETH Zurich\n"
-              << "  copyright (c) 2012-2015 by Sebastian Keller\n"
-              << "  for details see the publication: \n"
-              << "  S. Keller et al, arXiv:1510.02026\n"
-              << std::endl;
+#include "interface.h"
 
-    DmrgOptions opt(argc, argv);
+#include "utils/io.hpp"
+#include "dmrg/sim/symmetry_factory.h"
+
+DmrgInterface::DmrgInterface(DmrgOptions & opt_)
+    : opt(opt_)
+    , sim(dmrg::symmetry_factory<simulation_traits>(opt.parms))
+{ }
+
+void DmrgInterface::optimize()
+{
     if (opt.valid) {
         
         maquis::cout.precision(10);
@@ -52,10 +47,9 @@ int main(int argc, char ** argv)
         timeval now, then, snow, sthen;
         gettimeofday(&now, NULL);
         
-        
         try {
-            simulation_traits::shared_ptr sim = dmrg::symmetry_factory<simulation_traits>(opt.parms);
             sim->run(opt.parms);
+
         } catch (std::exception & e) {
             maquis::cerr << "Exception thrown!" << std::endl;
             maquis::cerr << e.what() << std::endl;
@@ -67,4 +61,11 @@ int main(int argc, char ** argv)
         
         maquis::cout << "Task took " << elapsed << " seconds." << std::endl;
     }
+}
+
+void DmrgInterface::measure(std::string name,
+                            std::vector<double> & results,
+                            std::vector<std::vector<int> > & labels)
+{
+    sim->measure_observable(opt.parms, name, results, labels);
 }

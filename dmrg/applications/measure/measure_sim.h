@@ -36,8 +36,6 @@
 #include <boost/shared_ptr.hpp>
 
 #include "dmrg/sim/sim.h"
-#include "dmrg/optimize/optimize.h"
-
 #include "dmrg/models/chem/measure_transform.hpp"
 
 template <class Matrix, class SymmGroup>
@@ -58,9 +56,6 @@ public:
     measure_sim (DmrgParameters & parms_);
     
     void run();
-
-    void measure_observable(std::string name_, std::vector<typename Matrix::value_type> & results,
-                            std::vector<std::vector<Lattice::pos_t> > & labels);
 };
 
 #endif

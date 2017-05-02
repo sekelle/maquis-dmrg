@@ -2,7 +2,7 @@
  *
  * ALPS MPS DMRG Project
  *
- * Copyright (C) 2017 Stanford University Department of Chemistry
+ * Copyright (C) 2017 Stanford University Departement of Chemistry
  *               2017-2017 by Sebastian Keller <sebkelle@phys.ethz.ch>
  * 
  * This software is part of the ALPS Applications, published under the ALPS
@@ -24,8 +24,28 @@
  *
  *****************************************************************************/
 
-#include "dmrg/sim/matrix_types.h"
+#ifndef INTERFACE_H
+#define INTERFACE_H
 
-#include "dmrg_sim.hpp"
+#include <string>
 
-template class dmrg_sim<@CMAKE_MATRIX_TYPE@, @CMAKE_SYMM_GROUP@>;
+#include "dmrg/utils/DmrgOptions.h"
+#include "simulation.h"
+
+class DmrgInterface
+{
+public:
+    DmrgInterface(DmrgOptions & opt_);
+
+    void optimize();
+
+    void measure(std::string name,
+                 std::vector<double> & results,
+                 std::vector<std::vector<int> > & labels);
+
+private:
+    DmrgOptions opt;
+    simulation_traits::shared_ptr sim;
+};
+
+#endif
