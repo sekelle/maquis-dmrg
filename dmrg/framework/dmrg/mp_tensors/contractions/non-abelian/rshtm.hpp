@@ -40,7 +40,6 @@ namespace SU2 {
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
     void rshtm_tasks(MPOTensor<Matrix, SymmGroup> const & mpo,
-                     common::LeftIndices<Matrix, OtherMatrix, SymmGroup> const & left,
                      common::RightIndices<Matrix, OtherMatrix, SymmGroup> const & right,
                      Index<SymmGroup> const & left_i,
                      Index<SymmGroup> const & right_i,
@@ -61,7 +60,8 @@ namespace SU2 {
 
         charge lc = left_i[left_mps_block].first;
         unsigned l_size = left_i[left_mps_block].second;
-        std::vector<charge> const & mc_charges = left.deltas.at(lc);
+
+        const int site_basis_max_diff = 2;
 
         // output physical index, output offset range = out_right offset + ss2*r_size
         //                                              for ss2 in {0, 1, .., phys_i[s].second}
@@ -72,14 +72,14 @@ namespace SU2 {
             unsigned r_index = right_i.position(rc); if (r_index == right_i.size()) continue;
             unsigned r_size = right_i[r_index].second;
             unsigned out_right_offset = right_pb(phys_out, rc);
-            
-            for (unsigned mci = 0; mci < mc_charges.size(); ++mci)
-            {
-                charge mc = mc_charges[mci];
-                unsigned in_mps_block = left_i.position(mc); if (in_mps_block == left_i.size()) continue;
-                unsigned m1_size = left_i[in_mps_block].second;
 
-                typename block_type::mapped_value_type cg(in_mps_block, phys_i[s].second, l_size, m1_size, r_size,
+            for (unsigned mci = 0; mci < left_i.size(); ++mci)
+            {
+                charge mc = left_i[mci].first;
+                if (std::abs(SymmGroup::particleNumber(mc) - SymmGroup::particleNumber(lc)) > site_basis_max_diff) continue;
+                unsigned m1_size = left_i[mci].second;
+
+                typename block_type::mapped_value_type cg(mci, phys_i[s].second, l_size, m1_size, r_size,
                                                           out_right_offset);
 
                 ::SU2::Wigner9jCache<value_type, SymmGroup> w9j(lc, mc, rc);
@@ -87,7 +87,6 @@ namespace SU2 {
                 t_map_t t_index;
                 for (index_type b1 = 0; b1 < mpo.row_dim(); ++b1)
                 {
-                    //unsigned left_block = left.position(b1, lc, mc); if (left_block == left[b1].size()) continue;
                     unsigned left_block = 0;
                     int A = mpo.left_spin(b1).get(); if (!::SU2::triangle(SymmGroup::spin(mc), A, SymmGroup::spin(lc))) continue;
 

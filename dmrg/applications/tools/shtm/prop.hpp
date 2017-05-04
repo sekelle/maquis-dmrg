@@ -310,7 +310,7 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
         schedule_t tasks(left_i.size());
         unsigned loop_max = left_i.size();
         omp_for(unsigned mb, parallel::range<unsigned>(0,loop_max), {
-            rshtm_tasks(mpo, left_indices, right_indices, left_i,
+            rshtm_tasks(mpo, right_indices, left_i,
                         right_i, physical_i, out_right_pb, mb, tasks[mb]);
         });
         
@@ -343,7 +343,6 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
                     // allocate space in the output
                     for (size_t ssi = 0; ssi < cg.size(); ++ssi)
                     {
-                        std::cout << "s" << s << "," << ssi << ":" << cg[ssi].get_bs().size() << "  ";
                         std::vector<unsigned> const & bs = cg[ssi].get_bs();
                         for (size_t bsi = 0; bsi < bs.size(); ++bsi)
                         {
@@ -357,7 +356,6 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
 
                     cg.prop(initial, initial.data()[mps_block], right, right_prop, b_to_o, mc, lc);
                 }
-                std::cout << std::endl;
             }
         }
         std::cout << "trial\n";
