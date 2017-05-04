@@ -327,14 +327,6 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
             {
                 charge mc = it->first;
                 size_t m_size = left_i.size_of_block(mc);
-                std::cout << "MC: " << mc << " LC: " << lc << std::endl;
-
-                for(size_t b = 0; b < new_right.aux_dim(); ++b) {
-                    if (new_right[b].has_block(mc, lc)) {
-                        assert(num_rows(new_right[b](mc, lc)) == m_size);
-                        assert(num_cols(new_right[b](mc, lc)) == l_size);
-                    }
-                }
 
                 // ContractionGroup
                 // b_to_o[b] = position o of sector (mc,lc) in boundary index b
@@ -362,10 +354,7 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
                         }
                         //print(cg[ssi], mpo);
                     }
-                    //std::cout << cg[s].n_tasks() << std::endl;
-                    //std::cout << cg[s].get_bs().size() << std::endl;
 
-                    //cg.prop(initial, bra_mps[s], right, right_prop, b_to_o, mc, lc);
                     cg.prop(initial, initial.data()[mps_block], right, right_prop, b_to_o, mc, lc);
                 }
                 std::cout << std::endl;
