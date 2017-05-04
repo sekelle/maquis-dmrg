@@ -201,8 +201,9 @@ public:
 
             //maquis::cout << m_size << " " << r_size << " " << num_cols(bra) << " " << num_rows(bra) << " " << num_rows(ret[b1][b_to_o[b1]])
             //             << " " << num_cols(ret[b1][b_to_o[b1]]) << std::endl;
-            //boost::numeric::bindings::blas::gemm(value_type(1), S, transpose(bra), value_type(1), ret[b1][b_to_o[b1]]);
-            ret[b1].match_and_add_block(S, mc, lc);
+            boost::numeric::bindings::blas::gemm(value_type(1), S, transpose(bra), value_type(1), ret[b1][b_to_o[b1]],
+                                                 0, offset, 0, r_size,l_size);
+            //ret[b1].match_and_add_block(S, mc, lc);
         }
     }
 

@@ -21,6 +21,37 @@ namespace numeric {
 namespace bindings {
 namespace blas {
 
+//  |---->a_offset               |---->b_offset           |---->c_offset
+//         ---- ncol_a                  --- ncol_c               --- ncol_c
+//  |-----|----|----|            |-----|---|----|         |-----|---|----|
+//  |     |xxxx|    |            |     |xxx|    |         |     |xxx|    |
+//  |     |xxxx|    |     *      |     |xxx|    |    =    |     |xxx|    |
+//  |     |xxxx|    |            |     |xxx|    |         |     |xxx|    |
+//  |-----|----|----|            |     |xxx|    |         |-----|---|----|
+//                               |-----|---|----|
+
+
+//                               // transb = true
+
+//  |---->a_offset               |---->b_offset           |---->c_offset
+//         ---- ncol_a                  ---- ncol_c               --- ncol_c
+//  |-----|----|----|            |-----|----|----|         |-----|---|----|
+//  |     |xxxx|    |            |     |xxxx|    |         |     |xxx|    |
+//  |     |xxxx|    |     *      |     |xxxx|    |    =    |     |xxx|    |
+//  |     |xxxx|    |            |     |xxxx|    |         |     |xxx|    |
+//  |-----|----|----|            |-----|----|----|         |-----|---|----|
+//                               
+
+namespace detail {
+
+template <class T, bool B>
+struct pick { T operator()(T a, T b) { return a; } };
+
+template <class T>
+struct pick<T, false> { T operator()(T a, T b) { return b; } };
+
+} // namespace detail
+
 template< typename Value >
 struct gemm_impl_offset {
 
@@ -32,7 +63,7 @@ struct gemm_impl_offset {
     static result_type invoke( const value_type alpha, const MatrixA& a,
             const MatrixB& b, const value_type beta, MatrixC& c,
             size_t a_offset, size_t b_offset, size_t c_offset,
-            size_t ncol_a, size_t ncol_c ) {
+            size_t ncol_a, size_t ncol_c) {
         namespace bindings = ::boost::numeric::bindings;
         typedef typename result_of::data_order< MatrixC >::type order;
         typedef typename result_of::trans_tag< MatrixB, order >::type transb;
@@ -52,14 +83,19 @@ struct gemm_impl_offset {
                 bindings::stride_minor(b) == 1 );
         BOOST_ASSERT( bindings::size_minor(c) == 1 ||
                 bindings::stride_minor(c) == 1 );
+
+        typedef detail::pick<size_t, boost::core::is_same<transb, tag::transpose>::value> picker;
+        size_t b_start_offset = picker()(b_offset * bindings::size_column(b), b_offset * bindings::size_row(b));
+
         detail::gemm( order(), transa(), transb(),
                 bindings::size_row(c), ncol_c,
                 ncol_a, alpha, bindings::begin_value(a) + a_offset * bindings::size_row(a),
-                bindings::stride_major(a), bindings::begin_value(b) + b_offset * bindings::size_row(b),
+                bindings::stride_major(a), bindings::begin_value(b) + b_start_offset,
                 bindings::stride_major(b), beta, bindings::begin_value(c) + c_offset * bindings::size_row(c),
                 bindings::stride_major(c) );
     }
 };
+
 
 template< typename MatrixA, typename MatrixB, typename MatrixC >
 inline typename gemm_impl< typename bindings::value_type<
@@ -72,7 +108,7 @@ inline typename gemm_impl< typename bindings::value_type<
     gemm_impl_offset< typename bindings::value_type<
             MatrixA >::type >::invoke( alpha, a, b, beta, c,
                                        a_offset, b_offset, c_offset,
-                                       ncol_a, ncol_c );
+                                       ncol_a, ncol_c);
 }
 
 } // namespace blas

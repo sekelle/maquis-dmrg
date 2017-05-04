@@ -303,7 +303,7 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
         std::cout << "Target\n";
         Boundary<OtherMatrix, SymmGroup> new_right_control
             = Engine<Matrix, OtherMatrix, SymmGroup>::overlap_mpo_right_step(initial, initial, right, mpo);
-        std::cout << new_right_control[10] << std::endl;
+        std::cout << "new_right reference\n" << new_right_control[10] << std::endl;
 
         // Schedule
         initial.make_right_paired();
@@ -322,24 +322,6 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
             charge lc = left_i[mps_block].first; 
             size_t l_size = left_i[mps_block].second; 
 
-            // cut out phys component of MPS(lc, lc)
-            Matrix bra_mps[physical_i.size()];
-            //maquis::cout << "initial" << initial.data()[mps_block] << std::endl;
-            for (size_t s = 0; s < physical_i.size(); ++s)
-            {
-                charge phys = physical_i[s].first;
-                charge rc = SymmGroup::fuse(lc, phys);
-                if (!right_i.has(rc)) continue;
-                
-                size_t right_offset = out_right_pb(phys, rc);
-                size_t r_size = right_i.size_of_block(rc);
-                bra_mps[s] = Matrix(l_size, r_size); 
-                std::copy(&initial.data()[mps_block](0, right_offset),
-                          &initial.data()[mps_block](0, right_offset) + l_size * r_size, &bra_mps[s](0,0));
-
-                //std::cout << "bra" << s << " " << bra_mps[s] << " " << std::endl;
-            }
-
             // mc loop, fixed lc
             for (const_iterator it = tasks[mps_block].begin(); it != tasks[mps_block].end(); ++it)
             {
@@ -355,6 +337,7 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
                 }
 
                 // ContractionGroup
+                // b_to_o[b] = position o of sector (mc,lc) in boundary index b
                 std::vector<unsigned> b_to_o(right_prop.aux_dim());
                 for (size_t s = 0; s < it->second.size(); ++s)
                 {
@@ -365,6 +348,7 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
                     typename common::Schedule<Matrix, SymmGroup>::block_type::mapped_value_type const & cg = it->second[s];
 
                     // prepare output for all MatrixGroups
+                    // allocate space in the output
                     for (size_t ssi = 0; ssi < cg.size(); ++ssi)
                     {
                         std::cout << "s" << s << "," << ssi << ":" << cg[ssi].get_bs().size() << "  ";
@@ -381,7 +365,8 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
                     //std::cout << cg[s].n_tasks() << std::endl;
                     //std::cout << cg[s].get_bs().size() << std::endl;
 
-                    cg.prop(initial, bra_mps[s], right, right_prop, b_to_o, mc, lc);
+                    //cg.prop(initial, bra_mps[s], right, right_prop, b_to_o, mc, lc);
+                    cg.prop(initial, initial.data()[mps_block], right, right_prop, b_to_o, mc, lc);
                 }
                 std::cout << std::endl;
             }
