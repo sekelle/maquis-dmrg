@@ -326,7 +326,6 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
                 size_t m_size = left_i.size_of_block(mc);
                 for (size_t s = 0; s < it->second.size(); ++s)
                 {
-                    //charge phys = physical_i[s].first;
                     typename common::Schedule<Matrix, SymmGroup>::block_type::mapped_value_type const & cg = it->second[s];
                     for (size_t ssi = 0; ssi < cg.size(); ++ssi)
                     {
@@ -336,7 +335,6 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
                             size_t o = right_prop[bs[bsi]].find_block(mc, lc);
                             if (o == right_prop[bs[bsi]].n_blocks())
                                 right_prop[bs[bsi]].reserve(mc, lc, m_size, l_size);
-                            //b_to_o[bs[bsi]] = o; 
                         }
                     }
                 }
@@ -358,7 +356,7 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
 
                 // ContractionGroup
                 // b_to_o[b] = position o of sector (mc,lc) in boundary index b
-                std::vector<unsigned> b_to_o(right_prop.aux_dim());
+                //std::vector<unsigned> b_to_o(right_prop.aux_dim());
                 for (size_t s = 0; s < it->second.size(); ++s)
                 {
                     charge phys = physical_i[s].first;
@@ -366,6 +364,7 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
                     //if (!right_i.has(rc)) continue;
 
                     typename common::Schedule<Matrix, SymmGroup>::block_type::mapped_value_type const & cg = it->second[s];
+                    cg.b_to_o.resize(right_prop.aux_dim());
 
                     // prepare output for all MatrixGroups
                     // allocate space in the output
@@ -376,14 +375,14 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
                         {
                             block_matrix<Matrix, SymmGroup> & bm = right_prop[bs[bsi]];
                             size_t o = bm.find_block(mc, lc); 
-                            b_to_o[bs[bsi]] = o;
+                            cg.b_to_o[bs[bsi]] = o;
                             if (num_rows(bm[o]) != bm.basis().left_size(o) || num_cols(bm[o]) != bm.basis().right_size(o))
                                 bm[o] = Matrix(bm.basis().left_size(o), bm.basis().right_size(o));
                         }
                         //print(cg[ssi], mpo);
                     }
 
-                    cg.prop(initial, initial.data()[mps_block], right, right_prop, b_to_o, mc, lc);
+                    cg.prop(initial, initial.data()[mps_block], right, right_prop, mc, lc);
                 }
             }
         }

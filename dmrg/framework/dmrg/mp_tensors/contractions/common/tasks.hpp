@@ -273,7 +273,6 @@ public:
               DefaultMatrix const & bra_matrix,
               Boundary<OtherMatrix, SymmGroup> const & right,
               Boundary<OtherMatrix, SymmGroup> & new_right,
-              std::vector<unsigned> const & b_to_o,
               charge mc, charge lc) const
     {
         create_T_generic(mps, right);
@@ -316,6 +315,7 @@ public:
     }
 
     std::vector<t_key> t_key_vec;
+    mutable std::vector<unsigned> b_to_o;
 
     // invariant: phys_out, phys_offset
 private:
