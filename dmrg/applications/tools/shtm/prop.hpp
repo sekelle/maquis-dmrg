@@ -271,7 +271,7 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
     load(whole_mpo, "../chkp.h5/mpo.h5");
 
     // 1. Create Schedule
-    // 1. Contract it
+    // 2. Contract it
 
     {
         MPOTensor<Matrix, SymmGroup> const & mpo = whole_mpo[5];
@@ -313,11 +313,39 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
             rshtm_tasks(mpo, right_indices, left_i,
                         right_i, physical_i, out_right_pb, mb, tasks[mb]);
         });
-        
-        // Contraction
+
         typedef typename common::Schedule<Matrix, SymmGroup>::block_type::const_iterator const_iterator;
+
+        for(size_t mps_block = 0; mps_block < loop_max; ++mps_block)
+        {
+            charge lc = left_i[mps_block].first; 
+            size_t l_size = left_i[mps_block].second; 
+            for (const_iterator it = tasks[mps_block].begin(); it != tasks[mps_block].end(); ++it)
+            {
+                charge mc = it->first;
+                size_t m_size = left_i.size_of_block(mc);
+                for (size_t s = 0; s < it->second.size(); ++s)
+                {
+                    //charge phys = physical_i[s].first;
+                    typename common::Schedule<Matrix, SymmGroup>::block_type::mapped_value_type const & cg = it->second[s];
+                    for (size_t ssi = 0; ssi < cg.size(); ++ssi)
+                    {
+                        std::vector<unsigned> const & bs = cg[ssi].get_bs();
+                        for (size_t bsi = 0; bsi < bs.size(); ++bsi)
+                        {
+                            size_t o = right_prop[bs[bsi]].find_block(mc, lc);
+                            if (o == right_prop[bs[bsi]].n_blocks())
+                                right_prop[bs[bsi]].reserve(mc, lc, m_size, l_size);
+                            //b_to_o[bs[bsi]] = o; 
+                        }
+                    }
+                }
+            }
+        }
+
+        // Contraction
         //omp_for(index_type mps_block, parallel::range<index_type>(0,loop_max), {
-        for(unsigned mps_block = 0; mps_block < loop_max; ++mps_block)
+        for(size_t mps_block = 0; mps_block < loop_max; ++mps_block)
         {
             charge lc = left_i[mps_block].first; 
             size_t l_size = left_i[mps_block].second; 
@@ -346,10 +374,11 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
                         std::vector<unsigned> const & bs = cg[ssi].get_bs();
                         for (size_t bsi = 0; bsi < bs.size(); ++bsi)
                         {
-                            size_t o = right_prop[bs[bsi]].find_block(mc, lc);
-                            if (o == right_prop[bs[bsi]].n_blocks())
-                                o = right_prop[bs[bsi]].insert_block(Matrix(m_size, l_size), mc, lc);
-                            b_to_o[bs[bsi]] = o; 
+                            block_matrix<Matrix, SymmGroup> & bm = right_prop[bs[bsi]];
+                            size_t o = bm.find_block(mc, lc); 
+                            b_to_o[bs[bsi]] = o;
+                            if (num_rows(bm[o]) != bm.basis().left_size(o) || num_cols(bm[o]) != bm.basis().right_size(o))
+                                bm[o] = Matrix(bm.basis().left_size(o), bm.basis().right_size(o));
                         }
                         //print(cg[ssi], mpo);
                     }
