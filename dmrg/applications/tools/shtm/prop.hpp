@@ -316,6 +316,7 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
 
         typedef typename common::Schedule<Matrix, SymmGroup>::block_type::const_iterator const_iterator;
 
+        // set up the indices of the new boundary
         for(size_t mps_block = 0; mps_block < loop_max; ++mps_block)
         {
             charge lc = left_i[mps_block].first; 
@@ -324,20 +325,7 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
             {
                 charge mc = it->first;
                 size_t m_size = left_i.size_of_block(mc);
-                for (size_t s = 0; s < it->second.size(); ++s)
-                {
-                    typename common::Schedule<Matrix, SymmGroup>::block_type::mapped_value_type const & cg = it->second[s];
-                    for (size_t ssi = 0; ssi < cg.size(); ++ssi)
-                    {
-                        std::vector<unsigned> const & bs = cg[ssi].get_bs();
-                        for (size_t bsi = 0; bsi < bs.size(); ++bsi)
-                        {
-                            size_t o = right_prop[bs[bsi]].find_block(mc, lc);
-                            if (o == right_prop[bs[bsi]].n_blocks())
-                                right_prop[bs[bsi]].reserve(mc, lc, m_size, l_size);
-                        }
-                    }
-                }
+                it->second.reserve(mc, lc, m_size, l_size, right_prop); // allocate all (mc,lc) blocks
             }
         }
 
@@ -346,48 +334,18 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
         for(size_t mps_block = 0; mps_block < loop_max; ++mps_block)
         {
             charge lc = left_i[mps_block].first; 
-            size_t l_size = left_i[mps_block].second; 
-
-            // mc loop, fixed lc
-            for (const_iterator it = tasks[mps_block].begin(); it != tasks[mps_block].end(); ++it)
+            for (const_iterator it = tasks[mps_block].begin(); it != tasks[mps_block].end(); ++it) // mc loop
             {
                 charge mc = it->first;
-                size_t m_size = left_i.size_of_block(mc);
-
-                // ContractionGroup
-                // b_to_o[b] = position o of sector (mc,lc) in boundary index b
-                //std::vector<unsigned> b_to_o(right_prop.aux_dim());
-                for (size_t s = 0; s < it->second.size(); ++s)
-                {
-                    charge phys = physical_i[s].first;
-                    charge rc = SymmGroup::fuse(lc, phys);
-                    //if (!right_i.has(rc)) continue;
-
-                    typename common::Schedule<Matrix, SymmGroup>::block_type::mapped_value_type const & cg = it->second[s];
-                    cg.b_to_o.resize(right_prop.aux_dim());
-
-                    // prepare output for all MatrixGroups
-                    // allocate space in the output
-                    for (size_t ssi = 0; ssi < cg.size(); ++ssi)
-                    {
-                        std::vector<unsigned> const & bs = cg[ssi].get_bs();
-                        for (size_t bsi = 0; bsi < bs.size(); ++bsi)
-                        {
-                            block_matrix<Matrix, SymmGroup> & bm = right_prop[bs[bsi]];
-                            size_t o = bm.find_block(mc, lc); 
-                            cg.b_to_o[bs[bsi]] = o;
-                            if (num_rows(bm[o]) != bm.basis().left_size(o) || num_cols(bm[o]) != bm.basis().right_size(o))
-                                bm[o] = Matrix(bm.basis().left_size(o), bm.basis().right_size(o));
-                        }
-                        //print(cg[ssi], mpo);
-                    }
-
-                    cg.prop(initial, initial.data()[mps_block], right, right_prop, mc, lc);
-                }
+                it->second.allocate(mc, lc, right_prop); // allocate all (mc,lc) blocks
+                for (size_t s = 0; s < it->second.size(); ++s) // physical index loop
+                    it->second[s].prop(initial, initial.data()[mps_block], it->second.get_b_to_o(), right, right_prop, mc, lc);
             }
         }
+
         std::cout << "trial\n";
         std::cout << right_prop[10] << std::endl;
+        std::cout << (new_right_control[10] - right_prop[10]).norm() << std::endl;
 
         //MPSTensor<Matrix, SymmGroup> mult = site_hamil_shtm(initial, left, right, mpo, tasks);
         //maquis::cout << mult.data().norm() << std::endl;

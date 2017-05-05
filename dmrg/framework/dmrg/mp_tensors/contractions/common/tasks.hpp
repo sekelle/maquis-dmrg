@@ -271,6 +271,7 @@ public:
     template <class DefaultMatrix, class OtherMatrix>
     void prop(MPSTensor<DefaultMatrix, SymmGroup> const & mps,
               DefaultMatrix const & bra_matrix,
+              std::vector<unsigned> const & b_to_o,
               Boundary<OtherMatrix, SymmGroup> const & right,
               Boundary<OtherMatrix, SymmGroup> & new_right,
               charge mc, charge lc) const
@@ -407,6 +408,61 @@ private:
 template <class Matrix, class SymmGroup>                     // invariant: mc, m_size
 class ContractionGroupVector : public std::vector<ContractionGroup<Matrix, SymmGroup> > 
 {
+    typedef typename SymmGroup::charge charge;
+    typedef std::vector<ContractionGroup<Matrix, SymmGroup> > base;
+
+public:
+    typedef typename base::value_type value_type;
+
+    template <class OtherMatrix>
+    void allocate(charge mc, charge lc, Boundary<OtherMatrix, SymmGroup> & new_right) const
+    {
+        b_to_o.resize(new_right.aux_dim());    
+
+        for (size_t s = 0; s < this->size(); ++s)
+        {
+            value_type const & cg = (*this)[s];
+
+            // allocate space in the output
+            for (size_t ssi = 0; ssi < cg.size(); ++ssi)
+            {
+                std::vector<unsigned> const & bs = cg[ssi].get_bs();
+                for (size_t bsi = 0; bsi < bs.size(); ++bsi)
+                {
+                    block_matrix<Matrix, SymmGroup> & bm = new_right[bs[bsi]];
+                    size_t o = bm.find_block(mc, lc);
+                    b_to_o[bs[bsi]] = o;
+                    if (num_rows(bm[o]) != bm.basis().left_size(o) || num_cols(bm[o]) != bm.basis().right_size(o))
+                        bm[o] = Matrix(bm.basis().left_size(o), bm.basis().right_size(o));
+                }
+            }
+        }
+    }
+
+    template <class OtherMatrix>
+    void reserve(charge mc, charge lc, size_t m_size, size_t l_size, Boundary<OtherMatrix, SymmGroup> & new_right) const
+    {
+        for (size_t s = 0; s < this->size(); ++s)
+        {
+            value_type const & cg = (*this)[s];
+            for (size_t ssi = 0; ssi < cg.size(); ++ssi)
+            {
+                std::vector<unsigned> const & bs = cg[ssi].get_bs();
+                for (size_t bsi = 0; bsi < bs.size(); ++bsi)
+                {
+                    size_t o = new_right[bs[bsi]].find_block(mc, lc);
+                    if (o == new_right[bs[bsi]].n_blocks())
+                        new_right[bs[bsi]].reserve(mc, lc, m_size, l_size);
+                }
+            }
+        }
+    }
+
+    std::vector<unsigned> const & get_b_to_o() const { return b_to_o; }
+
+private:
+    // b_to_o[b] = position o of sector (mc,lc) in boundary index b
+    mutable std::vector<unsigned> b_to_o;
 };
 
 
