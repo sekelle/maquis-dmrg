@@ -186,7 +186,7 @@ public:
     //typename boost::disable_if<boost::is_same<typename OtherMatrix::value_type, double>, Matrix>::type
     void
     prop(Matrix const & bra, const value_type* t_pointer, std::vector<Matrix> const & T, Boundary<OtherMatrix, SymmGroup> & ret,
-         std::vector<unsigned> const & b_to_o, charge mc, charge lc) const
+         std::vector<unsigned> const & b_to_o) const
     {
         Matrix S(m_size, r_size);
         for (index_type i = 0; i < tasks.size(); ++i)
@@ -199,11 +199,8 @@ public:
                                                     &T[tasks[i][j].t_index](0,0) + m_size * r_size,
                                                     &S(0,0), tasks[i][j].scale);
 
-            //maquis::cout << m_size << " " << r_size << " " << num_cols(bra) << " " << num_rows(bra) << " " << num_rows(ret[b1][b_to_o[b1]])
-            //             << " " << num_cols(ret[b1][b_to_o[b1]]) << std::endl;
             boost::numeric::bindings::blas::gemm(value_type(1), S, transpose(bra), value_type(1), ret[b1][b_to_o[b1]],
                                                  0, offset, 0, r_size, l_size);
-            //ret[b1].match_and_add_block(S, mc, lc);
         }
     }
 
@@ -280,7 +277,7 @@ public:
         for (int ss1 = 0; ss1 < this->size(); ++ss1)
         {
             if (!(*this)[ss1].n_tasks()) continue;
-            (*this)[ss1].prop(bra_matrix, t_pointer, T, new_right, b_to_o, mc, lc);
+            (*this)[ss1].prop(bra_matrix, t_pointer, T, new_right, b_to_o);
         }        
         T = std::vector<Matrix>(); 
         //drop_T<value_type>();
@@ -316,7 +313,6 @@ public:
     }
 
     std::vector<t_key> t_key_vec;
-    mutable std::vector<unsigned> b_to_o;
 
     // invariant: phys_out, phys_offset
 private:
