@@ -402,16 +402,23 @@ private:
         }
     }
 };
+
                                                              // size == phys_i.size()
 template <class Matrix, class SymmGroup>                     // invariant: mc, m_size
-class MPSBlock : public std::map<typename SymmGroup::charge, std::vector<ContractionGroup<Matrix, SymmGroup> > >
+class ContractionGroupVector : public std::vector<ContractionGroup<Matrix, SymmGroup> > 
+{
+};
+
+
+template <class Matrix, class SymmGroup>
+class MPSBlock : public std::map<typename SymmGroup::charge, ContractionGroupVector<Matrix, SymmGroup> >
 {
     typedef boost::tuple<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t> stats_t;
 public:
-    typedef ContractionGroup<Matrix, SymmGroup> mapped_value_type;
-    typedef std::vector<mapped_value_type > mapped_type;
-    typedef std::map<typename SymmGroup::charge, mapped_type> base;
+    typedef std::map<typename SymmGroup::charge, ContractionGroupVector<Matrix, SymmGroup> > base;
     typedef typename base::const_iterator const_iterator;
+    typedef typename base::mapped_type mapped_type;
+    typedef typename mapped_type::value_type mapped_value_type;
 
     std::size_t n_tasks() const
     {
