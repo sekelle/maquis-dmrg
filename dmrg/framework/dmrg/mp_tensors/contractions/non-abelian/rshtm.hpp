@@ -90,6 +90,7 @@ namespace SU2 {
                     unsigned left_block = 0;
                     int A = mpo.left_spin(b1).get(); if (!::SU2::triangle(SymmGroup::spin(mc), A, SymmGroup::spin(lc))) continue;
 
+                    if (mpo.herm_info.left_skip(b1)) continue;
                     //index_type b1_eff = (mpo.herm_info.left_skip(b1)) ? mpo.herm_info.left_conj(b1) : b1;
                     index_type b1_eff = b1;
                     for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(b1_eff, left_block, !mpo.herm_info.left_skip(b1));

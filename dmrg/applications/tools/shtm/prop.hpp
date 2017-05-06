@@ -290,7 +290,7 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
         std::cout << "Target\n";
         Boundary<OtherMatrix, SymmGroup> new_right_control
             = Engine<Matrix, OtherMatrix, SymmGroup>::overlap_mpo_right_step(initial, initial, right, mpo);
-        std::cout << "new_right reference\n" << new_right_control[10] << std::endl;
+        //std::cout << "new_right reference\n" << new_right_control[10] << std::endl;
 
         typedef typename common::Schedule<Matrix, SymmGroup>::block_type::const_iterator const_iterator;
 
@@ -345,8 +345,9 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
         }
 
         std::cout << "trial\n";
-        std::cout << right_prop[10] << std::endl;
-        std::cout << (new_right_control[10] - right_prop[10]).norm() << std::endl;
+        //std::cout << right_prop[10] << std::endl;
+        for (size_t i = 0; i < right_prop.aux_dim(); ++i)
+            std::cout << (new_right_control[i] - right_prop[i]).norm() << std::endl;
 
         //MPSTensor<Matrix, SymmGroup> mult = site_hamil_shtm(initial, left, right, mpo, tasks);
         //maquis::cout << mult.data().norm() << std::endl;
@@ -362,7 +363,7 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
     std::pair<double, MPSTensor<Matrix, SymmGroup> > res = solve_ietl_jcd(sp, initial, opt.parms);
     std::cout << res.first + whole_mpo.getCoreEnergy() << std::endl;
 
-    single_site_solver<Matrix, Matrix, SymmGroup>();
+    //single_site_solver<Matrix, Matrix, SymmGroup>();
 }
 
 #endif
