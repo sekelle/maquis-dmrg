@@ -147,6 +147,8 @@ namespace contraction {
         {
             return common::overlap_mpo_right_step<Matrix, OtherMatrix, SymmGroup, ::SU2::SU2Gemms, rbtm_functor>
                    (bra_tensor, ket_tensor, right, mpo);
+            //return common::overlap_mpo_right_step<Matrix, OtherMatrix, SymmGroup>
+            //       (bra_tensor, ket_tensor, right, mpo, SU2::rshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
         }
 
         static schedule_t
