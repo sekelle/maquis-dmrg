@@ -308,7 +308,7 @@ int main(int argc, char ** argv)
         SiteProblem<matrix, smatrix, symm> sp(initial, left, right, mpo[site]);
 
         input_per_mps(sp, initial, site);
-        prop(sp, initial);
+        prop(sp, initial, site);
         //analyze(sp, initial);
 
     } catch (std::exception& e) {

@@ -228,57 +228,30 @@ void single_site_solver()
 }
 
 template <class Matrix, class OtherMatrix, class SymmGroup>
-void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, SymmGroup> const & initial)
+void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, SymmGroup> const & initial, int site)
 {
     using namespace boost::tuples;
 
     typedef typename Schedule<Matrix, SymmGroup>::AlignedMatrix AlignedMatrix;
+    typedef typename Schedule<Matrix, SymmGroup>::schedule_t schedule_t;
     typedef typename SymmGroup::charge charge;
     typedef typename Matrix::value_type value_type;
 
     Boundary<OtherMatrix, SymmGroup> const & left = sp.left, right = sp.right;
     MPOTensor<Matrix, SymmGroup> const & mpo = sp.mpo;
 
-    // MPS indices
-    Index<SymmGroup> const & physical_i = initial.site_dim(),
-                             right_i = initial.col_dim();
-    Index<SymmGroup> left_i = initial.row_dim(),
-                     out_right_i = adjoin(physical_i) * right_i;
-
-    common_subset(out_right_i, left_i);
-    ProductBasis<SymmGroup> in_left_pb(physical_i, left_i);
-    ProductBasis<SymmGroup> out_right_pb(physical_i, right_i,
-                boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
-                                -boost::lambda::_1, boost::lambda::_2));
-
-    LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
     RightIndices<Matrix, OtherMatrix, SymmGroup> right_indices(right, mpo);
 
-
-    MPSBlock<AlignedMatrix, SymmGroup> mpsb;
-    shtm_tasks(mpo, left_indices, right_indices, left_i,
-               right_i, physical_i, out_right_pb, 1, mpsb);
-
-    typedef typename Schedule<Matrix, SymmGroup>::schedule_t schedule_t;
-
-    Boundary<OtherMatrix, SymmGroup> new_right;
-    load(new_right, "right_3_3");
-
-    std::cout << right.aux_dim() << std::endl;
-    std::cout << new_right.aux_dim() << std::endl;
 
     MPO<Matrix, SymmGroup> whole_mpo;
     load(whole_mpo, "../chkp.h5/mpo.h5");
 
     // 1. Create Schedule
     // 2. Contract it
-
     {
         MPOTensor<Matrix, SymmGroup> const & mpo = whole_mpo[5];
-        Boundary<OtherMatrix, SymmGroup> left, right_prop;
+        Boundary<OtherMatrix, SymmGroup> right_prop;
         right_prop.resize(mpo.row_dim());
-        load(left, "left_3_5");
-        LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
 
         MPSTensor<Matrix, SymmGroup> initial;
         alps::hdf5::archive ar("ssinitial_3_5");
