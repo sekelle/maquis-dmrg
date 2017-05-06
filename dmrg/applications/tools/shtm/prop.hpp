@@ -285,19 +285,6 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
         initial.load(ar);
 
         initial.make_right_paired();
-        DualIndex<SymmGroup> const & ket_basis = initial.data().basis();
-
-        // MPS indices
-        Index<SymmGroup> const & physical_i = initial.site_dim(),
-                                 right_i = initial.col_dim();
-        Index<SymmGroup> left_i = initial.row_dim(),
-                         out_right_i = adjoin(physical_i) * right_i;
-
-        common_subset(out_right_i, left_i);
-        ProductBasis<SymmGroup> in_left_pb(physical_i, left_i);
-        ProductBasis<SymmGroup> out_right_pb(physical_i, right_i,
-                boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
-                                -boost::lambda::_1, boost::lambda::_2));
 
         // reference
         std::cout << "Target\n";
@@ -305,16 +292,30 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
             = Engine<Matrix, OtherMatrix, SymmGroup>::overlap_mpo_right_step(initial, initial, right, mpo);
         std::cout << "new_right reference\n" << new_right_control[10] << std::endl;
 
+        typedef typename common::Schedule<Matrix, SymmGroup>::block_type::const_iterator const_iterator;
+
+        MPSTensor<Matrix, SymmGroup> & ket_tensor = initial;
+        MPSTensor<Matrix, SymmGroup> & bra_tensor = initial;
+
+        // MPS indices
+        Index<SymmGroup> const & physical_i = ket_tensor.site_dim(),
+                                 right_i = ket_tensor.col_dim();
+        Index<SymmGroup> left_i = ket_tensor.row_dim(),
+                         out_right_i = adjoin(physical_i) * right_i;
+
+        common_subset(out_right_i, left_i);
+        ProductBasis<SymmGroup> out_right_pb(physical_i, right_i,
+                boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
+                                -boost::lambda::_1, boost::lambda::_2));
+
         // Schedule
-        initial.make_right_paired();
-        schedule_t tasks(left_i.size());
-        unsigned loop_max = left_i.size();
+        ket_tensor.make_right_paired();
+        schedule_t tasks(left_i.size()); // bra
+        unsigned loop_max = left_i.size(); // bra
         omp_for(unsigned mb, parallel::range<unsigned>(0,loop_max), {
             rshtm_tasks(mpo, right_indices, left_i,
                         right_i, physical_i, out_right_pb, mb, tasks[mb]);
         });
-
-        typedef typename common::Schedule<Matrix, SymmGroup>::block_type::const_iterator const_iterator;
 
         // set up the indices of the new boundary
         for(size_t mps_block = 0; mps_block < loop_max; ++mps_block)
@@ -339,7 +340,7 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
                 charge mc = it->first;
                 it->second.allocate(mc, lc, right_prop); // allocate all (mc,lc) blocks
                 for (size_t s = 0; s < it->second.size(); ++s) // physical index loop
-                    it->second[s].prop(initial, initial.data()[mps_block], it->second.get_b_to_o(), right, right_prop, mc, lc);
+                    it->second[s].prop(ket_tensor, bra_tensor.data()[mps_block], it->second.get_b_to_o(), right, right_prop);
             }
         }
 

@@ -266,14 +266,13 @@ public:
     }
 
     template <class DefaultMatrix, class OtherMatrix>
-    void prop(MPSTensor<DefaultMatrix, SymmGroup> const & mps,
+    void prop(MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
               DefaultMatrix const & bra_matrix,
               std::vector<unsigned> const & b_to_o,
               Boundary<OtherMatrix, SymmGroup> const & right,
-              Boundary<OtherMatrix, SymmGroup> & new_right,
-              charge mc, charge lc) const
+              Boundary<OtherMatrix, SymmGroup> & new_right) const
     {
-        create_T_generic(mps, right);
+        create_T_generic(ket_mps, right);
         for (int ss1 = 0; ss1 < this->size(); ++ss1)
         {
             if (!(*this)[ss1].n_tasks()) continue;

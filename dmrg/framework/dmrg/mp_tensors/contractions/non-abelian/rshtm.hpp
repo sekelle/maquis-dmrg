@@ -58,8 +58,8 @@ namespace SU2 {
         typedef typename cgroup::t_key t_key;
         typedef std::map<t_key, unsigned> t_map_t;
 
-        charge lc = left_i[left_mps_block].first;
-        unsigned l_size = left_i[left_mps_block].second;
+        charge lc = left_i[left_mps_block].first; // bra
+        unsigned l_size = left_i[left_mps_block].second; // bra
 
         const int site_basis_max_diff = 2;
 
@@ -69,7 +69,7 @@ namespace SU2 {
         {
             charge phys_out = phys_i[s].first;
             charge rc = SymmGroup::fuse(lc, phys_out);
-            unsigned r_index = right_i.position(rc); if (r_index == right_i.size()) continue;
+            unsigned r_index = right_i.position(rc); if (r_index == right_i.size()) continue; // bra
             unsigned r_size = right_i[r_index].second;
             unsigned out_right_offset = right_pb(phys_out, rc);
 
