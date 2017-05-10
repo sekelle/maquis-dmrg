@@ -67,23 +67,23 @@ inline void mydaxpy(std::size_t n, double a, const double* x, double* y)
   __m256d x0 = _mm256_broadcast_sd(&a);
 
   // align
+  //std::size_t xv = *reinterpret_cast<std::size_t*>(&x);
+  //std::size_t yv = *reinterpret_cast<std::size_t*>(&y);
   assert((uintptr_t)(x) % 32 == 0);
   assert((uintptr_t)(y) % 32 == 0);
 
-  //std::size_t ndiv4 = n/4;
+  std::size_t ndiv4 = n/4;
 
-  //for (std::size_t i=0; i<ndiv4; ++i) {
-  //  __m256d x1 = _mm256_load_pd(x+4*i);
-  //  __m256d x2 = _mm256_load_pd(y+4*i);
-  //  //__m256d x3 = _mm256_mul_pd(x0, x1);
-  //  //__m256d x4 = _mm256_add_pd(x2, x3);
-  //  __m256d x4 = _mm256_fmadd_pd(x0, x1, x2);
-  //  _mm256_store_pd(y+4*i, x4);
-  //}
+  for (std::size_t i=0; i<ndiv4; ++i) {
+    __m256d x1 = _mm256_load_pd(x+4*i);
+    __m256d x2 = _mm256_load_pd(y+4*i);
+    //__m256d x3 = _mm256_mul_pd(x0, x1);
+    //__m256d x4 = _mm256_add_pd(x2, x3);
+    __m256d x4 = _mm256_fmadd_pd(x0, x1, x2);
+    _mm256_store_pd(y+4*i, x4);
+  }
 
-  //for (std::size_t i=ndiv4*4; i < n ; ++i)
-  //  y[i] += a*x[i];
-  for (std::size_t i=0; i < n ; ++i)
+  for (std::size_t i=ndiv4*4; i < n ; ++i)
     y[i] += a*x[i];
 }
 
