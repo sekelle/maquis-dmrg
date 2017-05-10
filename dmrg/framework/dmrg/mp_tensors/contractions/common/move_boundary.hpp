@@ -337,7 +337,7 @@ namespace contraction {
             typedef typename Schedule<Matrix, SymmGroup>::block_type::const_iterator const_iterator;
 
             RightIndices<Matrix, OtherMatrix, SymmGroup> right_indices(right, mpo);
-            Boundary<Matrix, SymmGroup> ret;
+            Boundary<OtherMatrix, SymmGroup> ret;
             ret.resize(mpo.row_dim());
 
             ket_tensor.make_right_paired();
