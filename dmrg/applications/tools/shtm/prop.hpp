@@ -249,78 +249,34 @@ void prop(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp, MPSTensor<Matrix, Sy
     // 1. Create Schedule
     // 2. Contract it
     {
-        MPOTensor<Matrix, SymmGroup> const & mpo = whole_mpo[5];
-        Boundary<OtherMatrix, SymmGroup> right_prop;
-        right_prop.resize(mpo.row_dim());
+        //MPOTensor<Matrix, SymmGroup> const & mpo = whole_mpo[5];
+        //Boundary<OtherMatrix, SymmGroup> right_prop;
+        //right_prop.resize(mpo.row_dim());
 
-        MPSTensor<Matrix, SymmGroup> initial;
-        alps::hdf5::archive ar("ssinitial_3_5");
-        initial.load(ar);
+        //MPSTensor<Matrix, SymmGroup> initial;
+        //alps::hdf5::archive ar("ssinitial_3_5");
+        //initial.load(ar);
 
+        std::ofstream rfile("rnorm_tool");
+        for (size_t i = 0; i < right.aux_dim(); ++i)
+        {
+            rfile << right[i] << std::endl;
+        }
+        rfile.close();
+
+        std::ofstream bfile("bra_tool");
         initial.make_right_paired();
+        bfile << initial;
+        bfile.close();
 
         // reference
         std::cout << "Target\n";
         Boundary<OtherMatrix, SymmGroup> new_right_control
             = Engine<Matrix, OtherMatrix, SymmGroup>::overlap_mpo_right_step(initial, initial, right, mpo);
-        //std::cout << "new_right reference\n" << new_right_control[10] << std::endl;
 
-        typedef typename common::Schedule<Matrix, SymmGroup>::block_type::const_iterator const_iterator;
-
-        MPSTensor<Matrix, SymmGroup> & ket_tensor = initial;
-        MPSTensor<Matrix, SymmGroup> & bra_tensor = initial;
-
-        // MPS indices
-        Index<SymmGroup> const & physical_i = ket_tensor.site_dim(),
-                                 right_i = ket_tensor.col_dim();
-        Index<SymmGroup> left_i = ket_tensor.row_dim(),
-                         out_right_i = adjoin(physical_i) * right_i;
-
-        common_subset(out_right_i, left_i);
-        ProductBasis<SymmGroup> out_right_pb(physical_i, right_i,
-                boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
-                                -boost::lambda::_1, boost::lambda::_2));
-
-        // Schedule
-        ket_tensor.make_right_paired();
-        schedule_t tasks(left_i.size()); // bra
-        unsigned loop_max = left_i.size(); // bra
-        omp_for(unsigned mb, parallel::range<unsigned>(0,loop_max), {
-            rshtm_tasks(mpo, right_indices, left_i,
-                        right_i, physical_i, out_right_pb, mb, tasks[mb]);
-        });
-
-        // set up the indices of the new boundary
-        for(size_t mps_block = 0; mps_block < loop_max; ++mps_block)
-        {
-            charge lc = left_i[mps_block].first; 
-            size_t l_size = left_i[mps_block].second; 
-            for (const_iterator it = tasks[mps_block].begin(); it != tasks[mps_block].end(); ++it)
-            {
-                charge mc = it->first;
-                size_t m_size = left_i.size_of_block(mc);
-                it->second.reserve(mc, lc, m_size, l_size, right_prop); // allocate all (mc,lc) blocks
-            }
-        }
-
-        // Contraction
-        //omp_for(index_type mps_block, parallel::range<index_type>(0,loop_max), {
-        for(size_t mps_block = 0; mps_block < loop_max; ++mps_block)
-        {
-            charge lc = left_i[mps_block].first; 
-            for (const_iterator it = tasks[mps_block].begin(); it != tasks[mps_block].end(); ++it) // mc loop
-            {
-                charge mc = it->first;
-                it->second.allocate(mc, lc, right_prop); // allocate all (mc,lc) blocks
-                for (size_t s = 0; s < it->second.size(); ++s) // physical index loop
-                    it->second[s].prop(ket_tensor, bra_tensor.data()[mps_block], it->second.get_b_to_o(), right, right_prop);
-            }
-        }
-
-        std::cout << "trial\n";
-        //std::cout << right_prop[10] << std::endl;
-        for (size_t i = 0; i < right_prop.aux_dim(); ++i)
-            std::cout << (new_right_control[i] - right_prop[i]).norm() << std::endl;
+        //Boundary<OtherMatrix, SymmGroup> right_prop
+        //    = common::overlap_mpo_right_step<Matrix, OtherMatrix, SymmGroup>
+        //      (initial, initial, right, mpo, rshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
 
         //MPSTensor<Matrix, SymmGroup> mult = site_hamil_shtm(initial, left, right, mpo, tasks);
         //maquis::cout << mult.data().norm() << std::endl;
