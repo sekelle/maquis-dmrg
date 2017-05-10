@@ -167,10 +167,10 @@ public:
         return ret;
     }       
 
-    template <class OtherMatrix>
+    template <class DefaultMatrix, class OtherMatrix>
     //typename boost::disable_if<boost::is_same<typename OtherMatrix::value_type, double>, Matrix>::type
     void
-    prop(Matrix const & bra, const value_type* t_pointer, std::vector<Matrix> const & T, Boundary<OtherMatrix, SymmGroup> & ret,
+    prop(DefaultMatrix const & bra, const value_type* t_pointer, std::vector<Matrix> const & T, Boundary<OtherMatrix, SymmGroup> & ret,
          std::vector<unsigned> const & b_to_o) const
     {
         Matrix S(m_size, r_size);
@@ -410,11 +410,11 @@ public:
                 std::vector<unsigned> const & bs = cg[ssi].get_bs();
                 for (size_t bsi = 0; bsi < bs.size(); ++bsi)
                 {
-                    block_matrix<Matrix, SymmGroup> & bm = new_right[bs[bsi]];
+                    block_matrix<OtherMatrix, SymmGroup> & bm = new_right[bs[bsi]];
                     size_t o = bm.find_block(mc, lc);
                     b_to_o[bs[bsi]] = o;
                     if (num_rows(bm[o]) != bm.basis().left_size(o) || num_cols(bm[o]) != bm.basis().right_size(o))
-                        bm[o] = Matrix(bm.basis().left_size(o), bm.basis().right_size(o));
+                        bm[o] = OtherMatrix(bm.basis().left_size(o), bm.basis().right_size(o));
                 }
             }
         }
@@ -509,8 +509,7 @@ struct Schedule_ : public std::vector<MPSBlock<Matrix, SymmGroup> >
 template <class Matrix, class SymmGroup>
 struct Schedule
 {
-    //typedef typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, 32>::type AlignedMatrix;
-    typedef Matrix AlignedMatrix;
+    typedef typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, 32>::type AlignedMatrix;
     typedef typename MatrixGroup<AlignedMatrix, SymmGroup>::micro_task micro_task;
     typedef MPSBlock<AlignedMatrix, SymmGroup> block_type;
     typedef Schedule_<AlignedMatrix, SymmGroup> schedule_t;
