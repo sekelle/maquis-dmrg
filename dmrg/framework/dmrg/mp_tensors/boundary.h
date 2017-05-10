@@ -27,14 +27,17 @@
 #ifndef BOUNDARY_H
 #define BOUNDARY_H
 
+
+#include <iostream>
+#include <set>
+#include <boost/archive/binary_oarchive.hpp>
+
 #include "dmrg/utils/storage.h"
 #include "dmrg/block_matrix/block_matrix.h"
 #include "dmrg/block_matrix/indexing.h"
 #include "utils/function_objects.h"
 #include "dmrg/utils/parallel.hpp"
 
-#include <iostream>
-#include <set>
 
 template<class Matrix, class SymmGroup>
 class Boundary : public storage::disk::serializable<Boundary<Matrix, SymmGroup> >
@@ -144,5 +147,13 @@ std::size_t size_of(Boundary<Matrix, SymmGroup> const & m)
     return r;
 }
 
+template<class Matrix, class SymmGroup>
+void save_boundary(Boundary<Matrix, SymmGroup> const & b, std::string fname)
+{
+    std::ofstream ofs(fname.c_str());
+    boost::archive::binary_oarchive ar(ofs);
+    ar << b;
+    ofs.close();
+}
 
 #endif
