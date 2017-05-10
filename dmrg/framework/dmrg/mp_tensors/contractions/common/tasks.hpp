@@ -84,34 +84,19 @@ public:
 
     void add_line(unsigned b1, unsigned k, char transb1)
     {
-        // if size is zero or we see a new b1 for the first time and the previous b1 did yield terms
-        //if (bs.size() == 0 || (*bs.rbegin() != b1 && tasks.rbegin()->size() > 0))
-        if (bs.size() == 0 || tasks.rbegin()->size() > 0)
+        if (tmpline.size())
         {
             bs.push_back(b1);
             ks.push_back(k);
             trans.push_back(transb1);
-            tasks.push_back(std::vector<micro_task>());
-        }
-        // if the previous b1 didnt yield any terms overwrite it with the new b1
-        //else if (*bs.rbegin() != b1 && tasks.rbegin()->size() == 0)
-        else if (tasks.rbegin()->size() == 0)
-        {
-            *bs.rbegin() = b1;
-            *ks.rbegin() = k;
-            *trans.rbegin() = transb1;
+            tasks.push_back(tmpline);
+            tmpline.clear();
         }
     }
 
     void push_back(micro_task mt)
     {
-        assert(tasks.size() > 0);
-        tasks[tasks.size()-1].push_back(mt);
-    }
-
-    std::vector<micro_task> & current_row()
-    {
-        return tasks[tasks.size()-1];
+        tmpline.push_back(mt);
     }
 
     std::size_t n_tasks() const
@@ -220,6 +205,7 @@ public:
 private:
     unsigned l_size, m_size, r_size;
 
+    std::vector<micro_task> tmpline;
     std::vector<std::vector<micro_task> > tasks;
     std::vector<index_type> bs, ks;
     std::vector<char> trans;

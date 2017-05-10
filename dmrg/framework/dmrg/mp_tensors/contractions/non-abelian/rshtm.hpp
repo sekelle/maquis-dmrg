@@ -93,7 +93,6 @@ namespace SU2 {
                     if (mpo.herm_info.left_skip(b1)) continue;
                     //index_type b1_eff = (mpo.herm_info.left_skip(b1)) ? mpo.herm_info.left_conj(b1) : b1;
                     index_type b1_eff = b1;
-                    for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(b1_eff, left_block, !mpo.herm_info.left_skip(b1));
 
                     for (typename row_proxy::const_iterator row_it = mpo.row(b1).begin(); row_it != mpo.row(b1).end(); ++row_it) {
                         index_type b2 = row_it.index();
@@ -130,6 +129,7 @@ namespace SU2 {
                             } // w_block
                         } //op_index
                     } // b2
+                    for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(b1_eff, left_block, !mpo.herm_info.left_skip(b1));
                 } // b1
 
                 cg.t_key_vec.resize(t_index.size());
