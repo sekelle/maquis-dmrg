@@ -377,9 +377,7 @@ namespace contraction {
             }
 
             // Contraction
-            //omp_for(index_type mps_block, parallel::range<index_type>(0,loop_max), {
-            for(size_t mps_block = 0; mps_block < loop_max; ++mps_block)
-            {
+            omp_for(index_type mps_block, parallel::range<index_type>(0,loop_max), {
                 charge lc = left_i[mps_block].first;
                 for (const_iterator it = tasks[mps_block].begin(); it != tasks[mps_block].end(); ++it) // mc loop
                 {
@@ -388,7 +386,7 @@ namespace contraction {
                     for (size_t s = 0; s < it->second.size(); ++s) // physical index loop
                         it->second[s].prop(ket_tensor, bra_tensor.data()[mps_block], it->second.get_b_to_o(), right, ret);
                 }
-            }
+            });
 
             return ret;
         }
