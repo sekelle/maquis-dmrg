@@ -198,7 +198,8 @@ namespace contraction {
         site_hamil2(MPSTensor<Matrix, SymmGroup> ket_tensor,
                     Boundary<OtherMatrix, SymmGroup> const & left,
                     Boundary<OtherMatrix, SymmGroup> const & right,
-                    MPOTensor<Matrix, SymmGroup> const & mpo);
+                    MPOTensor<Matrix, SymmGroup> const & mpo,
+                    schedule_t const & tasks);
     };
 
 } // namespace contraction
