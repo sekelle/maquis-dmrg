@@ -40,7 +40,7 @@ namespace alps
 
 // Forward declaration for matrix, need to specifiy the Memory Block default argument
 // Ideally, ALPS should provide a forward declaration header with the default template argument
-typedef alps::numeric::matrix<double, std::vector<double> >               matrix;
-typedef alps::numeric::matrix<std::complex<double>, std::vector<double> > cmatrix;
+typedef alps::numeric::matrix<double, std::vector<double> >                              matrix;
+typedef alps::numeric::matrix<std::complex<double>, std::vector<std::complex<double> > > cmatrix;
 
 #endif
