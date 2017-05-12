@@ -125,12 +125,16 @@ MPOTensor<MPSMatrix, SymmGroup> make_twosite_mpo(MPOTensor<MPOMatrix, SymmGroup>
             op_t b3_op;
             std::set<index_type> summands;
 
+            // record all b2 for b2 in mpo1(b1,b2) x mpo2(b2,b3)
             for (typename row_proxy::const_iterator it = row1.begin(); it != row1.end(); ++it)
                 if (mpo2.has(it.index(), b3))
                     summands.insert(it.index());
 
             if (summands.size() > 1 || (!shared && summands.size() > 0))
             {
+                // at location (b1,b3), site operators with different spins may occur
+                // usually two spin 1/2 operators mpo1(b1,b2) x mpo2(b2,b3) couple into a spin 0 and 1 component
+                // in the product mpo at (b1,b3)
                 std::map<typename SymmGroup::subcharge, op_t> coupled_ops
                     = ts_ops_detail::mpo_couple(summands, b1, b3, phys_i1, phys_i2, mpo1, mpo2);
 
@@ -141,7 +145,7 @@ MPOTensor<MPSMatrix, SymmGroup> make_twosite_mpo(MPOTensor<MPOMatrix, SymmGroup>
                     prempo.push_back(boost::make_tuple(b1, b3, new_tag, 1.0));
                 }
             }
-            else if (summands.size() == 1)
+            else if (summands.size() == 1) // only one value for b2, compute kron(mpo1(b1,b2) x mpo2(b2,b3))
             {
                 index_type b2 = *summands.begin();
                 term_descriptor<MPOMatrix, SymmGroup, true> p1 = mpo1.at(b1,b2), p2 = mpo2.at(b2,b3);
