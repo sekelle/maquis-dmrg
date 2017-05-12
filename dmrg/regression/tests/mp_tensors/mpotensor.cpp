@@ -61,11 +61,11 @@ BOOST_AUTO_TEST_CASE( hermitian_serialize )
 
     storage::archive ar("mpo_serial", "w");
 
-    MPOTensor_detail::Hermitian h(5,5);
-    ar["herm"] << h;
+    //MPOTensor_detail::Hermitian h(5,5);
+    //ar["herm"] << h;
 
-    MPOTensor_detail::Hermitian hload(4,4);
-    ar["herm"] >> hload;
+    //MPOTensor_detail::Hermitian hload(4,4);
+    //ar["herm"] >> hload;
 
-    BOOST_CHECK_EQUAL(hload.left_size(), 5);
+    //BOOST_CHECK_EQUAL(hload.left_size(), 5);
 }

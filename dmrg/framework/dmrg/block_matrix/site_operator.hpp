@@ -99,7 +99,7 @@ namespace SiteOperator_detail
 template<class Matrix, class SymmGroup>
 SiteOperator<Matrix, SymmGroup> & SiteOperator<Matrix, SymmGroup>::operator+=(SiteOperator const & rhs)
 {
-    assert (spin_.get() == rhs.spin().get() || n_blocks() == 0 || rhs.n_blocks() == 0);
+    assert (spin_.get() == rhs.spin().get() || this->n_blocks() == 0 || rhs.n_blocks() == 0);
 
     if (this->n_blocks() == 0) spin_ = rhs.spin();
     base::operator+=(rhs);
@@ -112,7 +112,7 @@ SiteOperator<Matrix, SymmGroup> & SiteOperator<Matrix, SymmGroup>::operator+=(Si
 template<class Matrix, class SymmGroup>
 SiteOperator<Matrix, SymmGroup> & SiteOperator<Matrix, SymmGroup>::operator-=(SiteOperator const & rhs)
 {
-    assert (spin_.get() == rhs.spin().get() || n_blocks() == 0 || rhs.n_blocks() == 0);
+    assert (spin_.get() == rhs.spin().get() || this->n_blocks() == 0 || rhs.n_blocks() == 0);
 
     if (this->n_blocks() == 0) spin_ = rhs.spin();
 
