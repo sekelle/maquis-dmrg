@@ -34,6 +34,8 @@ class mytest(apptest.DMRGTestBase):
                             'optimization'               : 'singlesite',
                           },
                 'model': {
+                            'model_library'             : 'alps',
+                            'lattice_library'           : 'alps',
                             'LATTICE'                   : 'open ladder',
                             'L'                         : 6,
 

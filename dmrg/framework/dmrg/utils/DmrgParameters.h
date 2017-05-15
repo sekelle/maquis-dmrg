@@ -52,8 +52,8 @@ private:
         
         add_option("COMPLEX", "use complex numbers", value(false));
 
-        add_option("truncation_initial", "Initial value for the truncation error", value(1e-7));
-        add_option("truncation_final", "Final value for the truncation", value(1e-7));
+        add_option("truncation_initial", "Initial value for the truncation error", value(1e-16));
+        add_option("truncation_final", "Final value for the truncation", value(1e-16));
         
         add_option("init_bond_dimension", "", value(5));
         add_option("max_bond_dimension", "");
@@ -67,9 +67,9 @@ private:
         add_option("alpha_final", "", value(1e-8));
         
         add_option("eigensolver", "", value("IETL_JCD"));
-        add_option("ietl_jcd_tol", "", value(1e-7));
+        add_option("ietl_jcd_tol", "", value(1e-8));
         add_option("ietl_jcd_gmres", "", value(0));
-        add_option("ietl_jcd_maxiter", "", value(9));
+        add_option("ietl_jcd_maxiter", "", value(8));
         add_option("integral_cutoff", "Ignore electron integrals below a certain magnitude", value(1.e-20));
         
         add_option("nsweeps", "");
