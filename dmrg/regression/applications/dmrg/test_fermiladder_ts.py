@@ -30,8 +30,11 @@ class mytest(apptest.DMRGTestBase):
                             'chkpfile'                   : testname+'.out.ckp.h5',
                             
                             'optimization'               : 'twosite',
+                            'symmetry'                   : '2u1',
                           },
                 'model': {
+                            'model_library'             : 'alps',
+                            'lattice_library'           : 'alps',
                             'LATTICE'                   : 'open ladder',
                             'L'                         : 6,
 
