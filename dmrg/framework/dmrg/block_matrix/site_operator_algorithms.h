@@ -315,6 +315,7 @@ void op_kron(Index<SymmGroup> const & phys_A,
             int j1  = std::abs(SymmGroup::spin(inA)),  j2  = std::abs(SymmGroup::spin(inB)),  J = productSpin<SymmGroup>(inA, inB);
             int j1p = std::abs(SymmGroup::spin(outA)), j2p = std::abs(SymmGroup::spin(outB)), Jp = productSpin<SymmGroup>(outA, outB);
 
+            // 9j coefficient for the tensor product with normalization prefactor
             typename Matrix2::value_type coupling = SU2::mod_coupling(j1,j2,J,k1,k2,k,j1p,j2p,Jp);
             tmp *= coupling;
 

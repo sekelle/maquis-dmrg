@@ -39,12 +39,16 @@ void simulation<SymmGroup>::run(DmrgParameters & parms)
 {
     boost::scoped_ptr<abstract_sim> sim;
     if (parms["COMPLEX"]) {
+#ifdef HAVE_COMPLEX
         if (parms["te_type"] == "nn")
             sim.reset(new tevol_sim<cmatrix, SymmGroup, nearest_neighbors_evolver<cmatrix, SymmGroup> >(parms));
         else if (parms["te_type"] == "mpo")
             sim.reset(new tevol_sim<cmatrix, SymmGroup, mpo_evolver<cmatrix, SymmGroup> >(parms));
         else if (parms["te_type"] == "circuit")
             sim.reset(new tevol_sim<cmatrix, SymmGroup, circuit_evolver<cmatrix, SymmGroup> >(parms));
+#else
+        throw std::runtime_error("compilation of complex numbers not enabled, check your compile options\n");
+#endif
     } else {
         if (parms["te_type"] == "nn")
             sim.reset(new tevol_sim<matrix, SymmGroup, nearest_neighbors_evolver<matrix, SymmGroup> >(parms));
