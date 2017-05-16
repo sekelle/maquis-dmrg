@@ -438,7 +438,6 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
     typedef typename SymmGroup::charge charge;
     typedef typename Matrix::value_type value_type;
     typedef MPOTensor_detail::index_type index_type;
-    typedef typename task_capsule<Matrix, SymmGroup>::map_t map_t;
     typedef typename MatrixGroup<Matrix, SymmGroup>::micro_task micro_task;
 
     boost::chrono::high_resolution_clock::time_point now = boost::chrono::high_resolution_clock::now();
