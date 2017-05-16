@@ -36,6 +36,33 @@
 #include "dmrg/mp_tensors/contractions/non-abelian/gemm.hpp"
 
 namespace contraction {
+
+namespace common {
+
+    template <typename T>
+    struct task_compare
+    {
+        bool operator ()(detail::micro_task<T> const & t1, detail::micro_task<T> const & t2)
+        {
+            return t1.out_offset < t2.out_offset;
+        }
+    };
+
+    template <class Matrix, class SymmGroup>
+    struct task_capsule : public std::map<
+                                          std::pair<typename SymmGroup::charge, typename SymmGroup::charge>,
+                                          std::vector<detail::micro_task<typename Matrix::value_type> >,
+                                          compare_pair<std::pair<typename SymmGroup::charge, typename SymmGroup::charge> >
+                                         >
+    {
+        typedef typename SymmGroup::charge charge;
+        typedef typename Matrix::value_type value_type;
+        typedef detail::micro_task<value_type> micro_task;
+        typedef std::map<std::pair<charge, charge>, std::vector<micro_task>, compare_pair<std::pair<charge, charge> > > map_t;
+    };
+
+} //namespace common
+
 namespace SU2 {
 
     using common::task_capsule;

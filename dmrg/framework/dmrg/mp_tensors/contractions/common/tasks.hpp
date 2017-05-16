@@ -66,7 +66,6 @@ namespace detail {
 
 } // namespace detail
 
-#include "dmrg/mp_tensors/contractions/common/tasks_old.hpp"
 
 template <class Matrix, class SymmGroup>
 class MatrixGroup

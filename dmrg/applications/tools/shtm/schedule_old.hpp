@@ -29,6 +29,11 @@
 #define TOOLS_SCHEDULE_OLD_HPP
 
 
+namespace contraction {
+namespace common {
+
+// TODO: activate once rbtm based boundary propagation is removed
+
 //template <typename T>
 //struct task_compare
 //{   
@@ -51,9 +56,6 @@
 //    typedef detail::micro_task<value_type> micro_task;
 //    typedef std::map<std::pair<charge, charge>, std::vector<micro_task>, compare_pair<std::pair<charge, charge> > > map_t;
 //};
-
-namespace contraction {
-namespace common {
 
 template <class Matrix, class SymmGroup>
 struct ScheduleOld_ : public std::vector<contraction::common::task_capsule<Matrix, SymmGroup> >
