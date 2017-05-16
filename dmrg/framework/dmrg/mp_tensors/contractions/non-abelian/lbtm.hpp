@@ -76,9 +76,7 @@ namespace SU2 {
 
                 charge lc = T.basis().left_charge(t_block);
                 charge rc = T.basis().right_charge(t_block);
-
-                const_iterator it = ket_basis.left_lower_bound(rc); //ket_basis comes transposed!
-                charge mc = it->rc;
+                //charge mc = rc;
 
                 for (size_t w_block = 0; w_block < W.basis().size(); ++w_block)
                 {
@@ -100,7 +98,7 @@ namespace SU2 {
                         o = ret.insert_block(Matrix(out_left_i.size_of_block(out_l_charge),r_size), out_l_charge, out_r_charge);
 
                     int i = SymmGroup::spin(lc), ip = SymmGroup::spin(out_l_charge);
-                    int j = SymmGroup::spin(mc), jp = SymmGroup::spin(out_r_charge);
+                    int j = SymmGroup::spin(rc), jp = SymmGroup::spin(out_r_charge);
                     int two_sp = std::abs(i - ip), two_s  = std::abs(j - jp);
 
                     typename Matrix::value_type couplings[4];
