@@ -36,6 +36,33 @@
 #include "dmrg/mp_tensors/contractions/non-abelian/gemm.hpp"
 
 namespace contraction {
+
+namespace common {
+
+    template <typename T>
+    struct task_compare
+    {
+        bool operator ()(detail::micro_task<T> const & t1, detail::micro_task<T> const & t2)
+        {
+            return t1.out_offset < t2.out_offset;
+        }
+    };
+
+    template <class Matrix, class SymmGroup>
+    struct task_capsule : public std::map<
+                                          std::pair<typename SymmGroup::charge, typename SymmGroup::charge>,
+                                          std::vector<detail::micro_task<typename Matrix::value_type> >,
+                                          compare_pair<std::pair<typename SymmGroup::charge, typename SymmGroup::charge> >
+                                         >
+    {
+        typedef typename SymmGroup::charge charge;
+        typedef typename Matrix::value_type value_type;
+        typedef detail::micro_task<value_type> micro_task;
+        typedef std::map<std::pair<charge, charge>, std::vector<micro_task>, compare_pair<std::pair<charge, charge> > > map_t;
+    };
+
+} //namespace common
+
 namespace SU2 {
 
     using common::task_capsule;
@@ -180,49 +207,6 @@ namespace SU2 {
         right_mult_mps.free(b1);
     }
 
-    template<class Matrix, class OtherMatrix, class SymmGroup>
-    void charge_gemm(Matrix const & A, OtherMatrix const & B, block_matrix<OtherMatrix, SymmGroup> & C,
-                     typename SymmGroup::charge lc, typename Matrix::value_type scale)
-    {
-        size_t c_block = C.find_block(lc, lc);
-        if (c_block == C.n_blocks())
-               c_block = C.insert_block(OtherMatrix(num_rows(A), num_cols(B)), lc, lc);
-
-        boost::numeric::bindings::blas::gemm(scale, A, B, typename Matrix::value_type(1), C[c_block]); 
-    }
-
-    template<class Matrix, class OtherMatrix, class TVMatrix, class SymmGroup>
-    void rbtm_axpy_gemm(size_t b1, task_capsule<Matrix, SymmGroup> const & tasks,
-                        block_matrix<Matrix, SymmGroup> & prod,
-                        Index<SymmGroup> const & out_right_i,
-                        Boundary<OtherMatrix, SymmGroup> const & left,
-                        MPOTensor<Matrix, SymmGroup> const & mpo,
-                        block_matrix<TVMatrix, SymmGroup> const & left_b1,
-                        MPSBoundaryProduct<Matrix, OtherMatrix, SymmGroup, ::SU2::SU2Gemms> const & t)
-    {
-        typedef typename Matrix::value_type value_type;
-        typedef typename task_capsule<Matrix, SymmGroup>::map_t map_t;
-        typedef typename task_capsule<Matrix, SymmGroup>::micro_task micro_task;
-        typedef typename SymmGroup::charge charge;
-
-        std::vector<value_type> phases = (mpo.herm_info.left_skip(b1)) ? common::conjugate_phases(left_b1.basis(), mpo, b1, true, false) :
-                                                                         std::vector<value_type>(left_b1.n_blocks(),1.);
-        // loop over (lc,mc) in L(lc,mc) ~ S(mc,lc)
-        for (typename map_t::const_iterator it = tasks.begin(); it != tasks.end(); ++it)
-        {
-            charge mc = it->first.first;
-            charge lc = it->first.second;
-            size_t k = left_b1.basis().position(lc, mc); if (k == left_b1.basis().size()) continue;
-
-            std::vector<micro_task> const & otasks = it->second; if (otasks.size() == 0) continue;
-            Matrix S_buffer(otasks[0].l_size, out_right_i.size_of_block(it->first.second));
-
-            for (typename std::vector<micro_task>::const_iterator it2 = otasks.begin(); it2 != otasks.end(); ++it2)
-                detail::task_axpy(*it2, &S_buffer(0,0), &t.at(it2->b2)[it2->k](0,0) + it2->in_offset);
-
-            charge_gemm(left_b1[k], S_buffer, prod, lc, phases[k]);
-        }
-    }
 } // namespace SU2
 } // namespace contraction
 

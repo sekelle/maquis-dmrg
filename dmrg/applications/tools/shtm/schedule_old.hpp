@@ -25,33 +25,37 @@
  *
  *****************************************************************************/
 
-#ifndef ENGINE_COMMON_TASKS_OLD_HPP
-#define ENGINE_COMMON_TASKS_OLD_HPP
+#ifndef TOOLS_SCHEDULE_OLD_HPP
+#define TOOLS_SCHEDULE_OLD_HPP
 
 
-template <typename T>
-struct task_compare
-{   
-    bool operator ()(detail::micro_task<T> const & t1, detail::micro_task<T> const & t2)
-    {   
-        return t1.out_offset < t2.out_offset;
-    }
-};
+namespace contraction {
+namespace common {
 
+// TODO: activate once rbtm based boundary propagation is removed
 
-template <class Matrix, class SymmGroup>
-struct task_capsule : public std::map<
-                                      std::pair<typename SymmGroup::charge, typename SymmGroup::charge>,
-                                      std::vector<detail::micro_task<typename Matrix::value_type> >,
-                                      compare_pair<std::pair<typename SymmGroup::charge, typename SymmGroup::charge> >
-                                     >
-{
-    typedef typename SymmGroup::charge charge;
-    typedef typename Matrix::value_type value_type;
-    typedef detail::micro_task<value_type> micro_task;
-    typedef std::map<std::pair<charge, charge>, std::vector<micro_task>, compare_pair<std::pair<charge, charge> > > map_t;
-};
-
+//template <typename T>
+//struct task_compare
+//{   
+//    bool operator ()(detail::micro_task<T> const & t1, detail::micro_task<T> const & t2)
+//    {   
+//        return t1.out_offset < t2.out_offset;
+//    }
+//};
+//
+//
+//template <class Matrix, class SymmGroup>
+//struct task_capsule : public std::map<
+//                                      std::pair<typename SymmGroup::charge, typename SymmGroup::charge>,
+//                                      std::vector<detail::micro_task<typename Matrix::value_type> >,
+//                                      compare_pair<std::pair<typename SymmGroup::charge, typename SymmGroup::charge> >
+//                                     >
+//{
+//    typedef typename SymmGroup::charge charge;
+//    typedef typename Matrix::value_type value_type;
+//    typedef detail::micro_task<value_type> micro_task;
+//    typedef std::map<std::pair<charge, charge>, std::vector<micro_task>, compare_pair<std::pair<charge, charge> > > map_t;
+//};
 
 template <class Matrix, class SymmGroup>
 struct ScheduleOld_ : public std::vector<contraction::common::task_capsule<Matrix, SymmGroup> >
@@ -171,5 +175,8 @@ create_contraction_schedule_old(MPSTensor<Matrix, SymmGroup> const & initial,
 
     return contraction_schedule;
 }
+
+} // namespace common
+} // namespace contraction
 
 #endif
