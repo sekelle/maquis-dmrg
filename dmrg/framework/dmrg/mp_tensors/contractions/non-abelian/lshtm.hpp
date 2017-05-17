@@ -44,11 +44,11 @@ namespace SU2 {
                      Index<SymmGroup> const & right_i,
                      Index<SymmGroup> const & phys_i,
                      ProductBasis<SymmGroup> const & right_pb,
-                     unsigned left_mps_block,
+                     unsigned r_ket_block,
                      typename common::Schedule<Matrix, SymmGroup>::block_type & mpsb)
     {
         typedef MPOTensor_detail::index_type index_type;
-        typedef typename MPOTensor<Matrix, SymmGroup>::row_proxy row_proxy;
+        typedef typename MPOTensor<Matrix, SymmGroup>::col_proxy col_proxy;
         typedef typename SymmGroup::charge charge;
         typedef typename Matrix::value_type value_type;
         typedef typename common::Schedule<Matrix, SymmGroup>::micro_task micro_task;
@@ -57,84 +57,80 @@ namespace SU2 {
         typedef typename cgroup::t_key t_key;
         typedef std::map<t_key, unsigned> t_map_t;
 
-        charge lc = left_i[left_mps_block].first; // bra
-        unsigned l_size = left_i[left_mps_block].second; // bra
+        charge rc_ket = right_i[r_ket_block].first;
+        unsigned rs_ket = right_i[r_ket_block].second;
 
         const int site_basis_max_diff = 2;
 
-        // output physical index, output offset range = out_right offset + ss2*r_size
-        //                                              for ss2 in {0, 1, .., phys_i[s].second}
         for (unsigned s = 0; s < phys_i.size(); ++s)
         {
             charge phys_out = phys_i[s].first;
-            charge rc = SymmGroup::fuse(lc, phys_out);
-            unsigned r_index = right_i.position(rc); if (r_index == right_i.size()) continue; // bra
-            unsigned r_size = right_i[r_index].second;
-            unsigned out_right_offset = right_pb(phys_out, rc);
+            charge lc_bra = SymmGroup::fuse(rc_ket, -phys_out);
+            unsigned l_bra_block = left_i.position(lc_bra); if (l_bra_block == left_i.size()) continue;
+            unsigned ls_bra = left_i[l_bra_block].second;
 
-            for (unsigned mci = 0; mci < left_i.size(); ++mci)
+            for (unsigned ibra = 0; ibra < right_i.size(); ++ibra)
             {
-                charge mc = left_i[mci].first;
-                if (std::abs(SymmGroup::particleNumber(mc) - SymmGroup::particleNumber(lc)) > site_basis_max_diff) continue;
-                unsigned m1_size = left_i[mci].second;
+                charge rc_bra = right_i[ibra].first;
+                if (std::abs(SymmGroup::particleNumber(rc_bra) - SymmGroup::particleNumber(rc_ket)) > site_basis_max_diff) continue;
+                unsigned rs_bra = right_i[ibra].second;
+                unsigned bra_offset = right_pb(phys_out, rc_bra);
 
-                typename block_type::mapped_value_type cg(mci, phys_i[s].second, l_size, m1_size, r_size,
-                                                          out_right_offset);
+                typename block_type::mapped_value_type cg(ibra, phys_i[s].second, rs_bra, ls_bra, rs_ket,
+                                                          bra_offset);
 
-                ::SU2::Wigner9jCache<value_type, SymmGroup> w9j(lc, mc, rc);
+                ::SU2::Wigner9jCache<value_type, SymmGroup> w9j(rc_ket, rc_bra, lc_bra);
 
                 t_map_t t_index;
-                for (index_type b1 = 0; b1 < mpo.row_dim(); ++b1)
+                for (index_type b2 = 0; b2 < mpo.col_dim(); ++b2)
                 {
-                    unsigned left_block = 0;
-                    int A = mpo.left_spin(b1).get(); if (!::SU2::triangle(SymmGroup::spin(mc), A, SymmGroup::spin(lc))) continue;
+                    if (mpo.herm_info.right_skip(b2)) continue;
+                    int Ap = mpo.right_spin(b2).get(); if (!::SU2::triangle(SymmGroup::spin(rc_ket), Ap, SymmGroup::spin(rc_bra))) continue;
 
-                    if (mpo.herm_info.left_skip(b1)) continue;
-
-                    for (typename row_proxy::const_iterator row_it = mpo.row(b1).begin(); row_it != mpo.row(b1).end(); ++row_it) {
-                        index_type b2 = row_it.index();
+                    for (typename col_proxy::const_iterator col_it = mpo.col(b2).begin(); col_it != mpo.col(b2).end(); ++col_it) {
+                        index_type b1 = col_it.index();
 
                         MPOTensor_detail::term_descriptor<Matrix, SymmGroup, true> access = mpo.at(b1,b2);
                         for (unsigned op_index = 0; op_index < access.size(); ++op_index)
                         {
                             typename operator_selector<Matrix, SymmGroup>::type const & W = access.op(op_index);
-                            int K = W.spin().get(), Ap = mpo.right_spin(b2).get();
+                            int K = W.spin().get(), A = mpo.left_spin(b1).get();
 
                             for (size_t w_block = 0; w_block < W.basis().size(); ++w_block)
                             {
                                 if (phys_out != W.basis().right_charge(w_block)) continue;
                                 charge phys_in = W.basis().left_charge(w_block);
 
-                                charge tlc = SymmGroup::fuse(mc, phys_in);
-                                unsigned right_block = left.position(b2, tlc, rc); if (right_block == left[b2].size()) continue;
-                                unsigned mps_block = right_i.position(tlc); if (mps_block == right_i.size()) continue;
+                                charge lc_ket = SymmGroup::fuse(rc_ket, -phys_in);
+                                unsigned l_ket_block = left_i.position(lc_ket); if (l_ket_block == left_i.size()) continue;
+                                unsigned left_block = left.position(b1, lc_bra, lc_ket); if (left_block == left[b1].size()) continue;
 
-                                unsigned m2_size = right_i[mps_block].second;
-                                unsigned in_offset = right_pb(phys_in, tlc);
+                                unsigned ls_ket = left_i[l_ket_block].second;
+                                unsigned ket_offset = right_pb(phys_in, rc_bra);
 
                                 value_type couplings[4];
-                                value_type scale = left.conj_scales[b2][right_block] * access.scale(op_index);
-                                w9j.set_scale(A, K, Ap, SymmGroup::spin(tlc), scale, couplings);
+                                value_type scale = left.conj_scales[b1][left_block] * access.scale(op_index);
+                                w9j.set_scale(Ap, K, A, SymmGroup::spin(lc_ket), scale, couplings);
 
-                                char right_transpose = mpo.herm_info.right_skip(b2);
-                                unsigned b2_eff = (right_transpose) ? mpo.herm_info.right_conj(b2) : b2;
+                                char left_transpose = mpo.herm_info.left_skip(b1);
+                                unsigned b1_eff = (left_transpose) ? mpo.herm_info.left_conj(b1) : b1;
                                 typename block_type::mapped_value_type::t_key tq
-                                    = bit_twiddling::pack(b2_eff, right_block, in_offset, right_transpose);
+                                    = bit_twiddling::pack(b1_eff, left_block, ket_offset, left_transpose);
                                 
                                 detail::op_iterate_shtm<Matrix, typename common::Schedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
-                                    (W, w_block, couplings, cg, tq, m2_size, t_index);
+                                    (W, w_block, couplings, cg, tq, ls_ket, t_index);
                             } // w_block
                         } //op_index
-                    } // b2
-                    for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(b1, left_block, !mpo.herm_info.left_skip(b1));
-                } // b1
+                    } // b1
+                    for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(b2, 0, !mpo.herm_info.right_skip(b2));
+                } // b2
 
                 cg.t_key_vec.resize(t_index.size());
                 for (typename t_map_t::const_iterator kit = t_index.begin(); kit != t_index.end(); ++kit)
                     cg.t_key_vec[kit->second] = kit->first;
-                if (cg.n_tasks()) mpsb[mc].push_back(cg);
+                if (cg.n_tasks()) mpsb[rc_bra].push_back(cg);
 
-            } // mci
+            } // ibra
         } // phys_out
     }
 
