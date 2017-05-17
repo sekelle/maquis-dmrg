@@ -44,7 +44,7 @@ namespace SU2 {
                      Index<SymmGroup> const & right_i,
                      Index<SymmGroup> const & phys_i,
                      ProductBasis<SymmGroup> const & right_pb,
-                     unsigned r_ket_block,
+                     unsigned rb_ket,
                      typename common::Schedule<Matrix, SymmGroup>::block_type & mpsb)
     {
         typedef MPOTensor_detail::index_type index_type;
@@ -57,8 +57,8 @@ namespace SU2 {
         typedef typename cgroup::t_key t_key;
         typedef std::map<t_key, unsigned> t_map_t;
 
-        charge rc_ket = right_i[r_ket_block].first;
-        unsigned rs_ket = right_i[r_ket_block].second;
+        charge rc_ket = right_i[rb_ket].first;
+        unsigned rs_ket = right_i[rb_ket].second;
 
         const int site_basis_max_diff = 2;
 
@@ -66,17 +66,17 @@ namespace SU2 {
         {
             charge phys_out = phys_i[s].first;
             charge lc_bra = SymmGroup::fuse(rc_ket, -phys_out);
-            unsigned l_bra_block = left_i.position(lc_bra); if (l_bra_block == left_i.size()) continue;
-            unsigned ls_bra = left_i[l_bra_block].second;
+            unsigned lb_bra = left_i.position(lc_bra); if (lb_bra == left_i.size()) continue;
+            unsigned ls_bra = left_i[lb_bra].second;
 
-            for (unsigned ibra = 0; ibra < right_i.size(); ++ibra)
+            for (unsigned rb_bra = 0; rb_bra < right_i.size(); ++rb_bra)
             {
-                charge rc_bra = right_i[ibra].first;
+                charge rc_bra = right_i[rb_bra].first;
                 if (std::abs(SymmGroup::particleNumber(rc_bra) - SymmGroup::particleNumber(rc_ket)) > site_basis_max_diff) continue;
-                unsigned rs_bra = right_i[ibra].second;
+                unsigned rs_bra = right_i[rb_bra].second;
                 unsigned bra_offset = right_pb(phys_out, rc_bra);
 
-                typename block_type::mapped_value_type cg(ibra, phys_i[s].second, rs_bra, ls_bra, rs_ket,
+                typename block_type::mapped_value_type cg(lb_bra, phys_i[s].second, rs_bra, ls_bra, rs_ket,
                                                           bra_offset);
 
                 ::SU2::Wigner9jCache<value_type, SymmGroup> w9j(rc_ket, rc_bra, lc_bra);
@@ -102,20 +102,20 @@ namespace SU2 {
                                 charge phys_in = W.basis().left_charge(w_block);
 
                                 charge lc_ket = SymmGroup::fuse(rc_ket, -phys_in);
-                                unsigned l_ket_block = left_i.position(lc_ket); if (l_ket_block == left_i.size()) continue;
-                                unsigned left_block = left.position(b1, lc_bra, lc_ket); if (left_block == left[b1].size()) continue;
+                                unsigned lb_ket = left_i.position(lc_ket); if (lb_ket == left_i.size()) continue;
+                                unsigned b_left = left.position(b1, lc_bra, lc_ket); if (b_left == left[b1].size()) continue;
 
-                                unsigned ls_ket = left_i[l_ket_block].second;
+                                unsigned ls_ket = left_i[lb_ket].second;
                                 unsigned ket_offset = right_pb(phys_in, rc_bra);
 
                                 value_type couplings[4];
-                                value_type scale = left.conj_scales[b1][left_block] * access.scale(op_index);
+                                value_type scale = left.conj_scales[b1][b_left] * access.scale(op_index);
                                 w9j.set_scale(Ap, K, A, SymmGroup::spin(lc_ket), scale, couplings);
 
                                 char left_transpose = mpo.herm_info.left_skip(b1);
                                 unsigned b1_eff = (left_transpose) ? mpo.herm_info.left_conj(b1) : b1;
                                 typename block_type::mapped_value_type::t_key tq
-                                    = bit_twiddling::pack(b1_eff, left_block, ket_offset, left_transpose);
+                                    = bit_twiddling::pack(b1_eff, b_left, ket_offset, left_transpose);
                                 
                                 detail::op_iterate_shtm<Matrix, typename common::Schedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
                                     (W, w_block, couplings, cg, tq, ls_ket, t_index);
@@ -130,7 +130,7 @@ namespace SU2 {
                     cg.t_key_vec[kit->second] = kit->first;
                 if (cg.n_tasks()) mpsb[rc_bra].push_back(cg);
 
-            } // ibra
+            } // rb_bra
         } // phys_out
     }
 
