@@ -87,10 +87,8 @@ namespace SU2 {
                 t_map_t t_index;
                 for (index_type b1 = 0; b1 < mpo.row_dim(); ++b1)
                 {
-                    unsigned left_block = 0;
-                    int A = mpo.left_spin(b1).get(); if (!::SU2::triangle(SymmGroup::spin(mc), A, SymmGroup::spin(lc))) continue;
-
                     if (mpo.herm_info.left_skip(b1)) continue;
+                    int A = mpo.left_spin(b1).get(); if (!::SU2::triangle(SymmGroup::spin(mc), A, SymmGroup::spin(lc))) continue;
 
                     for (typename row_proxy::const_iterator row_it = mpo.row(b1).begin(); row_it != mpo.row(b1).end(); ++row_it) {
                         index_type b2 = row_it.index();
@@ -127,7 +125,7 @@ namespace SU2 {
                             } // w_block
                         } //op_index
                     } // b2
-                    for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(b1, left_block, !mpo.herm_info.left_skip(b1));
+                    for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(b1, 0, !mpo.herm_info.left_skip(b1));
                 } // b1
 
                 cg.t_key_vec.resize(t_index.size());
