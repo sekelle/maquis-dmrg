@@ -123,7 +123,7 @@ namespace bit_twiddling
         p4 = tuple & 1;
     }
 
-    inline unsigned long add_last(unsigned long tuple, unsigned long p1)
+    inline __uint128_t add_last(__uint128_t tuple, unsigned long p1)
     {
         return tuple += (p1<<1);
     }
