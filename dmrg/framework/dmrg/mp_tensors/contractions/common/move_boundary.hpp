@@ -235,7 +235,6 @@ namespace contraction {
             omp_for(index_type b2, parallel::range<index_type>(0,loop_max), {
                 if (mpo.herm_info.right_skip(b2)) continue;
                 ContractionGrid<Matrix, SymmGroup> contr_grid(mpo, 0, 0);
-                block_matrix<Matrix, SymmGroup> tmp;
                 Kernel()(b2, contr_grid, left, t, mpo, ket_basis_transpose, right_i, out_left_i, in_right_pb, out_left_pb);
                 typename Gemm::gemm()(transpose(contr_grid(0,0)), bra_conj, ret[b2], MPOTensor_detail::get_spin(mpo, b2, false));
             });
