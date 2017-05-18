@@ -134,6 +134,9 @@ namespace contraction {
                               Boundary<OtherMatrix, SymmGroup> const & left,
                               MPOTensor<Matrix, SymmGroup> const & mpo)
         {
+            Boundary<OtherMatrix, SymmGroup> dummy =
+                common::overlap_mpo_left_step<Matrix, OtherMatrix, SymmGroup>
+                (bra_tensor, ket_tensor, left, mpo, SU2::lshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
             return common::overlap_mpo_left_step<Matrix, OtherMatrix, SymmGroup, ::SU2::SU2Gemms, lbtm_functor>
                    (bra_tensor, ket_tensor, left, mpo);
         }
