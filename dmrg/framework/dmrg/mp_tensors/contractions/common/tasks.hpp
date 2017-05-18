@@ -216,7 +216,7 @@ class ContractionGroup : public std::vector<MatrixGroup<Matrix, SymmGroup> >
 public:
     typedef std::vector<MatrixGroup<Matrix, SymmGroup> > base;    
     typedef typename Matrix::value_type value_type;
-    typedef unsigned long t_key;
+    typedef __uint128_t t_key;
     typedef typename SymmGroup::charge charge;
 
     ContractionGroup() {}
