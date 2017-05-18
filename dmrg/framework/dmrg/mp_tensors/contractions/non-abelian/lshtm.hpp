@@ -87,7 +87,7 @@ namespace SU2 {
                     if (mpo.herm_info.right_skip(b2)) continue;
                     int Ap = mpo.right_spin(b2).get(); if (!::SU2::triangle(SymmGroup::spin(rc_ket), Ap, SymmGroup::spin(rc_bra))) continue;
 
-                    for (typename col_proxy::const_iterator col_it = mpo.col(b2).begin(); col_it != mpo.col(b2).end(); ++col_it) {
+                    for (typename col_proxy::const_iterator col_it = mpo.column(b2).begin(); col_it != mpo.column(b2).end(); ++col_it) {
                         index_type b1 = col_it.index();
 
                         MPOTensor_detail::term_descriptor<Matrix, SymmGroup, true> access = mpo.at(b1,b2);
@@ -115,7 +115,7 @@ namespace SU2 {
                                 char left_transpose = mpo.herm_info.left_skip(b1);
                                 unsigned b1_eff = (left_transpose) ? mpo.herm_info.left_conj(b1) : b1;
                                 typename block_type::mapped_value_type::t_key tq
-                                    = bit_twiddling::pack(b1_eff, b_left, ket_offset, left_transpose);
+                                    = bit_twiddling::pack(b1_eff, b_left, lb_ket, ket_offset, left_transpose);
                                 
                                 detail::op_iterate_shtm<Matrix, typename common::Schedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
                                     (W, w_block, couplings, cg, tq, ls_ket, t_index);
