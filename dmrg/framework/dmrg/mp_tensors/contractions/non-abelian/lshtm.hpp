@@ -62,18 +62,19 @@ namespace SU2 {
 
         const int site_basis_max_diff = 2;
 
-        for (unsigned s = 0; s < phys_i.size(); ++s)
+        for (unsigned rb_bra = 0; rb_bra < right_i.size(); ++rb_bra)
         {
-            charge phys_out = phys_i[s].first;
-            charge lc_bra = SymmGroup::fuse(rc_ket, -phys_out);
-            unsigned lb_bra = left_i.position(lc_bra); if (lb_bra == left_i.size()) continue;
-            unsigned ls_bra = left_i[lb_bra].second;
+            charge rc_bra = right_i[rb_bra].first;
+            if (std::abs(SymmGroup::particleNumber(rc_bra) - SymmGroup::particleNumber(rc_ket)) > site_basis_max_diff) continue;
+            unsigned rs_bra = right_i[rb_bra].second;
 
-            for (unsigned rb_bra = 0; rb_bra < right_i.size(); ++rb_bra)
+            for (unsigned s = 0; s < phys_i.size(); ++s)
             {
-                charge rc_bra = right_i[rb_bra].first;
-                if (std::abs(SymmGroup::particleNumber(rc_bra) - SymmGroup::particleNumber(rc_ket)) > site_basis_max_diff) continue;
-                unsigned rs_bra = right_i[rb_bra].second;
+                charge phys_out = phys_i[s].first;
+                charge lc_bra = SymmGroup::fuse(rc_bra, -phys_out);
+                unsigned lb_bra = left_i.position(lc_bra); if (lb_bra == left_i.size()) continue;
+                unsigned ls_bra = left_i[lb_bra].second;
+
                 unsigned bra_offset = right_pb(phys_out, rc_bra);
 
                 typename block_type::mapped_value_type cg(lb_bra, phys_i[s].second, rs_bra, ls_bra, rs_ket,
