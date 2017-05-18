@@ -137,8 +137,26 @@ namespace contraction {
             Boundary<OtherMatrix, SymmGroup> dummy =
                 common::overlap_mpo_left_step<Matrix, OtherMatrix, SymmGroup>
                 (bra_tensor, ket_tensor, left, mpo, SU2::lshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
-            return common::overlap_mpo_left_step<Matrix, OtherMatrix, SymmGroup, ::SU2::SU2Gemms, lbtm_functor>
+
+            Boundary<OtherMatrix, SymmGroup> ret = 
+                   common::overlap_mpo_left_step<Matrix, OtherMatrix, SymmGroup, ::SU2::SU2Gemms, lbtm_functor>
                    (bra_tensor, ket_tensor, left, mpo);
+
+            assert(dummy.aux_dim() == ret.aux_dim());
+            for (int i = 0; i < dummy.aux_dim(); ++i)
+                dummy[i].transpose_inplace();
+
+            for (int i = 0; i < dummy.aux_dim(); ++i)
+            {
+                if(dummy[i].basis() != ret[i].basis())
+                {
+                    maquis::cout << i << " dummy " << dummy[i].basis() << std::endl;
+                    maquis::cout << i << " ret   " << ret[i].basis() << std::endl;
+                    maquis::cout << std::endl;
+                }
+            }
+
+            return ret;
         }
 
         static Boundary<OtherMatrix, SymmGroup>

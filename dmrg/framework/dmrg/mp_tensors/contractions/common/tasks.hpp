@@ -188,6 +188,30 @@ public:
         }
     }
 
+    template <class DefaultMatrix, class OtherMatrix>
+    //typename boost::disable_if<boost::is_same<typename OtherMatrix::value_type, double>, Matrix>::type
+    void
+    prop_l(DefaultMatrix const & bra, const value_type* t_pointer, std::vector<Matrix> const & T, Boundary<OtherMatrix, SymmGroup> & ret,
+           std::vector<unsigned> const & b_to_o) const
+    {
+        Matrix S(m_size, r_size);
+        for (index_type i = 0; i < tasks.size(); ++i)
+        {
+            index_type b2 = bs[i];
+            memset(&S(0,0), 0, m_size * r_size * sizeof(typename Matrix::value_type));
+
+            for (index_type j = 0; j < tasks[i].size(); ++j)
+                maquis::dmrg::detail::iterator_axpy(&T[tasks[i][j].t_index](0,0),
+                                                    &T[tasks[i][j].t_index](0,0) + m_size * r_size,
+                                                    &S(0,0), tasks[i][j].scale);
+
+            maquis::cout << b2 << " " << b_to_o[b2] << " " << offset << std::endl;
+            maquis::cout << S << std::endl;
+            //boost::numeric::bindings::blas::gemm(value_type(1), transpose(bra), S, value_type(1), ret[b2][b_to_o[b2]],
+            //                                     offset, 0, 0, r_size, l_size);
+        }
+    }
+
     std::size_t t_move()      const { return n_tasks() * 8 * m_size * r_size; }
     std::size_t l_load()      const { return (n_tasks()) ? tasks.size() * 8 * l_size * m_size : 0; }
     std::size_t lgemm_flops() const { return (n_tasks()) ? tasks.size() * 2 * l_size * m_size * r_size : 0; }
@@ -262,7 +286,24 @@ public:
         {
             if (!(*this)[ss1].n_tasks()) continue;
             (*this)[ss1].prop(bra_matrix, t_pointer, T, new_right, b_to_o);
-        }        
+        }
+        T = std::vector<Matrix>();
+        //drop_T<value_type>();
+    }
+
+    template <class DefaultMatrix, class OtherMatrix>
+    void prop_l(MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
+                MPSTensor<DefaultMatrix, SymmGroup> const & bra_mps,
+                std::vector<unsigned> const & b_to_o,
+                Boundary<OtherMatrix, SymmGroup> const & left,
+                Boundary<OtherMatrix, SymmGroup> & new_left) const
+    {
+        create_T_generic_left(left, ket_mps);
+        for (int ss1 = 0; ss1 < this->size(); ++ss1)
+        {
+            if (!(*this)[ss1].n_tasks()) continue;
+            (*this)[ss1].prop_l(bra_mps.data()[mps_block], t_pointer, T, new_left, b_to_o);
+        }
         T = std::vector<Matrix>(); 
         //drop_T<value_type>();
     }
@@ -326,7 +367,26 @@ private:
             if (trans)
                 multiply(mps.data()[mps_block], transpose(right[b2][r_block]), in_offset, pos);
             else
-                multiply(mps.data()[mps_block], right[b2][r_block], in_offset, pos);    
+                multiply(mps.data()[mps_block], right[b2][r_block], in_offset, pos);
+        }
+    }
+
+    template <class DefaultMatrix, class OtherMatrix>
+    void create_T_generic_left(Boundary<OtherMatrix, SymmGroup> const & left, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
+    {
+        if (!this->size()) return;
+
+        T.resize(t_key_vec.size());
+        for (unsigned pos = 0; pos < t_key_vec.size(); ++pos)
+        {
+            unsigned long b, b_block, lb_ket, in_offset;
+            char trans;
+            bit_twiddling::unpack(t_key_vec[pos], b, b_block, lb_ket, in_offset, trans);
+
+            if (trans)
+                multiply(transpose(left[b][b_block]), mps.data()[lb_ket], in_offset, pos);
+            else
+                multiply(left[b][b_block], mps.data()[lb_ket], in_offset, pos);
         }
     }
 

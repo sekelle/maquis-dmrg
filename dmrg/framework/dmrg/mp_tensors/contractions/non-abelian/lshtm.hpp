@@ -113,8 +113,8 @@ namespace SU2 {
                                 value_type scale = left.conj_scales[b1][b_left] * access.scale(op_index);
                                 w9j.set_scale(Ap, K, A, SymmGroup::spin(lc_ket), scale, couplings);
 
-                                char left_transpose = mpo.herm_info.left_skip(b1);
-                                unsigned b1_eff = (left_transpose) ? mpo.herm_info.left_conj(b1) : b1;
+                                char left_transpose = !mpo.herm_info.left_skip(b1);
+                                unsigned b1_eff = (left_transpose) ? b1 : mpo.herm_info.left_conj(b1);
                                 typename block_type::mapped_value_type::t_key tq
                                     = bit_twiddling::pack(b1_eff, b_left, lb_ket, ket_offset, left_transpose);
                                 

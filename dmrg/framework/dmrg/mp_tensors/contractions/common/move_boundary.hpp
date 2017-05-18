@@ -306,11 +306,11 @@ namespace contraction {
             });
 
             // set up the indices of the new boundary
-            for(size_t r_ket_block = 0; r_ket_block < loop_max; ++r_ket_block)
+            for(size_t rb_ket = 0; rb_ket < loop_max; ++rb_ket)
             {
-                charge rc_ket = right_i[r_ket_block].first;
-                size_t rs_ket = right_i[r_ket_block].second;
-                for (const_iterator it = tasks[r_ket_block].begin(); it != tasks[r_ket_block].end(); ++it)
+                charge rc_ket = right_i[rb_ket].first;
+                size_t rs_ket = right_i[rb_ket].second;
+                for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
                 {
                     charge rc_bra = it->first;
                     size_t rs_bra = right_i.size_of_block(rc_bra);
@@ -319,14 +319,14 @@ namespace contraction {
             }
 
             // Contraction
-            omp_for(index_type r_ket_block, parallel::range<index_type>(0,loop_max), {
-                charge rc_ket = right_i[r_ket_block].first;
-                for (const_iterator it = tasks[r_ket_block].begin(); it != tasks[r_ket_block].end(); ++it) // mc loop
+            omp_for(index_type rb_ket, parallel::range<index_type>(0,loop_max), {
+                charge rc_ket = right_i[rb_ket].first;
+                for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it) // mc loop
                 {
                     charge rc_bra = it->first;
                     it->second.allocate(rc_bra, rc_ket, ret);
-                    //for (size_t s = 0; s < it->second.size(); ++s) // physical index loop
-                    //    it->second[s].prop(ket_tensor, bra_tensor.data()[mps_block], it->second.get_b_to_o(), left, ret);
+                    for (size_t s = 0; s < it->second.size(); ++s) // physical index loop
+                        it->second[s].prop_l(ket_tensor, bra_tensor, it->second.get_b_to_o(), left, ret);
                 }
             });
 
