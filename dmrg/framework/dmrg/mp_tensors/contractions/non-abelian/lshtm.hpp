@@ -107,7 +107,7 @@ namespace SU2 {
                                 unsigned b_left = left.position(b1, lc_bra, lc_ket); if (b_left == left[b1].size()) continue;
 
                                 unsigned ls_ket = left_i[lb_ket].second;
-                                unsigned ket_offset = right_pb(phys_in, rc_bra);
+                                unsigned ket_offset = right_pb(phys_in, rc_ket);
 
                                 value_type couplings[4];
                                 value_type scale = left.conj_scales[b1][b_left] * access.scale(op_index);
@@ -119,7 +119,7 @@ namespace SU2 {
                                     = bit_twiddling::pack(b1_eff, b_left, lb_ket, ket_offset, left_transpose);
                                 
                                 detail::op_iterate_shtm<Matrix, typename common::Schedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
-                                    (W, w_block, couplings, cg, tq, ls_ket, t_index);
+                                    (W, w_block, couplings, cg, tq, rs_ket, t_index);
                             } // w_block
                         } //op_index
                     } // b1
