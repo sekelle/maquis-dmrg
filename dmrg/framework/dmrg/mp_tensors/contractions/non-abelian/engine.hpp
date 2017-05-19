@@ -154,6 +154,17 @@ namespace contraction {
                     maquis::cout << i << " ret   " << ret[i].basis() << std::endl;
                     maquis::cout << std::endl;
                 }
+                if ((dummy[i] - ret[i]).norm() > 1e-6)
+                {
+                    maquis::cout << "b2 = " << i << std::endl;
+                    for (int b = 0; b < dummy[i].n_blocks(); ++b)
+                    {
+                        maquis::cout << ret[i].basis().left_charge(b) << ret[i].basis().right_charge(b) << std::endl;
+                        maquis::cout << " rb " << b << " " << ret[i][b];
+                        maquis::cout << " tb " << b << " " << dummy[i][b];
+                    }
+                    maquis::cout << std::endl;
+                }
             }
 
             return ret;

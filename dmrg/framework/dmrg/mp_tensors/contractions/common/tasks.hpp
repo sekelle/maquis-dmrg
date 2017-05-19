@@ -205,8 +205,6 @@ public:
                                                     &T[tasks[i][j].t_index](0,0) + m_size * r_size,
                                                     &S(0,0), tasks[i][j].scale);
 
-            //maquis::cout << "N " << b2 << " " << b_to_o[b2] << " " << offset << std::endl;
-            //maquis::cout << S << std::endl;
             boost::numeric::bindings::blas::gemm(value_type(1), transpose(bra), S, value_type(1), ret[b2][b_to_o[b2]],
                                                  offset, 0, 0, m_size, r_size);
         }
@@ -245,7 +243,7 @@ public:
 
     ContractionGroup() {}
     ContractionGroup(unsigned b, unsigned s, unsigned ls, unsigned ms, unsigned rs, unsigned out_offset)
-        : mps_block(b), l_size(ls), base(s, typename base::value_type(ls, ms, rs))
+        : mps_block(b), l_size(ls), rs_(rs), base(s, typename base::value_type(ls, ms, rs))
     {
         for (unsigned i = 0 ; i < s; ++i)
             (*this)[i].offset = out_offset + i * rs;
@@ -341,7 +339,7 @@ public:
 
     // invariant: phys_out, phys_offset
 private:
-    unsigned mps_block, l_size;
+    unsigned mps_block, l_size, rs_;
     mutable std::vector<Matrix> T;
     mutable value_type* t_pointer;
 
@@ -415,7 +413,8 @@ private:
     {
         unsigned m1_size = num_rows(trv); 
         unsigned m2_size = num_rows(mps_matrix); 
-        unsigned r_size = num_cols(mps_matrix); 
+        //unsigned r_size = num_cols(mps_matrix);
+        unsigned r_size = rs_;
 
         T[pos] = Matrix(m1_size, r_size, 0);
         boost::numeric::bindings::blas::gemm(value_type(1), trv, mps_matrix, value_type(0), T[pos],

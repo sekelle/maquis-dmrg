@@ -109,9 +109,18 @@ namespace SU2 {
                                 unsigned ls_ket = left_i[lb_ket].second;
                                 unsigned ket_offset = right_pb(phys_in, rc_ket);
 
-                                value_type couplings[4];
+                                int TwoS = std::abs(SymmGroup::spin(lc_ket) - SymmGroup::spin(rc_ket));
+                                int TwoSp = std::abs(SymmGroup::spin(lc_bra) - SymmGroup::spin(rc_bra));
                                 value_type scale = left.conj_scales[b1][b_left] * access.scale(op_index);
-                                w9j.set_scale(Ap, K, A, SymmGroup::spin(lc_ket), scale, couplings);
+                                value_type couplings[4];
+                                ::SU2::set_coupling(SymmGroup::spin(lc_ket), TwoS, SymmGroup::spin(rc_ket)
+                                                    , A, K, Ap,
+                                                    SymmGroup::spin(lc_bra), TwoSp, SymmGroup::spin(rc_bra),
+                                                    scale, couplings);
+
+                                //value_type couplings[4];
+                                //value_type scale = left.conj_scales[b1][b_left] * access.scale(op_index);
+                                //w9j.set_scale(Ap, K, A, SymmGroup::spin(lc_ket), scale, couplings);
 
                                 char left_transpose = !mpo.herm_info.left_skip(b1);
                                 unsigned b1_eff = (left_transpose) ? b1 : mpo.herm_info.left_conj(b1);
