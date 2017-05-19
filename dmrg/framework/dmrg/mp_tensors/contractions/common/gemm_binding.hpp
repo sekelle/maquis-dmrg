@@ -84,12 +84,15 @@ struct gemm_impl_offset {
         BOOST_ASSERT( bindings::size_minor(c) == 1 ||
                 bindings::stride_minor(c) == 1 );
 
+        typedef detail::pick<size_t, boost::core::is_same<transa, tag::transpose>::value> picker_a;
+        size_t  a_start_offset = picker_a()(a_offset * bindings::size_column(a), a_offset * bindings::size_row(a));
+
         typedef detail::pick<size_t, boost::core::is_same<transb, tag::transpose>::value> picker;
         size_t b_start_offset = picker()(b_offset * bindings::size_column(b), b_offset * bindings::size_row(b));
 
         detail::gemm( order(), transa(), transb(),
                 bindings::size_row(c), ncol_c,
-                ncol_a, alpha, bindings::begin_value(a) + a_offset * bindings::size_row(a),
+                ncol_a, alpha, bindings::begin_value(a) + a_start_offset,
                 bindings::stride_major(a), bindings::begin_value(b) + b_start_offset,
                 bindings::stride_major(b), beta, bindings::begin_value(c) + c_offset * bindings::size_row(c),
                 bindings::stride_major(c) );

@@ -205,10 +205,10 @@ public:
                                                     &T[tasks[i][j].t_index](0,0) + m_size * r_size,
                                                     &S(0,0), tasks[i][j].scale);
 
-            maquis::cout << b2 << " " << b_to_o[b2] << " " << offset << std::endl;
-            maquis::cout << S << std::endl;
-            //boost::numeric::bindings::blas::gemm(value_type(1), transpose(bra), S, value_type(1), ret[b2][b_to_o[b2]],
-            //                                     offset, 0, 0, r_size, l_size);
+            //maquis::cout << "N " << b2 << " " << b_to_o[b2] << " " << offset << std::endl;
+            //maquis::cout << S << std::endl;
+            boost::numeric::bindings::blas::gemm(value_type(1), transpose(bra), S, value_type(1), ret[b2][b_to_o[b2]],
+                                                 offset, 0, 0, m_size, r_size);
         }
     }
 
@@ -384,9 +384,9 @@ private:
             bit_twiddling::unpack(t_key_vec[pos], b, b_block, lb_ket, in_offset, trans);
 
             if (trans)
-                multiply(transpose(left[b][b_block]), mps.data()[lb_ket], in_offset, pos);
+                multiply_left(transpose(left[b][b_block]), mps.data()[lb_ket], in_offset, pos);
             else
-                multiply(left[b][b_block], mps.data()[lb_ket], in_offset, pos);
+                multiply_left(left[b][b_block], mps.data()[lb_ket], in_offset, pos);
         }
     }
 
@@ -408,6 +408,18 @@ private:
         T[pos] = Matrix(m1_size, r_size, 0);
         boost::numeric::bindings::blas::gemm(value_type(1), mps_matrix, trv, value_type(0), T[pos],
                                              in_offset, 0, 0, m2_size, r_size);
+    }
+
+    template <class DefaultMatrix, class TMatrix>
+    void multiply_left(TMatrix const & trv, DefaultMatrix const & mps_matrix, unsigned in_offset, unsigned pos) const
+    {
+        unsigned m1_size = num_rows(trv); 
+        unsigned m2_size = num_rows(mps_matrix); 
+        unsigned r_size = num_cols(mps_matrix); 
+
+        T[pos] = Matrix(m1_size, r_size, 0);
+        boost::numeric::bindings::blas::gemm(value_type(1), trv, mps_matrix, value_type(0), T[pos],
+                                             0, in_offset, 0, m2_size, r_size);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
