@@ -134,41 +134,8 @@ namespace contraction {
                               Boundary<OtherMatrix, SymmGroup> const & left,
                               MPOTensor<Matrix, SymmGroup> const & mpo)
         {
-            Boundary<OtherMatrix, SymmGroup> dummy =
-                common::overlap_mpo_left_step<Matrix, OtherMatrix, SymmGroup>
-                (bra_tensor, ket_tensor, left, mpo, SU2::lshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
-
-            //Boundary<OtherMatrix, SymmGroup> ret = 
-            //       common::overlap_mpo_left_step<Matrix, OtherMatrix, SymmGroup, ::SU2::SU2Gemms, lbtm_functor>
-            //       (bra_tensor, ket_tensor, left, mpo);
-
-            //assert(dummy.aux_dim() == ret.aux_dim());
-            //for (int i = 0; i < dummy.aux_dim(); ++i)
-            //    dummy[i].transpose_inplace();
-
-            //for (int i = 0; i < dummy.aux_dim(); ++i)
-            //{
-            //    if(dummy[i].basis() != ret[i].basis())
-            //    {
-            //        maquis::cout << i << " dummy " << dummy[i].basis() << std::endl;
-            //        maquis::cout << i << " ret   " << ret[i].basis() << std::endl;
-            //        maquis::cout << std::endl;
-            //    }
-            //    if ((dummy[i] - ret[i]).norm() > 1e-6)
-            //    {
-            //        maquis::cout << "b2 = " << i << std::endl;
-            //        for (int b = 0; b < dummy[i].n_blocks(); ++b)
-            //        {
-            //            maquis::cout << ret[i].basis().left_charge(b) << ret[i].basis().right_charge(b) << std::endl;
-            //            maquis::cout << " rb " << b << " " << ret[i][b];
-            //            maquis::cout << " tb " << b << " " << dummy[i][b];
-            //        }
-            //        maquis::cout << std::endl;
-            //    }
-            //}
-
-            //return ret;
-            return dummy;
+            return common::overlap_mpo_left_step<Matrix, OtherMatrix, SymmGroup>
+                   (bra_tensor, ket_tensor, left, mpo, SU2::lshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
         }
 
         static Boundary<OtherMatrix, SymmGroup>
@@ -177,8 +144,6 @@ namespace contraction {
                                Boundary<OtherMatrix, SymmGroup> const & right,
                                MPOTensor<Matrix, SymmGroup> const & mpo)
         {
-            //return common::overlap_mpo_right_step<Matrix, OtherMatrix, SymmGroup, ::SU2::SU2Gemms, rbtm_functor>
-            //       (bra_tensor, ket_tensor, right, mpo);
             return common::overlap_mpo_right_step<Matrix, OtherMatrix, SymmGroup>
                    (bra_tensor, ket_tensor, right, mpo, SU2::rshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
         }
