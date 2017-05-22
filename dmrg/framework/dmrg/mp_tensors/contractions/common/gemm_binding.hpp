@@ -40,7 +40,7 @@ namespace blas {
 //  |     |xxxx|    |     *      |     |xxxx|    |    =    |     |xxx|    |
 //  |     |xxxx|    |            |     |xxxx|    |         |     |xxx|    |
 //  |-----|----|----|            |-----|----|----|         |-----|---|----|
-//                               
+//
 
 namespace detail {
 
