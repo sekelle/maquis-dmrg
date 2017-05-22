@@ -128,7 +128,7 @@ namespace SU2 {
                             } // w_block
                         } //op_index
                     } // b2
-                    for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(b1_eff, left_block, !mpo.herm_info.left_skip(b1));
+                    for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(b1_eff, left_block, mpo.herm_info.left_skip(b1));
                 } // b1
 
                 cg.t_key_vec.resize(t_index.size());

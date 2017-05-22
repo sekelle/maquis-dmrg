@@ -119,10 +119,10 @@ public:
                 maquis::dmrg::detail::iterator_axpy(&T[tasks[i][j].t_index](0,0),
                                                     &T[tasks[i][j].t_index](0,0) + m_size * r_size,
                                                     &S(0,0), tasks[i][j].scale);
-            if (!trans[i])
-                boost::numeric::bindings::blas::gemm(value_type(1), left[b1][ks[i]], S, value_type(1), ret);
-            else
+            if (trans[i])
                 boost::numeric::bindings::blas::gemm(value_type(1), transpose(left[b1][ks[i]]), S, value_type(1), ret);
+            else
+                boost::numeric::bindings::blas::gemm(value_type(1), left[b1][ks[i]], S, value_type(1), ret);
         }
 
         return ret;
