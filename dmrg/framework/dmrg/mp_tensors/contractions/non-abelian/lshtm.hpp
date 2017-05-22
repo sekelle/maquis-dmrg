@@ -80,7 +80,7 @@ namespace SU2 {
                 typename block_type::mapped_value_type cg(lb_bra, phys_i[s].second, rs_bra, ls_bra, rs_ket,
                                                           bra_offset);
 
-                ::SU2::Wigner9jCache<value_type, SymmGroup> w9j(rc_ket, rc_bra, lc_bra);
+                ::SU2::Wigner9jCache<value_type, SymmGroup> w9j(rc_bra, rc_ket, lc_bra);
 
                 t_map_t t_index;
                 for (index_type b2 = 0; b2 < mpo.col_dim(); ++b2)
@@ -111,16 +111,38 @@ namespace SU2 {
 
                                 int TwoS = std::abs(SymmGroup::spin(lc_ket) - SymmGroup::spin(rc_ket));
                                 int TwoSp = std::abs(SymmGroup::spin(lc_bra) - SymmGroup::spin(rc_bra));
-                                value_type scale = left.conj_scales[b1][b_left] * access.scale(op_index);
-                                value_type couplings[4];
-                                ::SU2::set_coupling(SymmGroup::spin(lc_ket), TwoS, SymmGroup::spin(rc_ket)
-                                                    , A, K, Ap,
-                                                    SymmGroup::spin(lc_bra), TwoSp, SymmGroup::spin(rc_bra),
-                                                    scale, couplings);
-
-                                //value_type couplings[4];
                                 //value_type scale = left.conj_scales[b1][b_left] * access.scale(op_index);
-                                //w9j.set_scale(Ap, K, A, SymmGroup::spin(lc_ket), scale, couplings);
+                                value_type couplings[4];
+                                //::SU2::set_coupling(SymmGroup::spin(lc_ket), TwoS, SymmGroup::spin(rc_ket)
+                                //                    , A, K, Ap,
+                                //                    SymmGroup::spin(lc_bra), TwoSp, SymmGroup::spin(rc_bra),
+                                //                    scale, couplings);
+
+                                //{
+                                //value_type couplings2[4];
+                                value_type scale = left.conj_scales[b1][b_left] * access.scale(op_index)
+                                                 * sqrt( (SymmGroup::spin(lc_ket)+1.) * (Ap+1.) * (SymmGroup::spin(rc_bra)+1.)
+                                                        / ((SymmGroup::spin(rc_ket)+1.) * (A+1.) * (SymmGroup::spin(lc_bra)+1.))
+                                                       );
+                                int sum = SymmGroup::spin(lc_ket) + TwoS + SymmGroup::spin(rc_ket) 
+                                        + Ap + K + A
+                                        + SymmGroup::spin(lc_bra) + TwoSp + SymmGroup::spin(rc_bra);
+                                scale = ( (sum/2)%2 == 0) ? scale : -scale;
+                                w9j.set_scale(Ap, K, A, SymmGroup::spin(lc_ket), scale, couplings);
+
+                                //value_type couplings3[4];
+                                //::SU2::set_coupling(SymmGroup::spin(rc_ket), TwoS, SymmGroup::spin(lc_ket)
+                                //                    , Ap, K, A,
+                                //                    SymmGroup::spin(rc_bra), TwoSp, SymmGroup::spin(lc_bra),
+                                //                    scale, couplings3);
+
+                                //if( std::abs(couplings[0] - couplings2[0]) > 1e-6)
+                                //    maquis::cout << couplings[0] << " " << couplings3[0] << " " << couplings2[0] << "   " <<
+                                //        SymmGroup::spin(lc_ket) << TwoS << SymmGroup::spin(rc_ket)
+                                //                    << A << K << Ap << 
+                                //                    SymmGroup::spin(lc_bra) << TwoSp << SymmGroup::spin(rc_bra)
+                                //                    << "  " << w9j.args(Ap, K, A, SymmGroup::spin(lc_ket)) << std::endl;
+                                //}
 
                                 char left_transpose = !mpo.herm_info.left_skip(b1);
                                 unsigned b1_eff = (left_transpose) ? b1 : mpo.herm_info.left_conj(b1);
