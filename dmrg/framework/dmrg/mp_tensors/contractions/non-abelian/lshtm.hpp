@@ -80,7 +80,7 @@ namespace SU2 {
                 typename block_type::mapped_value_type cg(lb_bra, phys_i[s].second, rs_bra, ls_bra, rs_ket,
                                                           bra_offset);
 
-                ::SU2::Wigner9jCache<value_type, SymmGroup> w9j(rc_bra, rc_ket, lc_bra);
+                //::SU2::Wigner9jCache<value_type, SymmGroup> w9j(rc_bra, rc_ket, lc_bra);
 
                 t_map_t t_index;
                 for (index_type b2 = 0; b2 < mpo.col_dim(); ++b2)
