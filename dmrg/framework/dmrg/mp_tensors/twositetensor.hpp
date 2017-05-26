@@ -176,6 +176,9 @@ TwoSiteTensor<Matrix, SymmGroup>::split_mps_l2r(std::size_t Mmax, double cutoff)
     block_matrix<dmt, SymmGroup> s;
     
     truncation_results trunc = svd_truncate(data_, u, v, s, cutoff, Mmax, true);
+
+    for (size_t block = 0; block < u.n_blocks(); ++block)
+        u[block].shrink_to_fit();
     
     MPSTensor<Matrix, SymmGroup> mps_tensor1(phys_i_left, left_i, u.right_basis(), u, LeftPaired);
     assert( mps_tensor1.reasonable() );
