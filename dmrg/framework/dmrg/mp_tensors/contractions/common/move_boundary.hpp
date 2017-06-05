@@ -264,6 +264,64 @@ namespace contraction {
     #endif
         }
 
+        template<class Matrix, class OtherMatrix, class SymmGroup, class Gemm, class Kernel>
+        static Boundary<OtherMatrix, SymmGroup>
+        overlap_mpo_right_step(MPSTensor<Matrix, SymmGroup> const & bra_tensor,
+                               MPSTensor<Matrix, SymmGroup> const & ket_tensor,
+                               Boundary<OtherMatrix, SymmGroup> const & right,
+                               MPOTensor<Matrix, SymmGroup> const & mpo)
+        {
+            typedef typename SymmGroup::charge charge;
+            typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
+            parallel::scheduler_permute scheduler(mpo.placement_l, parallel::groups_granularity);
+
+            MPSTensor<Matrix, SymmGroup> ket_cpy = ket_tensor;
+            contraction::common::MPSBoundaryProduct<Matrix, OtherMatrix, SymmGroup, Gemm> t(ket_cpy, right, mpo);
+            t.initialize_indices();
+
+            Index<SymmGroup> const & physical_i = ket_tensor.site_dim(),
+                                     right_i = bra_tensor.col_dim();
+            Index<SymmGroup> left_i = ket_tensor.row_dim(),
+                             out_right_i = adjoin(physical_i) * right_i;
+
+            common_subset(out_right_i, left_i);
+            ProductBasis<SymmGroup> in_left_pb(physical_i, left_i);
+            ProductBasis<SymmGroup> out_right_pb(physical_i, right_i,
+                                                 boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
+                                                                     -boost::lambda::_1, boost::lambda::_2));
+            Boundary<Matrix, SymmGroup> ret;
+            ret.resize(mpo.row_dim());
+
+            //ket_tensor.make_right_paired();
+            index_type loop_max = mpo.row_dim();
+
+            bra_tensor.make_right_paired();
+            block_matrix<Matrix, SymmGroup> bra_conj = conjugate(bra_tensor.data());
+
+    #ifdef USE_AMBIENT
+            parallel_for(index_type b1, parallel::range<index_type>(0,loop_max), {
+                parallel::guard group(scheduler(b1), parallel::groups_granularity);
+                ::contraction::abelian::rbtm_kernel(b1, ret[b1], right, t, mpo, ket_cpy.data().basis(), left_i, out_right_i, in_left_pb, out_right_pb);
+            });
+            omp_for(index_type b1, parallel::range<index_type>(0,loop_max), {
+                block_matrix<Matrix, SymmGroup> tmp;
+                gemm(ret[b1], transpose(bra_conj), tmp, parallel::scheduler_size_indexed(ret[b1]));
+                swap(ret[b1], tmp);
+            });
+
+    #else
+            omp_for(index_type b1, parallel::range<index_type>(0,loop_max), {
+                if (mpo.herm_info.left_skip(b1)) continue;
+                Kernel()(b1, ret[b1], right, t, mpo, ket_cpy.data().basis(), left_i, out_right_i, in_left_pb, out_right_pb);
+
+                block_matrix<Matrix, SymmGroup> tmp;
+                typename Gemm::gemm()(ret[b1], transpose(bra_conj), tmp, MPOTensor_detail::get_spin(mpo, b1, true));
+                swap(ret[b1], tmp);
+            });
+    #endif
+            return ret;
+        }
+
         template<class Matrix, class OtherMatrix, class SymmGroup, class TaskCalc>
         static Boundary<OtherMatrix, SymmGroup>
         overlap_mpo_left_step(MPSTensor<Matrix, SymmGroup> const & bra_tensor,
@@ -333,64 +391,6 @@ namespace contraction {
                 }
             });
 
-            return ret;
-        }
-
-        template<class Matrix, class OtherMatrix, class SymmGroup, class Gemm, class Kernel>
-        static Boundary<OtherMatrix, SymmGroup>
-        overlap_mpo_right_step(MPSTensor<Matrix, SymmGroup> const & bra_tensor,
-                               MPSTensor<Matrix, SymmGroup> const & ket_tensor,
-                               Boundary<OtherMatrix, SymmGroup> const & right,
-                               MPOTensor<Matrix, SymmGroup> const & mpo)
-        {
-            typedef typename SymmGroup::charge charge;
-            typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
-            parallel::scheduler_permute scheduler(mpo.placement_l, parallel::groups_granularity);
-
-            MPSTensor<Matrix, SymmGroup> ket_cpy = ket_tensor;
-            contraction::common::MPSBoundaryProduct<Matrix, OtherMatrix, SymmGroup, Gemm> t(ket_cpy, right, mpo);
-            t.initialize_indices();
-
-            Index<SymmGroup> const & physical_i = ket_tensor.site_dim(),
-                                     right_i = bra_tensor.col_dim();
-            Index<SymmGroup> left_i = ket_tensor.row_dim(),
-                             out_right_i = adjoin(physical_i) * right_i;
-
-            common_subset(out_right_i, left_i);
-            ProductBasis<SymmGroup> in_left_pb(physical_i, left_i);
-            ProductBasis<SymmGroup> out_right_pb(physical_i, right_i,
-                                                 boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
-                                                                     -boost::lambda::_1, boost::lambda::_2));
-            Boundary<Matrix, SymmGroup> ret;
-            ret.resize(mpo.row_dim());
-
-            //ket_tensor.make_right_paired();
-            index_type loop_max = mpo.row_dim();
-
-            bra_tensor.make_right_paired();
-            block_matrix<Matrix, SymmGroup> bra_conj = conjugate(bra_tensor.data());
-
-    #ifdef USE_AMBIENT
-            parallel_for(index_type b1, parallel::range<index_type>(0,loop_max), {
-                parallel::guard group(scheduler(b1), parallel::groups_granularity);
-                ::contraction::abelian::rbtm_kernel(b1, ret[b1], right, t, mpo, ket_cpy.data().basis(), left_i, out_right_i, in_left_pb, out_right_pb);
-            });
-            omp_for(index_type b1, parallel::range<index_type>(0,loop_max), {
-                block_matrix<Matrix, SymmGroup> tmp;
-                gemm(ret[b1], transpose(bra_conj), tmp, parallel::scheduler_size_indexed(ret[b1]));
-                swap(ret[b1], tmp);
-            });
-
-    #else
-            omp_for(index_type b1, parallel::range<index_type>(0,loop_max), {
-                if (mpo.herm_info.left_skip(b1)) continue;
-                Kernel()(b1, ret[b1], right, t, mpo, ket_cpy.data().basis(), left_i, out_right_i, in_left_pb, out_right_pb);
-
-                block_matrix<Matrix, SymmGroup> tmp;
-                typename Gemm::gemm()(ret[b1], transpose(bra_conj), tmp, MPOTensor_detail::get_spin(mpo, b1, true));
-                swap(ret[b1], tmp);
-            });
-    #endif
             return ret;
         }
 
