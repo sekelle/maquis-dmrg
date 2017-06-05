@@ -281,8 +281,13 @@ namespace contraction {
             Boundary<OtherMatrix, SymmGroup> ret;
             ret.resize(mpo.col_dim());
 
-            ket_tensor.make_right_paired();
-            bra_tensor.make_right_paired();
+            if (!ket_tensor.is_right_paired() || !bra_tensor.is_right_paired())
+            {
+                parallel_critical {
+                ket_tensor.make_right_paired();
+                bra_tensor.make_right_paired();
+                }
+            }
 
             // MPS indices
             Index<SymmGroup> const & physical_i = ket_tensor.site_dim(),
@@ -296,7 +301,6 @@ namespace contraction {
                                     -boost::lambda::_1, boost::lambda::_2));
 
             // Schedule
-            ket_tensor.make_right_paired();
             unsigned loop_max = right_i.size();
             schedule_t tasks(loop_max);
             omp_for(unsigned mb, parallel::range<unsigned>(0,loop_max), {
@@ -407,8 +411,13 @@ namespace contraction {
             Boundary<OtherMatrix, SymmGroup> ret;
             ret.resize(mpo.row_dim());
 
-            ket_tensor.make_right_paired();
-            bra_tensor.make_right_paired();
+            if (!ket_tensor.is_right_paired() || !bra_tensor.is_right_paired())
+            {
+                parallel_critical {
+                ket_tensor.make_right_paired();
+                bra_tensor.make_right_paired();
+                }
+            }
 
             // MPS indices
             Index<SymmGroup> const & physical_i = ket_tensor.site_dim(),
@@ -422,7 +431,6 @@ namespace contraction {
                                     -boost::lambda::_1, boost::lambda::_2));
 
             // Schedule
-            ket_tensor.make_right_paired();
             schedule_t tasks(left_i.size()); // bra
             unsigned loop_max = left_i.size(); // bra
             omp_for(unsigned mb, parallel::range<unsigned>(0,loop_max), {

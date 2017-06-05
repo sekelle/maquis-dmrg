@@ -96,6 +96,12 @@ void MPS<Matrix, SymmGroup>::resize(size_t L)
 }
 
 template<class Matrix, class SymmGroup>
+void MPS<Matrix, SymmGroup>::make_right_paired() const
+{
+    std::for_each(data_.begin(), data_.end(), boost::bind(&MPSTensor<Matrix,SymmGroup>::make_right_paired, boost::lambda::_1));
+}
+
+template<class Matrix, class SymmGroup>
 size_t MPS<Matrix, SymmGroup>::canonization(bool search) const
 {
     if (!search)
