@@ -176,6 +176,9 @@ TwoSiteTensor<Matrix, SymmGroup>::split_mps_l2r(std::size_t Mmax, double cutoff)
     block_matrix<dmt, SymmGroup> s;
     
     truncation_results trunc = svd_truncate(data_, u, v, s, cutoff, Mmax, true);
+
+    for (size_t block = 0; block < u.n_blocks(); ++block)
+        u[block].shrink_to_fit();
     
     MPSTensor<Matrix, SymmGroup> mps_tensor1(phys_i_left, left_i, u.right_basis(), u, LeftPaired);
     assert( mps_tensor1.reasonable() );
@@ -190,6 +193,8 @@ template<class Matrix, class SymmGroup>
 boost::tuple<MPSTensor<Matrix, SymmGroup>, MPSTensor<Matrix, SymmGroup>, truncation_results>
 TwoSiteTensor<Matrix, SymmGroup>::split_mps_r2l(std::size_t Mmax, double cutoff) const
 {
+    typedef typename SymmGroup::charge charge;
+
     make_both_paired();
     
     typedef typename alps::numeric::associated_real_diagonal_matrix<Matrix>::type dmt;
@@ -198,8 +203,11 @@ TwoSiteTensor<Matrix, SymmGroup>::split_mps_r2l(std::size_t Mmax, double cutoff)
     
     truncation_results trunc = svd_truncate(data_, u, v, s, cutoff, Mmax, true);
     
-    MPSTensor<Matrix, SymmGroup> mps_tensor2(phys_i_right, v.left_basis(), right_i, v, RightPaired);
+    for (size_t block = 0; block < v.n_blocks(); ++block)
+        v[block].shrink_to_fit();
     
+    MPSTensor<Matrix, SymmGroup> mps_tensor2(phys_i_right, v.left_basis(), right_i, v, RightPaired);
+
     gemm(u, s, v);
     MPSTensor<Matrix, SymmGroup> mps_tensor1(phys_i_left, left_i, u.right_basis(), v, LeftPaired);
     

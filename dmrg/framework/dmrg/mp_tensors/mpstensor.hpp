@@ -428,6 +428,18 @@ bool MPSTensor<Matrix, SymmGroup>::isnormalized(bool test) const
 }
 
 template<class Matrix, class SymmGroup>
+bool MPSTensor<Matrix, SymmGroup>::is_left_paired() const
+{
+    return cur_storage == LeftPaired;
+}
+
+template<class Matrix, class SymmGroup>
+bool MPSTensor<Matrix, SymmGroup>::is_right_paired() const
+{
+    return cur_storage == RightPaired;
+}
+
+template<class Matrix, class SymmGroup>
 block_matrix<Matrix, SymmGroup> &
 MPSTensor<Matrix, SymmGroup>::data()
 {

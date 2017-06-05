@@ -25,8 +25,8 @@
  *
  *****************************************************************************/
 
-#ifndef CONTRACTIONS_SU2_SHTM_HPP
-#define CONTRACTIONS_SU2_SHTM_HPP
+#ifndef CONTRACTIONS_SU2_RSHTM_HPP
+#define CONTRACTIONS_SU2_RSHTM_HPP
 
 #include "dmrg/block_matrix/symmetry/gsl_coupling.h"
 #include "dmrg/mp_tensors/mpstensor.h"
@@ -39,15 +39,14 @@ namespace contraction {
 namespace SU2 {
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
-    void shtm_tasks(MPOTensor<Matrix, SymmGroup> const & mpo,
-                    common::LeftIndices<Matrix, OtherMatrix, SymmGroup> const & left,
-                    common::RightIndices<Matrix, OtherMatrix, SymmGroup> const & right,
-                    Index<SymmGroup> const & left_i,
-                    Index<SymmGroup> const & right_i,
-                    Index<SymmGroup> const & phys_i,
-                    ProductBasis<SymmGroup> const & right_pb,
-                    unsigned left_mps_block,
-                    typename common::Schedule<Matrix, SymmGroup>::block_type & mpsb)
+    void rshtm_tasks(MPOTensor<Matrix, SymmGroup> const & mpo,
+                     common::RightIndices<Matrix, OtherMatrix, SymmGroup> const & right,
+                     Index<SymmGroup> const & left_i,
+                     Index<SymmGroup> const & right_i,
+                     Index<SymmGroup> const & phys_i,
+                     ProductBasis<SymmGroup> const & right_pb,
+                     unsigned left_mps_block,
+                     typename common::Schedule<Matrix, SymmGroup>::block_type & mpsb)
     {
         typedef MPOTensor_detail::index_type index_type;
         typedef typename MPOTensor<Matrix, SymmGroup>::row_proxy row_proxy;
@@ -59,9 +58,10 @@ namespace SU2 {
         typedef typename cgroup::t_key t_key;
         typedef std::map<t_key, unsigned> t_map_t;
 
-        charge lc = left_i[left_mps_block].first;
-        unsigned l_size = left_i[left_mps_block].second;
-        std::vector<charge> const & mc_charges = left.deltas.at(lc);
+        charge lc = left_i[left_mps_block].first; // bra
+        unsigned l_size = left_i[left_mps_block].second; // bra
+
+        const int site_basis_max_diff = 2;
 
         // output physical index, output offset range = out_right offset + ss2*r_size
         //                                              for ss2 in {0, 1, .., phys_i[s].second}
@@ -69,17 +69,17 @@ namespace SU2 {
         {
             charge phys_out = phys_i[s].first;
             charge rc = SymmGroup::fuse(lc, phys_out);
-            unsigned r_index = right_i.position(rc); if (r_index == right_i.size()) continue;
+            unsigned r_index = right_i.position(rc); if (r_index == right_i.size()) continue; // bra
             unsigned r_size = right_i[r_index].second;
             unsigned out_right_offset = right_pb(phys_out, rc);
-            
-            for (unsigned mci = 0; mci < mc_charges.size(); ++mci)
-            {
-                charge mc = mc_charges[mci];
-                unsigned in_mps_block = left_i.position(mc); if (in_mps_block == left_i.size()) continue;
-                unsigned m1_size = left_i[in_mps_block].second;
 
-                typename block_type::mapped_value_type cg(in_mps_block, phys_i[s].second, l_size, m1_size, r_size,
+            for (unsigned mci = 0; mci < left_i.size(); ++mci)
+            {
+                charge mc = left_i[mci].first;
+                if (std::abs(SymmGroup::particleNumber(mc) - SymmGroup::particleNumber(lc)) > site_basis_max_diff) continue;
+                unsigned m1_size = left_i[mci].second;
+
+                typename block_type::mapped_value_type cg(mci, phys_i[s].second, l_size, m1_size, r_size,
                                                           out_right_offset);
 
                 ::SU2::Wigner9jCache<value_type, SymmGroup> w9j(lc, mc, rc);
@@ -87,10 +87,8 @@ namespace SU2 {
                 t_map_t t_index;
                 for (index_type b1 = 0; b1 < mpo.row_dim(); ++b1)
                 {
-                    unsigned left_block = left.position(b1, lc, mc); if (left_block == left[b1].size()) continue;
+                    if (mpo.herm_info.left_skip(b1)) continue;
                     int A = mpo.left_spin(b1).get(); if (!::SU2::triangle(SymmGroup::spin(mc), A, SymmGroup::spin(lc))) continue;
-
-                    index_type b1_eff = (mpo.herm_info.left_skip(b1)) ? mpo.herm_info.left_conj(b1) : b1;
 
                     for (typename row_proxy::const_iterator row_it = mpo.row(b1).begin(); row_it != mpo.row(b1).end(); ++row_it) {
                         index_type b2 = row_it.index();
@@ -114,8 +112,7 @@ namespace SU2 {
                                 unsigned in_offset = right_pb(phys_in, tlc);
 
                                 value_type couplings[4];
-                                value_type scale = right.conj_scales[b2][right_block] * access.scale(op_index)
-                                                 *  left.conj_scales[b1][left_block];
+                                value_type scale = right.conj_scales[b2][right_block] * access.scale(op_index);
                                 w9j.set_scale(A, K, Ap, SymmGroup::spin(tlc), scale, couplings);
 
                                 char right_transpose = mpo.herm_info.right_skip(b2);
@@ -128,7 +125,7 @@ namespace SU2 {
                             } // w_block
                         } //op_index
                     } // b2
-                    for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(b1_eff, left_block, mpo.herm_info.left_skip(b1));
+                    for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(b1, 0, !mpo.herm_info.left_skip(b1));
                 } // b1
 
                 cg.t_key_vec.resize(t_index.size());

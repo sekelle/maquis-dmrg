@@ -36,6 +36,8 @@
 #include "dmrg/mp_tensors/contractions/non-abelian/lbtm.hpp"
 #include "dmrg/mp_tensors/contractions/non-abelian/rbtm.hpp"
 #include "dmrg/mp_tensors/contractions/non-abelian/shtm.hpp"
+#include "dmrg/mp_tensors/contractions/non-abelian/rshtm.hpp"
+#include "dmrg/mp_tensors/contractions/non-abelian/lshtm.hpp"
 #include "dmrg/mp_tensors/contractions/non-abelian/gemm.hpp"
 #include "dmrg/mp_tensors/contractions/non-abelian/functors.h"
 #include "dmrg/mp_tensors/contractions/non-abelian/h_diag.hpp"
@@ -132,8 +134,8 @@ namespace contraction {
                               Boundary<OtherMatrix, SymmGroup> const & left,
                               MPOTensor<Matrix, SymmGroup> const & mpo)
         {
-            return common::overlap_mpo_left_step<Matrix, OtherMatrix, SymmGroup, ::SU2::SU2Gemms, lbtm_functor>
-                   (bra_tensor, ket_tensor, left, mpo);
+            return common::overlap_mpo_left_step<Matrix, OtherMatrix, SymmGroup>
+                   (bra_tensor, ket_tensor, left, mpo, SU2::lshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
         }
 
         static Boundary<OtherMatrix, SymmGroup>
@@ -142,8 +144,8 @@ namespace contraction {
                                Boundary<OtherMatrix, SymmGroup> const & right,
                                MPOTensor<Matrix, SymmGroup> const & mpo)
         {
-            return common::overlap_mpo_right_step<Matrix, OtherMatrix, SymmGroup, ::SU2::SU2Gemms, rbtm_functor>
-                   (bra_tensor, ket_tensor, right, mpo);
+            return common::overlap_mpo_right_step<Matrix, OtherMatrix, SymmGroup>
+                   (bra_tensor, ket_tensor, right, mpo, SU2::rshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
         }
 
         static schedule_t

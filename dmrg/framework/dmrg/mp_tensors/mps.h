@@ -71,6 +71,8 @@ public:
     const_iterator const_end() const {return data_.end();}
     iterator begin() {return data_.begin();}
     iterator end() {return data_.end();}
+
+    void make_right_paired() const;
     
     size_t canonization(bool=false) const;
     void canonize(size_t center, DecompMethod method = DefaultSolver());

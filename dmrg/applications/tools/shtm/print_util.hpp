@@ -23,8 +23,8 @@
  * DEALINGS IN THE SOFTWARE.
  *
  *****************************************************************************/
-#ifndef SHTM_TOOL_UTIL_HPP
-#define SHTM_TOOL_UTIL_HPP
+#ifndef SHTM_TOOL_PRINT_UTIL_HPP
+#define SHTM_TOOL_PRINT_UTIL_HPP
 
 #include <cmath>
 #include <iterator>
@@ -36,6 +36,10 @@
 #include "dmrg/mp_tensors/mps.h"
 #include "dmrg/optimize/site_problem.h"
 #include "dmrg/mp_tensors/contractions/non-abelian/engine.hpp"
+
+using namespace contraction;
+using namespace contraction::common;
+using namespace contraction::SU2;
 
 namespace detail {
 

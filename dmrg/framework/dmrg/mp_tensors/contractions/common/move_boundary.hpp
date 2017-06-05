@@ -235,7 +235,6 @@ namespace contraction {
             omp_for(index_type b2, parallel::range<index_type>(0,loop_max), {
                 if (mpo.herm_info.right_skip(b2)) continue;
                 ContractionGrid<Matrix, SymmGroup> contr_grid(mpo, 0, 0);
-                block_matrix<Matrix, SymmGroup> tmp;
                 Kernel()(b2, contr_grid, left, t, mpo, ket_basis_transpose, right_i, out_left_i, in_right_pb, out_left_pb);
                 typename Gemm::gemm()(transpose(contr_grid(0,0)), bra_conj, ret[b2], MPOTensor_detail::get_spin(mpo, b2, false));
             });
@@ -317,10 +316,153 @@ namespace contraction {
 
                 block_matrix<Matrix, SymmGroup> tmp;
                 typename Gemm::gemm()(ret[b1], transpose(bra_conj), tmp, MPOTensor_detail::get_spin(mpo, b1, true));
-                //gemm(ret[b1], transpose(bra_conj), tmp, parallel::scheduler_size_indexed(ret[b1]));
                 swap(ret[b1], tmp);
             });
     #endif
+            return ret;
+        }
+
+        template<class Matrix, class OtherMatrix, class SymmGroup, class TaskCalc>
+        static Boundary<OtherMatrix, SymmGroup>
+        overlap_mpo_left_step(MPSTensor<Matrix, SymmGroup> const & bra_tensor,
+                              MPSTensor<Matrix, SymmGroup> const & ket_tensor,
+                              Boundary<OtherMatrix, SymmGroup> const & left,
+                              MPOTensor<Matrix, SymmGroup> const & mpo,
+                              TaskCalc task_calc)
+        {
+            typedef typename SymmGroup::charge charge;
+            typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
+            typedef typename Schedule<Matrix, SymmGroup>::schedule_t schedule_t;
+            typedef typename Schedule<Matrix, SymmGroup>::block_type::const_iterator const_iterator;
+
+            LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
+            Boundary<OtherMatrix, SymmGroup> ret;
+            ret.resize(mpo.col_dim());
+
+            if (!ket_tensor.is_right_paired() || !bra_tensor.is_right_paired())
+            {
+                parallel_critical {
+                ket_tensor.make_right_paired();
+                bra_tensor.make_right_paired();
+                }
+            }
+
+            // MPS indices
+            Index<SymmGroup> const & physical_i = ket_tensor.site_dim(),
+                                     right_i = ket_tensor.col_dim();
+            Index<SymmGroup> left_i = ket_tensor.row_dim(),
+                             out_right_i = adjoin(physical_i) * right_i;
+
+            common_subset(out_right_i, left_i);
+            ProductBasis<SymmGroup> out_right_pb(physical_i, right_i,
+                    boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
+                                    -boost::lambda::_1, boost::lambda::_2));
+
+            // Schedule
+            unsigned loop_max = right_i.size();
+            schedule_t tasks(loop_max);
+            omp_for(unsigned mb, parallel::range<unsigned>(0,loop_max), {
+                task_calc(mpo, left_indices, left_i,
+                          right_i, physical_i, out_right_pb, mb, tasks[mb]);
+            });
+
+            // set up the indices of the new boundary
+            for(size_t rb_ket = 0; rb_ket < loop_max; ++rb_ket)
+            {
+                charge rc_ket = right_i[rb_ket].first;
+                size_t rs_ket = right_i[rb_ket].second;
+                for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
+                {
+                    charge rc_bra = it->first;
+                    size_t rs_bra = right_i.size_of_block(rc_bra);
+                    it->second.reserve(rc_bra, rc_ket, rs_bra, rs_ket, ret); // allocate all (rc_bra,rc_ket) blocks
+                }
+            }
+
+            // Contraction
+            omp_for(index_type rb_ket, parallel::range<index_type>(0,loop_max), {
+                charge rc_ket = right_i[rb_ket].first;
+                for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it) // mc loop
+                {
+                    charge rc_bra = it->first;
+                    it->second.allocate(rc_bra, rc_ket, ret);
+                    for (size_t s = 0; s < it->second.size(); ++s) // physical index loop
+                        it->second[s].prop_l(ket_tensor, bra_tensor, it->second.get_b_to_o(), left, ret);
+                }
+            });
+
+            return ret;
+        }
+
+        template<class Matrix, class OtherMatrix, class SymmGroup, class TaskCalc>
+        static Boundary<OtherMatrix, SymmGroup>
+        overlap_mpo_right_step(MPSTensor<Matrix, SymmGroup> const & bra_tensor,
+                               MPSTensor<Matrix, SymmGroup> const & ket_tensor,
+                               Boundary<OtherMatrix, SymmGroup> const & right,
+                               MPOTensor<Matrix, SymmGroup> const & mpo,
+                               TaskCalc task_calc)
+        {
+            typedef typename SymmGroup::charge charge;
+            typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
+            typedef typename Schedule<Matrix, SymmGroup>::schedule_t schedule_t;
+            typedef typename Schedule<Matrix, SymmGroup>::block_type::const_iterator const_iterator;
+
+            RightIndices<Matrix, OtherMatrix, SymmGroup> right_indices(right, mpo);
+            Boundary<OtherMatrix, SymmGroup> ret;
+            ret.resize(mpo.row_dim());
+
+            if (!ket_tensor.is_right_paired() || !bra_tensor.is_right_paired())
+            {
+                parallel_critical {
+                ket_tensor.make_right_paired();
+                bra_tensor.make_right_paired();
+                }
+            }
+
+            // MPS indices
+            Index<SymmGroup> const & physical_i = ket_tensor.site_dim(),
+                                     right_i = ket_tensor.col_dim();
+            Index<SymmGroup> left_i = ket_tensor.row_dim(),
+                             out_right_i = adjoin(physical_i) * right_i;
+
+            common_subset(out_right_i, left_i);
+            ProductBasis<SymmGroup> out_right_pb(physical_i, right_i,
+                    boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
+                                    -boost::lambda::_1, boost::lambda::_2));
+
+            // Schedule
+            schedule_t tasks(left_i.size()); // bra
+            unsigned loop_max = left_i.size(); // bra
+            omp_for(unsigned mb, parallel::range<unsigned>(0,loop_max), {
+                task_calc(mpo, right_indices, left_i,
+                          right_i, physical_i, out_right_pb, mb, tasks[mb]);
+            });
+
+            // set up the indices of the new boundary
+            for(size_t mps_block = 0; mps_block < loop_max; ++mps_block)
+            {
+                charge lc = left_i[mps_block].first;
+                size_t l_size = left_i[mps_block].second;
+                for (const_iterator it = tasks[mps_block].begin(); it != tasks[mps_block].end(); ++it)
+                {
+                    charge mc = it->first;
+                    size_t m_size = left_i.size_of_block(mc);
+                    it->second.reserve(mc, lc, m_size, l_size, ret); // allocate all (mc,lc) blocks
+                }
+            }
+
+            // Contraction
+            omp_for(index_type mps_block, parallel::range<index_type>(0,loop_max), {
+                charge lc = left_i[mps_block].first;
+                for (const_iterator it = tasks[mps_block].begin(); it != tasks[mps_block].end(); ++it) // mc loop
+                {
+                    charge mc = it->first;
+                    it->second.allocate(mc, lc, ret); // allocate all (mc,lc) blocks
+                    for (size_t s = 0; s < it->second.size(); ++s) // physical index loop
+                        it->second[s].prop(ket_tensor, bra_tensor.data()[mps_block], it->second.get_b_to_o(), right, ret);
+                }
+            });
+
             return ret;
         }
 

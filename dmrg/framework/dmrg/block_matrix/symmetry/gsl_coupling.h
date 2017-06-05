@@ -73,6 +73,12 @@ namespace SU2 {
         }
     }
 
+    // precompute 9j for fixed J, I, I'
+    // 
+    //      [ J  S  J' ]
+    //  9j  [ A  K  A' ]
+    //      [ I  S' I' ]
+
     template <typename T>
     class Wigner9jCacheI
     {

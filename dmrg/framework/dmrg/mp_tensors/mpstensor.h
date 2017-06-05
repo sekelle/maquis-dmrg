@@ -82,6 +82,9 @@ public:
     bool isleftnormalized(bool test = false) const;
     bool isrightnormalized(bool test = false) const;
     bool isnormalized(bool test = false) const;
+
+    bool is_left_paired() const;
+    bool is_right_paired() const;
     
     block_matrix<Matrix, SymmGroup> normalize_left(DecompMethod method = DefaultSolver(),
                                                    bool multiplied = true,

@@ -36,15 +36,6 @@
 #include "dmrg/mp_tensors/mpo_ops.h"
 
 
-template<class Matrix, class SymmGroup>
-void save_boundary(Boundary<Matrix, SymmGroup> const & b, std::string fname)
-{
-    std::ofstream ofs(fname.c_str());
-    boost::archive::binary_oarchive ar(ofs);
-    ar << b;
-    ofs.close();
-}
-
 template<class Matrix, class SymmGroup, class Storage>
 class ts_optimize : public optimizer_base<Matrix, SymmGroup, Storage>
 {
@@ -202,13 +193,15 @@ public:
             SiteProblem<Matrix, typename base::BoundaryMatrix, SymmGroup>
                 sp(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1]);
 
-            //if (twosweep == 0 && site1 == 6)
+            //if (twosweep == 5)
             //{
-            //    save_boundary(left_[site1], "left_0_" + boost::lexical_cast<std::string>(site1));
-            //    save_boundary(right_[site2+1], "right_0_" + boost::lexical_cast<std::string>(site1));
+            //    save_boundary(left_[site1], "left_5_" + boost::lexical_cast<std::string>(site1));
+            //    save_boundary(right_[site2+1], "right_5_" + boost::lexical_cast<std::string>(site2+1));
 
-            //    storage::archive ari("initial_0_" + boost::lexical_cast<std::string>(site1), "w");
+            //    storage::archive ari("initial_5_" + boost::lexical_cast<std::string>(site1), "w");
             //    twin_mps.save(ari);
+            //    storage::archive ssari("ssinitial_5_" + boost::lexical_cast<std::string>(site2), "w");
+            //    mps[site2].save(ssari);
             //}
 
             /// Compute orthogonal vectors
@@ -335,7 +328,6 @@ public:
                     boost::tie(mps[site1], mps[site2], trunc) = tst.predict_split_r2l(Mmax, cutoff, alpha, right_[site2+1], mpo[site2]);
                 END_TIMING("TRUNC")
                 tst.clear();
-
 
         		block_matrix<Matrix, SymmGroup> t;
 

@@ -119,16 +119,15 @@ namespace contraction {
                     parallel::guard group(scheduler(b1), parallel::groups_granularity);
 
                     (*this)[b1] = left[mpo.herm_info.left_conj(b1)].basis(); 
-                    conj_scales[b1] = conjugate_phases((*this)[b1], mpo, b1, true, false);
-                    trans_storage[b1] = false;
+                    conj_scales[b1] = conjugate_phases((*this)[b1], mpo, b1, true, false, true);
+                    trans_storage[b1] = true;
                 }
                 else {
                     parallel::guard group(scheduler(b1), parallel::groups_granularity);
 
-                    //(*this)[b1] = left[b1].basis().transpose(); 
                     (*this)[b1] = left[b1].basis(); 
                     conj_scales[b1] = std::vector<value_type>(left[b1].n_blocks(), value_type(1.));
-                    trans_storage[b1] = true;
+                    trans_storage[b1] = false;
                 }
 
                 DualIndex<SymmGroup> const & di = (*this)[b1];
