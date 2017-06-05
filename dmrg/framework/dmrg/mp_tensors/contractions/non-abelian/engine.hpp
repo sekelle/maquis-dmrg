@@ -44,9 +44,6 @@
 
 namespace contraction {
 
-    using common::BoundaryMPSProduct;
-    using common::MPSBoundaryProduct;
-
     template <class Matrix, class OtherMatrix, class SymmGroup>
     class Engine<Matrix, OtherMatrix, SymmGroup, typename boost::enable_if<symm_traits::HasSU2<SymmGroup> >::type>
     {

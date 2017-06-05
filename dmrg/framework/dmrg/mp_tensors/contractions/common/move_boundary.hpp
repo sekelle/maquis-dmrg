@@ -106,7 +106,6 @@ namespace contraction {
             if (in_low == NULL)
                 in_low = &mps.row_dim();
 
-            //std::vector<block_matrix<Matrix, SymmGroup> > t
             BoundaryMPSProduct<Matrix, OtherMatrix, SymmGroup, Gemm> t(mps, left, mpo);
 
             Index<SymmGroup> physical_i = mps.site_dim(), left_i = *in_low, right_i = mps.col_dim(),
