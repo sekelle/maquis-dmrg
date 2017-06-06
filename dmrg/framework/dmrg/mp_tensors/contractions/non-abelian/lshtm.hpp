@@ -146,8 +146,8 @@ namespace SU2 {
                     cg.t_key_vec[kit->second] = kit->first;
                 if (cg.n_tasks()) mpsb[rc_bra].push_back(cg);
 
-            } // rb_bra
-        } // phys_out
+            } // phys_out
+        } // rb_bra
     }
 
 } // namespace SU2
