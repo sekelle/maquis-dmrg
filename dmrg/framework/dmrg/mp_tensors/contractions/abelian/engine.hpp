@@ -181,8 +181,8 @@ namespace contraction {
                                     Boundary<OtherMatrix, SymmGroup> const & right,
                                     double alpha, double cutoff, std::size_t Mmax)
         {
-            return common::predict_new_state_r2l_sweep<Matrix, OtherMatrix, SymmGroup, abelian::Gemms, rbtm_functor>
-                   (mps, mpo, left, right, alpha, cutoff, Mmax);
+            return common::predict_new_state_r2l_sweep<Matrix, OtherMatrix, SymmGroup>
+                   (mps, mpo, left, right, right_boundary_tensor_mpo, alpha, cutoff, Mmax);
         }
 
         static MPSTensor<Matrix, SymmGroup>
