@@ -446,7 +446,6 @@ namespace contraction {
             for(size_t mps_block = 0; mps_block < loop_max; ++mps_block)
             {
                 charge lc = left_i[mps_block].first;
-                //size_t l_size = left_i[mps_block].second;
                 size_t rs_paired = out_right_i.size_of_block(lc);
                 for (const_iterator it = tasks[mps_block].begin(); it != tasks[mps_block].end(); ++it)
                 {

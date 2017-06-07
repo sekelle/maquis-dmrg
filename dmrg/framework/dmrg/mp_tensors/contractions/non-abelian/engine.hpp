@@ -111,8 +111,6 @@ namespace contraction {
                                  MPOTensor<Matrix, SymmGroup> const & mpo,
                                  Index<SymmGroup> const * in_low = NULL)
         {
-            //return common::left_boundary_tensor_mpo<Matrix, OtherMatrix, SymmGroup, ::SU2::SU2Gemms, lbtm_functor>
-            //       (mps, left, mpo, in_low);
             return common::left_boundary_tensor_mpo<Matrix, OtherMatrix, SymmGroup>
                     (mps, left, mpo, SU2::lshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
         }
@@ -123,8 +121,8 @@ namespace contraction {
                                   MPOTensor<Matrix, SymmGroup> const & mpo,
                                   Index<SymmGroup> const * in_low = NULL)
         {
-            return common::right_boundary_tensor_mpo<Matrix, OtherMatrix, SymmGroup, ::SU2::SU2Gemms, rbtm_functor>
-                   (mps, right, mpo, in_low);
+            return common::right_boundary_tensor_mpo<Matrix, OtherMatrix, SymmGroup>
+                   (mps, right, mpo, SU2::rshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
         }
 
         static Boundary<OtherMatrix, SymmGroup>
@@ -144,9 +142,7 @@ namespace contraction {
                                Boundary<OtherMatrix, SymmGroup> const & right,
                                MPOTensor<Matrix, SymmGroup> const & mpo)
         {
-            //Boundary<OtherMatrix, SymmGroup> rbtm = right_boundary_tensor_mpo(ket_tensor, right, mpo);
-            Boundary<OtherMatrix, SymmGroup> rbtm = common::right_boundary_tensor_mpo<Matrix, OtherMatrix, SymmGroup>
-                                                        (ket_tensor, right, mpo, SU2::rshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
+            Boundary<OtherMatrix, SymmGroup> rbtm = right_boundary_tensor_mpo(ket_tensor, right, mpo);
 
             MPSTensor<Matrix, SymmGroup> bra_rp = bra_tensor;
             bra_rp.make_right_paired();
@@ -155,7 +151,7 @@ namespace contraction {
             for (int b = 0; b < rbtm.aux_dim(); ++ b)
             {
                 if (mpo.herm_info.left_skip(b)) continue;
-                ::SU2::gemm(rbtm[b], transpose(bra_rp.data()), check_right[b], MPOTensor_detail::get_spin(mpo, b, true));
+                gemm(rbtm[b], transpose(bra_rp.data()), check_right[b]);
             }
 
             Boundary<OtherMatrix, SymmGroup> ret = common::overlap_mpo_right_step<Matrix, OtherMatrix, SymmGroup>
