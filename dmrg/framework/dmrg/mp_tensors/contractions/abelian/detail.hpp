@@ -90,7 +90,7 @@ namespace detail {
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
     DualIndex<SymmGroup> T_basis_left(Boundary<OtherMatrix, SymmGroup> const & boundary,
-                                      common::BoundaryMPSProduct<Matrix, OtherMatrix, SymmGroup, Gemms> const & mult_mps,
+                                      common::BoundaryMPSProduct<Matrix, OtherMatrix, SymmGroup> const & mult_mps,
                                       MPOTensor<Matrix, SymmGroup> const & mpo,
                                       DualIndex<SymmGroup> const & mps_basis,
                                       typename MPOTensor<Matrix, SymmGroup>::index_type b)
@@ -105,7 +105,7 @@ namespace detail {
     }
     template<class Matrix, class OtherMatrix, class SymmGroup>
     DualIndex<SymmGroup> T_basis_right(Boundary<OtherMatrix, SymmGroup> const & boundary,
-                                       common::MPSBoundaryProduct<Matrix, OtherMatrix, SymmGroup, Gemms> const & mult_mps,
+                                       common::MPSBoundaryProduct<Matrix, OtherMatrix, SymmGroup> const & mult_mps,
                                        MPOTensor<Matrix, SymmGroup> const & mpo,
                                        DualIndex<SymmGroup> const & mps_basis,
                                        typename MPOTensor<Matrix, SymmGroup>::index_type b)

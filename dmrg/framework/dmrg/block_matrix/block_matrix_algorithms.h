@@ -115,27 +115,32 @@ void gemm_trim_left(block_matrix<Matrix1, SymmGroup> const & A,
                     block_matrix<Matrix2, SymmGroup> const & B,
                     block_matrix<Matrix3, SymmGroup> & C)
 {
-    parallel::scheduler_size_indexed scheduler(A);
-    C.clear();
-    
     typedef typename SymmGroup::charge charge;
-    Index<SymmGroup> B_left_basis = B.left_basis();
+    typedef typename DualIndex<SymmGroup>::const_iterator const_iterator;
+    typedef typename Matrix3::value_type value_type;
+
+    C.clear();
+    assert(B.basis().is_sorted());
+
+    const_iterator B_begin = B.basis().begin();
+    const_iterator B_end = B.basis().end();
     for (std::size_t k = 0; k < A.n_blocks(); ++k) {
-        std::size_t matched_block = B_left_basis.position(A.basis().right_charge(k));
 
-        // Match right basis of A with left basis of B
-        if ( matched_block == B.n_blocks() )
-            continue;
+        if (!B.basis().left_has(A.basis().left_charge(k))) continue;
 
-        // Also match left basis of A with left basis of B
-        if ( !B_left_basis.has(A.basis().left_charge(k)) )
-            continue;
-        
-        std::size_t new_block = C.insert_block(new Matrix3(num_rows(A[k]), num_cols(B[matched_block])),
-                                               A.basis().left_charge(k), B.basis().right_charge(matched_block));
-        
-        parallel::guard proc(scheduler(k));
-        gemm(A[k], B[matched_block], C[new_block]);
+        charge ar = A.basis().right_charge(k);
+        const_iterator it = B.basis().left_lower_bound(ar);
+
+        for ( ; it != B_end && it->lc == ar; ++it)
+        {
+            std::size_t matched_block = std::distance(B_begin, it);
+
+            std::size_t c_block = C.find_block(A.basis().left_charge(k), it->rc);
+            if (c_block == C.n_blocks())
+                c_block = C.insert_block(Matrix3(num_rows(A[k]), it->rs), A.basis().left_charge(k), it->rc);
+
+            boost::numeric::bindings::blas::gemm(value_type(1), A[k], B[matched_block], value_type(1), C[c_block]);
+        }
     }
 }
 
@@ -144,29 +149,34 @@ void gemm_trim_right(block_matrix<Matrix1, SymmGroup> const & A,
                      block_matrix<Matrix2, SymmGroup> const & B,
                      block_matrix<Matrix3, SymmGroup> & C)
 {
-    parallel::scheduler_size_indexed scheduler(B);
-    C.clear();
-    
     typedef typename SymmGroup::charge charge;
-    Index<SymmGroup> A_right_basis = A.right_basis();
-    for (std::size_t k = 0; k < B.n_blocks(); ++k) {
-        std::size_t matched_block = A_right_basis.position(B.basis().left_charge(k));
+    typedef typename DualIndex<SymmGroup>::const_iterator const_iterator;
+    typedef typename Matrix3::value_type value_type;
 
-        // Match right basis of A with left basis of B
-        if ( matched_block == A.n_blocks() )
-            continue;
+    C.clear();
+    assert(B.basis().is_sorted());
 
-        // Also match A.right_basis() with B.right_basis()
-        if ( !A_right_basis.has(B.basis().right_charge(k)) )
-            continue;
-        
-        std::size_t new_block = C.insert_block(new Matrix3(num_rows(A[matched_block]), num_cols(B[k])),
-                                               A.basis().left_charge(matched_block), B.basis().right_charge(k));
-        
-        parallel::guard proc(scheduler(k));
-        gemm(A[matched_block], B[k], C[new_block]);
+    const_iterator B_begin = B.basis().begin();
+    const_iterator B_end = B.basis().end();
+    for (std::size_t k = 0; k < A.n_blocks(); ++k) {
+
+        charge ar = A.basis().right_charge(k);
+        const_iterator it = B.basis().left_lower_bound(ar);
+
+        for ( ; it != B_end && it->lc == ar; ++it)
+        {
+            std::size_t matched_block = std::distance(B_begin, it);
+            if (!A.basis().left_has(it->rc)) continue;
+
+            std::size_t c_block = C.find_block(A.basis().left_charge(k), it->rc);
+            if (c_block == C.n_blocks())
+                c_block = C.insert_block(Matrix3(num_rows(A[k]), it->rs), A.basis().left_charge(k), it->rc);
+
+            boost::numeric::bindings::blas::gemm(value_type(1), A[k], B[matched_block], value_type(1), C[c_block]);
+        }
     }
 }
+
 
 template<class Matrix, class DiagMatrix, class SymmGroup>
 void svd(block_matrix<Matrix, SymmGroup> const & M,

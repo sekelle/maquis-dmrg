@@ -123,7 +123,6 @@ namespace SU2 {
         const_iterator B_end = B.basis().end();
         for (std::size_t k = 0; k < A.n_blocks(); ++k) {
 
-            //assert(B.basis().left_has(A.basis().left_charge(k)));
             if (!B.basis().left_has(A.basis().left_charge(k))) continue;
 
             charge ar = A.basis().right_charge(k);
@@ -201,7 +200,6 @@ namespace SU2 {
             for ( ; it != B_end && it->lc == ar; ++it)
             {
                 std::size_t matched_block = std::distance(B_begin, it);
-                //assert(A.basis().left_has(it->rc));
                 if (!A.basis().left_has(it->rc)) continue;
 
                 std::size_t c_block = C.find_block(A.basis().left_charge(k), it->rc);

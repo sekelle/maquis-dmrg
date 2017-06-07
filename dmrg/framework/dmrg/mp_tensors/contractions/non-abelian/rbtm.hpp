@@ -165,7 +165,7 @@ namespace SU2 {
     template<class Matrix, class OtherMatrix, class SymmGroup>
     void rbtm_axpy(task_capsule<Matrix, SymmGroup> & tasks, block_matrix<Matrix, SymmGroup> & ret,
                    Index<SymmGroup> const & out_right_i,
-                   MPSBoundaryProduct<Matrix, OtherMatrix, SymmGroup, ::SU2::SU2Gemms> const & t)
+                   MPSBoundaryProduct<Matrix, OtherMatrix, SymmGroup> const & t)
     {
         using ::contraction::common::task_compare;
         typedef typename Matrix::value_type value_type;
@@ -191,7 +191,7 @@ namespace SU2 {
     void rbtm_kernel(size_t b1,
                      block_matrix<Matrix, SymmGroup> & ret,
                      Boundary<OtherMatrix, SymmGroup> const & right,
-                     MPSBoundaryProduct<Matrix, OtherMatrix, SymmGroup, ::SU2::SU2Gemms> const & right_mult_mps,
+                     MPSBoundaryProduct<Matrix, OtherMatrix, SymmGroup> const & right_mult_mps,
                      MPOTensor<Matrix, SymmGroup> const & mpo,
                      DualIndex<SymmGroup> const & ket_basis,
                      Index<SymmGroup> const & left_i,

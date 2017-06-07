@@ -52,7 +52,7 @@ namespace contraction {
             void operator()(size_t b2,
                             ContractionGrid<Matrix, SymmGroup>& contr_grid,
                             Boundary<OtherMatrix, SymmGroup> const & left,
-                            BoundaryMPSProduct<Matrix, OtherMatrix, SymmGroup, abelian::Gemms> const & left_mult_mps,
+                            BoundaryMPSProduct<Matrix, OtherMatrix, SymmGroup> const & left_mult_mps,
                             MPOTensor<Matrix, SymmGroup> const & mpo,
                             DualIndex<SymmGroup> const & ket_basis,
                             Index<SymmGroup> const & right_i,
@@ -70,7 +70,7 @@ namespace contraction {
             void operator()(size_t b1,
                             block_matrix<Matrix, SymmGroup> & ret,
                             Boundary<OtherMatrix, SymmGroup> const & right,
-                            MPSBoundaryProduct<Matrix, OtherMatrix, SymmGroup, abelian::Gemms> const & right_mult_mps,
+                            MPSBoundaryProduct<Matrix, OtherMatrix, SymmGroup> const & right_mult_mps,
                             MPOTensor<Matrix, SymmGroup> const & mpo,
                             DualIndex<SymmGroup> const & ket_basis,
                             Index<SymmGroup> const & left_i,
@@ -112,7 +112,7 @@ namespace contraction {
                                  MPOTensor<Matrix, SymmGroup> const & mpo,
                                  Index<SymmGroup> const * in_low = NULL)
         {
-            return common::left_boundary_tensor_mpo<Matrix, OtherMatrix, SymmGroup, abelian::Gemms, lbtm_functor>
+            return common::left_boundary_tensor_mpo<Matrix, OtherMatrix, SymmGroup, lbtm_functor>
                    (mps, left, mpo, in_low);
         }
 
@@ -122,7 +122,7 @@ namespace contraction {
                                   MPOTensor<Matrix, SymmGroup> const & mpo,
                                   Index<SymmGroup> const * in_low = NULL)
         {
-            return common::right_boundary_tensor_mpo<Matrix, OtherMatrix, SymmGroup, abelian::Gemms, rbtm_functor>
+            return common::right_boundary_tensor_mpo<Matrix, OtherMatrix, SymmGroup, rbtm_functor>
                    (mps, right, mpo, in_low);
         }
 
@@ -132,7 +132,7 @@ namespace contraction {
                               Boundary<OtherMatrix, SymmGroup> const & left,
                               MPOTensor<Matrix, SymmGroup> const & mpo)
         {
-            return common::overlap_mpo_left_step<Matrix, OtherMatrix, SymmGroup, abelian::Gemms, lbtm_functor>
+            return common::overlap_mpo_left_step<Matrix, OtherMatrix, SymmGroup, lbtm_functor>
                    (bra_tensor, ket_tensor, left, mpo);
         }
 
@@ -142,7 +142,7 @@ namespace contraction {
                                Boundary<OtherMatrix, SymmGroup> const & right,
                                MPOTensor<Matrix, SymmGroup> const & mpo)
         {
-            return common::overlap_mpo_right_step<Matrix, OtherMatrix, SymmGroup, abelian::Gemms, rbtm_functor>
+            return common::overlap_mpo_right_step<Matrix, OtherMatrix, SymmGroup, rbtm_functor>
                    (bra_tensor, ket_tensor, right, mpo);
         }
 

@@ -78,7 +78,7 @@ namespace contraction {
             return t1;
         }
 
-        template<class Matrix, class OtherMatrix, class SymmGroup, class Gemm, class Kernel>
+        template<class Matrix, class OtherMatrix, class SymmGroup, class Kernel>
         static Boundary<Matrix, SymmGroup>
         left_boundary_tensor_mpo(MPSTensor<Matrix, SymmGroup> mps,
                                  Boundary<OtherMatrix, SymmGroup> const & left,
@@ -91,7 +91,7 @@ namespace contraction {
             if (in_low == NULL)
                 in_low = &mps.row_dim();
 
-            BoundaryMPSProduct<Matrix, OtherMatrix, SymmGroup, Gemm> t(mps, left, mpo);
+            BoundaryMPSProduct<Matrix, OtherMatrix, SymmGroup> t(mps, left, mpo);
 
             Index<SymmGroup> physical_i = mps.site_dim(), left_i = *in_low, right_i = mps.col_dim(),
                                           out_left_i = physical_i * left_i;
@@ -125,7 +125,7 @@ namespace contraction {
     #endif
         }
 
-        template<class Matrix, class OtherMatrix, class SymmGroup, class Gemm, class Kernel>
+        template<class Matrix, class OtherMatrix, class SymmGroup, class Kernel>
         static Boundary<Matrix, SymmGroup>
         right_boundary_tensor_mpo(MPSTensor<Matrix, SymmGroup> mps,
                                   Boundary<OtherMatrix, SymmGroup> const & right,
@@ -139,7 +139,7 @@ namespace contraction {
             if (in_low == NULL)
                 in_low = &mps.col_dim();
 
-            contraction::common::MPSBoundaryProduct<Matrix, OtherMatrix, SymmGroup, Gemm> t(mps, right, mpo);
+            MPSBoundaryProduct<Matrix, OtherMatrix, SymmGroup> t(mps, right, mpo);
 
             Index<SymmGroup> physical_i = mps.site_dim(), left_i = mps.row_dim(), right_i = *in_low,
                              out_right_i = adjoin(physical_i) * right_i;
@@ -170,7 +170,7 @@ namespace contraction {
             return ret;
         }
 
-        template<class Matrix, class OtherMatrix, class SymmGroup, class Gemm, class Kernel>
+        template<class Matrix, class OtherMatrix, class SymmGroup, class Kernel>
         static Boundary<OtherMatrix, SymmGroup>
         overlap_mpo_left_step(MPSTensor<Matrix, SymmGroup> const & bra_tensor,
                               MPSTensor<Matrix, SymmGroup> const & ket_tensor,
@@ -181,7 +181,7 @@ namespace contraction {
             typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
 
             MPSTensor<Matrix, SymmGroup> ket_cpy = ket_tensor;
-            BoundaryMPSProduct<Matrix, OtherMatrix, SymmGroup, Gemm> t(ket_cpy, left, mpo);
+            BoundaryMPSProduct<Matrix, OtherMatrix, SymmGroup> t(ket_cpy, left, mpo);
 
             Index<SymmGroup> const & left_i = bra_tensor.row_dim();
             Index<SymmGroup> right_i = ket_tensor.col_dim();
@@ -220,14 +220,14 @@ namespace contraction {
                 if (mpo.herm_info.right_skip(b2)) continue;
                 ContractionGrid<Matrix, SymmGroup> contr_grid(mpo, 0, 0);
                 Kernel()(b2, contr_grid, left, t, mpo, ket_basis_transpose, right_i, out_left_i, in_right_pb, out_left_pb);
-                typename Gemm::gemm()(transpose(contr_grid(0,0)), bra_conj, ret[b2], MPOTensor_detail::get_spin(mpo, b2, false));
+                gemm(transpose(contr_grid(0,0)), bra_conj, ret[b2]);
             });
 
             return ret;
     #endif
         }
 
-        template<class Matrix, class OtherMatrix, class SymmGroup, class Gemm, class Kernel>
+        template<class Matrix, class OtherMatrix, class SymmGroup, class Kernel>
         static Boundary<OtherMatrix, SymmGroup>
         overlap_mpo_right_step(MPSTensor<Matrix, SymmGroup> const & bra_tensor,
                                MPSTensor<Matrix, SymmGroup> const & ket_tensor,
@@ -239,7 +239,7 @@ namespace contraction {
             parallel::scheduler_permute scheduler(mpo.placement_l, parallel::groups_granularity);
 
             MPSTensor<Matrix, SymmGroup> ket_cpy = ket_tensor;
-            contraction::common::MPSBoundaryProduct<Matrix, OtherMatrix, SymmGroup, Gemm> t(ket_cpy, right, mpo);
+            MPSBoundaryProduct<Matrix, OtherMatrix, SymmGroup> t(ket_cpy, right, mpo);
             t.initialize_indices();
 
             Index<SymmGroup> const & physical_i = ket_tensor.site_dim(),
@@ -278,7 +278,7 @@ namespace contraction {
                 Kernel()(b1, ret[b1], right, t, mpo, ket_cpy.data().basis(), left_i, out_right_i, in_left_pb, out_right_pb);
 
                 block_matrix<Matrix, SymmGroup> tmp;
-                typename Gemm::gemm()(ret[b1], transpose(bra_conj), tmp, MPOTensor_detail::get_spin(mpo, b1, true));
+                gemm(ret[b1], transpose(bra_conj), tmp);
                 swap(ret[b1], tmp);
             });
     #endif

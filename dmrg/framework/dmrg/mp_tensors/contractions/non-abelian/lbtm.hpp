@@ -42,7 +42,7 @@ namespace SU2 {
     void lbtm_kernel(size_t b2,
                      ContractionGrid<Matrix, SymmGroup>& contr_grid,
                      Boundary<OtherMatrix, SymmGroup> const & left,
-                     BoundaryMPSProduct<Matrix, OtherMatrix, SymmGroup, ::SU2::SU2Gemms> const & left_mult_mps,
+                     BoundaryMPSProduct<Matrix, OtherMatrix, SymmGroup> const & left_mult_mps,
                      MPOTensor<Matrix, SymmGroup> const & mpo,
                      DualIndex<SymmGroup> const & ket_basis,
                      Index<SymmGroup> const & right_i,

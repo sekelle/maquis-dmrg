@@ -43,7 +43,7 @@ namespace contraction {
         typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
 
         std::vector<block_matrix<Matrix, SymmGroup> > t
-            = common::mps_times_boundary<Matrix, OtherMatrix, SymmGroup, Gemms>(ket_tensor, right, mpo);
+            = common::mps_times_boundary<Matrix, OtherMatrix, SymmGroup>(ket_tensor, right, mpo);
 
         Index<SymmGroup> const & physical_i = ket_tensor.site_dim(),
                                  right_i = ket_tensor.col_dim();
