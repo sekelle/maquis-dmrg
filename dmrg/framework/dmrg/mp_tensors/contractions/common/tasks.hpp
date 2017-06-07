@@ -219,18 +219,28 @@ public:
         {
             index_type b2 = bs[i];
             memset(&S(0,0), 0, m_size * r_size * sizeof(typename Matrix::value_type));
-            assert(b2 < ret.aux_dim());
-            assert(b2 < b_to_o.size());
-            assert(b_to_o[b2] < ret[b2].n_blocks());
-            assert(r_size == num_cols(ret[b2][b_to_o[b2]]));
 
             for (index_type j = 0; j < tasks[i].size(); ++j)
                 maquis::dmrg::detail::iterator_axpy(&T[tasks[i][j].t_index](0,0),
                                                     &T[tasks[i][j].t_index](0,0) + m_size * r_size,
                                                     &S(0,0), tasks[i][j].scale);
-                                                    //&ret[b2][b_to_o[b2]](0, 0), tasks[i][j].scale);
             for (unsigned c = 0; c < r_size; ++c)
                 maquis::dmrg::detail::iterator_axpy(&S(0,c), &S(0,c) + m_size, &ret[b2][b_to_o[b2]](offset,c), 1.0);
+        }
+    }
+
+    template <class OtherMatrix>
+    void rbtm(const value_type* t_pointer, std::vector<Matrix> const & T, Boundary<OtherMatrix, SymmGroup> & ret,
+         std::vector<unsigned> const & b_to_o) const
+    {
+        for (index_type i = 0; i < tasks.size(); ++i)
+        {
+            index_type b1 = bs[i];
+
+            for (index_type j = 0; j < tasks[i].size(); ++j)
+                maquis::dmrg::detail::iterator_axpy(&T[tasks[i][j].t_index](0,0),
+                                                    &T[tasks[i][j].t_index](0,0) + m_size * r_size,
+                                                    &ret[b1][b_to_o[b1]](0, offset), tasks[i][j].scale);
         }
     }
 
@@ -343,6 +353,22 @@ public:
             (*this)[ss1].lbtm(t_pointer, T, new_left, b_to_o);
         }
         T = std::vector<Matrix>(); 
+        //drop_T<value_type>();
+    }
+
+    template <class DefaultMatrix, class OtherMatrix>
+    void rbtm(MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
+              std::vector<unsigned> const & b_to_o,
+              Boundary<OtherMatrix, SymmGroup> const & right,
+              Boundary<OtherMatrix, SymmGroup> & new_right) const
+    {
+        create_T_generic(ket_mps, right);
+        for (int ss1 = 0; ss1 < this->size(); ++ss1)
+        {
+            if (!(*this)[ss1].n_tasks()) continue;
+            (*this)[ss1].rbtm(t_pointer, T, new_right, b_to_o);
+        }
+        T = std::vector<Matrix>();
         //drop_T<value_type>();
     }
 

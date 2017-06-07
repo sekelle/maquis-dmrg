@@ -133,31 +133,9 @@ namespace contraction {
                               Boundary<OtherMatrix, SymmGroup> const & left,
                               MPOTensor<Matrix, SymmGroup> const & mpo)
         {
-            Boundary<OtherMatrix, SymmGroup> lbtm = left_boundary_tensor_mpo(ket_tensor, left, mpo);
 
-            MPSTensor<Matrix, SymmGroup> bra_lp = bra_tensor;
-            bra_lp.make_left_paired();
-            Boundary<OtherMatrix, SymmGroup> check_left;
-            check_left.resize(lbtm.aux_dim());
-            for (int b = 0; b < lbtm.aux_dim(); ++ b)
-            {
-                if (mpo.herm_info.right_skip(b)) continue;
-                ::SU2::gemm(transpose(bra_lp.data()), lbtm[b], check_left[b], MPOTensor_detail::get_spin(mpo, b, false));
-            }
-
-            Boundary<OtherMatrix, SymmGroup> ret = common::overlap_mpo_left_step<Matrix, OtherMatrix, SymmGroup>
+            return common::overlap_mpo_left_step<Matrix, OtherMatrix, SymmGroup>
                    (bra_tensor, ket_tensor, left, mpo, SU2::lshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
-
-            for (int b = 0; b < lbtm.aux_dim(); ++ b)
-            {
-                assert(check_left[b].basis() == ret[b].basis());
-                assert( std::abs((check_left[b] - ret[b]).norm()) < 1e-6 );
-            }
-
-            return ret;
-
-            //return common::overlap_mpo_left_step<Matrix, OtherMatrix, SymmGroup>
-            //       (bra_tensor, ket_tensor, left, mpo, SU2::lshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
         }
 
         static Boundary<OtherMatrix, SymmGroup>
@@ -166,8 +144,33 @@ namespace contraction {
                                Boundary<OtherMatrix, SymmGroup> const & right,
                                MPOTensor<Matrix, SymmGroup> const & mpo)
         {
-            return common::overlap_mpo_right_step<Matrix, OtherMatrix, SymmGroup>
+            //Boundary<OtherMatrix, SymmGroup> rbtm = right_boundary_tensor_mpo(ket_tensor, right, mpo);
+            Boundary<OtherMatrix, SymmGroup> rbtm = common::right_boundary_tensor_mpo<Matrix, OtherMatrix, SymmGroup>
+                                                        (ket_tensor, right, mpo, SU2::rshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
+
+            MPSTensor<Matrix, SymmGroup> bra_rp = bra_tensor;
+            bra_rp.make_right_paired();
+            Boundary<OtherMatrix, SymmGroup> check_right;
+            check_right.resize(rbtm.aux_dim());
+            for (int b = 0; b < rbtm.aux_dim(); ++ b)
+            {
+                if (mpo.herm_info.left_skip(b)) continue;
+                ::SU2::gemm(rbtm[b], transpose(bra_rp.data()), check_right[b], MPOTensor_detail::get_spin(mpo, b, true));
+            }
+
+            Boundary<OtherMatrix, SymmGroup> ret = common::overlap_mpo_right_step<Matrix, OtherMatrix, SymmGroup>
                    (bra_tensor, ket_tensor, right, mpo, SU2::rshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
+
+            for (int b = 0; b < rbtm.aux_dim(); ++ b)
+            {
+                assert(check_right[b].basis() == ret[b].basis());
+                assert( std::abs((check_right[b] - ret[b]).norm()) < 1e-6 );
+            }
+
+            return ret;
+
+            //return common::overlap_mpo_right_step<Matrix, OtherMatrix, SymmGroup>
+            //       (bra_tensor, ket_tensor, right, mpo, SU2::rshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
         }
 
         static schedule_t
