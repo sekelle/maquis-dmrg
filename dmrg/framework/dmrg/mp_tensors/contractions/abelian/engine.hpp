@@ -94,7 +94,7 @@ namespace contraction {
                           block_matrix<OtherMatrix, SymmGroup> const & left,
                           block_matrix<OtherMatrix, SymmGroup> * localop = NULL)
         {
-            return common::overlap_left_step<Matrix, OtherMatrix, SymmGroup, abelian::Gemms>(bra_tensor, ket_tensor, left, localop);
+            return common::overlap_left_step<Matrix, OtherMatrix, SymmGroup>(bra_tensor, ket_tensor, left);
         }
 
         static block_matrix<OtherMatrix, SymmGroup>
@@ -103,7 +103,7 @@ namespace contraction {
                            block_matrix<OtherMatrix, SymmGroup> const & right,
                            block_matrix<OtherMatrix, SymmGroup> * localop = NULL)
         {
-            return common::overlap_right_step<Matrix, OtherMatrix, SymmGroup, abelian::Gemms>(bra_tensor, ket_tensor, right, localop);
+            return common::overlap_right_step<Matrix, OtherMatrix, SymmGroup>(bra_tensor, ket_tensor, right);
         }
 
         static Boundary<Matrix, SymmGroup>
