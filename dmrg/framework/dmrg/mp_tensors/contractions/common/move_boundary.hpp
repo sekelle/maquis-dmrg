@@ -350,7 +350,7 @@ namespace contraction {
                              out_left_i = physical_i * left_i;
 
             common_subset(out_left_i, right_i);
-            ProductBasis<SymmGroup> out_left_pb(physical_i, left_i);
+            ProductBasis<SymmGroup> left_pb(physical_i, left_i);
             ProductBasis<SymmGroup> right_pb(physical_i, right_i,
                                     boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
                                             -boost::lambda::_1, boost::lambda::_2));
@@ -372,8 +372,6 @@ namespace contraction {
                 {
                     charge rc_bra = it->first;
                     unsigned ls_paired = out_left_i.size_of_block(rc_bra);
-                    // reserve all (rc_bra,rc_ket) blocks
-                    //maquis::cout << rc_bra << rc_ket << std::endl;
                     it->second.reserve(rc_bra, rc_ket, ls_paired, rs_ket, ret);
 
                     for (unsigned s = 0; s < it->second.size(); ++s)
@@ -382,8 +380,8 @@ namespace contraction {
                         charge lc_bra = left_i[lb_bra].first;
                         charge phys_out = SymmGroup::fuse(rc_bra, -lc_bra);
 
-                        unsigned out_left_offset = out_left_pb(phys_out, lc_bra);
-                        it->second[s][0].offset = out_left_offset; // assuming single-site, only need index 0
+                        // assuming single-site, only need index 0
+                        it->second[s][0].offset = left_pb(phys_out, lc_bra);
                     }
                 }
             }
@@ -400,12 +398,6 @@ namespace contraction {
                 }
             });
 
-            //omp_for(index_type b, parallel::range<index_type>(0,mpo.col_dim()), {
-            //    block_matrix<OtherMatrix, SymmGroup> tmp;
-            //    reshape_right_to_left_new(physical_i, left_i, right_i, ret[b], tmp);
-            //    swap(ret[b], tmp);
-            //});
-            
             return ret;
         }
 

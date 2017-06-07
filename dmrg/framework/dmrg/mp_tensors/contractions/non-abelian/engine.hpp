@@ -111,8 +111,10 @@ namespace contraction {
                                  MPOTensor<Matrix, SymmGroup> const & mpo,
                                  Index<SymmGroup> const * in_low = NULL)
         {
-            return common::left_boundary_tensor_mpo<Matrix, OtherMatrix, SymmGroup, ::SU2::SU2Gemms, lbtm_functor>
-                   (mps, left, mpo, in_low);
+            //return common::left_boundary_tensor_mpo<Matrix, OtherMatrix, SymmGroup, ::SU2::SU2Gemms, lbtm_functor>
+            //       (mps, left, mpo, in_low);
+            return common::left_boundary_tensor_mpo<Matrix, OtherMatrix, SymmGroup>
+                    (mps, left, mpo, SU2::lshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
         }
 
         static Boundary<Matrix, SymmGroup>
@@ -131,34 +133,22 @@ namespace contraction {
                               Boundary<OtherMatrix, SymmGroup> const & left,
                               MPOTensor<Matrix, SymmGroup> const & mpo)
         {
-            Boundary<OtherMatrix, SymmGroup> lbtm1 = left_boundary_tensor_mpo(ket_tensor, left, mpo);
-            maquis::cout << "lbtm1 " << lbtm1.aux_dim() << std::endl;
+            Boundary<OtherMatrix, SymmGroup> lbtm = left_boundary_tensor_mpo(ket_tensor, left, mpo);
 
-            Boundary<OtherMatrix, SymmGroup> lbtm2
-                = common::left_boundary_tensor_mpo<Matrix, OtherMatrix, SymmGroup>
-                    (ket_tensor, left, mpo, SU2::lshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
-
-            maquis::cout << "lbtm2 " << lbtm2.aux_dim() << std::endl;
             MPSTensor<Matrix, SymmGroup> bra_lp = bra_tensor;
             bra_lp.make_left_paired();
             Boundary<OtherMatrix, SymmGroup> check_left;
-            check_left.resize(lbtm2.aux_dim());
-            for (int b = 0; b < lbtm2.aux_dim(); ++ b)
+            check_left.resize(lbtm.aux_dim());
+            for (int b = 0; b < lbtm.aux_dim(); ++ b)
             {
-                //if (lbtm1[b].basis() != lbtm2[b].basis())
-                //maquis::cout << b << std::endl << lbtm1[b].basis() << std::endl << lbtm2[b].basis() << std::endl;
-                //assert(lbtm1[b].basis() == lbtm2[b].basis());
                 if (mpo.herm_info.right_skip(b)) continue;
-                //maquis::cout << b << std::endl << transpose(lbtm2[b]).basis() << std::endl << bra_lp.data().basis() << std::endl;
-                //::SU2::gemm(transpose(bra_lp.data()), lbtm2[b], check_left[b], MPOTensor_detail::get_spin(mpo, b, false));
-                ::SU2::gemm(transpose(lbtm2[b]), bra_lp.data(), check_left[b], MPOTensor_detail::get_spin(mpo, b, false));
-                check_left[b].transpose_inplace();
+                ::SU2::gemm(transpose(bra_lp.data()), lbtm[b], check_left[b], MPOTensor_detail::get_spin(mpo, b, false));
             }
 
             Boundary<OtherMatrix, SymmGroup> ret = common::overlap_mpo_left_step<Matrix, OtherMatrix, SymmGroup>
                    (bra_tensor, ket_tensor, left, mpo, SU2::lshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
 
-            for (int b = 0; b < lbtm2.aux_dim(); ++ b)
+            for (int b = 0; b < lbtm.aux_dim(); ++ b)
             {
                 assert(check_left[b].basis() == ret[b].basis());
                 assert( std::abs((check_left[b] - ret[b]).norm()) < 1e-6 );
