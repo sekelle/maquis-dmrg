@@ -36,26 +36,26 @@
 namespace contraction {
     namespace common {
 
-        template<class Matrix, class OtherMatrix, class SymmGroup, class Gemm, class Kernel>
+        template<class Matrix, class OtherMatrix, class SymmGroup, class LBTM>
         static std::pair<MPSTensor<Matrix, SymmGroup>, truncation_results>
         predict_new_state_l2r_sweep(MPSTensor<Matrix, SymmGroup> const & mps,
                                     MPOTensor<Matrix, SymmGroup> const & mpo,
                                     Boundary<OtherMatrix, SymmGroup> const & left,
                                     Boundary<OtherMatrix, SymmGroup> const & right,
+                                    LBTM lbtm,
                                     double alpha, double cutoff, std::size_t Mmax)
         {
             mps.make_left_paired();
             block_matrix<Matrix, SymmGroup> dm;
-            typename Gemm::gemm()(mps.data(), transpose(conjugate(mps.data())), dm);
+            gemm(mps.data(), transpose(conjugate(mps.data())), dm);
             
-            Boundary<Matrix, SymmGroup> half_dm
-                = left_boundary_tensor_mpo<Matrix, OtherMatrix, SymmGroup, Gemm, Kernel>(mps, left, mpo);
+            Boundary<Matrix, SymmGroup> half_dm = lbtm(mps, left, mpo, NULL);
             
             mps.make_left_paired();
             for (std::size_t b = 0; b < half_dm.aux_dim(); ++b)
             {
                 block_matrix<Matrix, SymmGroup> tdm;
-                typename Gemm::gemm()(half_dm[b], transpose(conjugate(half_dm[b])), tdm);
+                gemm(half_dm[b], transpose(conjugate(half_dm[b])), tdm);
                 
                 
                 tdm *= alpha;
