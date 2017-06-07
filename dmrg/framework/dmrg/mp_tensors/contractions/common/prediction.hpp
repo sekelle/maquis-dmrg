@@ -147,7 +147,7 @@ namespace contraction {
             A.make_right_paired();
             
             block_matrix<Matrix, SymmGroup> tmp;
-            (psi.data(), transpose(conjugate(A.data())), tmp);
+            gemm(psi.data(), transpose(conjugate(A.data())), tmp);
             
             B.multiply_from_right(tmp);
             
