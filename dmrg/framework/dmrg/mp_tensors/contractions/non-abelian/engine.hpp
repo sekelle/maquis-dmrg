@@ -172,7 +172,7 @@ namespace contraction {
                                   MPSTensor<Matrix, SymmGroup> const & psi,
                                   MPSTensor<Matrix, SymmGroup> const & A)
         {
-            return common::predict_lanczos_l2r_sweep<Matrix, OtherMatrix, SymmGroup, ::SU2::SU2Gemms>(B, psi, A);
+            return common::predict_lanczos_l2r_sweep<Matrix, OtherMatrix, SymmGroup>(B, psi, A);
         }
 
         static std::pair<MPSTensor<Matrix, SymmGroup>, truncation_results>
@@ -191,7 +191,7 @@ namespace contraction {
                                   MPSTensor<Matrix, SymmGroup> const & psi,
                                   MPSTensor<Matrix, SymmGroup> const & A)
         {
-            return common::predict_lanczos_r2l_sweep<Matrix, OtherMatrix, SymmGroup, ::SU2::SU2Gemms>(B, psi, A);
+            return common::predict_lanczos_r2l_sweep<Matrix, OtherMatrix, SymmGroup>(B, psi, A);
         }
 
         static MPSTensor<Matrix, SymmGroup>

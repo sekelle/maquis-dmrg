@@ -79,7 +79,7 @@ namespace contraction {
             return std::make_pair(ret, trunc);
         }
         
-        template<class Matrix, class OtherMatrix, class SymmGroup, class Gemm>
+        template<class Matrix, class OtherMatrix, class SymmGroup>
         static MPSTensor<Matrix, SymmGroup>
         predict_lanczos_l2r_sweep(MPSTensor<Matrix, SymmGroup> B,
                                   MPSTensor<Matrix, SymmGroup> const & psi,
@@ -89,7 +89,7 @@ namespace contraction {
             A.make_left_paired();
             
             block_matrix<Matrix, SymmGroup> tmp;
-            typename Gemm::gemm()(transpose(conjugate(A.data())), psi.data(), tmp);
+            gemm(transpose(conjugate(A.data())), psi.data(), tmp);
             B.multiply_from_left(tmp);
             
             return B;
@@ -137,7 +137,7 @@ namespace contraction {
             return std::make_pair(ret, trunc);
         }
         
-        template<class Matrix, class OtherMatrix, class SymmGroup, class Gemm>
+        template<class Matrix, class OtherMatrix, class SymmGroup>
         static MPSTensor<Matrix, SymmGroup>
         predict_lanczos_r2l_sweep(MPSTensor<Matrix, SymmGroup> B,
                                   MPSTensor<Matrix, SymmGroup> const & psi,
@@ -147,7 +147,7 @@ namespace contraction {
             A.make_right_paired();
             
             block_matrix<Matrix, SymmGroup> tmp;
-            typename Gemm::gemm()(psi.data(), transpose(conjugate(A.data())), tmp);
+            (psi.data(), transpose(conjugate(A.data())), tmp);
             
             B.multiply_from_right(tmp);
             
