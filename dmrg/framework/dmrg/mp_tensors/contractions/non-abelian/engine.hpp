@@ -142,31 +142,8 @@ namespace contraction {
                                Boundary<OtherMatrix, SymmGroup> const & right,
                                MPOTensor<Matrix, SymmGroup> const & mpo)
         {
-            Boundary<OtherMatrix, SymmGroup> rbtm = right_boundary_tensor_mpo(ket_tensor, right, mpo);
-
-            MPSTensor<Matrix, SymmGroup> bra_rp = bra_tensor;
-            bra_rp.make_right_paired();
-            Boundary<OtherMatrix, SymmGroup> check_right;
-            check_right.resize(rbtm.aux_dim());
-            for (int b = 0; b < rbtm.aux_dim(); ++ b)
-            {
-                if (mpo.herm_info.left_skip(b)) continue;
-                gemm(rbtm[b], transpose(bra_rp.data()), check_right[b]);
-            }
-
-            Boundary<OtherMatrix, SymmGroup> ret = common::overlap_mpo_right_step<Matrix, OtherMatrix, SymmGroup>
+            return common::overlap_mpo_right_step<Matrix, OtherMatrix, SymmGroup>
                    (bra_tensor, ket_tensor, right, mpo, SU2::rshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
-
-            for (int b = 0; b < rbtm.aux_dim(); ++ b)
-            {
-                assert(check_right[b].basis() == ret[b].basis());
-                assert( std::abs((check_right[b] - ret[b]).norm()) < 1e-6 );
-            }
-
-            return ret;
-
-            //return common::overlap_mpo_right_step<Matrix, OtherMatrix, SymmGroup>
-            //       (bra_tensor, ket_tensor, right, mpo, SU2::rshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
         }
 
         static schedule_t
