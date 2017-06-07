@@ -162,8 +162,8 @@ namespace contraction {
                                     Boundary<OtherMatrix, SymmGroup> const & right,
                                     double alpha, double cutoff, std::size_t Mmax)
         {
-            return common::predict_new_state_l2r_sweep<Matrix, OtherMatrix, SymmGroup, abelian::Gemms, lbtm_functor>
-                   (mps, mpo, left, right, alpha, cutoff, Mmax);
+            return common::predict_new_state_l2r_sweep<Matrix, OtherMatrix, SymmGroup>
+                   (mps, mpo, left, right, left_boundary_tensor_mpo, alpha, cutoff, Mmax);
         }
 
         static MPSTensor<Matrix, SymmGroup>
@@ -171,7 +171,7 @@ namespace contraction {
                                   MPSTensor<Matrix, SymmGroup> const & psi,
                                   MPSTensor<Matrix, SymmGroup> const & A)
         {
-            return common::predict_lanczos_l2r_sweep<Matrix, OtherMatrix, SymmGroup, abelian::Gemms>(B, psi, A);
+            return common::predict_lanczos_l2r_sweep<Matrix, OtherMatrix, SymmGroup>(B, psi, A);
         }
 
         static std::pair<MPSTensor<Matrix, SymmGroup>, truncation_results>
@@ -181,8 +181,8 @@ namespace contraction {
                                     Boundary<OtherMatrix, SymmGroup> const & right,
                                     double alpha, double cutoff, std::size_t Mmax)
         {
-            return common::predict_new_state_r2l_sweep<Matrix, OtherMatrix, SymmGroup, abelian::Gemms, rbtm_functor>
-                   (mps, mpo, left, right, alpha, cutoff, Mmax);
+            return common::predict_new_state_r2l_sweep<Matrix, OtherMatrix, SymmGroup>
+                   (mps, mpo, left, right, right_boundary_tensor_mpo, alpha, cutoff, Mmax);
         }
 
         static MPSTensor<Matrix, SymmGroup>
@@ -190,7 +190,7 @@ namespace contraction {
                                   MPSTensor<Matrix, SymmGroup> const & psi,
                                   MPSTensor<Matrix, SymmGroup> const & A)
         {
-            return common::predict_lanczos_r2l_sweep<Matrix, OtherMatrix, SymmGroup, abelian::Gemms>(B, psi, A);
+            return common::predict_lanczos_r2l_sweep<Matrix, OtherMatrix, SymmGroup>(B, psi, A);
         }
 
         // non-generic method

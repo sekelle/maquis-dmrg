@@ -45,7 +45,8 @@ namespace SU2 {
                      Index<SymmGroup> const & phys_i,
                      ProductBasis<SymmGroup> const & right_pb,
                      unsigned rb_ket,
-                     typename common::Schedule<Matrix, SymmGroup>::block_type & mpsb)
+                     typename common::Schedule<Matrix, SymmGroup>::block_type & mpsb,
+                     bool skip = true)
     {
         typedef MPOTensor_detail::index_type index_type;
         typedef typename MPOTensor<Matrix, SymmGroup>::col_proxy col_proxy;
@@ -85,7 +86,7 @@ namespace SU2 {
                 t_map_t t_index;
                 for (index_type b2 = 0; b2 < mpo.col_dim(); ++b2)
                 {
-                    if (mpo.herm_info.right_skip(b2)) continue;
+                    if (mpo.herm_info.right_skip(b2) && skip) continue;
                     int Ap = mpo.right_spin(b2).get(); if (!::SU2::triangle(SymmGroup::spin(rc_ket), Ap, SymmGroup::spin(rc_bra))) continue;
 
                     for (typename col_proxy::const_iterator col_it = mpo.column(b2).begin(); col_it != mpo.column(b2).end(); ++col_it) {
