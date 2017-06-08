@@ -53,10 +53,10 @@ namespace detail {
 
         for (block_iterator it = blocks.first; it != blocks.second; ++it)
         {
-            unsigned ss1 = it->row;
-            unsigned ss2 = it->col;
-            unsigned rspin = it->row_spin;
-            unsigned cspin = it->col_spin;
+            unsigned ss1 = it->get_row();
+            unsigned ss2 = it->get_col();
+            unsigned rspin = it->get_row_spin();
+            unsigned cspin = it->get_col_spin();
             unsigned casenr = 0; 
             if (rspin == 2 && cspin == 2) casenr = 3;
             else if (rspin == 2) casenr = 1;
