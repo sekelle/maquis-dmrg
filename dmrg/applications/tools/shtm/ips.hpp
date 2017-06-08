@@ -37,8 +37,6 @@
 #include "dmrg/mp_tensors/mps.h"
 #include "dmrg/optimize/site_problem.h"
 
-#include "schedule_old.hpp"
-
 using namespace contraction;
 using namespace contraction::common;
 using namespace contraction::SU2;

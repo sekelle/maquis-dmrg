@@ -44,8 +44,8 @@
 #include "dmrg/mp_tensors/contractions/non-abelian/engine.hpp"
 
 #include "shtm/load.hpp"
-#include "shtm/prop.hpp"
-#include "shtm/ips.hpp"
+//#include "shtm/prop.hpp"
+//#include "shtm/ips.hpp"
 // provides MatrixGroupPrint, verbose version used for converting from rbtm schedule types
 #include "shtm/print_util.hpp"
 #include "shtm/matrix_group.hpp"
@@ -92,30 +92,7 @@ MPSTensor<matrix, symm> load_mps(std::string file)
     return mps;
 }
 
-//template <class SymmGroup>
-//void print_phys_index(Index<SymmGroup> const & phys, Index<SymmGroup> const & right_i, typename SymmGroup::charge mc)
-//{
-//    maquis::cout << std::endl;
-//    //maquis::cout << out_right_pb.size(mc) << std::endl;
-//    for (unsigned ss = 0; ss < physical_i.size(); ++ss)
-//    {
-//        charge phys = physical_i[ss].first;
-//        charge leftc = mc; 
-//        charge rc = SymmGroup::fuse(phys, leftc); 
-//        if (!right_i.has(rc)) continue;
-//
-//        unsigned rtotal = num_cols(initial.data()(mc, mc));
-//        
-//        unsigned r_size = right_i.size_of_block(rc);
-//        unsigned in_offset = out_right_pb(phys, rc);
-//        maquis::cout << rtotal << " " << phys << " ";
-//        for (int ss1 = 0; ss1 < physical_i[ss].second; ++ss1)
-//            maquis::cout << in_offset + ss1*r_size << "-" << in_offset + (ss1+1) * r_size << " ";
-//
-//        maquis::cout << std::endl;
-//    }
-//    maquis::cout << std::endl;
-//}
+#ifdef DO_NOT_COMPILE
 
 template <class Map, class Schedule, class Li>
 Map convert_to_matrix_group(Schedule const & contraction_schedule, Li const & left_indices)
@@ -291,6 +268,8 @@ void analyze(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & sp, MPSTensor<M
 
 }
 
+#endif
+
 int main(int argc, char ** argv)
 {
     try {
@@ -307,8 +286,8 @@ int main(int argc, char ** argv)
         int site = boost::lexical_cast<int>(argv[5]);
         SiteProblem<matrix, smatrix, symm> sp(initial, left, right, mpo[site]);
 
-        input_per_mps(sp, initial, site);
-        prop(sp, initial, site);
+        //input_per_mps(sp, initial, site);
+        //prop(sp, initial, site);
         //analyze(sp, initial);
 
     } catch (std::exception& e) {

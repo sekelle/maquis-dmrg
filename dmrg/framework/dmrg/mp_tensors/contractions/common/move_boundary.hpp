@@ -240,7 +240,6 @@ namespace contraction {
 
             MPSTensor<Matrix, SymmGroup> ket_cpy = ket_tensor;
             MPSBoundaryProduct<Matrix, OtherMatrix, SymmGroup> t(ket_cpy, right, mpo);
-            t.initialize_indices();
 
             Index<SymmGroup> const & physical_i = ket_tensor.site_dim(),
                                      right_i = bra_tensor.col_dim();
@@ -255,7 +254,6 @@ namespace contraction {
             Boundary<Matrix, SymmGroup> ret;
             ret.resize(mpo.row_dim());
 
-            //ket_tensor.make_right_paired();
             index_type loop_max = mpo.row_dim();
 
             bra_tensor.make_right_paired();

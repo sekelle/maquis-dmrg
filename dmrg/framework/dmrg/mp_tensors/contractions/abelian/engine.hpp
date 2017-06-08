@@ -35,7 +35,6 @@
 
 #include "dmrg/mp_tensors/contractions/common/common.h"
 #include "dmrg/mp_tensors/contractions/abelian/apply_op.hpp"
-#include "dmrg/mp_tensors/contractions/abelian/functors.hpp"
 
 namespace contraction {
 

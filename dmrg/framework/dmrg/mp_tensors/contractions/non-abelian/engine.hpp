@@ -33,13 +33,10 @@
 
 #include "dmrg/mp_tensors/contractions/common/common.h"
 
-#include "dmrg/mp_tensors/contractions/non-abelian/lbtm.hpp"
-#include "dmrg/mp_tensors/contractions/non-abelian/rbtm.hpp"
 #include "dmrg/mp_tensors/contractions/non-abelian/shtm.hpp"
 #include "dmrg/mp_tensors/contractions/non-abelian/rshtm.hpp"
 #include "dmrg/mp_tensors/contractions/non-abelian/lshtm.hpp"
 #include "dmrg/mp_tensors/contractions/non-abelian/gemm.hpp"
-#include "dmrg/mp_tensors/contractions/non-abelian/functors.h"
 #include "dmrg/mp_tensors/contractions/non-abelian/h_diag.hpp"
 
 namespace contraction {
@@ -47,40 +44,6 @@ namespace contraction {
     template <class Matrix, class OtherMatrix, class SymmGroup>
     class Engine<Matrix, OtherMatrix, SymmGroup, typename boost::enable_if<symm_traits::HasSU2<SymmGroup> >::type>
     {
-        struct lbtm_functor
-        {
-            void operator()(size_t b2,
-                            ContractionGrid<Matrix, SymmGroup>& contr_grid,
-                            Boundary<OtherMatrix, SymmGroup> const & left,
-                            BoundaryMPSProduct<Matrix, OtherMatrix, SymmGroup> const & left_mult_mps,
-                            MPOTensor<Matrix, SymmGroup> const & mpo,
-                            DualIndex<SymmGroup> const & ket_basis,
-                            Index<SymmGroup> const & right_i,
-                            Index<SymmGroup> const & out_left_i,
-                            ProductBasis<SymmGroup> const & in_right_pb,
-                            ProductBasis<SymmGroup> const & out_left_pb)
-            {
-                return SU2::lbtm_kernel(b2, contr_grid, left, left_mult_mps, mpo, ket_basis, right_i, out_left_i, in_right_pb, out_left_pb);
-            }
-        };
-
-        struct rbtm_functor
-        {
-            void operator()(size_t b1,
-                            block_matrix<Matrix, SymmGroup> & ret,
-                            Boundary<OtherMatrix, SymmGroup> const & right,
-                            MPSBoundaryProduct<Matrix, OtherMatrix, SymmGroup> const & right_mult_mps,
-                            MPOTensor<Matrix, SymmGroup> const & mpo,
-                            DualIndex<SymmGroup> const & ket_basis,
-                            Index<SymmGroup> const & left_i,
-                            Index<SymmGroup> const & out_right_i,
-                            ProductBasis<SymmGroup> const & in_left_pb,
-                            ProductBasis<SymmGroup> const & out_right_pb)
-            {
-                return SU2::rbtm_kernel(b1, ret, right, right_mult_mps, mpo, ket_basis, left_i, out_right_i, in_left_pb, out_right_pb);
-            }
-        };
-
     public:
 
         typedef typename common::Schedule<Matrix, SymmGroup>::schedule_t schedule_t;

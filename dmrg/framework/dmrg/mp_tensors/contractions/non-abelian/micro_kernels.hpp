@@ -35,124 +35,8 @@ namespace contraction {
 namespace SU2 {
 namespace detail {
 
-    using ::contraction::common::detail::micro_task;
     using ::contraction::common::MPSBlock;
     using ::contraction::common::MatrixGroup;
-
-    template<class Matrix, class SymmGroup>
-    void lbtm(Matrix const & iblock, Matrix & oblock, typename operator_selector<Matrix, SymmGroup>::type const & W,
-              std::size_t in_right_offset, std::size_t out_left_offset, std::size_t l_size, std::size_t r_size, std::size_t w_block,
-              typename Matrix::value_type couplings[])
-    {
-        typedef typename SparseOperator<Matrix, SymmGroup>::const_iterator block_iterator;
-        std::pair<block_iterator, block_iterator> blocks = W.get_sparse().block(w_block);
-
-        for(size_t rr = 0; rr < r_size; ++rr) {
-            for( block_iterator it = blocks.first; it != blocks.second; ++it)
-            {
-                std::size_t ss1 = it->row;
-                std::size_t ss2 = it->col;
-                std::size_t rspin = it->row_spin;
-                std::size_t cspin = it->col_spin;
-                std::size_t casenr = 0;
-                if (rspin == 2 && cspin == 2) casenr = 3;
-                else if (rspin == 2) casenr = 1;
-                else if (cspin == 2) casenr = 2;
-
-                typename Matrix::value_type alfa_t = it->coefficient * couplings[casenr];
-                maquis::dmrg::detail::iterator_axpy(&iblock(0, in_right_offset + ss1*r_size + rr),
-                                                    &iblock(0, in_right_offset + ss1*r_size + rr) + l_size,
-                                                    &oblock(out_left_offset + ss2*l_size, rr),
-                                                    alfa_t);
-            }
-        }
-    }
-
-
-    template<class Matrix, class SymmGroup>
-    void rbtm_blocked(Matrix const & iblock, Matrix & oblock, typename operator_selector<Matrix, SymmGroup>::type const & W,
-                                 std::size_t in_right_offset, std::size_t out_right_offset, std::size_t l_size, std::size_t r_size, std::size_t w_block,
-                                 typename Matrix::value_type couplings[])
-    {
-        typedef typename SparseOperator<Matrix, SymmGroup>::const_iterator block_iterator;
-        std::pair<block_iterator, block_iterator> blocks = W.get_sparse().block(w_block);
-
-        const size_t chunk = 1024;
-        const size_t blength = r_size*l_size;
-        for(size_t rr = 0; rr < blength/chunk; ++rr) {
-            for( block_iterator it = blocks.first; it != blocks.second; ++it)
-            {
-                std::size_t ss1 = it->row;
-                std::size_t ss2 = it->col;
-                std::size_t rspin = it->row_spin;
-                std::size_t cspin = it->col_spin;
-                std::size_t casenr = 0;
-                if (rspin == 2 && cspin == 2) casenr = 3;
-                else if (rspin == 2) casenr = 1;
-                else if (cspin == 2) casenr = 2;
-
-                typename Matrix::value_type alfa_t = it->coefficient * couplings[casenr];
-
-                assert(rr + chunk <= r_size*l_size);
-                maquis::dmrg::detail::iterator_axpy(&iblock(0, in_right_offset + ss1*r_size) + rr*chunk,
-                                                    &iblock(0, in_right_offset + ss1*r_size) + rr*chunk + chunk,
-                                                    &oblock(0, out_right_offset + ss2*r_size) + rr*chunk,
-                                                    alfa_t);
-            }
-        }
-
-        for( block_iterator it = blocks.first; it != blocks.second; ++it)
-        {
-            std::size_t ss1 = it->row;
-            std::size_t ss2 = it->col;
-            std::size_t rspin = it->row_spin;
-            std::size_t cspin = it->col_spin;
-            std::size_t casenr = 0;
-            if (rspin == 2 && cspin == 2) casenr = 3;
-            else if (rspin == 2) casenr = 1;
-            else if (cspin == 2) casenr = 2;
-
-            typename Matrix::value_type alfa_t = it->coefficient * couplings[casenr];
-
-            std::size_t start = blength - blength%chunk;
-            maquis::dmrg::detail::iterator_axpy(&iblock(0, in_right_offset + ss1*r_size) + start,
-                                                &iblock(0, in_right_offset + ss1*r_size) + blength,
-                                                &oblock(0, out_right_offset + ss2*r_size) + start,
-                                                alfa_t);
-        }
-    }
-
-    template <class Matrix, class SymmGroup>
-    void op_iterate(typename operator_selector<Matrix, SymmGroup>::type const & W, std::size_t w_block,
-                    typename Matrix::value_type couplings[],
-                    std::vector<micro_task<typename Matrix::value_type> > & tasks,
-                    micro_task<typename Matrix::value_type> tpl,
-                    size_t in_offset,
-                    size_t r_size_cache, size_t r_size, size_t out_right_offset)
-    {
-        typedef typename SparseOperator<Matrix, SymmGroup>::const_iterator block_iterator;
-        std::pair<block_iterator, block_iterator> blocks = W.get_sparse().block(w_block);
-
-        for (block_iterator it = blocks.first; it != blocks.second; ++it)
-        {
-            micro_task<typename Matrix::value_type> task = tpl;
-
-            std::size_t ss1 = it->row;
-            std::size_t ss2 = it->col;
-            std::size_t rspin = it->row_spin;
-            std::size_t cspin = it->col_spin;
-            std::size_t casenr = 0; 
-            if (rspin == 2 && cspin == 2) casenr = 3;
-            else if (rspin == 2) casenr = 1;
-            else if (cspin == 2) casenr = 2;
-
-            task.in_offset = in_offset + ss1*tpl.l_size;
-            task.scale = it->coefficient * couplings[casenr];
-            task.r_size = r_size_cache;
-            task.out_offset = out_right_offset + ss2*r_size;
-            tasks.push_back(task);
-        }
-    }
 
     template <class Matrix, class AlignedMatrix, class SymmGroup, class Map>
     void op_iterate_shtm(typename operator_selector<Matrix, SymmGroup>::type const & W, std::size_t w_block,
@@ -187,22 +71,6 @@ namespace detail {
 
             cg[ss2].push_back(task);
         }
-    }
-
-    template<typename T>
-    void task_axpy(micro_task<T> const & task, T * oblock, T const * source)
-    {
-        std::size_t l_size = task.l_size; 
-        std::size_t r_size = task.r_size; 
-        std::size_t stripe = task.stripe;
-        std::size_t out_right_offset = task.out_offset;
-
-        T alfa_t = task.scale;
-        for(size_t rr = 0; rr < r_size; ++rr) 
-            maquis::dmrg::detail::iterator_axpy(source + stripe * rr,
-                                                source + stripe * rr + l_size,
-                                                oblock + (out_right_offset + rr) * l_size,
-                                                alfa_t);
     }
 
 } // namespace detail

@@ -30,7 +30,6 @@
 #include "dmrg/block_matrix/symmetry/gsl_coupling.h"
 #include "dmrg/mp_tensors/mpstensor.h"
 #include "dmrg/mp_tensors/mpotensor.h"
-#include "dmrg/mp_tensors/contractions/non-abelian/functors.h"
 #include "dmrg/mp_tensors/contractions/non-abelian/micro_kernels.hpp"
 #include "dmrg/mp_tensors/contractions/non-abelian/gemm.hpp"
 

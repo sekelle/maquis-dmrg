@@ -296,47 +296,6 @@ namespace contraction {
     };
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
-    class MPSBoundaryProductIndices : public std::vector<DualIndex<SymmGroup> >
-    {
-        typedef std::vector<DualIndex<SymmGroup> > base;
-        typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
-        typedef typename maquis::traits::transpose_view<OtherMatrix>::type TVMatrix;
-
-    public:
-
-        MPSBoundaryProductIndices() {}
-
-        MPSBoundaryProductIndices(DualIndex<SymmGroup> const & mps_basis,
-                                  Boundary<OtherMatrix, SymmGroup> const & right,
-                                  MPOTensor<Matrix, SymmGroup> const & mpo) : base(right.aux_dim()), flops_(0)
-        {
-            parallel::scheduler_permute scheduler(mpo.placement_r, parallel::groups_granularity);
-
-            index_type loop_max = right.aux_dim();
-            omp_for(index_type b2, parallel::range(index_type(0),loop_max), {
-
-                // exploit hermiticity if available
-                if (mpo.herm_info.right_skip(b2))
-                {
-                    parallel::guard group(scheduler(b2), parallel::groups_granularity);
-
-                    block_matrix<TVMatrix, SymmGroup> trv = transpose(right[mpo.herm_info.right_conj(b2)]);
-                    (*this)[b2] = SU2::gemm_trim_right_pretend(mps_basis, trv, flops_);
-                }
-                else {
-                    parallel::guard group(scheduler(b2), parallel::groups_granularity);
-                    (*this)[b2] = SU2::gemm_trim_right_pretend(mps_basis, right[b2], flops_);
-                }
-            });
-        }
-
-        std::size_t flops() { return flops_; }
-
-    private:
-        std::size_t flops_;
-    };
-
-    template<class Matrix, class OtherMatrix, class SymmGroup>
     class MPSBoundaryProduct
     {
     public:
@@ -364,8 +323,8 @@ namespace contraction {
                     parallel::guard group(scheduler(b2), parallel::groups_granularity);
                     block_matrix<typename maquis::traits::transpose_view<OtherMatrix>::type, SymmGroup> trv
                         = transpose(right[mpo.herm_info.right_conj(b2)]);
-                    //std::vector<value_type> scales = conjugate_phases(trv.basis(), mpo, b2, false, true);
 
+                    //std::vector<value_type> scales = conjugate_phases(trv.basis(), mpo, b2, false, true);
                     gemm_trim_right(mps.data(), trv, data_[b2]);
                 }
                 else {
@@ -390,7 +349,6 @@ namespace contraction {
         block_matrix<Matrix, SymmGroup> & operator[](index_type k) { return data_[k]; }
         block_matrix<Matrix, SymmGroup> const & operator[](index_type k) const { return data_[k]; }
 
-        //block_matrix<Matrix, SymmGroup> const & at(std::size_t k, block_matrix<Matrix, SymmGroup> & storage) const
         block_matrix<Matrix, SymmGroup> const & at(index_type k) const
         {
             if (mpo.num_col_non_zeros(k) == 1)
@@ -401,7 +359,7 @@ namespace contraction {
                     {
                         block_matrix<typename maquis::traits::transpose_view<OtherMatrix>::type, SymmGroup> trv
                             = transpose(right[mpo.herm_info.right_conj(k)]);
-                        std::vector<value_type> scales = conjugate_phases(trv.basis(), mpo, k, false, true);
+                        //std::vector<value_type> scales = conjugate_phases(trv.basis(), mpo, k, false, true);
                         //typename Gemm::gemm_trim_right()(mps.data(), trv, storage, scales);
                         gemm_trim_right(mps.data(), trv, data_[k]);
                     }
@@ -428,17 +386,6 @@ namespace contraction {
                     }
         }
 
-        void initialize_indices()
-        {
-            indices_ = MPSBoundaryProductIndices<Matrix, OtherMatrix, SymmGroup>(mps.data().basis(), right, mpo);
-        }
-
-        MPSBoundaryProductIndices<Matrix, OtherMatrix, SymmGroup> const & indices() const
-        {
-            assert (indices_.size() == right.aux_dim()); // fires if indices are not initialized
-            return indices_;
-        }
-
     private:
         mutable std::vector<block_matrix<Matrix, SymmGroup> > data_;
         mutable std::vector<char> pop_;
@@ -446,8 +393,6 @@ namespace contraction {
         MPSTensor<Matrix, SymmGroup> const & mps;
         Boundary<OtherMatrix, SymmGroup> const & right;
         MPOTensor<Matrix, SymmGroup> const & mpo;
-
-        MPSBoundaryProductIndices<Matrix, OtherMatrix, SymmGroup> indices_;
     };
 
     } // namespace common
