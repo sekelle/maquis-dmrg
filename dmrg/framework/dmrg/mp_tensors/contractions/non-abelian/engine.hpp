@@ -41,6 +41,8 @@
 
 namespace contraction {
 
+    template <class Matrix, class OtherMatrix, class SymmGroup, class SymmType> class Engine;
+
     template <class Matrix, class OtherMatrix, class SymmGroup>
     class Engine<Matrix, OtherMatrix, SymmGroup, typename boost::enable_if<symm_traits::HasSU2<SymmGroup> >::type>
     {

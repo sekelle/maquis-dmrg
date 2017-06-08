@@ -43,6 +43,11 @@ namespace sparse_detail {
         {
         }
 
+        index_type get_row() const { return row; }
+        index_type get_row_spin() const { return 0; }
+        index_type get_col() const { return col; }
+        index_type get_col_spin() const { return 0; }
+
         index_type row, col;
         T coefficient;
 
@@ -67,6 +72,11 @@ namespace sparse_detail {
         : row(r), col(c), row_spin(rspin), col_spin(cspin), coefficient(coeff)
         {
         }
+
+        index_type get_row() const { return row; }
+        index_type get_row_spin() const { return row_spin; }
+        index_type get_col() const { return col; }
+        index_type get_col_spin() const { return col_spin; }
 
         index_type row, col;
         subcharge row_spin, col_spin;
