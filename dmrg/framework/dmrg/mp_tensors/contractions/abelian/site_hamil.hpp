@@ -40,7 +40,42 @@ namespace contraction {
                 MPOTensor<Matrix, SymmGroup> const & mpo,
                 schedule_t const & tasks)
     {
-        return site_hamil2(ket_tensor, left, right, mpo);
+        //return site_hamil2(ket_tensor, left, right, mpo);
+        typedef typename SymmGroup::charge charge;
+        typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
+        typedef typename Matrix::value_type value_type;
+
+        typedef typename common::Schedule<Matrix, SymmGroup>::block_type::const_iterator const_iterator;
+
+        ket_tensor.make_right_paired();
+
+        Index<SymmGroup> const & physical_i = ket_tensor.site_dim(), right_i = ket_tensor.col_dim(),
+                                 left_i = ket_tensor.row_dim();
+        DualIndex<SymmGroup> const & ket_basis = ket_tensor.data().basis();
+
+        MPSTensor<Matrix, SymmGroup> ret;
+        ret.phys_i = ket_tensor.site_dim(); ret.left_i = ket_tensor.row_dim(); ret.right_i = ket_tensor.col_dim();
+        block_matrix<Matrix, SymmGroup> collector(ket_basis);
+
+        index_type loop_max = tasks.size();
+        omp_for(index_type mps_block, parallel::range<index_type>(0,loop_max), {
+
+            Matrix destination(ket_basis.left_size(mps_block), ket_basis.right_size(mps_block));
+            for (const_iterator it = tasks[mps_block].begin(); it != tasks[mps_block].end(); ++it)
+            {
+                charge mc = it->first;
+                for (size_t s = 0; s < it->second.size(); ++s)
+                {
+                    typename common::Schedule<Matrix, SymmGroup>::block_type::mapped_value_type const & cg = it->second[s];
+                    cg.contract(ket_tensor, left, right, &destination(0,0));
+                }
+            }
+            swap(collector[mps_block], destination);
+        });
+
+        reshape_right_to_left_new(physical_i, left_i, right_i, collector, ret.data());
+
+        return ret;
     }
 
     template<class Matrix, class OtherMatrix, class SymmGroup, class SymmType>
@@ -51,6 +86,7 @@ namespace contraction {
                 Boundary<OtherMatrix, SymmGroup> const & right,
                 MPOTensor<Matrix, SymmGroup> const & mpo)
     {
+        throw std::runtime_error("wrong function\n");
         typedef typename SymmGroup::charge charge;
         typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
 

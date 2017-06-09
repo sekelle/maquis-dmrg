@@ -131,8 +131,8 @@ namespace contraction {
                               Boundary<OtherMatrix, SymmGroup> const & left,
                               MPOTensor<Matrix, SymmGroup> const & mpo)
         {
-            return common::overlap_mpo_left_step<Matrix, OtherMatrix, SymmGroup, lbtm_functor>
-                   (bra_tensor, ket_tensor, left, mpo);
+            return common::overlap_mpo_left_step<Matrix, OtherMatrix, SymmGroup>
+                   (bra_tensor, ket_tensor, left, mpo, SU2::lshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
         }
 
         static Boundary<OtherMatrix, SymmGroup>
@@ -141,8 +141,8 @@ namespace contraction {
                                Boundary<OtherMatrix, SymmGroup> const & right,
                                MPOTensor<Matrix, SymmGroup> const & mpo)
         {
-            return common::overlap_mpo_right_step<Matrix, OtherMatrix, SymmGroup, rbtm_functor>
-                   (bra_tensor, ket_tensor, right, mpo);
+            return common::overlap_mpo_right_step<Matrix, OtherMatrix, SymmGroup>
+                   (bra_tensor, ket_tensor, right, mpo, SU2::rshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
         }
 
         static schedule_t
@@ -151,7 +151,7 @@ namespace contraction {
                                    Boundary<OtherMatrix, SymmGroup> const & right,
                                    MPOTensor<Matrix, SymmGroup> const & mpo)
         {
-            return schedule_t();
+            return common::create_contraction_schedule(mps, left, right, mpo, SU2::shtm_tasks<Matrix, OtherMatrix, SymmGroup>);
         }
 
         static std::pair<MPSTensor<Matrix, SymmGroup>, truncation_results>
