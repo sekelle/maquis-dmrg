@@ -87,7 +87,7 @@ namespace SU2 {
                 for (index_type b1 = 0; b1 < mpo.row_dim(); ++b1)
                 {
                     unsigned left_block = left.position(b1, lc, mc); if (left_block == left[b1].size()) continue;
-                    int A = mpo.left_spin(b1).get(); if (!::SU2::triangle(SymmGroup::spin(mc), A, SymmGroup::spin(lc))) continue;
+                    int A = mpo.left_spin(b1).get(); if (!::SU2::triangle<SymmGroup>(mc, A, lc)) continue;
 
                     index_type b1_eff = (mpo.herm_info.left_skip(b1)) ? mpo.herm_info.left_conj(b1) : b1;
 
@@ -115,7 +115,7 @@ namespace SU2 {
                                 value_type couplings[4];
                                 value_type scale = right.conj_scales[b2][right_block] * access.scale(op_index)
                                                  *  left.conj_scales[b1][left_block];
-                                w9j.set_scale(A, K, Ap, SymmGroup::spin(tlc), scale, couplings);
+                                w9j.set_scale(A, K, Ap, tlc, scale, couplings);
 
                                 char right_transpose = mpo.herm_info.right_skip(b2);
                                 unsigned b2_eff = (right_transpose) ? mpo.herm_info.right_conj(b2) : b2;

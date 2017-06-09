@@ -36,8 +36,8 @@ extern "C" {
 namespace SU2 {
 
     inline double mod_coupling(int a, int b, int c,
-                        int d, int e, int f,
-                        int g, int h, int i)
+                               int d, int e, int f,
+                               int g, int h, int i)
     {
         double ret = sqrt( (g+1.) * (h+1.) * (c+1.) * (f+1.) ) *
                gsl_sf_coupling_9j(a, b, c,
@@ -49,6 +49,24 @@ namespace SU2 {
     inline bool triangle(int a, int b, int c)
     {
         return std::abs(a-b) <= c && c <= a+b;
+    }
+
+    template <class SymmGroup>
+    inline typename boost::enable_if<symm_traits::HasSU2<SymmGroup>, bool>::type
+    triangle(typename SymmGroup::charge a,
+             int b,
+             typename SymmGroup::charge c)
+    {
+        return triangle(SymmGroup::spin(a), SymmGroup::spin(b), SymmGroup::spin(c));
+    }
+
+    template <class SymmGroup>
+    inline typename boost::disable_if<symm_traits::HasSU2<SymmGroup>, bool>::type
+    triangle(typename SymmGroup::charge a,
+             int b,
+             typename SymmGroup::charge c)
+    {
+        return true;
     }
 
     template <class T>
@@ -73,6 +91,51 @@ namespace SU2 {
         }
     }
 
+    template <class SymmGroup, class T>
+    inline typename boost::enable_if<symm_traits::HasSU2<SymmGroup> >::type
+    set_coupling(
+                 typename SymmGroup::charge a,
+                 typename SymmGroup::charge b,
+                 typename SymmGroup::charge c,
+                 int d, int e, int f,
+                 typename SymmGroup::charge g,
+                 typename SymmGroup::charge h,
+                 typename SymmGroup::charge i,
+                 T init, T couplings[]
+                 )
+    {
+        set_coupling(
+                     SymmGroup::spin(a),
+            std::abs(SymmGroup::spin(b)), // site-spin determined through difference
+                     SymmGroup::spin(c),
+                     d,e,f,
+                     SymmGroup::spin(g),
+            std::abs(SymmGroup::spin(h)), // site-spin determined through difference
+                     SymmGroup::spin(i),
+                     init, couplings
+                     );
+    }
+
+    template <class SymmGroup, class T>
+    inline typename boost::disable_if<symm_traits::HasSU2<SymmGroup> >::type
+    set_coupling(
+                 typename SymmGroup::charge a,
+                 typename SymmGroup::charge b,
+                 typename SymmGroup::charge c,
+                 int d, int e, int f,
+                 typename SymmGroup::charge g,
+                 typename SymmGroup::charge h,
+                 typename SymmGroup::charge i,
+                 T init, T couplings[]
+                 )
+    {
+        couplings[0] = init;
+        couplings[1] = init;
+        couplings[2] = init;
+        couplings[3] = init;
+    }
+        
+
     // precompute 9j for fixed J, I, I'
     // 
     //      [ J  S  J' ]
@@ -93,7 +156,6 @@ namespace SU2 {
 
             coefficients.resize(12 * 4 * nj);
 
-            //std::cout << "Jpmin " << Jpmin << " Jpmax " << Jpmax << std::endl;
             for (int Jp = Jpmin; Jp <= Jpmax; ++Jp)
             {
                 int two_s = std::abs(J-Jp);
@@ -116,11 +178,9 @@ namespace SU2 {
                     K[8+2] = 2; Ap[8+2] = 0;
                     K[8+3] = 0; Ap[8+3] = 0;
 
-                //std::cout << "  Jp" << Jp << std::endl;
                 for (int i = 0; i < 12; ++i)
                 {
                     int A = i/4;
-                    //std::cout << "    " << i << " " << J << two_s << Jp << " " << A << K[i] << Ap[i] << " " << I << two_sp << Ip << std::endl;
                     int offset = 4*i + 48 * (Jp-Jpmin);
                     set_coupling(J, two_s, Jp, A, K[i], Ap[i], I, two_sp, Ip, T(1), &coefficients[offset]);
                 }
@@ -129,7 +189,6 @@ namespace SU2 {
 
         void set_scale(int A, int K, int Ap, int Jp, T scale, T couplings[])
         {
-            //std::cout << "hash " << A << K << Ap << " " << hash(A,K,Ap) << std::endl;
             T* c2 = &coefficients[4*hash(A,K,Ap) + 48 * (Jp-Jpmin)];
             std::transform(c2, c2+4, couplings, boost::lambda::_1*scale);
         }
@@ -147,7 +206,7 @@ namespace SU2 {
         std::vector<T> coefficients;
     };
 
-    template <typename T, class SymmGroup>
+    template <typename T, class SymmGroup, class SymmType = void>
     class Wigner9jCache : public Wigner9jCacheI<T>
     {
         typedef typename SymmGroup::charge charge;
@@ -157,6 +216,26 @@ namespace SU2 {
 
         Wigner9jCache(charge lc, charge mc, charge rc)
             : base(SymmGroup::spin(mc), SymmGroup::spin(lc), SymmGroup::spin(rc)) {}
+
+        void set_scale(int A, int K, int Ap, charge Jp, T scale, T couplings[])
+        {
+            return base::set_scale(A, K, Ap, SymmGroup::spin(Jp), scale, couplings);
+        }
+    };
+
+    template <typename T, class SymmGroup>
+    class Wigner9jCache<T, SymmGroup, typename boost::disable_if<symm_traits::HasSU2<SymmGroup> >::type>
+    {
+        typedef typename SymmGroup::charge charge;
+
+    public:
+
+        Wigner9jCache(charge lc, charge mc, charge rc) {}
+
+        void set_scale(int A, int K, int Ap, charge Jp, T scale, T couplings[])
+        {
+            std::fill(couplings, couplings+4, scale);
+        }
     };
 }
 

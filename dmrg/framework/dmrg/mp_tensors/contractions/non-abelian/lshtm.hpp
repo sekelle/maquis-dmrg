@@ -86,7 +86,7 @@ namespace SU2 {
                 for (index_type b2 = 0; b2 < mpo.col_dim(); ++b2)
                 {
                     if (mpo.herm_info.right_skip(b2) && skip) continue;
-                    int Ap = mpo.right_spin(b2).get(); if (!::SU2::triangle(SymmGroup::spin(rc_ket), Ap, SymmGroup::spin(rc_bra))) continue;
+                    int Ap = mpo.right_spin(b2).get(); if (!::SU2::triangle<SymmGroup>(rc_ket, Ap, rc_bra)) continue;
 
                     for (typename col_proxy::const_iterator col_it = mpo.column(b2).begin(); col_it != mpo.column(b2).end(); ++col_it) {
                         index_type b1 = col_it.index();
@@ -109,19 +109,19 @@ namespace SU2 {
                                 unsigned ls_ket = left_i[lb_ket].second;
                                 unsigned ket_offset = right_pb(phys_in, rc_ket);
 
-                                int TwoS = std::abs(SymmGroup::spin(lc_ket) - SymmGroup::spin(rc_ket));
-                                int TwoSp = std::abs(SymmGroup::spin(lc_bra) - SymmGroup::spin(rc_bra));
                                 value_type couplings[4];
                                 value_type scale = left.conj_scales[b1][b_left] * access.scale(op_index);
-                                ::SU2::set_coupling(SymmGroup::spin(lc_ket), TwoS, SymmGroup::spin(rc_ket)
-                                                    , A, K, Ap,
-                                                    SymmGroup::spin(lc_bra), TwoSp, SymmGroup::spin(rc_bra),
-                                                    scale, couplings);
+                                ::SU2::set_coupling<SymmGroup>(lc_ket, SymmGroup::fuse(rc_ket, -lc_ket), rc_ket,
+                                                                 A,      K,    Ap,
+                                                               lc_bra, SymmGroup::fuse(rc_bra, -lc_bra), rc_bra,
+                                                               scale, couplings);
 
                                 //value_type scale = left.conj_scales[b1][b_left] * access.scale(op_index)
                                 //                 * sqrt( (SymmGroup::spin(lc_ket)+1.) * (Ap+1.) * (SymmGroup::spin(rc_bra)+1.)
                                 //                        / ((SymmGroup::spin(rc_ket)+1.) * (A+1.) * (SymmGroup::spin(lc_bra)+1.))
                                 //                       );
+                                //int TwoS = std::abs(SymmGroup::spin(lc_ket) - SymmGroup::spin(rc_ket));
+                                //int TwoSp = std::abs(SymmGroup::spin(lc_bra) - SymmGroup::spin(rc_bra));
                                 //int sum = SymmGroup::spin(lc_ket) + TwoS + SymmGroup::spin(rc_ket) 
                                 //        + Ap + K + A
                                 //        + SymmGroup::spin(lc_bra) + TwoSp + SymmGroup::spin(rc_bra);
