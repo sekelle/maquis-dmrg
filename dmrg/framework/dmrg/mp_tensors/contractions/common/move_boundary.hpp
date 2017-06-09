@@ -95,6 +95,7 @@ namespace contraction {
 
             Index<SymmGroup> physical_i = mps.site_dim(), left_i = *in_low, right_i = mps.col_dim(),
                                           out_left_i = physical_i * left_i;
+            common_subset(out_left_i, right_i);
             ProductBasis<SymmGroup> out_left_pb(physical_i, left_i);
             ProductBasis<SymmGroup> in_right_pb(physical_i, right_i,
                                     boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
