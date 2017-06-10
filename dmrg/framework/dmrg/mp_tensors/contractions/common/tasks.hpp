@@ -712,20 +712,23 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
     contraction_schedule.total_flops = total_flops;
     contraction_schedule.total_mem = total_mem;
 
-    maquis::cout << "Schedule size: " << sz << " tasks, "
-                 << " t_move " << a / 1024 << "KB, "
-                 << " l_load " << b / 1024 << "KB, "
-                 << " lgemmf " << c / 1024 << "KF, "
-                 << " tgemmf " << d / 1024 << "KF, "
-                 << " R " << size_of(right)/1024 << "KB, "
-                 << " L " << size_of(left)/1024 << "KB "
-                 << " M " << e / 1024 << "KB, "
-                 << " F " << total_flops / 1024 << "KF, "
-                 << " B " << total_mem / 1024 << "KB, "
-                 << std::endl;
+    if (std::max(mpo.row_dim(), mpo.col_dim()) > 10)
+    {
+        maquis::cout << "Schedule size: " << sz << " tasks, "
+                     << " t_move " << a / 1024 << "KB, "
+                     << " l_load " << b / 1024 << "KB, "
+                     << " lgemmf " << c / 1024 << "KF, "
+                     << " tgemmf " << d / 1024 << "KF, "
+                     << " R " << size_of(right)/1024 << "KB, "
+                     << " L " << size_of(left)/1024 << "KB "
+                     << " M " << e / 1024 << "KB, "
+                     << " F " << total_flops / 1024 << "KF, "
+                     << " B " << total_mem / 1024 << "KB, "
+                     << std::endl;
 
-    boost::chrono::high_resolution_clock::time_point then = boost::chrono::high_resolution_clock::now();
-    maquis::cout << "Time elapsed in SCHEDULE: " << boost::chrono::duration<double>(then - now).count() << std::endl;
+        boost::chrono::high_resolution_clock::time_point then = boost::chrono::high_resolution_clock::now();
+        maquis::cout << "Time elapsed in SCHEDULE: " << boost::chrono::duration<double>(then - now).count() << std::endl;
+    }
 
     return contraction_schedule;
 }
