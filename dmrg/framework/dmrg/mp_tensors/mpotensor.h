@@ -76,7 +76,7 @@ public:
 public:
     MPOTensor(index_type = 1, index_type = 1, prempo_t = prempo_t(), op_table_ptr = op_table_ptr(),
               MPOTensor_detail::Hermitian = MPOTensor_detail::Hermitian(1,1),
-              spin_index const & lspins = spin_index(), spin_index const & rspins = spin_index());
+              spin_index const & lspins = spin_index(1), spin_index const & rspins = spin_index(1));
     
     index_type row_dim() const;
     index_type col_dim() const;
