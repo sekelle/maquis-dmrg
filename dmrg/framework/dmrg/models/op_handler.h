@@ -61,7 +61,7 @@ private:
     }
 
 public:
-    tag_type register_op(op_t const & op_);
+    tag_type register_op(op_t op_);
     std::pair<tag_type, mvalue_type> checked_register(op_t const& sample);
 };
 
