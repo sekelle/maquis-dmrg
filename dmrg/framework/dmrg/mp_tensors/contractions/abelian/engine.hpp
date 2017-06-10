@@ -111,8 +111,8 @@ namespace contraction {
                                  MPOTensor<Matrix, SymmGroup> const & mpo,
                                  Index<SymmGroup> const * in_low = NULL)
         {
-            return common::left_boundary_tensor_mpo<Matrix, OtherMatrix, SymmGroup, lbtm_functor>
-                   (mps, left, mpo, in_low);
+            return common::left_boundary_tensor_mpo<Matrix, OtherMatrix, SymmGroup>
+                   (mps, left, mpo, SU2::lshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
         }
 
         static Boundary<Matrix, SymmGroup>
@@ -121,8 +121,8 @@ namespace contraction {
                                   MPOTensor<Matrix, SymmGroup> const & mpo,
                                   Index<SymmGroup> const * in_low = NULL)
         {
-            return common::right_boundary_tensor_mpo<Matrix, OtherMatrix, SymmGroup, rbtm_functor>
-                   (mps, right, mpo, in_low);
+            return common::right_boundary_tensor_mpo<Matrix, OtherMatrix, SymmGroup>
+                   (mps, right, mpo, SU2::rshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
         }
 
         static Boundary<OtherMatrix, SymmGroup>
@@ -205,7 +205,11 @@ namespace contraction {
         site_hamil2(MPSTensor<Matrix, SymmGroup> ket_tensor,
                     Boundary<OtherMatrix, SymmGroup> const & left,
                     Boundary<OtherMatrix, SymmGroup> const & right,
-                    MPOTensor<Matrix, SymmGroup> const & mpo);
+                    MPOTensor<Matrix, SymmGroup> const & mpo)
+        {
+            schedule_t tasks = right_contraction_schedule(ket_tensor, left, right, mpo);
+            return site_hamil2(ket_tensor, left, right, mpo, tasks);
+        }
     };
 
 } // namespace contraction
