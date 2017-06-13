@@ -342,8 +342,9 @@ namespace contraction {
                         charge lc_bra = left_i[lb_bra].first;
                         charge phys_out = SymmGroup::fuse(rc_bra, -lc_bra);
 
-                        // assuming single-site, only need index 0
-                        it->second[s][0].offset = left_pb(phys_out, lc_bra);
+                        unsigned base_offset = left_pb(phys_out, lc_bra);
+                        for (unsigned ss = 0; ss < it->second[s].size(); ++ss)
+                            it->second[s][ss].offset = base_offset + ss * it->second[s][ss].get_m_size();
                     }
                 }
             }
