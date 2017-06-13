@@ -324,8 +324,8 @@ public:
     }
 
     template <class DefaultMatrix, class OtherMatrix>
-    void prop_l(MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
-                MPSTensor<DefaultMatrix, SymmGroup> const & bra_mps,
+    void prop_l(MPSTensor<DefaultMatrix, SymmGroup> const & bra_mps,
+                MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
                 std::vector<unsigned> const & b_to_o,
                 Boundary<OtherMatrix, SymmGroup> const & left,
                 Boundary<OtherMatrix, SymmGroup> & new_left) const

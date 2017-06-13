@@ -38,44 +38,48 @@ namespace SU2 {
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
     void lshtm_tasks(MPOTensor<Matrix, SymmGroup> const & mpo,
+                     MPSTensor<Matrix, SymmGroup> const & bra,
+                     MPSTensor<Matrix, SymmGroup> const & ket,
                      common::LeftIndices<Matrix, OtherMatrix, SymmGroup> const & left,
-                     Index<SymmGroup> const & left_i,
-                     Index<SymmGroup> const & right_i,
-                     Index<SymmGroup> const & phys_i,
-                     ProductBasis<SymmGroup> const & right_pb,
+                     ProductBasis<SymmGroup> const & bra_right_pb,
+                     ProductBasis<SymmGroup> const & ket_right_pb,
                      unsigned rb_ket,
                      typename common::Schedule<Matrix, SymmGroup>::block_type & mpsb,
                      bool skip = true)
     {
-        typedef MPOTensor_detail::index_type index_type;
-        typedef typename MPOTensor<Matrix, SymmGroup>::col_proxy col_proxy;
         typedef typename SymmGroup::charge charge;
         typedef typename Matrix::value_type value_type;
-        typedef typename common::Schedule<Matrix, SymmGroup>::micro_task micro_task;
+        typedef typename MPOTensor<Matrix, SymmGroup>::col_proxy col_proxy;
+        typedef MPOTensor_detail::index_type index_type;
         typedef typename common::Schedule<Matrix, SymmGroup>::block_type block_type;
-        typedef typename block_type::mapped_value_type cgroup;
-        typedef typename cgroup::t_key t_key;
+        typedef typename block_type::mapped_value_type::t_key t_key;
         typedef std::map<t_key, unsigned> t_map_t;
 
-        charge rc_ket = right_i[rb_ket].first;
-        unsigned rs_ket = right_i[rb_ket].second;
+        Index<SymmGroup> const & ket_left_i = ket.row_dim();
+        Index<SymmGroup> const & ket_right_i = ket.col_dim();
+        Index<SymmGroup> const & bra_left_i = bra.row_dim();
+        Index<SymmGroup> const & bra_right_i = bra.col_dim();
+        Index<SymmGroup> const & phys_i = ket.site_dim();
+
+        charge rc_ket = ket_right_i[rb_ket].first;
+        unsigned rs_ket = ket_right_i[rb_ket].second;
 
         const int site_basis_max_diff = 2;
 
-        for (unsigned rb_bra = 0; rb_bra < right_i.size(); ++rb_bra)
+        for (unsigned rb_bra = 0; rb_bra < bra_right_i.size(); ++rb_bra)
         {
-            charge rc_bra = right_i[rb_bra].first;
+            charge rc_bra = bra_right_i[rb_bra].first;
             if (std::abs(SymmGroup::particleNumber(rc_bra) - SymmGroup::particleNumber(rc_ket)) > site_basis_max_diff) continue;
-            unsigned rs_bra = right_i[rb_bra].second;
+            unsigned rs_bra = bra_right_i[rb_bra].second;
 
             for (unsigned s = 0; s < phys_i.size(); ++s)
             {
                 charge phys_out = phys_i[s].first;
                 charge lc_bra = SymmGroup::fuse(rc_bra, -phys_out);
-                unsigned lb_bra = left_i.position(lc_bra); if (lb_bra == left_i.size()) continue;
-                unsigned ls_bra = left_i[lb_bra].second;
+                unsigned lb_bra = bra_left_i.position(lc_bra); if (lb_bra == bra_left_i.size()) continue;
+                unsigned ls_bra = bra_left_i[lb_bra].second;
 
-                unsigned bra_offset = right_pb(phys_out, rc_bra);
+                unsigned bra_offset = bra_right_pb(phys_out, rc_bra);
 
                 typename block_type::mapped_value_type cg(lb_bra, phys_i[s].second, rs_bra, ls_bra, rs_ket,
                                                           bra_offset);
@@ -103,11 +107,11 @@ namespace SU2 {
                                 charge phys_in = W.basis().left_charge(w_block);
 
                                 charge lc_ket = SymmGroup::fuse(rc_ket, -phys_in);
-                                unsigned lb_ket = left_i.position(lc_ket); if (lb_ket == left_i.size()) continue;
+                                unsigned lb_ket = ket_left_i.position(lc_ket); if (lb_ket == ket_left_i.size()) continue;
                                 unsigned b_left = left.position(b1, lc_bra, lc_ket); if (b_left == left[b1].size()) continue;
 
-                                unsigned ls_ket = left_i[lb_ket].second;
-                                unsigned ket_offset = right_pb(phys_in, rc_ket);
+                                unsigned ls_ket = ket_left_i[lb_ket].second;
+                                unsigned ket_offset = ket_right_pb(phys_in, rc_ket);
 
                                 value_type couplings[4];
                                 value_type scale = left.conj_scales[b1][b_left] * access.scale(op_index);

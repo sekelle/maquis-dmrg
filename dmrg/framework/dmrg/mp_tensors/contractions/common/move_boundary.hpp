@@ -322,8 +322,7 @@ namespace contraction {
             unsigned loop_max = right_i.size();
             schedule_t tasks(loop_max);
             omp_for(unsigned mb, parallel::range<unsigned>(0,loop_max), {
-                task_calc(mpo, left_indices, left_i,
-                          right_i, physical_i, right_pb, mb, tasks[mb], false);
+                task_calc(mpo, ket_tensor, ket_tensor, left_indices, right_pb, right_pb, mb, tasks[mb], false);
             });
 
             // set up the indices of the new boundary
@@ -459,46 +458,46 @@ namespace contraction {
             }
 
             // MPS indices
+            assert(bra_tensor.site_dim() == ket_tensor.site_dim());
             Index<SymmGroup> const & physical_i = ket_tensor.site_dim(),
-                                     right_i = ket_tensor.col_dim();
-            Index<SymmGroup> left_i = ket_tensor.row_dim(),
-                             out_right_i = adjoin(physical_i) * right_i;
+                                     ket_right_i = ket_tensor.col_dim();
 
-            common_subset(out_right_i, left_i);
-            ProductBasis<SymmGroup> out_right_pb(physical_i, right_i,
+            ProductBasis<SymmGroup> bra_right_pb(physical_i, bra_tensor.col_dim(),
+                    boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
+                                    -boost::lambda::_1, boost::lambda::_2));
+            ProductBasis<SymmGroup> ket_right_pb(physical_i, ket_right_i,
                     boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
                                     -boost::lambda::_1, boost::lambda::_2));
 
             // Schedule
-            unsigned loop_max = right_i.size();
+            unsigned loop_max = ket_right_i.size();
             schedule_t tasks(loop_max);
             omp_for(unsigned mb, parallel::range<unsigned>(0,loop_max), {
-                task_calc(mpo, left_indices, left_i,
-                          right_i, physical_i, out_right_pb, mb, tasks[mb], true);
+                task_calc(mpo, bra_tensor, ket_tensor, left_indices, bra_right_pb, ket_right_pb, mb, tasks[mb], true);
             });
 
             // set up the indices of the new boundary
             for(size_t rb_ket = 0; rb_ket < loop_max; ++rb_ket)
             {
-                charge rc_ket = right_i[rb_ket].first;
-                size_t rs_ket = right_i[rb_ket].second;
+                charge rc_ket = ket_right_i[rb_ket].first;
+                size_t rs_ket = ket_right_i[rb_ket].second;
                 for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
                 {
                     charge rc_bra = it->first;
-                    size_t rs_bra = right_i.size_of_block(rc_bra);
+                    size_t rs_bra = ket_right_i.size_of_block(rc_bra);
                     it->second.reserve(rc_bra, rc_ket, rs_bra, rs_ket, ret); // allocate all (rc_bra,rc_ket) blocks
                 }
             }
 
             // Contraction
             omp_for(index_type rb_ket, parallel::range<index_type>(0,loop_max), {
-                charge rc_ket = right_i[rb_ket].first;
+                charge rc_ket = ket_right_i[rb_ket].first;
                 for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it) // mc loop
                 {
                     charge rc_bra = it->first;
                     it->second.allocate(rc_bra, rc_ket, ret);
                     for (size_t s = 0; s < it->second.size(); ++s) // physical index loop
-                        it->second[s].prop_l(ket_tensor, bra_tensor, it->second.get_b_to_o(), left, ret);
+                        it->second[s].prop_l(bra_tensor, ket_tensor, it->second.get_b_to_o(), left, ret);
                 }
             });
 
