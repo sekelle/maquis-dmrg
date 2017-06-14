@@ -82,7 +82,7 @@ namespace SU2 {
                 unsigned bra_offset = bra_right_pb(phys_out, rc_bra);
 
                 typename block_type::mapped_value_type cg(lb_bra, phys_i[s].second, rs_bra, ls_bra, rs_ket,
-                                                          bra_offset);
+                                                          bra_offset, true);
 
                 //::SU2::Wigner9jCache<value_type, SymmGroup> w9j(rc_bra, rc_ket, lc_bra);
 

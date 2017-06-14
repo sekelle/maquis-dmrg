@@ -249,6 +249,7 @@ public:
     std::size_t lgemm_flops() const { return (n_tasks()) ? tasks.size() * 2 * l_size * m_size * r_size : 0; }
     std::size_t collect()     const { return (n_tasks()) ? 8 * l_size * r_size : 0; }
 
+    unsigned get_m_size() const { return m_size; }
     unsigned get_r_size() const { return r_size; }
 
     std::vector<std::vector<micro_task> > const & get_tasks() const { return tasks; }
@@ -276,11 +277,12 @@ public:
     typedef typename SymmGroup::charge charge;
 
     ContractionGroup() {}
-    ContractionGroup(unsigned b, unsigned s, unsigned ls, unsigned ms, unsigned rs, unsigned out_offset)
+    ContractionGroup(unsigned b, unsigned s, unsigned ls, unsigned ms, unsigned rs, unsigned out_offset, bool left=false)
         : mps_block(b), l_size(ls), rs_(rs), base(s, typename base::value_type(ls, ms, rs))
     {
+        unsigned pair_size = (left) ? ls : rs;
         for (unsigned i = 0 ; i < s; ++i)
-            (*this)[i].offset = out_offset + i * rs;
+            (*this)[i].offset = out_offset + i * pair_size;
     }
 
     std::size_t n_tasks() const
