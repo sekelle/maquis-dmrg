@@ -249,6 +249,7 @@ public:
     std::size_t lgemm_flops() const { return (n_tasks()) ? tasks.size() * 2 * l_size * m_size * r_size : 0; }
     std::size_t collect()     const { return (n_tasks()) ? 8 * l_size * r_size : 0; }
 
+    unsigned get_m_size() const { return m_size; }
     unsigned get_r_size() const { return r_size; }
 
     std::vector<std::vector<micro_task> > const & get_tasks() const { return tasks; }
@@ -276,11 +277,12 @@ public:
     typedef typename SymmGroup::charge charge;
 
     ContractionGroup() {}
-    ContractionGroup(unsigned b, unsigned s, unsigned ls, unsigned ms, unsigned rs, unsigned out_offset)
+    ContractionGroup(unsigned b, unsigned s, unsigned ls, unsigned ms, unsigned rs, unsigned out_offset, bool left=false)
         : mps_block(b), l_size(ls), rs_(rs), base(s, typename base::value_type(ls, ms, rs))
     {
+        unsigned pair_size = (left) ? ls : rs;
         for (unsigned i = 0 ; i < s; ++i)
-            (*this)[i].offset = out_offset + i * rs;
+            (*this)[i].offset = out_offset + i * pair_size;
     }
 
     std::size_t n_tasks() const
@@ -324,8 +326,8 @@ public:
     }
 
     template <class DefaultMatrix, class OtherMatrix>
-    void prop_l(MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
-                MPSTensor<DefaultMatrix, SymmGroup> const & bra_mps,
+    void prop_l(MPSTensor<DefaultMatrix, SymmGroup> const & bra_mps,
+                MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
                 std::vector<unsigned> const & b_to_o,
                 Boundary<OtherMatrix, SymmGroup> const & left,
                 Boundary<OtherMatrix, SymmGroup> & new_left) const
@@ -712,20 +714,23 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
     contraction_schedule.total_flops = total_flops;
     contraction_schedule.total_mem = total_mem;
 
-    maquis::cout << "Schedule size: " << sz << " tasks, "
-                 << " t_move " << a / 1024 << "KB, "
-                 << " l_load " << b / 1024 << "KB, "
-                 << " lgemmf " << c / 1024 << "KF, "
-                 << " tgemmf " << d / 1024 << "KF, "
-                 << " R " << size_of(right)/1024 << "KB, "
-                 << " L " << size_of(left)/1024 << "KB "
-                 << " M " << e / 1024 << "KB, "
-                 << " F " << total_flops / 1024 << "KF, "
-                 << " B " << total_mem / 1024 << "KB, "
-                 << std::endl;
+    if (std::max(mpo.row_dim(), mpo.col_dim()) > 10)
+    {
+        maquis::cout << "Schedule size: " << sz << " tasks, "
+                     << " t_move " << a / 1024 << "KB, "
+                     << " l_load " << b / 1024 << "KB, "
+                     << " lgemmf " << c / 1024 << "KF, "
+                     << " tgemmf " << d / 1024 << "KF, "
+                     << " R " << size_of(right)/1024 << "KB, "
+                     << " L " << size_of(left)/1024 << "KB "
+                     << " M " << e / 1024 << "KB, "
+                     << " F " << total_flops / 1024 << "KF, "
+                     << " B " << total_mem / 1024 << "KB, "
+                     << std::endl;
 
-    boost::chrono::high_resolution_clock::time_point then = boost::chrono::high_resolution_clock::now();
-    maquis::cout << "Time elapsed in SCHEDULE: " << boost::chrono::duration<double>(then - now).count() << std::endl;
+        boost::chrono::high_resolution_clock::time_point then = boost::chrono::high_resolution_clock::now();
+        maquis::cout << "Time elapsed in SCHEDULE: " << boost::chrono::duration<double>(then - now).count() << std::endl;
+    }
 
     return contraction_schedule;
 }

@@ -120,6 +120,8 @@ public:
 
     std::pair<const_iterator, const_iterator> block(std::size_t b) const
     {
+        assert(b < blocks_.size());
+        assert(blocks_[b] < data_.size());
         return std::make_pair(data_.begin() + blocks_[b], data_.begin() + blocks_[b+1]);
     }
 
@@ -138,6 +140,9 @@ public:
                     data_.push_back(value_type(ss1, ss2, bm[b](ss1,ss2)));
                     ++entry_counter;
                 }
+            // completely empty blocks are not allowed and must have been
+            // removed by this point
+            assert(entry_counter > blocks_[b]);
         }
 
         blocks_[bm.n_blocks()] = data_.size();
