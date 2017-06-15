@@ -72,6 +72,7 @@ public:
     iterator begin() {return data_.begin();}
     iterator end() {return data_.end();}
 
+    void make_left_paired() const;
     void make_right_paired() const;
     
     size_t canonization(bool=false) const;
