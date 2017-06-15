@@ -435,7 +435,7 @@ namespace contraction {
 
         template<class Matrix, class OtherMatrix, class SymmGroup, class TaskCalc>
         static Boundary<OtherMatrix, SymmGroup>
-        overlap_mpo_left_step(MPSTensor<Matrix, SymmGroup> const & bra_tensor,
+        overlap_mpo_left_step(MPSTensor<Matrix, SymmGroup> const & bra_tensor_in,
                               MPSTensor<Matrix, SymmGroup> const & ket_tensor,
                               Boundary<OtherMatrix, SymmGroup> const & left,
                               MPOTensor<Matrix, SymmGroup> const & mpo,
@@ -449,6 +449,9 @@ namespace contraction {
             LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
             Boundary<OtherMatrix, SymmGroup> ret;
             ret.resize(mpo.col_dim());
+
+            MPSTensor<Matrix, SymmGroup> buffer; // holds the conjugate tensor if we deal with complex numbers
+            MPSTensor<Matrix, SymmGroup> const & bra_tensor = set_conjugate(bra_tensor_in, buffer);
 
             if (!ket_tensor.is_right_paired() || !bra_tensor.is_right_paired())
             {
@@ -507,7 +510,7 @@ namespace contraction {
 
         template<class Matrix, class OtherMatrix, class SymmGroup, class TaskCalc>
         static Boundary<OtherMatrix, SymmGroup>
-        overlap_mpo_right_step(MPSTensor<Matrix, SymmGroup> const & bra_tensor,
+        overlap_mpo_right_step(MPSTensor<Matrix, SymmGroup> const & bra_tensor_in,
                                MPSTensor<Matrix, SymmGroup> const & ket_tensor,
                                Boundary<OtherMatrix, SymmGroup> const & right,
                                MPOTensor<Matrix, SymmGroup> const & mpo,
@@ -521,6 +524,9 @@ namespace contraction {
             RightIndices<Matrix, OtherMatrix, SymmGroup> right_indices(right, mpo);
             Boundary<OtherMatrix, SymmGroup> ret;
             ret.resize(mpo.row_dim());
+
+            MPSTensor<Matrix, SymmGroup> buffer; // holds the conjugate tensor if we deal with complex numbers
+            MPSTensor<Matrix, SymmGroup> const & bra_tensor = set_conjugate(bra_tensor_in, buffer);
 
             if (!ket_tensor.is_right_paired() || !bra_tensor.is_right_paired())
             {

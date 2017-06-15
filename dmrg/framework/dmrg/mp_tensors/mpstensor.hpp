@@ -675,3 +675,19 @@ std::size_t MPSTensor<Matrix, SymmGroup>::num_elements() const
 {
     return data().num_elements();
 }
+
+template<class Matrix, class SymmGroup>
+typename boost::enable_if<alps::is_complex<typename Matrix::value_type>, MPSTensor<Matrix, SymmGroup> >::type const &
+set_conjugate(MPSTensor<Matrix, SymmGroup> const & mps, MPSTensor<Matrix, SymmGroup> & buffer)
+{
+    buffer = mps;
+    buffer.data().conjugate_inplace();
+    return buffer;
+}
+
+template<class Matrix, class SymmGroup>
+typename boost::disable_if<alps::is_complex<typename Matrix::value_type>, MPSTensor<Matrix, SymmGroup> >::type const &
+set_conjugate(MPSTensor<Matrix, SymmGroup> const & mps, MPSTensor<Matrix, SymmGroup> & buffer)
+{
+    return mps;
+}
