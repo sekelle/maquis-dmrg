@@ -192,33 +192,33 @@ namespace contraction {
                                             -boost::lambda::_1, boost::lambda::_2));
 
             // Schedule
-            schedule_t tasks(left_i.size()); // bra
-            unsigned loop_max = left_i.size(); // bra
-            omp_for(unsigned mb, parallel::range<unsigned>(0,loop_max), {
+            unsigned loop_max = left_i.size();
+            schedule_t tasks(loop_max);
+            omp_for(unsigned lb_bra, parallel::range<unsigned>(0,loop_max), {
                 task_calc(mpo, right_indices, left_i,
-                          right_i, physical_i, right_pb, mb, tasks[mb]);
+                          right_i, physical_i, right_pb, lb_bra, tasks[lb_bra]);
             });
 
             // set up the indices of the new boundary
-            for(size_t mps_block = 0; mps_block < loop_max; ++mps_block)
+            for(size_t lb_bra = 0; lb_bra < loop_max; ++lb_bra)
             {
-                charge lc = left_i[mps_block].first;
-                size_t rs_paired = out_right_i.size_of_block(lc);
-                for (const_iterator it = tasks[mps_block].begin(); it != tasks[mps_block].end(); ++it)
+                charge lc_bra = left_i[lb_bra].first;
+                size_t rs_paired = out_right_i.size_of_block(lc_bra);
+                for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it)
                 {
-                    charge mc = it->first;
-                    size_t m_size = left_i.size_of_block(mc);
-                    it->second.reserve(mc, lc, m_size, rs_paired, ret); // allocate all (mc,lc) blocks
+                    charge lc_ket = it->first;
+                    size_t ls_ket = left_i.size_of_block(lc_ket);
+                    it->second.reserve(lc_ket, lc_bra, ls_ket, rs_paired, ret); // allocate all (lc_ket,lc_bra) blocks
                 }
             }
 
             // Contraction
-            omp_for(index_type mps_block, parallel::range<index_type>(0,loop_max), {
-                charge lc = left_i[mps_block].first;
-                for (const_iterator it = tasks[mps_block].begin(); it != tasks[mps_block].end(); ++it) // mc loop
+            omp_for(index_type lb_bra, parallel::range<index_type>(0,loop_max), {
+                charge lc_bra = left_i[lb_bra].first;
+                for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it) // lc_ket loop
                 {
-                    charge mc = it->first;
-                    it->second.allocate(mc, lc, ret);
+                    charge lc_ket = it->first;
+                    it->second.allocate(lc_ket, lc_bra, ret);
                     for (size_t s = 0; s < it->second.size(); ++s) // physical index loop
                         it->second[s].rbtm(ket_tensor, it->second.get_b_to_o(), right, ret);
                 }
@@ -331,46 +331,44 @@ namespace contraction {
             }
 
             // MPS indices
-            Index<SymmGroup> const & physical_i = ket_tensor.site_dim(),
-                                     right_i = ket_tensor.col_dim();
-            Index<SymmGroup> left_i = ket_tensor.row_dim(),
-                             out_right_i = adjoin(physical_i) * right_i;
+            Index<SymmGroup> const & physical_i = bra_tensor.site_dim(),
+                                     bra_left_i = bra_tensor.row_dim(),
+                                     bra_right_i = bra_tensor.col_dim();
 
-            common_subset(out_right_i, left_i);
-            ProductBasis<SymmGroup> out_right_pb(physical_i, right_i,
+            ProductBasis<SymmGroup> bra_right_pb(physical_i, bra_right_i,
                     boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
                                     -boost::lambda::_1, boost::lambda::_2));
 
             // Schedule
-            schedule_t tasks(left_i.size()); // bra
-            unsigned loop_max = left_i.size(); // bra
-            omp_for(unsigned mb, parallel::range<unsigned>(0,loop_max), {
-                task_calc(mpo, right_indices, left_i,
-                          right_i, physical_i, out_right_pb, mb, tasks[mb]);
+            unsigned loop_max = bra_left_i.size();
+            schedule_t tasks(loop_max);
+            omp_for(unsigned lb_bra, parallel::range<unsigned>(0,loop_max), {
+                task_calc(mpo, right_indices, bra_left_i,
+                          bra_right_i, physical_i, bra_right_pb, lb_bra, tasks[lb_bra]);
             });
 
             // set up the indices of the new boundary
-            for(size_t mps_block = 0; mps_block < loop_max; ++mps_block)
+            for(size_t lb_bra = 0; lb_bra < loop_max; ++lb_bra)
             {
-                charge lc = left_i[mps_block].first;
-                size_t l_size = left_i[mps_block].second;
-                for (const_iterator it = tasks[mps_block].begin(); it != tasks[mps_block].end(); ++it)
+                charge lc_bra = bra_left_i[lb_bra].first;
+                size_t ls_bra = bra_left_i[lb_bra].second;
+                for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it)
                 {
-                    charge mc = it->first;
-                    size_t m_size = left_i.size_of_block(mc);
-                    it->second.reserve(mc, lc, m_size, l_size, ret); // allocate all (mc,lc) blocks
+                    charge lc_ket = it->first;
+                    size_t ls_ket = bra_left_i.size_of_block(lc_ket);
+                    it->second.reserve(lc_ket, lc_bra, ls_ket, ls_bra, ret); // allocate all (lc_ket,lc_bra) blocks
                 }
             }
 
             // Contraction
-            omp_for(index_type mps_block, parallel::range<index_type>(0,loop_max), {
-                charge lc = left_i[mps_block].first;
-                for (const_iterator it = tasks[mps_block].begin(); it != tasks[mps_block].end(); ++it) // mc loop
+            omp_for(index_type lb_bra, parallel::range<index_type>(0,loop_max), {
+                charge lc_bra = bra_left_i[lb_bra].first;
+                for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it) // lc_ket loop
                 {
-                    charge mc = it->first;
-                    it->second.allocate(mc, lc, ret); // allocate all (mc,lc) blocks
+                    charge lc_ket = it->first;
+                    it->second.allocate(lc_ket, lc_bra, ret); // allocate all (lc_ket,lc_bra) blocks
                     for (size_t s = 0; s < it->second.size(); ++s) // physical index loop
-                        it->second[s].prop(ket_tensor, bra_tensor.data()[mps_block], it->second.get_b_to_o(), right, ret);
+                        it->second[s].prop(ket_tensor, bra_tensor.data()[lb_bra], it->second.get_b_to_o(), right, ret);
                 }
             });
 

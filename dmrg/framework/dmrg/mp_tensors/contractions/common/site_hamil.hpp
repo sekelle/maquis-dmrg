@@ -60,14 +60,9 @@ namespace common {
 
             Matrix destination(ket_basis.left_size(mps_block), ket_basis.right_size(mps_block));
             for (const_iterator it = tasks[mps_block].begin(); it != tasks[mps_block].end(); ++it)
-            {
-                charge mc = it->first;
                 for (size_t s = 0; s < it->second.size(); ++s)
-                {
-                    typename common::Schedule<Matrix, SymmGroup>::block_type::mapped_value_type const & cg = it->second[s];
-                    cg.contract(ket_tensor, left, right, &destination(0,0));
-                }
-            }
+                    it->second[s].contract(ket_tensor, left, right, &destination(0,0));
+
             swap(collector[mps_block], destination);
         });
 
