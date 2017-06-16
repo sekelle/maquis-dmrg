@@ -57,10 +57,10 @@ namespace SU2 {
         typedef typename cgroup::t_key t_key;
         typedef std::map<t_key, unsigned> t_map_t;
 
-        charge lc_bra = left_i[lb_bra].first; // bra
-        unsigned ls_bra = left_i[lb_bra].second; // bra
-
         const int site_basis_max_diff = 2;
+
+        charge lc_bra = left_i[lb_bra].first;
+        unsigned ls_bra = left_i[lb_bra].second;
 
         // output physical index, output offset range = out_right offset + ss2*rs_bra
         //                                              for ss2 in {0, 1, .., phys_i[s].second}
@@ -68,7 +68,7 @@ namespace SU2 {
         {
             charge phys_out = phys_i[s].first;
             charge rc_bra = SymmGroup::fuse(lc_bra, phys_out);
-            unsigned rb_bra = right_i.position(rc_bra); if (rb_bra == right_i.size()) continue; // bra
+            unsigned rb_bra = right_i.position(rc_bra); if (rb_bra == right_i.size()) continue;
             unsigned rs_bra = right_i[rb_bra].second;
             unsigned bra_offset = right_pb(phys_out, rc_bra);
 
@@ -131,7 +131,7 @@ namespace SU2 {
                     cg.t_key_vec[kit->second] = kit->first;
                 if (cg.n_tasks()) mpsb[lc_ket].push_back(cg);
 
-            } // mci
+            } // lb_ket
         } // phys_out
     }
 
