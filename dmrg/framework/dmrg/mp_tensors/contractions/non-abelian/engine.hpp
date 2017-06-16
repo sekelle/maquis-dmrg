@@ -174,11 +174,12 @@ namespace contraction {
                     Boundary<OtherMatrix, SymmGroup> const & left,
                     Boundary<OtherMatrix, SymmGroup> const & right,
                     MPOTensor<Matrix, SymmGroup> const & mpo,
-                    schedule_t const & tasks);
+                    schedule_t const & tasks)
+        {
+            return common::site_hamil2(ket_tensor, left, right, mpo, tasks);
+        }
     };
 
 } // namespace contraction
-
-#include "dmrg/mp_tensors/contractions/non-abelian/site_hamil.hpp"
 
 #endif

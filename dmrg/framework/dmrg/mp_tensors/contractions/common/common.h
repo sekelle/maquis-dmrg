@@ -32,5 +32,6 @@
 #include "dmrg/mp_tensors/contractions/common/tasks.hpp"
 #include "dmrg/mp_tensors/contractions/common/move_boundary.hpp"
 #include "dmrg/mp_tensors/contractions/common/prediction.hpp"
+#include "dmrg/mp_tensors/contractions/common/site_hamil.hpp"
 
 #endif

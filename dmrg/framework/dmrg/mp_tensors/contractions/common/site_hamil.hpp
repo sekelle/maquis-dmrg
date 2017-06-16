@@ -25,19 +25,19 @@
  *
  *****************************************************************************/
 
-#ifndef CONTRACTIONS_SU2_SITE_HAMIL_HPP
-#define CONTRACTIONS_SU2_SITE_HAMIL_HPP
+#ifndef CONTRACTIONS_COMMON_SITE_HAMIL_HPP
+#define CONTRACTIONS_COMMON_SITE_HAMIL_HPP
 
 namespace contraction {
+namespace common {
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
     MPSTensor<Matrix, SymmGroup>
-    Engine<Matrix, OtherMatrix, SymmGroup, typename boost::enable_if<symm_traits::HasSU2<SymmGroup> >::type>::
     site_hamil2(MPSTensor<Matrix, SymmGroup> ket_tensor,
                 Boundary<OtherMatrix, SymmGroup> const & left,
                 Boundary<OtherMatrix, SymmGroup> const & right,
                 MPOTensor<Matrix, SymmGroup> const & mpo,
-                schedule_t const & tasks) 
+                typename common::Schedule<Matrix, SymmGroup>::schedule_t const & tasks) 
     {
         typedef typename SymmGroup::charge charge;
         typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
@@ -76,6 +76,7 @@ namespace contraction {
         return ret;
     }
 
+} // namespace common
 } // namespace contraction
 
 #endif
