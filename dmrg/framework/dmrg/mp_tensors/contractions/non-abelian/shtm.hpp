@@ -45,7 +45,7 @@ namespace SU2 {
                     Index<SymmGroup> const & right_i,
                     Index<SymmGroup> const & phys_i,
                     ProductBasis<SymmGroup> const & right_pb,
-                    unsigned left_mps_block,
+                    unsigned lb_out,
                     typename common::Schedule<Matrix, SymmGroup>::block_type & mpsb)
     {
         typedef MPOTensor_detail::index_type index_type;
@@ -58,36 +58,36 @@ namespace SU2 {
         typedef typename cgroup::t_key t_key;
         typedef std::map<t_key, unsigned> t_map_t;
 
-        charge lc = left_i[left_mps_block].first;
-        unsigned l_size = left_i[left_mps_block].second;
-        std::vector<charge> const & mc_charges = left.deltas.at(lc);
+        charge lc_out = left_i[lb_out].first;
+        unsigned ls_out = left_i[lb_out].second;
+        std::vector<charge> const & mc_charges = left.deltas.at(lc_out);
 
-        // output physical index, output offset range = out_right offset + ss2*r_size
+        // output physical index, output offset range = out_right offset + ss2*rs_out
         //                                              for ss2 in {0, 1, .., phys_i[s].second}
         for (unsigned s = 0; s < phys_i.size(); ++s)
         {
             charge phys_out = phys_i[s].first;
-            charge rc = SymmGroup::fuse(lc, phys_out);
-            unsigned r_index = right_i.position(rc); if (r_index == right_i.size()) continue;
-            unsigned r_size = right_i[r_index].second;
-            unsigned out_right_offset = right_pb(phys_out, rc);
+            charge rc_out = SymmGroup::fuse(lc_out, phys_out);
+            unsigned rb_out = right_i.position(rc_out); if (rb_out == right_i.size()) continue;
+            unsigned rs_out = right_i[rb_out].second;
+            unsigned out_offset = right_pb(phys_out, rc_out);
             
-            for (unsigned mci = 0; mci < mc_charges.size(); ++mci)
+            for (unsigned lb_in = 0; lb_in < left_i.size(); ++lb_in)
             {
-                charge mc = mc_charges[mci];
-                unsigned in_mps_block = left_i.position(mc); if (in_mps_block == left_i.size()) continue;
-                unsigned m1_size = left_i[in_mps_block].second;
+                charge lc_in = left_i[lb_in].first;
+                if (std::find(mc_charges.begin(), mc_charges.end(), lc_in) == mc_charges.end()) continue;
+                unsigned ls_in = left_i[lb_in].second;
 
-                typename block_type::mapped_value_type cg(in_mps_block, phys_i[s].second, l_size, m1_size, r_size,
-                                                          out_right_offset);
+                typename block_type::mapped_value_type cg(lb_in, phys_i[s].second, ls_out, ls_in, rs_out,
+                                                          out_offset);
 
-                ::SU2::Wigner9jCache<value_type, SymmGroup> w9j(lc, mc, rc);
+                ::SU2::Wigner9jCache<value_type, SymmGroup> w9j(lc_out, lc_in, rc_out);
 
                 t_map_t t_index;
                 for (index_type b1 = 0; b1 < mpo.row_dim(); ++b1)
                 {
-                    unsigned left_block = left.position(b1, lc, mc); if (left_block == left[b1].size()) continue;
-                    int A = mpo.left_spin(b1).get(); if (!::SU2::triangle<SymmGroup>(mc, A, lc)) continue;
+                    unsigned b_left = left.position(b1, lc_out, lc_in); if (b_left == left[b1].size()) continue;
+                    int A = mpo.left_spin(b1).get(); if (!::SU2::triangle<SymmGroup>(lc_in, A, lc_out)) continue;
 
                     index_type b1_eff = (mpo.herm_info.left_skip(b1)) ? mpo.herm_info.left_conj(b1) : b1;
 
@@ -105,35 +105,35 @@ namespace SU2 {
                                 if (phys_out != W.basis().right_charge(w_block)) continue;
                                 charge phys_in = W.basis().left_charge(w_block);
 
-                                charge tlc = SymmGroup::fuse(mc, phys_in);
-                                unsigned right_block = right.position(b2, tlc, rc); if (right_block == right[b2].size()) continue;
-                                unsigned mps_block = right_i.position(tlc); if (mps_block == right_i.size()) continue;
+                                charge rc_in = SymmGroup::fuse(lc_in, phys_in);
+                                unsigned b_right = right.position(b2, rc_in, rc_out); if (b_right == right[b2].size()) continue;
+                                unsigned rb_in = right_i.position(rc_in); if (rb_in == right_i.size()) continue;
 
-                                unsigned m2_size = right_i[mps_block].second;
-                                unsigned in_offset = right_pb(phys_in, tlc);
+                                unsigned rs_in = right_i[rb_in].second;
+                                unsigned in_offset = right_pb(phys_in, rc_in);
 
                                 value_type couplings[4];
-                                value_type scale = right.conj_scales[b2][right_block] * access.scale(op_index)
-                                                 *  left.conj_scales[b1][left_block];
-                                w9j.set_scale(A, K, Ap, tlc, scale, couplings);
+                                value_type scale = right.conj_scales[b2][b_right] * access.scale(op_index)
+                                                 *  left.conj_scales[b1][b_left];
+                                w9j.set_scale(A, K, Ap, rc_in, scale, couplings);
 
                                 char right_transpose = mpo.herm_info.right_skip(b2);
                                 unsigned b2_eff = (right_transpose) ? mpo.herm_info.right_conj(b2) : b2;
                                 typename block_type::mapped_value_type::t_key tq
-                                    = bit_twiddling::pack(b2_eff, right_block, in_offset, right_transpose);
+                                    = bit_twiddling::pack(b2_eff, b_right, in_offset, right_transpose);
                                 
                                 detail::op_iterate_shtm<Matrix, typename common::Schedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
-                                    (W, w_block, couplings, cg, tq, m2_size, t_index);
+                                    (W, w_block, couplings, cg, tq, rs_in, t_index);
                             } // w_block
                         } //op_index
                     } // b2
-                    for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(b1_eff, left_block, mpo.herm_info.left_skip(b1));
+                    for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(b1_eff, b_left, mpo.herm_info.left_skip(b1));
                 } // b1
 
                 cg.t_key_vec.resize(t_index.size());
                 for (typename t_map_t::const_iterator kit = t_index.begin(); kit != t_index.end(); ++kit)
                     cg.t_key_vec[kit->second] = kit->first;
-                if (cg.n_tasks()) mpsb[mc].push_back(cg);
+                if (cg.n_tasks()) mpsb[lc_in].push_back(cg);
 
             } // mci
         } // phys_out
