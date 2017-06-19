@@ -571,14 +571,12 @@ public:
                 std::vector<unsigned> const & bs = cg[ssi].get_bs();
                 for (size_t bsi = 0; bsi < bs.size(); ++bsi)
                 {
-                    //maquis::cout << bs[bsi] << " ";
                     size_t o = new_right[bs[bsi]].find_block(mc, lc);
                     if (o == new_right[bs[bsi]].n_blocks())
                         new_right[bs[bsi]].reserve(mc, lc, m_size, l_size);
                 }
             }
         }
-        //maquis::cout << std::endl;
     }
 
     std::vector<unsigned> const & get_b_to_o() const { return b_to_o; }
