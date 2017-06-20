@@ -107,9 +107,9 @@ namespace SU2 {
 
                                 charge rc_in = SymmGroup::fuse(lc_in, phys_in);
                                 unsigned b_right = right.position(b2, rc_in, rc_out); if (b_right == right[b2].size()) continue;
-                                unsigned rb_in = right_i.position(rc_in); if (rb_in == right_i.size()) continue;
-
-                                unsigned rs_in = right_i[rb_in].second;
+                                unsigned rs_in = right.left_size(b2, b_right);
+                                // this shouldnt be required, but in rare cases apparently mps[i-1].col_dim() != mps[i].row_dim()
+                                if (!right_i.has(rc_in)) continue;
                                 unsigned in_offset = right_pb(phys_in, rc_in);
 
                                 value_type couplings[4];

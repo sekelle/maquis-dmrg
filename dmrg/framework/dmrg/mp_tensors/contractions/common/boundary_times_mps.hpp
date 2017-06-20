@@ -209,6 +209,14 @@ namespace contraction {
                 return (*this)[b2].position(c1,c2);
         }
 
+        std::size_t left_size(index_type b2, index_type block) const
+        {
+            if(trans_storage[b2])
+                return (*this)[b2].right_size(block);
+            else
+                return (*this)[b2].left_size(block);
+        }
+
         std::vector<std::vector<value_type> > conj_scales;
     private:
         std::vector<char> trans_storage; // vector<bool> not thread safe !!

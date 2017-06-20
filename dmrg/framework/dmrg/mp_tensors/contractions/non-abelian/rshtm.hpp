@@ -104,9 +104,8 @@ namespace SU2 {
 
                                 charge rc_ket = SymmGroup::fuse(lc_ket, phys_in);
                                 unsigned b_right = right.position(b2, rc_ket, rc_bra); if (b_right == right[b2].size()) continue;
-                                unsigned rb_ket = right_i.position(rc_ket); if (rb_ket == right_i.size()) continue;
-
-                                unsigned rs_ket = right_i[rb_ket].second;
+                                unsigned rs_ket = right.left_size(b2, b_right);
+                                if (!right_i.has(rc_ket)) continue;
                                 unsigned ket_offset = right_pb(phys_in, rc_ket);
 
                                 value_type couplings[4];
