@@ -675,17 +675,14 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
 
     // MPS indices
     Index<SymmGroup> const & physical_i = initial.site_dim(),
-                             right_i = initial.col_dim();
-    Index<SymmGroup> left_i = initial.row_dim(),
-                     out_right_i = adjoin(physical_i) * right_i;
+                             right_i = initial.col_dim(),
+                             left_i = initial.row_dim();
 
-    common_subset(out_right_i, left_i);
     ProductBasis<SymmGroup> out_right_pb(physical_i, right_i,
                                          boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
                                                              -boost::lambda::_1, boost::lambda::_2));
 
     initial.make_right_paired();
-
     typename Schedule<Matrix, SymmGroup>::schedule_t contraction_schedule(left_i.size());
 
     unsigned loop_max = left_i.size();
@@ -694,36 +691,36 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
                   right_i, physical_i, out_right_pb, mb, contraction_schedule[mb]);
     });
 
-    size_t sz = 0, a = 0, b = 0, c = 0, d = 0, e = 0;
-    for (size_t block = 0; block < loop_max; ++block)
-    {
-        sz += contraction_schedule[block].n_tasks();
-        boost::tuple<size_t, size_t, size_t, size_t, size_t> flops
-            = contraction_schedule[block].data_stats(initial, right_indices);
-        a += get<0>(flops);
-        b += get<1>(flops);
-        c += get<2>(flops);
-        d += get<3>(flops);
-        e += get<4>(flops);
-    }
-
-    size_t total_flops = c + d + a/4 + e/4;
-    size_t total_mem   = 2*a + b + e + size_of(right);
-    contraction_schedule.total_flops = total_flops;
-    contraction_schedule.total_mem = total_mem;
-
     if (std::max(mpo.row_dim(), mpo.col_dim()) > 10)
     {
+        size_t sz = 0, a = 0, b = 0, c = 0, d = 0, e = 0;
+        for (size_t block = 0; block < loop_max; ++block)
+        {
+            sz += contraction_schedule[block].n_tasks();
+            boost::tuple<size_t, size_t, size_t, size_t, size_t> flops
+                = contraction_schedule[block].data_stats(initial, right_indices);
+            a += get<0>(flops);
+            b += get<1>(flops);
+            c += get<2>(flops);
+            d += get<3>(flops);
+            e += get<4>(flops);
+        }
+
+        size_t total_flops = c + d + a/4 + e/4;
+        size_t total_mem   = 2*a + b + e + size_of(right);
+        contraction_schedule.total_flops = total_flops;
+        contraction_schedule.total_mem = total_mem;
+
         maquis::cout << "Schedule size: " << sz << " tasks, "
-                     << " t_move " << a / 1024 << "KB, "
-                     << " l_load " << b / 1024 << "KB, "
-                     << " lgemmf " << c / 1024 << "KF, "
-                     << " tgemmf " << d / 1024 << "KF, "
-                     << " R " << size_of(right)/1024 << "KB, "
-                     << " L " << size_of(left)/1024 << "KB "
-                     << " M " << e / 1024 << "KB, "
-                     << " F " << total_flops / 1024 << "KF, "
-                     << " B " << total_mem / 1024 << "KB, "
+                     << " t_move " << a / 1024 / 1024 << "GB, "
+                     << " l_load " << b / 1024 / 1024 << "GB, "
+                     << " lgemmf " << c / 1024 / 1024 << "GF, "
+                     << " tgemmf " << d / 1024 / 1024 << "GF, "
+                     << " R " << size_of(right) / 1024 / 1024 << "GB, "
+                     << " L " << size_of(left) / 1024 / 1024 << "GB "
+                     << " M " << e / 1024 / 1024 << "GB, "
+                     << " F " << total_flops / 1024 / 1024 << "GF, "
+                     << " B " << total_mem / 1024 / 1024 << "GB, "
                      << std::endl;
 
         boost::chrono::high_resolution_clock::time_point then = boost::chrono::high_resolution_clock::now();
