@@ -62,6 +62,16 @@ bool all_true (InputIterator first, InputIterator last, Predicate pred)
 }
 
 template <class Pair>
+struct greater_first
+{
+    bool operator()(Pair const & i,
+                    Pair const & j) const
+    {
+        return i.first > j.first;
+    }
+};
+
+template <class Pair>
 struct compare_pair
 {
     bool operator()(Pair const & i,
