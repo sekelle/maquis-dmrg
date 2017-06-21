@@ -32,6 +32,7 @@
 #include <map>
 #include <utility>
 #include <malloc.h>
+#include <boost/lambda/construct.hpp>
 
 #include "utils/sizeof.h"
 #include "dmrg/utils/aligned_allocator.hpp"
@@ -715,7 +716,8 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
         std::vector<size_t> idx(loop_max);
         size_t i = 0;
         std::for_each(idx.begin(), idx.end(), boost::lambda::_1 = boost::lambda::var(i)++);
-        std::transform(flops_per_block.begin(), flops_per_block.end(), idx.begin(), fb.begin(), std::make_pair<size_t, size_t>);
+        std::transform(flops_per_block.begin(), flops_per_block.end(), idx.begin(), fb.begin(),
+                       boost::lambda::constructor<std::pair<size_t, size_t> >());
         std::sort(fb.begin(), fb.end(), greater_first<std::pair<size_t, size_t> >());
         std::transform(fb.begin(), fb.end(), idx.begin(), boost::bind(&std::pair<size_t, size_t>::second, boost::lambda::_1));
         contraction_schedule.load_balance = idx;
