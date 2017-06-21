@@ -56,8 +56,9 @@ namespace common {
         block_matrix<Matrix, SymmGroup> collector(ket_basis);
 
         index_type loop_max = tasks.size();
-        omp_for(index_type mps_block, parallel::range<index_type>(0,loop_max), {
+        omp_for(index_type task_block, parallel::range<index_type>(0,loop_max), {
 
+            size_t mps_block = tasks.load_balance[task_block];
             Matrix destination(ket_basis.left_size(mps_block), ket_basis.right_size(mps_block));
             for (const_iterator it = tasks[mps_block].begin(); it != tasks[mps_block].end(); ++it)
                 for (size_t s = 0; s < it->second.size(); ++s)

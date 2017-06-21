@@ -591,6 +591,7 @@ template <class Matrix, class SymmGroup>
 class MPSBlock : public std::map<typename SymmGroup::charge, ContractionGroupVector<Matrix, SymmGroup> >
 {
     typedef boost::tuple<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t> stats_t;
+
 public:
     typedef std::map<typename SymmGroup::charge, ContractionGroupVector<Matrix, SymmGroup> > base;
     typedef typename base::const_iterator const_iterator;
@@ -622,8 +623,6 @@ public:
             }
         return ret;
     }
-
-    // invariant: output MPS block, l_size
 };
 
 template <class Matrix, class SymmGroup>
@@ -632,7 +631,7 @@ struct Schedule_ : public std::vector<MPSBlock<Matrix, SymmGroup> >
     typedef std::vector<MPSBlock<Matrix, SymmGroup> > base;
 
     Schedule_() {}
-    Schedule_(std::size_t dim) : base(dim) {}
+    Schedule_(std::size_t dim) : base(dim), load_balance(dim) {}
     double mflops(double time)
     {
         return total_flops*niter / time / 1e6;
@@ -644,6 +643,7 @@ struct Schedule_ : public std::vector<MPSBlock<Matrix, SymmGroup> >
 
     size_t total_flops, total_mem;
     size_t niter;
+    std::vector<size_t> load_balance;
 }; 
 
 template <class Matrix, class SymmGroup>
@@ -687,12 +687,15 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
 
     unsigned loop_max = left_i.size();
     omp_for(index_type mb, parallel::range<index_type>(0,loop_max), {
+        contraction_schedule.load_balance[mb] = mb;
         task_calc(mpo, left_indices, right_indices, left_i,
                   right_i, physical_i, out_right_pb, mb, contraction_schedule[mb]);
     });
 
     if (std::max(mpo.row_dim(), mpo.col_dim()) > 10)
     {
+        std::vector<size_t> flops_per_block(loop_max);
+
         size_t sz = 0, a = 0, b = 0, c = 0, d = 0, e = 0;
         for (size_t block = 0; block < loop_max; ++block)
         {
@@ -704,7 +707,18 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
             c += get<2>(flops);
             d += get<3>(flops);
             e += get<4>(flops);
+
+            flops_per_block[block] = get<2>(flops) + get<3>(flops) + get<0>(flops)/4 + get<4>(flops)/4;
         }
+
+        std::vector<std::pair<size_t, size_t> > fb(loop_max);
+        std::vector<size_t> idx(loop_max);
+        size_t i = 0;
+        std::for_each(idx.begin(), idx.end(), boost::lambda::_1 = boost::lambda::var(i)++);
+        std::transform(flops_per_block.begin(), flops_per_block.end(), idx.begin(), fb.begin(), std::make_pair<size_t, size_t>);
+        std::sort(fb.begin(), fb.end(), greater_first<std::pair<size_t, size_t> >());
+        std::transform(fb.begin(), fb.end(), idx.begin(), boost::bind(&std::pair<size_t, size_t>::second, boost::lambda::_1));
+        contraction_schedule.load_balance = idx;
 
         size_t total_flops = c + d + a/4 + e/4;
         size_t total_mem   = 2*a + b + e + size_of(right);
