@@ -102,7 +102,7 @@ inline void blas_dgemm(const double* A, const double* B, double* C, int M, int K
 
 
 void dgemm_ddot(unsigned ls, unsigned ms, unsigned rs, unsigned b1size,
-                unsigned* b2sz, const char* transL, unsigned ** tidx, double** alpha, const double** left, const double* t, double* out)
+                const unsigned* b2sz, const char* transL, unsigned ** tidx, double** alpha, const double** left, const double* t, double* out)
 {
     typedef unsigned long uint;
 

@@ -88,7 +88,9 @@ public:
         {
             bs.push_back(b1);
             ks.push_back(k);
+            b2sz.push_back(tmpline.size());
             trans.push_back(transb1);
+
             tasks.push_back(tmpline);
             tmpline.clear();
         }
@@ -101,8 +103,7 @@ public:
 
     std::size_t n_tasks() const
     {
-        return std::accumulate(tasks.begin(), tasks.end(), 0,
-                               bl::_1 + bl::bind(&std::vector<micro_task>::size, bl::_2));
+        return std::accumulate(b2sz.begin(), b2sz.end(), 0);
     }
 
     template <class OtherMatrix>
@@ -111,12 +112,12 @@ public:
     {
         Matrix ret(l_size, r_size);
         Matrix S(m_size, r_size);
-        for (index_type i = 0; i < tasks.size(); ++i)
+        for (index_type i = 0; i < b2sz.size(); ++i)
         {
             index_type b1 = bs[i];
             memset(&S(0,0), 0, m_size * r_size * sizeof(typename Matrix::value_type));
 
-            for (index_type j = 0; j < tasks[i].size(); ++j)
+            for (index_type j = 0; j < b2sz[i]; ++j)
                 maquis::dmrg::detail::iterator_axpy(&T[tasks[i][j].t_index](0,0),
                                                     &T[tasks[i][j].t_index](0,0) + m_size * r_size,
                                                     &S(0,0), tasks[i][j].scale);
@@ -133,32 +134,28 @@ public:
     typename boost::enable_if<boost::is_same<typename OtherMatrix::value_type, double>, Matrix>::type
     contract(Boundary<OtherMatrix, SymmGroup> const & left, const value_type* t_pointer, std::vector<Matrix> const & T) const
     {
-        unsigned b1size = tasks.size();
+        unsigned b1size = b2sz.size();
 
-        unsigned* b2sz = new unsigned[b1size];
         const value_type** left_mat = new const value_type*[b1size];
-
         unsigned ** tidx = new unsigned*[b1size];
         value_type ** alpha = new value_type*[b1size];
 
         for (index_type i = 0; i < b1size; ++i)
         {
             index_type b1 = bs[i];
-            b2sz[i] = tasks[i].size();
             left_mat[i] = &left[b1][ks[i]](0,0);
 
-            tidx[i] = new unsigned[tasks[i].size()];
-            alpha[i] = new value_type[tasks[i].size()];
-            for (index_type j = 0; j < tasks[i].size(); ++j) {
+            tidx[i] = new unsigned[b2sz[i]];
+            alpha[i] = new value_type[b2sz[i]];
+            for (index_type j = 0; j < b2sz[i]; ++j) {
                 tidx[i][j] = tasks[i][j].t_index; 
                 alpha[i][j] = tasks[i][j].scale; 
             }
         }
 
         Matrix ret(l_size, r_size);
-        dgemm_ddot(l_size, m_size, r_size, b1size, b2sz, &trans[0], tidx, alpha, left_mat, t_pointer, &ret(0,0));
+        dgemm_ddot(l_size, m_size, r_size, b1size, b2sz.data(), &trans[0], tidx, alpha, left_mat, t_pointer, &ret(0,0));
 
-        delete[] b2sz;
         delete[] left_mat;
         for (unsigned i = 0; i < b1size; ++i) { delete[] tidx[i]; delete[] alpha[i]; }
         delete[] tidx;
@@ -174,12 +171,12 @@ public:
          std::vector<unsigned> const & b_to_o) const
     {
         Matrix S(m_size, r_size);
-        for (index_type i = 0; i < tasks.size(); ++i)
+        for (index_type i = 0; i < b2sz.size(); ++i)
         {
             index_type b1 = bs[i];
             memset(&S(0,0), 0, m_size * r_size * sizeof(typename Matrix::value_type));
 
-            for (index_type j = 0; j < tasks[i].size(); ++j)
+            for (index_type j = 0; j < b2sz[i]; ++j)
                 maquis::dmrg::detail::iterator_axpy(&T[tasks[i][j].t_index](0,0),
                                                     &T[tasks[i][j].t_index](0,0) + m_size * r_size,
                                                     &S(0,0), tasks[i][j].scale);
@@ -196,12 +193,12 @@ public:
            std::vector<unsigned> const & b_to_o) const
     {
         Matrix S(m_size, r_size);
-        for (index_type i = 0; i < tasks.size(); ++i)
+        for (index_type i = 0; i < b2sz.size(); ++i)
         {
             index_type b2 = bs[i];
             memset(&S(0,0), 0, m_size * r_size * sizeof(typename Matrix::value_type));
 
-            for (index_type j = 0; j < tasks[i].size(); ++j)
+            for (index_type j = 0; j < b2sz[i]; ++j)
                 maquis::dmrg::detail::iterator_axpy(&T[tasks[i][j].t_index](0,0),
                                                     &T[tasks[i][j].t_index](0,0) + m_size * r_size,
                                                     &S(0,0), tasks[i][j].scale);
@@ -216,12 +213,12 @@ public:
               Boundary<OtherMatrix, SymmGroup> & ret, std::vector<unsigned> const & b_to_o) const
     {
         Matrix S(m_size, r_size);
-        for (index_type i = 0; i < tasks.size(); ++i)
+        for (index_type i = 0; i < b2sz.size(); ++i)
         {
             index_type b2 = bs[i];
             memset(&S(0,0), 0, m_size * r_size * sizeof(typename Matrix::value_type));
 
-            for (index_type j = 0; j < tasks[i].size(); ++j)
+            for (index_type j = 0; j < b2sz[i]; ++j)
                 maquis::dmrg::detail::iterator_axpy(&T[tasks[i][j].t_index](0,0),
                                                     &T[tasks[i][j].t_index](0,0) + m_size * r_size,
                                                     &S(0,0), tasks[i][j].scale);
@@ -234,11 +231,11 @@ public:
     void rbtm(const value_type* t_pointer, std::vector<Matrix> const & T, Boundary<OtherMatrix, SymmGroup> & ret,
          std::vector<unsigned> const & b_to_o) const
     {
-        for (index_type i = 0; i < tasks.size(); ++i)
+        for (index_type i = 0; i < b2sz.size(); ++i)
         {
             index_type b1 = bs[i];
 
-            for (index_type j = 0; j < tasks[i].size(); ++j)
+            for (index_type j = 0; j < b2sz[i]; ++j)
                 maquis::dmrg::detail::iterator_axpy(&T[tasks[i][j].t_index](0,0),
                                                     &T[tasks[i][j].t_index](0,0) + m_size * r_size,
                                                     &ret[b1][b_to_o[b1]](0, offset), tasks[i][j].scale);
@@ -246,8 +243,8 @@ public:
     }
 
     std::size_t t_move()      const { return n_tasks() * 8 * m_size * r_size; }
-    std::size_t l_load()      const { return (n_tasks()) ? tasks.size() * 8 * l_size * m_size : 0; }
-    std::size_t lgemm_flops() const { return (n_tasks()) ? tasks.size() * 2 * l_size * m_size * r_size : 0; }
+    std::size_t l_load()      const { return (n_tasks()) ? b2sz.size() * 8 * l_size * m_size : 0; }
+    std::size_t lgemm_flops() const { return (n_tasks()) ? b2sz.size() * 2 * l_size * m_size * r_size : 0; }
     std::size_t collect()     const { return (n_tasks()) ? 8 * l_size * r_size : 0; }
 
     unsigned get_m_size() const { return m_size; }
@@ -265,6 +262,7 @@ private:
     std::vector<micro_task> tmpline;
     std::vector<std::vector<micro_task> > tasks;
     std::vector<index_type> bs, ks;
+    std::vector<unsigned> b2sz;
     std::vector<char> trans;
 };
 
