@@ -32,6 +32,7 @@
 #include <x86intrin.h>
 #include <immintrin.h>
 
+#include <new>
 #include <cassert>
 #include <cstddef>
 #include <cstring>
@@ -108,7 +109,10 @@ void dgemm_ddot(unsigned ls, unsigned ms, unsigned rs, unsigned b1size,
     uint t_size = ms * rs;
     uint t_size_padded = round_up<4>(t_size);
 
-    double * s_buffer = (double*)memalign(ALIGNMENT, t_size * sizeof(double));
+    double * s_buffer;
+    if (posix_memalign(reinterpret_cast<void**>(&s_buffer), ALIGNMENT, t_size * sizeof(double)))
+        throw std::bad_alloc();
+    //double * s_buffer = (double*)memalign(ALIGNMENT, t_size * sizeof(double));
     for (uint i = 0; i < b1size; ++i)
     {
         std::memset(s_buffer, 0, t_size * sizeof(double));

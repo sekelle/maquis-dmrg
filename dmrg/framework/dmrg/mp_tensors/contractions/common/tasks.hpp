@@ -484,7 +484,6 @@ private:
     {
         unsigned m1_size = num_rows(trv); 
         unsigned m2_size = num_rows(mps_matrix); 
-        //unsigned r_size = num_cols(mps_matrix);
         unsigned r_size = rs_;
 
         T[pos] = Matrix(m1_size, r_size, 0);
@@ -503,7 +502,9 @@ private:
 
         std::size_t t_size = bit_twiddling::round_up<4>(M * N);
         std::size_t buffer_size = t_size * t_key_vec.size(); // 32B = 4 doubles
-        t_pointer = (double*)memalign(32, buffer_size * sizeof(double));
+        if (posix_memalign(reinterpret_cast<void**>(&t_pointer), 32, buffer_size * sizeof(double)))
+            throw std::bad_alloc();
+        //t_pointer = (double*)memalign(32, buffer_size * sizeof(double));
 
         char gemmtrans[2] = {'N', 'T'};
         value_type one(1);
