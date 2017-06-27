@@ -279,7 +279,7 @@ public:
 
     ContractionGroup() {}
     ContractionGroup(unsigned b, unsigned s, unsigned ls, unsigned ms, unsigned rs, unsigned out_offset, bool left=false)
-        : mps_block(b), l_size(ls), rs_(rs), base(s, typename base::value_type(ls, ms, rs))
+        : mps_block(b), l_size(ls), r_size(rs), base(s, typename base::value_type(ls, ms, rs))
     {
         unsigned pair_size = (left) ? ls : rs;
         for (unsigned i = 0 ; i < s; ++i)
@@ -410,7 +410,7 @@ public:
 
     // invariant: phys_out, phys_offset
 private:
-    unsigned mps_block, l_size, rs_;
+    unsigned mps_block, l_size, r_size;
     mutable std::vector<Matrix> T;
     mutable value_type* t_pointer;
 
@@ -433,10 +433,13 @@ private:
             char trans;
             bit_twiddling::unpack(t_key_vec[pos], b2, r_block, in_offset, trans);
 
+            T[pos] = Matrix(num_rows(mps.data()[mps_block]), r_size, 0);
             if (trans)
-                multiply(mps.data()[mps_block], transpose(right[b2][r_block]), in_offset, pos);
-            else
-                multiply(mps.data()[mps_block], right[b2][r_block], in_offset, pos);
+                boost::numeric::bindings::blas::gemm(value_type(1), mps.data()[mps_block], transpose(right[b2][r_block]), value_type(0), T[pos],
+                                                     in_offset, 0, 0, num_cols(right[b2][r_block]), r_size);
+            else 
+                boost::numeric::bindings::blas::gemm(value_type(1), mps.data()[mps_block], right[b2][r_block], value_type(0), T[pos],
+                                                     in_offset, 0, 0, num_rows(right[b2][r_block]), r_size);
         }
     }
 
@@ -452,43 +455,21 @@ private:
             char trans;
             bit_twiddling::unpack(t_key_vec[pos], b, b_block, lb_ket, in_offset, trans);
 
-            if (trans)
-                multiply_left(transpose(left[b][b_block]), mps.data()[lb_ket], in_offset, pos);
-            else
-                multiply_left(left[b][b_block], mps.data()[lb_ket], in_offset, pos);
+            if (trans) {
+                T[pos] = Matrix(num_cols(left[b][b_block]), r_size, 0);
+                boost::numeric::bindings::blas::gemm(value_type(1), transpose(left[b][b_block]),
+                                                     mps.data()[lb_ket], value_type(0), T[pos],
+                                                     0, in_offset, 0, num_rows(mps.data()[lb_ket]),
+                                                     r_size);
+            }
+            else {
+                T[pos] = Matrix(num_rows(left[b][b_block]), r_size, 0);
+                boost::numeric::bindings::blas::gemm(value_type(1), left[b][b_block],
+                                                     mps.data()[lb_ket], value_type(0), T[pos],
+                                                     0, in_offset, 0, num_rows(mps.data()[lb_ket]),
+                                                     r_size);
+            }
         }
-    }
-
-    template <class VT>
-    typename boost::disable_if<boost::is_same<VT, double>, void>::type
-    drop_T() const { T = std::vector<Matrix>(); }
-
-    template <class VT>
-    typename boost::enable_if<boost::is_same<VT, double>, void>::type
-    drop_T() const { free(t_pointer); }
-
-    template <class DefaultMatrix, class TMatrix>
-    void multiply(DefaultMatrix const & mps_matrix, TMatrix const & trv, unsigned in_offset, unsigned pos) const
-    {
-        unsigned m1_size = num_rows(mps_matrix); 
-        unsigned m2_size = num_rows(trv); 
-        unsigned r_size = num_cols(trv); 
-
-        T[pos] = Matrix(m1_size, r_size, 0);
-        boost::numeric::bindings::blas::gemm(value_type(1), mps_matrix, trv, value_type(0), T[pos],
-                                             in_offset, 0, 0, m2_size, r_size);
-    }
-
-    template <class DefaultMatrix, class TMatrix>
-    void multiply_left(TMatrix const & trv, DefaultMatrix const & mps_matrix, unsigned in_offset, unsigned pos) const
-    {
-        unsigned m1_size = num_rows(trv); 
-        unsigned m2_size = num_rows(mps_matrix); 
-        unsigned r_size = rs_;
-
-        T[pos] = Matrix(m1_size, r_size, 0);
-        boost::numeric::bindings::blas::gemm(value_type(1), trv, mps_matrix, value_type(0), T[pos],
-                                             0, in_offset, 0, m2_size, r_size);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -525,6 +506,14 @@ private:
                    &right[b2][r_block](0,0), &LDB, &zero, t_pointer + pos * t_size, &M);
         }
     }
+
+    template <class VT>
+    typename boost::disable_if<boost::is_same<VT, double>, void>::type
+    drop_T() const { T = std::vector<Matrix>(); }
+
+    template <class VT>
+    typename boost::enable_if<boost::is_same<VT, double>, void>::type
+    drop_T() const { free(t_pointer); }
 };
 
                                                              // size == phys_i.size()
