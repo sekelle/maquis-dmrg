@@ -174,9 +174,9 @@ public:
             memset(&S(0,0), 0, m_size * r_size * sizeof(typename Matrix::value_type));
 
             for (index_type j = 0; j < b2sz[i]; ++j)
-                maquis::dmrg::detail::iterator_axpy(&T[tasks[i][j].t_index](0,0),
-                                                    &T[tasks[i][j].t_index](0,0) + m_size * r_size,
-                                                    &S(0,0), tasks[i][j].scale);
+                maquis::dmrg::detail::iterator_axpy(&T[tidx[i][j]](0,0),
+                                                    &T[tidx[i][j]](0,0) + m_size * r_size,
+                                                    &S(0,0), alpha_[i][j]);
             if (trans[i])
                 boost::numeric::bindings::blas::gemm(value_type(1), transpose(left[b1][ks[i]]), S, value_type(1), ret);
             else
@@ -306,7 +306,6 @@ public:
     unsigned get_m_size() const { return m_size; }
     unsigned get_r_size() const { return r_size; }
 
-    std::vector<std::vector<micro_task> > const & get_tasks() const { return tasks; }
     std::vector<index_type> const & get_bs() const { return bs; }
     std::vector<index_type> const & get_ks() const { return ks; }
 
