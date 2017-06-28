@@ -84,16 +84,15 @@ public:
 
     MatrixGroup(MatrixGroup const & rhs) : offset(rhs.offset)
                                          , l_size(rhs.l_size), m_size(rhs.m_size), r_size(rhs.r_size)
-                                         //, tmpline(rhs.tmpline), tasks(rhs.tasks), bs(rhs.bs), ks(rhs.ks)
                                          , tmpline(rhs.tmpline), bs(rhs.bs), ks(rhs.ks)
                                          , b2sz(rhs.b2sz), trans(rhs.trans)
     {
-        alpha_.resize(b2sz.size());
+        alpha.resize(b2sz.size());
         tidx.resize(b2sz.size());
         for (unsigned t = 0; t < b2sz.size(); ++t)
         {
-            alpha_[t] = new value_type[b2sz[t]];
-            std::copy(rhs.alpha_[t], rhs.alpha_[t] + b2sz[t], alpha_[t]);
+            alpha[t] = new value_type[b2sz[t]];
+            std::copy(rhs.alpha[t], rhs.alpha[t] + b2sz[t], alpha[t]);
             tidx[t] = new unsigned[b2sz[t]];
             std::copy(rhs.tidx[t], rhs.tidx[t] + b2sz[t], tidx[t]);
         }
@@ -107,9 +106,9 @@ public:
 
     ~MatrixGroup()
     {
-        for (unsigned t = 0; t < alpha_.size(); ++t)
+        for (unsigned t = 0; t < alpha.size(); ++t)
         {
-            delete[] alpha_[t];
+            delete[] alpha[t];
             delete[] tidx[t];
         }
     }
@@ -121,12 +120,11 @@ public:
         std::swap(lhs.m_size, rhs.m_size);
         std::swap(lhs.r_size, rhs.r_size);
         std::swap(lhs.tmpline, rhs.tmpline);
-        //std::swap(lhs.tasks, rhs.tasks);
         std::swap(lhs.bs, rhs.bs);
         std::swap(lhs.ks, rhs.ks);
         std::swap(lhs.b2sz, rhs.b2sz);
         std::swap(lhs.trans, rhs.trans);
-        std::swap(lhs.alpha_, rhs.alpha_);
+        std::swap(lhs.alpha, rhs.alpha);
         std::swap(lhs.tidx, rhs.tidx);
     }
 
@@ -139,16 +137,15 @@ public:
             trans.push_back(transb1);
             b2sz.push_back(tmpline.size());
 
-            value_type* alpha_i = new value_type[*b2sz.rbegin()];
+            value_type* alphai = new value_type[*b2sz.rbegin()];
             unsigned* tidx_i = new unsigned[*b2sz.rbegin()];
             for (unsigned t = 0; t < *b2sz.rbegin(); ++t){
-                alpha_i[t] = tmpline[t].scale;
+                alphai[t] = tmpline[t].scale;
                 tidx_i[t] = tmpline[t].t_index;
             }
-            alpha_.push_back(alpha_i);
+            alpha.push_back(alphai);
             tidx.push_back(tidx_i);
 
-            //tasks.push_back(tmpline);
             tmpline.clear();
         }
     }
@@ -177,7 +174,7 @@ public:
             for (index_type j = 0; j < b2sz[i]; ++j)
                 maquis::dmrg::detail::iterator_axpy(&T[tidx[i][j]](0,0),
                                                     &T[tidx[i][j]](0,0) + m_size * r_size,
-                                                    &S(0,0), alpha_[i][j]);
+                                                    &S(0,0), alpha[i][j]);
             if (trans[i])
                 boost::numeric::bindings::blas::gemm(value_type(1), transpose(left[b1][ks[i]]), S, value_type(1), ret);
             else
@@ -191,32 +188,15 @@ public:
     typename boost::enable_if<boost::is_same<typename OtherMatrix::value_type, double>, Matrix>::type
     contract(Boundary<OtherMatrix, SymmGroup> const & left, const value_type* t_pointer, std::vector<Matrix> const & T) const
     {
-        unsigned b1size = b2sz.size();
+        const value_type** left_mat = new const value_type*[b2sz.size()];
 
-        const value_type** left_mat = new const value_type*[b1size];
-        //unsigned ** tidx = new unsigned*[b1size];
-        //value_type ** alpha = new value_type*[b1size];
-
-        for (index_type i = 0; i < b1size; ++i)
-        {
-            index_type b1 = bs[i];
-            left_mat[i] = &left[b1][ks[i]](0,0);
-
-            //tidx[i] = new unsigned[b2sz[i]];
-            //alpha[i] = new value_type[b2sz[i]];
-            //for (index_type j = 0; j < b2sz[i]; ++j) {
-                //tidx[i][j] = tasks[i][j].t_index; 
-                //alpha[i][j] = tasks[i][j].scale; 
-            //}
-        }
+        for (index_type i = 0; i < b2sz.size(); ++i)
+            left_mat[i] = &left[bs[i]][ks[i]](0,0);
 
         Matrix ret(l_size, r_size);
-        dgemm_ddot(l_size, m_size, r_size, b1size, b2sz.data(), &trans[0], tidx.data(), alpha_.data(), left_mat, t_pointer, &ret(0,0));
+        dgemm_ddot(l_size, m_size, r_size, b2sz.size(), b2sz.data(), &trans[0], tidx.data(), alpha.data(), left_mat, t_pointer, &ret(0,0));
 
         delete[] left_mat;
-        //for (unsigned i = 0; i < b1size; ++i) { delete[] tidx[i]; /*delete[] alpha[i];*/ }
-        //delete[] tidx;
-        //delete[] alpha;
 
         return ret;
     }       
@@ -236,7 +216,7 @@ public:
             for (index_type j = 0; j < b2sz[i]; ++j)
                 maquis::dmrg::detail::iterator_axpy(&T[tidx[i][j]](0,0),
                                                     &T[tidx[i][j]](0,0) + m_size * r_size,
-                                                    &S(0,0), alpha_[i][j]);
+                                                    &S(0,0), alpha[i][j]);
 
             boost::numeric::bindings::blas::gemm(value_type(1), S, transpose(bra), value_type(1), ret[b1][b_to_o[b1]],
                                                  0, offset, 0, r_size, l_size);
@@ -258,7 +238,7 @@ public:
             for (index_type j = 0; j < b2sz[i]; ++j)
                 maquis::dmrg::detail::iterator_axpy(&T[tidx[i][j]](0,0),
                                                     &T[tidx[i][j]](0,0) + m_size * r_size,
-                                                    &S(0,0), alpha_[i][j]);
+                                                    &S(0,0), alpha[i][j]);
 
             boost::numeric::bindings::blas::gemm(value_type(1), transpose(bra), S, value_type(1), ret[b2][b_to_o[b2]],
                                                  offset, 0, 0, m_size, r_size);
@@ -278,7 +258,7 @@ public:
             for (index_type j = 0; j < b2sz[i]; ++j)
                 maquis::dmrg::detail::iterator_axpy(&T[tidx[i][j]](0,0),
                                                     &T[tidx[i][j]](0,0) + m_size * r_size,
-                                                    &S(0,0), alpha_[i][j]);
+                                                    &S(0,0), alpha[i][j]);
             for (unsigned c = 0; c < r_size; ++c)
                 maquis::dmrg::detail::iterator_axpy(&S(0,c), &S(0,c) + m_size, &ret[b2][b_to_o[b2]](offset,c), 1.0);
         }
@@ -295,7 +275,7 @@ public:
             for (index_type j = 0; j < b2sz[i]; ++j)
                 maquis::dmrg::detail::iterator_axpy(&T[tidx[i][j]](0,0),
                                                     &T[tidx[i][j]](0,0) + m_size * r_size,
-                                                    &ret[b1][b_to_o[b1]](0, offset), alpha_[i][j]);
+                                                    &ret[b1][b_to_o[b1]](0, offset), alpha[i][j]);
         }
     }
 
@@ -316,9 +296,8 @@ private:
     unsigned l_size, m_size, r_size;
 
     std::vector<micro_task> tmpline;
-    //std::vector<std::vector<micro_task> > tasks;
 
-    std::vector<value_type*> alpha_;
+    std::vector<value_type*> alpha;
     std::vector<unsigned*> tidx;
 
     std::vector<index_type> bs, ks;
