@@ -84,7 +84,8 @@ public:
 
     MatrixGroup(MatrixGroup const & rhs) : offset(rhs.offset)
                                          , l_size(rhs.l_size), m_size(rhs.m_size), r_size(rhs.r_size)
-                                         , tmpline(rhs.tmpline), tasks(rhs.tasks), bs(rhs.bs), ks(rhs.ks)
+                                         //, tmpline(rhs.tmpline), tasks(rhs.tasks), bs(rhs.bs), ks(rhs.ks)
+                                         , tmpline(rhs.tmpline), bs(rhs.bs), ks(rhs.ks)
                                          , b2sz(rhs.b2sz), trans(rhs.trans)
     {
         alpha_.resize(b2sz.size());
@@ -120,7 +121,7 @@ public:
         std::swap(lhs.m_size, rhs.m_size);
         std::swap(lhs.r_size, rhs.r_size);
         std::swap(lhs.tmpline, rhs.tmpline);
-        std::swap(lhs.tasks, rhs.tasks);
+        //std::swap(lhs.tasks, rhs.tasks);
         std::swap(lhs.bs, rhs.bs);
         std::swap(lhs.ks, rhs.ks);
         std::swap(lhs.b2sz, rhs.b2sz);
@@ -147,7 +148,7 @@ public:
             alpha_.push_back(alpha_i);
             tidx.push_back(tidx_i);
 
-            tasks.push_back(tmpline);
+            //tasks.push_back(tmpline);
             tmpline.clear();
         }
     }
@@ -315,7 +316,7 @@ private:
     unsigned l_size, m_size, r_size;
 
     std::vector<micro_task> tmpline;
-    std::vector<std::vector<micro_task> > tasks;
+    //std::vector<std::vector<micro_task> > tasks;
 
     std::vector<value_type*> alpha_;
     std::vector<unsigned*> tidx;
