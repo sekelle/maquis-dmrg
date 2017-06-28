@@ -82,14 +82,70 @@ public:
     MatrixGroup() {}
     MatrixGroup(unsigned ls, unsigned ms, unsigned rs) : l_size(ls), m_size(ms), r_size(rs) {}
 
+    MatrixGroup(MatrixGroup const & rhs) : offset(rhs.offset)
+                                         , l_size(rhs.l_size), m_size(rhs.m_size), r_size(rhs.r_size)
+                                         , tmpline(rhs.tmpline), tasks(rhs.tasks), bs(rhs.bs), ks(rhs.ks)
+                                         , b2sz(rhs.b2sz), trans(rhs.trans)
+    {
+        alpha_.resize(b2sz.size());
+        tidx.resize(b2sz.size());
+        for (unsigned t = 0; t < b2sz.size(); ++t)
+        {
+            alpha_[t] = new value_type[b2sz[t]];
+            std::copy(rhs.alpha_[t], rhs.alpha_[t] + b2sz[t], alpha_[t]);
+            tidx[t] = new unsigned[b2sz[t]];
+            std::copy(rhs.tidx[t], rhs.tidx[t] + b2sz[t], tidx[t]);
+        }
+    }
+
+    MatrixGroup & operator=(MatrixGroup rhs)
+    {
+        swap(*this, rhs);
+        return *this;
+    }
+
+    ~MatrixGroup()
+    {
+        for (unsigned t = 0; t < alpha_.size(); ++t)
+        {
+            delete[] alpha_[t];
+            delete[] tidx[t];
+        }
+    }
+
+    friend void swap(MatrixGroup & lhs, MatrixGroup & rhs)
+    {
+        std::swap(lhs.offset, rhs.offset);
+        std::swap(lhs.l_size, rhs.l_size);
+        std::swap(lhs.m_size, rhs.m_size);
+        std::swap(lhs.r_size, rhs.r_size);
+        std::swap(lhs.tmpline, rhs.tmpline);
+        std::swap(lhs.tasks, rhs.tasks);
+        std::swap(lhs.bs, rhs.bs);
+        std::swap(lhs.ks, rhs.ks);
+        std::swap(lhs.b2sz, rhs.b2sz);
+        std::swap(lhs.trans, rhs.trans);
+        std::swap(lhs.alpha_, rhs.alpha_);
+        std::swap(lhs.tidx, rhs.tidx);
+    }
+
     void add_line(unsigned b1, unsigned k, char transb1)
     {
         if (tmpline.size())
         {
             bs.push_back(b1);
             ks.push_back(k);
-            b2sz.push_back(tmpline.size());
             trans.push_back(transb1);
+            b2sz.push_back(tmpline.size());
+
+            value_type* alpha_i = new value_type[*b2sz.rbegin()];
+            unsigned* tidx_i = new unsigned[*b2sz.rbegin()];
+            for (unsigned t = 0; t < *b2sz.rbegin(); ++t){
+                alpha_i[t] = tmpline[t].scale;
+                tidx_i[t] = tmpline[t].t_index;
+            }
+            alpha_.push_back(alpha_i);
+            tidx.push_back(tidx_i);
 
             tasks.push_back(tmpline);
             tmpline.clear();
@@ -137,29 +193,29 @@ public:
         unsigned b1size = b2sz.size();
 
         const value_type** left_mat = new const value_type*[b1size];
-        unsigned ** tidx = new unsigned*[b1size];
-        value_type ** alpha = new value_type*[b1size];
+        //unsigned ** tidx = new unsigned*[b1size];
+        //value_type ** alpha = new value_type*[b1size];
 
         for (index_type i = 0; i < b1size; ++i)
         {
             index_type b1 = bs[i];
             left_mat[i] = &left[b1][ks[i]](0,0);
 
-            tidx[i] = new unsigned[b2sz[i]];
-            alpha[i] = new value_type[b2sz[i]];
-            for (index_type j = 0; j < b2sz[i]; ++j) {
-                tidx[i][j] = tasks[i][j].t_index; 
-                alpha[i][j] = tasks[i][j].scale; 
-            }
+            //tidx[i] = new unsigned[b2sz[i]];
+            //alpha[i] = new value_type[b2sz[i]];
+            //for (index_type j = 0; j < b2sz[i]; ++j) {
+                //tidx[i][j] = tasks[i][j].t_index; 
+                //alpha[i][j] = tasks[i][j].scale; 
+            //}
         }
 
         Matrix ret(l_size, r_size);
-        dgemm_ddot(l_size, m_size, r_size, b1size, b2sz.data(), &trans[0], tidx, alpha, left_mat, t_pointer, &ret(0,0));
+        dgemm_ddot(l_size, m_size, r_size, b1size, b2sz.data(), &trans[0], tidx.data(), alpha_.data(), left_mat, t_pointer, &ret(0,0));
 
         delete[] left_mat;
-        for (unsigned i = 0; i < b1size; ++i) { delete[] tidx[i]; delete[] alpha[i]; }
-        delete[] tidx;
-        delete[] alpha;
+        //for (unsigned i = 0; i < b1size; ++i) { delete[] tidx[i]; /*delete[] alpha[i];*/ }
+        //delete[] tidx;
+        //delete[] alpha;
 
         return ret;
     }       
@@ -261,6 +317,10 @@ private:
 
     std::vector<micro_task> tmpline;
     std::vector<std::vector<micro_task> > tasks;
+
+    std::vector<value_type*> alpha_;
+    std::vector<unsigned*> tidx;
+
     std::vector<index_type> bs, ks;
     std::vector<unsigned> b2sz;
     std::vector<char> trans;
