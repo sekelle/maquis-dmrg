@@ -49,20 +49,10 @@ namespace bl = boost::lambda;
 namespace detail { 
 
     template <typename T>
-    struct micro_task
-    {
-        typedef unsigned short IS;
-
-        T scale;
-        unsigned in_offset;
-        IS b2, k, l_size, r_size, stripe, out_offset;
-    };
-
-    template <typename T>
     struct micro_task_shtm
     {
         T scale;
-        unsigned short t_index;
+        unsigned t_index;
     };
 
 } // namespace detail
@@ -776,12 +766,5 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
 
 } // namespace common
 } // namespace contraction
-
-    template <typename T>
-    std::ostream & operator << (std::ostream & os, contraction::common::detail::micro_task<T> t)
-    {
-        os << "b2 " << t.b2 << " oo " << t.out_offset << " scale " << t.scale;
-        return os;
-    }
 
 #endif
