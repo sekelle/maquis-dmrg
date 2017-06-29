@@ -41,6 +41,8 @@
 #include "dmrg/mp_tensors/contractions/numeric/numeric.h"
 #include "dmrg/mp_tensors/contractions/numeric/gemm_template.h"
 
+#define ALIGNMENT 32
+
 namespace contraction {
 namespace common {
 
@@ -198,6 +200,11 @@ public:
     prop(DefaultMatrix const & bra, const value_type* t_pointer, std::vector<Matrix> const & T, Boundary<OtherMatrix, SymmGroup> & ret,
          std::vector<unsigned> const & b_to_o) const
     {
+        double one=1;
+        char trans = 'T';
+        char notrans = 'N';
+        int M = m_size, N = l_size, K = r_size;
+
         Matrix S(m_size, r_size);
         for (index_type i = 0; i < b2sz.size(); ++i)
         {
@@ -209,8 +216,10 @@ public:
                                                     &T[tidx[i][j]](0,0) + m_size * r_size,
                                                     &S(0,0), alpha[i][j]);
 
-            boost::numeric::bindings::blas::gemm(value_type(1), S, transpose(bra), value_type(1), ret[b1][b_to_o[b1]],
-                                                 0, offset, 0, r_size, l_size);
+            //boost::numeric::bindings::blas::gemm(value_type(1), S, transpose(bra), value_type(1), ret[b1][b_to_o[b1]],
+            //                                     0, offset, 0, r_size, l_size);
+
+            blas_gemm(&notrans, &trans, &M, &N, &K, &one, &S(0,0), &M, &bra(0, offset), &N, &one, &ret[b1][b_to_o[b1]](0,0), &M);
         }
     }
 
@@ -510,9 +519,9 @@ private:
         int M = mps.row_dim()[mps_block].second; 
         int N = r_size;
 
-        std::size_t t_size = bit_twiddling::round_up<4>(M * N);
-        std::size_t buffer_size = t_size * t_key_vec.size(); // 32B = 4 doubles
-        if (posix_memalign(reinterpret_cast<void**>(&t_pointer), 32, buffer_size * sizeof(double)))
+        std::size_t t_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(M * N);
+        std::size_t buffer_size = t_size * t_key_vec.size();
+        if (posix_memalign(reinterpret_cast<void**>(&t_pointer), ALIGNMENT, buffer_size * sizeof(value_type)))
             throw std::bad_alloc();
 
         char gemmtrans[2] = {'N', 'T'};
@@ -668,7 +677,7 @@ struct Schedule_ : public std::vector<MPSBlock<Matrix, SymmGroup> >
 template <class Matrix, class SymmGroup>
 struct Schedule
 {
-    typedef typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, 32>::type AlignedMatrix;
+    typedef typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, ALIGNMENT>::type AlignedMatrix;
     typedef typename MatrixGroup<AlignedMatrix, SymmGroup>::micro_task micro_task;
     typedef MPSBlock<AlignedMatrix, SymmGroup> block_type;
     typedef Schedule_<AlignedMatrix, SymmGroup> schedule_t;
@@ -767,5 +776,7 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
 
 } // namespace common
 } // namespace contraction
+
+#undef ALIGNMENT
 
 #endif
