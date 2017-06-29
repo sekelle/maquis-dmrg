@@ -66,6 +66,7 @@ class MatrixGroup
 {
     typedef MPOTensor_detail::index_type index_type;
     typedef typename Matrix::value_type value_type;
+    typedef unsigned long uint;
 
 public:
 
@@ -155,8 +156,16 @@ public:
 
     template <class OtherMatrix>
     typename boost::disable_if<boost::is_same<typename OtherMatrix::value_type, double>, Matrix>::type
+    //Matrix
     contract(Boundary<OtherMatrix, SymmGroup> const & left, const value_type* t_pointer, std::vector<Matrix> const & T) const
     {
+        value_type one=1;
+        char tr = 'T';
+        char notr = 'N';
+        int M = l_size, N = r_size, K = m_size;
+        uint t_size = m_size * r_size;
+        uint t_size_padded = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(t_size);
+
         Matrix ret(l_size, r_size);
         Matrix S(m_size, r_size);
         for (index_type i = 0; i < b2sz.size(); ++i)
@@ -164,14 +173,21 @@ public:
             index_type b1 = bs[i];
             memset(&S(0,0), 0, m_size * r_size * sizeof(typename Matrix::value_type));
 
+            const value_type* alpha_i = alpha[i];
+            const unsigned* tidx_i = tidx[i];
             for (index_type j = 0; j < b2sz[i]; ++j)
-                maquis::dmrg::detail::iterator_axpy(&T[tidx[i][j]](0,0),
-                                                    &T[tidx[i][j]](0,0) + m_size * r_size,
-                                                    &S(0,0), alpha[i][j]);
+                //maquis::dmrg::detail::iterator_axpy(&T[tidx[i][j]](0,0),
+                //                                    &T[tidx[i][j]](0,0) + m_size * r_size,
+                //                                    &S(0,0), alpha[i][j]);
+                maquis::dmrg::detail::iterator_axpy(t_pointer + tidx_i[j] * t_size_padded,
+                                                    t_pointer + tidx_i[j] * t_size_padded + t_size,
+                                                    &S(0,0), alpha_i[j]);
             if (trans[i])
-                boost::numeric::bindings::blas::gemm(value_type(1), transpose(left[b1][ks[i]]), S, value_type(1), ret);
+                //boost::numeric::bindings::blas::gemm(value_type(1), transpose(left[b1][ks[i]]), S, value_type(1), ret);
+                blas_gemm(&tr, &notr, &M, &N, &K, &one, &left[b1][ks[i]](0,0), &K, &S(0,0), &K, &one, &ret(0,0), &M);
             else
-                boost::numeric::bindings::blas::gemm(value_type(1), left[b1][ks[i]], S, value_type(1), ret);
+                //boost::numeric::bindings::blas::gemm(value_type(1), left[b1][ks[i]], S, value_type(1), ret);
+                blas_gemm(&notr, &notr, &M, &N, &K, &one, &left[b1][ks[i]](0,0), &M, &S(0,0), &K, &one, &ret(0,0), &M);
         }
 
         return ret;
@@ -200,10 +216,12 @@ public:
     prop(DefaultMatrix const & bra, const value_type* t_pointer, std::vector<Matrix> const & T, Boundary<OtherMatrix, SymmGroup> & ret,
          std::vector<unsigned> const & b_to_o) const
     {
-        double one=1;
-        char trans = 'T';
-        char notrans = 'N';
+        value_type one=1;
+        char tr = 'T';
+        char notr = 'N';
         int M = m_size, N = l_size, K = r_size;
+        uint t_size = m_size * r_size;
+        uint t_size_padded = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(t_size);
 
         Matrix S(m_size, r_size);
         for (index_type i = 0; i < b2sz.size(); ++i)
@@ -211,15 +229,20 @@ public:
             index_type b1 = bs[i];
             memset(&S(0,0), 0, m_size * r_size * sizeof(typename Matrix::value_type));
 
+            const value_type* alpha_i = alpha[i];
+            const unsigned* tidx_i = tidx[i];
             for (index_type j = 0; j < b2sz[i]; ++j)
-                maquis::dmrg::detail::iterator_axpy(&T[tidx[i][j]](0,0),
-                                                    &T[tidx[i][j]](0,0) + m_size * r_size,
-                                                    &S(0,0), alpha[i][j]);
+                //maquis::dmrg::detail::iterator_axpy(&T[tidx[i][j]](0,0),
+                //                                    &T[tidx[i][j]](0,0) + m_size * r_size,
+                //                                    &S(0,0), alpha[i][j]);
+                maquis::dmrg::detail::iterator_axpy(t_pointer + tidx_i[j] * t_size_padded,
+                                                    t_pointer + tidx_i[j] * t_size_padded + t_size,
+                                                    &S(0,0), alpha_i[j]);
 
             //boost::numeric::bindings::blas::gemm(value_type(1), S, transpose(bra), value_type(1), ret[b1][b_to_o[b1]],
             //                                     0, offset, 0, r_size, l_size);
 
-            blas_gemm(&notrans, &trans, &M, &N, &K, &one, &S(0,0), &M, &bra(0, offset), &N, &one, &ret[b1][b_to_o[b1]](0,0), &M);
+            blas_gemm(&notr, &tr, &M, &N, &K, &one, &S(0,0), &M, &bra(0, offset), &N, &one, &ret[b1][b_to_o[b1]](0,0), &M);
         }
     }
 
@@ -268,14 +291,19 @@ public:
     void rbtm(const value_type* t_pointer, std::vector<Matrix> const & T, Boundary<OtherMatrix, SymmGroup> & ret,
          std::vector<unsigned> const & b_to_o) const
     {
+        uint t_size = m_size * r_size;
+        uint t_size_padded = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(t_size);
+
         for (index_type i = 0; i < b2sz.size(); ++i)
         {
             index_type b1 = bs[i];
-
             for (index_type j = 0; j < b2sz[i]; ++j)
-                maquis::dmrg::detail::iterator_axpy(&T[tidx[i][j]](0,0),
-                                                    &T[tidx[i][j]](0,0) + m_size * r_size,
+                maquis::dmrg::detail::iterator_axpy(t_pointer + tidx[i][j] * t_size_padded,
+                                                    t_pointer + tidx[i][j] * t_size_padded + t_size,
                                                     &ret[b1][b_to_o[b1]](0, offset), alpha[i][j]);
+                //maquis::dmrg::detail::iterator_axpy(&T[tidx[i][j]](0,0),
+                //                                    &T[tidx[i][j]](0,0) + m_size * r_size,
+                //                                    &ret[b1][b_to_o[b1]](0, offset), alpha[i][j]);
         }
     }
 
@@ -343,7 +371,8 @@ public:
             maquis::dmrg::detail::iterator_axpy(&C(0,0), &C(0,0) + num_rows(C) * num_cols(C),
                                                 output + l_size * (*this)[ss1].offset, value_type(1.0));
         }        
-        drop_T<value_type>();
+        //drop_T<value_type>();
+        free(t_pointer);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -353,14 +382,16 @@ public:
               Boundary<OtherMatrix, SymmGroup> const & right,
               Boundary<OtherMatrix, SymmGroup> & new_right) const
     {
-        create_T_generic(ket_mps, right);
+        //create_T_generic(ket_mps, right);
+        create_T(ket_mps, right);
         for (int ss1 = 0; ss1 < this->size(); ++ss1)
         {
             if (!(*this)[ss1].n_tasks()) continue;
             (*this)[ss1].prop(bra_matrix, t_pointer, T, new_right, b_to_o);
         }
-        T = std::vector<Matrix>();
+        //T = std::vector<Matrix>();
         //drop_T<value_type>();
+        free(t_pointer);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -402,14 +433,16 @@ public:
               Boundary<OtherMatrix, SymmGroup> const & right,
               Boundary<OtherMatrix, SymmGroup> & new_right) const
     {
-        create_T_generic(ket_mps, right);
+        //create_T_generic(ket_mps, right);
+        create_T(ket_mps, right);
         for (int ss1 = 0; ss1 < this->size(); ++ss1)
         {
             if (!(*this)[ss1].n_tasks()) continue;
             (*this)[ss1].rbtm(t_pointer, T, new_right, b_to_o);
         }
-        T = std::vector<Matrix>();
+        //T = std::vector<Matrix>();
         //drop_T<value_type>();
+        free(t_pointer);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -451,35 +484,35 @@ private:
     mutable std::vector<Matrix> T;
     mutable value_type* t_pointer;
 
-    template <class DefaultMatrix, class OtherMatrix>
-    inline typename boost::disable_if<boost::is_same<typename OtherMatrix::value_type, double>, void>::type
-    create_T(MPSTensor<DefaultMatrix, SymmGroup> const & mps, Boundary<OtherMatrix, SymmGroup> const & right) const
-    {
-        create_T_generic(mps, right);
-    }
+    //template <class DefaultMatrix, class OtherMatrix>
+    //inline typename boost::disable_if<boost::is_same<typename OtherMatrix::value_type, double>, void>::type
+    //create_T(MPSTensor<DefaultMatrix, SymmGroup> const & mps, Boundary<OtherMatrix, SymmGroup> const & right) const
+    //{
+    //    create_T_generic(mps, right);
+    //}
 
-    template <class DefaultMatrix, class OtherMatrix>
-    void create_T_generic(MPSTensor<DefaultMatrix, SymmGroup> const & mps, Boundary<OtherMatrix, SymmGroup> const & right) const
-    {
-        if (!this->size()) return;
+    //template <class DefaultMatrix, class OtherMatrix>
+    //void create_T_generic(MPSTensor<DefaultMatrix, SymmGroup> const & mps, Boundary<OtherMatrix, SymmGroup> const & right) const
+    //{
+    //    if (!this->size()) return;
 
-        T.resize(t_key_vec.size());
+    //    T.resize(t_key_vec.size());
 
-        for (unsigned pos = 0; pos < t_key_vec.size(); ++pos)
-        {
-            unsigned long b2, r_block, in_offset;
-            char trans;
-            bit_twiddling::unpack(t_key_vec[pos], b2, r_block, in_offset, trans);
+    //    for (unsigned pos = 0; pos < t_key_vec.size(); ++pos)
+    //    {
+    //        unsigned long b2, r_block, in_offset;
+    //        char trans;
+    //        bit_twiddling::unpack(t_key_vec[pos], b2, r_block, in_offset, trans);
 
-            T[pos] = Matrix(num_rows(mps.data()[mps_block]), r_size, 0);
-            if (trans)
-                boost::numeric::bindings::blas::gemm(value_type(1), mps.data()[mps_block], transpose(right[b2][r_block]), value_type(0), T[pos],
-                                                     in_offset, 0, 0, num_cols(right[b2][r_block]), r_size);
-            else 
-                boost::numeric::bindings::blas::gemm(value_type(1), mps.data()[mps_block], right[b2][r_block], value_type(0), T[pos],
-                                                     in_offset, 0, 0, num_rows(right[b2][r_block]), r_size);
-        }
-    }
+    //        T[pos] = Matrix(num_rows(mps.data()[mps_block]), r_size, 0);
+    //        if (trans)
+    //            boost::numeric::bindings::blas::gemm(value_type(1), mps.data()[mps_block], transpose(right[b2][r_block]), value_type(0), T[pos],
+    //                                                 in_offset, 0, 0, num_cols(right[b2][r_block]), r_size);
+    //        else 
+    //            boost::numeric::bindings::blas::gemm(value_type(1), mps.data()[mps_block], right[b2][r_block], value_type(0), T[pos],
+    //                                                 in_offset, 0, 0, num_rows(right[b2][r_block]), r_size);
+    //    }
+    //}
 
     template <class DefaultMatrix, class OtherMatrix>
     void create_T_generic_left(Boundary<OtherMatrix, SymmGroup> const & left, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
@@ -511,7 +544,8 @@ private:
     }
 
     template <class DefaultMatrix, class OtherMatrix>
-    typename boost::enable_if<boost::is_same<typename OtherMatrix::value_type, double>, void>::type
+    //typename boost::enable_if<boost::is_same<typename OtherMatrix::value_type, double>, void>::type
+    void
     create_T(MPSTensor<DefaultMatrix, SymmGroup> const & mps, Boundary<OtherMatrix, SymmGroup> const & right) const
     {
         if (!this->size()) return;
