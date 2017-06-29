@@ -461,6 +461,11 @@ private:
     {
         if (!this->size()) return;
 
+        char gemmtrans[2] = {'N', 'T'};
+        value_type one(1);
+        value_type zero(0);
+        int M = (*this)[0].get_m_size(), N = r_size;
+
         T.resize(t_key_vec.size());
         for (unsigned pos = 0; pos < t_key_vec.size(); ++pos)
         {
@@ -468,20 +473,12 @@ private:
             char trans;
             bit_twiddling::unpack(t_key_vec[pos], b, b_block, lb_ket, in_offset, trans);
 
-            if (trans) {
-                T[pos] = Matrix(num_cols(left[b][b_block]), r_size, 0);
-                boost::numeric::bindings::blas::gemm(value_type(1), transpose(left[b][b_block]),
-                                                     mps.data()[lb_ket], value_type(0), T[pos],
-                                                     0, in_offset, 0, num_rows(mps.data()[lb_ket]),
-                                                     r_size);
-            }
-            else {
-                T[pos] = Matrix(num_rows(left[b][b_block]), r_size, 0);
-                boost::numeric::bindings::blas::gemm(value_type(1), left[b][b_block],
-                                                     mps.data()[lb_ket], value_type(0), T[pos],
-                                                     0, in_offset, 0, num_rows(mps.data()[lb_ket]),
-                                                     r_size);
-            }
+            int K = num_rows(mps.data()[lb_ket]);
+            int LDA = (trans) ? K : M;
+
+            T[pos] = Matrix(M, r_size, 0);
+            blas_gemm(&gemmtrans[trans], &gemmtrans[0], &M, &N, &K, &one, &left[b][b_block](0,0), &LDA,
+                      &mps.data()[lb_ket](0, in_offset), &K, &zero, &T[pos](0,0), &M);
         }
     }
 
