@@ -207,6 +207,10 @@ public:
     prop(DefaultMatrix const & bra, const value_type* t_pointer, std::vector<Matrix> const & T, Boundary<OtherMatrix, SymmGroup> & ret,
          std::vector<unsigned> const & b_to_o) const
     {
+        //typedef unsigned long int uint;
+        //uint t_size = m_size * r_size;
+        //uint t_size_padded = bit_twiddling::round_up<4>(t_size);
+
         Matrix S(m_size, r_size);
         for (index_type i = 0; i < b2sz.size(); ++i)
         {
@@ -464,6 +468,7 @@ private:
         if (!this->size()) return;
 
         T.resize(t_key_vec.size());
+
         for (unsigned pos = 0; pos < t_key_vec.size(); ++pos)
         {
             unsigned long b2, r_block, in_offset;
@@ -516,7 +521,7 @@ private:
         if (!this->size()) return;
 
         int M = mps.row_dim()[mps_block].second; 
-        int N = (*this)[0].get_r_size();
+        int N = r_size;
 
         std::size_t t_size = bit_twiddling::round_up<4>(M * N);
         std::size_t buffer_size = t_size * t_key_vec.size(); // 32B = 4 doubles
