@@ -30,6 +30,7 @@
 #define MAQUIS_TASKS_NUMERIC_H
 
 void dgemm_ddot(unsigned ls, unsigned ms, unsigned rs, unsigned b1size,
-                unsigned* b2sz, const char* transL, unsigned ** tidx, double** alpha, const double** left, const double* t, double* out);
+                const unsigned* b2sz, const char* transL, unsigned const* const* tidx,
+                double const* const* alpha, const double** left, const double* t, double* out);
 
 #endif

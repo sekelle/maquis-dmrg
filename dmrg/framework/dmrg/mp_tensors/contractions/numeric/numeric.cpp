@@ -100,7 +100,8 @@ inline void blas_dgemm(const double* A, const double* B, double* C, int M, int K
 
 
 void dgemm_ddot(unsigned ls, unsigned ms, unsigned rs, unsigned b1size,
-                unsigned* b2sz, const char* transL, unsigned ** tidx, double** alpha, const double** left, const double* t, double* out)
+                const unsigned* b2sz, const char* transL, unsigned const* const* tidx,
+                double const* const* alpha, const double** left, const double* t, double* out)
 {
     typedef unsigned long uint;
 
@@ -114,8 +115,8 @@ void dgemm_ddot(unsigned ls, unsigned ms, unsigned rs, unsigned b1size,
     for (uint i = 0; i < b1size; ++i)
     {
         std::memset(s_buffer, 0, t_size * sizeof(double));
-        double * alpha_i = alpha[i];
-        unsigned * tidx_i = tidx[i];
+        const double * alpha_i = alpha[i];
+        const unsigned * tidx_i = tidx[i];
         for (uint j = 0; j < b2sz[i]; ++j)
         {
             unsigned tpos = tidx_i[j];

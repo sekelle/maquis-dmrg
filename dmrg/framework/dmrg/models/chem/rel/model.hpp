@@ -142,7 +142,7 @@ void rel_qc_model<Matrix, SymmGroup>::create_terms()
                 true, fill, matrix_elements[m], i, j, create, destroy, tag_handler, lat)
             );
             this->terms_.push_back(TermMaker<Matrix, SymmGroup>::positional_two_term( 
-                true, fill, matrix_elements[m], j, i, create, destroy, tag_handler, lat)
+                true, fill, utils::functor_conj()(matrix_elements[m]), j, i, create, destroy, tag_handler, lat)
             );
             used_elements[m] += 1;
         }
