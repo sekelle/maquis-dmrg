@@ -39,6 +39,7 @@
 #include "dmrg/mp_tensors/contractions/common/gemm_binding.hpp"
 
 #include "dmrg/mp_tensors/contractions/numeric/numeric.h"
+#include "dmrg/mp_tensors/contractions/numeric/gemm_template.h"
 
 namespace contraction {
 namespace common {
@@ -529,8 +530,8 @@ private:
             int K = (trans) ? right[b2].basis().right_size(r_block) : right[b2].basis().left_size(r_block); 
             int LDB = right[b2].basis().left_size(r_block);
 
-            dgemm_(&gemmtrans[0], &gemmtrans[trans], &M, &N, &K, &one, mpsdata + in_offset * M, &M,
-                   &right[b2][r_block](0,0), &LDB, &zero, t_pointer + pos * t_size, &M);
+            blas_gemm(&gemmtrans[0], &gemmtrans[trans], &M, &N, &K, &one, mpsdata + in_offset * M, &M,
+                      &right[b2][r_block](0,0), &LDB, &zero, t_pointer + pos * t_size, &M);
         }
     }
 
