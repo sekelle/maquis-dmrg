@@ -207,10 +207,6 @@ public:
     prop(DefaultMatrix const & bra, const value_type* t_pointer, std::vector<Matrix> const & T, Boundary<OtherMatrix, SymmGroup> & ret,
          std::vector<unsigned> const & b_to_o) const
     {
-        //typedef unsigned long int uint;
-        //uint t_size = m_size * r_size;
-        //uint t_size_padded = bit_twiddling::round_up<4>(t_size);
-
         Matrix S(m_size, r_size);
         for (index_type i = 0; i < b2sz.size(); ++i)
         {
@@ -527,7 +523,6 @@ private:
         std::size_t buffer_size = t_size * t_key_vec.size(); // 32B = 4 doubles
         if (posix_memalign(reinterpret_cast<void**>(&t_pointer), 32, buffer_size * sizeof(double)))
             throw std::bad_alloc();
-        //t_pointer = (double*)memalign(32, buffer_size * sizeof(double));
 
         char gemmtrans[2] = {'N', 'T'};
         value_type one(1);
