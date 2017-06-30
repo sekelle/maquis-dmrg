@@ -233,7 +233,7 @@ public:
     }
 
     template <class DefaultMatrix, class OtherMatrix>
-    void prop_l(DefaultMatrix const & bra, const value_type* t_pointer, std::vector<Matrix> const & T, Boundary<OtherMatrix, SymmGroup> & ret,
+    void prop_l(DefaultMatrix const & bra, const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret,
                 std::vector<unsigned> const & b_to_o) const
     {
         value_type one=1;
@@ -259,8 +259,7 @@ public:
     }
 
     template <class OtherMatrix>
-    void lbtm(const value_type* t_pointer, std::vector<Matrix> const & T,
-              Boundary<OtherMatrix, SymmGroup> & ret, std::vector<unsigned> const & b_to_o) const
+    void lbtm(const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret, std::vector<unsigned> const & b_to_o) const
     {
         uint t_size = m_size * r_size;
         uint t_size_padded = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(t_size);
@@ -272,9 +271,6 @@ public:
             memset(&S(0,0), 0, m_size * r_size * sizeof(typename Matrix::value_type));
 
             for (index_type j = 0; j < b2sz[i]; ++j)
-                //maquis::dmrg::detail::iterator_axpy(&T[tidx[i][j]](0,0),
-                //                                    &T[tidx[i][j]](0,0) + m_size * r_size,
-                //                                    &S(0,0), alpha[i][j]);
                 maquis::dmrg::detail::iterator_axpy(t_pointer + tidx[i][j] * t_size_padded,
                                                     t_pointer + tidx[i][j] * t_size_padded + t_size,
                                                     &S(0,0), alpha[i][j]);
@@ -394,10 +390,9 @@ public:
         for (int ss1 = 0; ss1 < this->size(); ++ss1)
         {
             if (!(*this)[ss1].n_tasks()) continue;
-            (*this)[ss1].prop_l(bra_mps.data()[mps_block], t_pointer, T, new_left, b_to_o);
+            (*this)[ss1].prop_l(bra_mps.data()[mps_block], t_pointer, new_left, b_to_o);
         }
         free(t_pointer);
-        //T = std::vector<Matrix>(); 
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -410,10 +405,9 @@ public:
         for (int ss1 = 0; ss1 < this->size(); ++ss1)
         {
             if (!(*this)[ss1].n_tasks()) continue;
-            (*this)[ss1].lbtm(t_pointer, T, new_left, b_to_o);
+            (*this)[ss1].lbtm(t_pointer, new_left, b_to_o);
         }
         free(t_pointer);
-        //T = std::vector<Matrix>(); 
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -467,7 +461,6 @@ public:
     // invariant: phys_out, phys_offset
 private:
     unsigned mps_block, l_size, r_size;
-    mutable std::vector<Matrix> T;
     mutable value_type* t_pointer;
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -485,7 +478,6 @@ private:
         if (posix_memalign(reinterpret_cast<void**>(&t_pointer), ALIGNMENT, buffer_size * sizeof(value_type)))
             throw std::bad_alloc();
 
-        //T.resize(t_key_vec.size());
         for (unsigned pos = 0; pos < t_key_vec.size(); ++pos)
         {
             unsigned long b, b_block, lb_ket, in_offset;
@@ -495,7 +487,6 @@ private:
             int K = num_rows(mps.data()[lb_ket]);
             int LDA = (trans) ? K : M;
 
-            //T[pos] = Matrix(M, r_size, 0);
             blas_gemm(&gemmtrans[trans], &gemmtrans[0], &M, &N, &K, &one, &left[b][b_block](0,0), &LDA,
                       &mps.data()[lb_ket](0, in_offset), &K, &zero, t_pointer + pos * t_size, &M);
         }
