@@ -233,9 +233,16 @@ public:
     }
 
     template <class DefaultMatrix, class OtherMatrix>
-    void prop_l(DefaultMatrix const & bra, const value_type* t_pointer, std::vector<Matrix> const & T, Boundary<OtherMatrix, SymmGroup> & ret,
+    void prop_l(DefaultMatrix const & bra, const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret,
                 std::vector<unsigned> const & b_to_o) const
     {
+        value_type one=1;
+        char tr = 'T';
+        char notr = 'N';
+        int M = l_size, N = r_size, K = m_size;
+        uint t_size = m_size * r_size;
+        uint t_size_padded = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(t_size);
+
         Matrix S(m_size, r_size);
         for (index_type i = 0; i < b2sz.size(); ++i)
         {
@@ -243,19 +250,20 @@ public:
             memset(&S(0,0), 0, m_size * r_size * sizeof(typename Matrix::value_type));
 
             for (index_type j = 0; j < b2sz[i]; ++j)
-                maquis::dmrg::detail::iterator_axpy(&T[tidx[i][j]](0,0),
-                                                    &T[tidx[i][j]](0,0) + m_size * r_size,
+                maquis::dmrg::detail::iterator_axpy(t_pointer + tidx[i][j] * t_size_padded,
+                                                    t_pointer + tidx[i][j] * t_size_padded + t_size,
                                                     &S(0,0), alpha[i][j]);
 
-            boost::numeric::bindings::blas::gemm(value_type(1), transpose(bra), S, value_type(1), ret[b2][b_to_o[b2]],
-                                                 offset, 0, 0, m_size, r_size);
+            blas_gemm(&tr, &notr, &M, &N, &K, &one, &bra(0,offset), &K, &S(0,0), &K, &one, &ret[b2][b_to_o[b2]](0,0), &M);
         }
     }
 
     template <class OtherMatrix>
-    void lbtm(const value_type* t_pointer, std::vector<Matrix> const & T,
-              Boundary<OtherMatrix, SymmGroup> & ret, std::vector<unsigned> const & b_to_o) const
+    void lbtm(const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret, std::vector<unsigned> const & b_to_o) const
     {
+        uint t_size = m_size * r_size;
+        uint t_size_padded = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(t_size);
+
         Matrix S(m_size, r_size);
         for (index_type i = 0; i < b2sz.size(); ++i)
         {
@@ -263,8 +271,8 @@ public:
             memset(&S(0,0), 0, m_size * r_size * sizeof(typename Matrix::value_type));
 
             for (index_type j = 0; j < b2sz[i]; ++j)
-                maquis::dmrg::detail::iterator_axpy(&T[tidx[i][j]](0,0),
-                                                    &T[tidx[i][j]](0,0) + m_size * r_size,
+                maquis::dmrg::detail::iterator_axpy(t_pointer + tidx[i][j] * t_size_padded,
+                                                    t_pointer + tidx[i][j] * t_size_padded + t_size,
                                                     &S(0,0), alpha[i][j]);
             for (unsigned c = 0; c < r_size; ++c)
                 maquis::dmrg::detail::iterator_axpy(&S(0,c), &S(0,c) + m_size, &ret[b2][b_to_o[b2]](offset,c), 1.0);
@@ -378,13 +386,13 @@ public:
                 Boundary<OtherMatrix, SymmGroup> const & left,
                 Boundary<OtherMatrix, SymmGroup> & new_left) const
     {
-        create_T_generic_left(left, ket_mps);
+        create_T_left(left, ket_mps);
         for (int ss1 = 0; ss1 < this->size(); ++ss1)
         {
             if (!(*this)[ss1].n_tasks()) continue;
-            (*this)[ss1].prop_l(bra_mps.data()[mps_block], t_pointer, T, new_left, b_to_o);
+            (*this)[ss1].prop_l(bra_mps.data()[mps_block], t_pointer, new_left, b_to_o);
         }
-        T = std::vector<Matrix>(); 
+        free(t_pointer);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -393,13 +401,13 @@ public:
               Boundary<OtherMatrix, SymmGroup> const & left,
               Boundary<OtherMatrix, SymmGroup> & new_left) const
     {
-        create_T_generic_left(left, ket_mps);
+        create_T_left(left, ket_mps);
         for (int ss1 = 0; ss1 < this->size(); ++ss1)
         {
             if (!(*this)[ss1].n_tasks()) continue;
-            (*this)[ss1].lbtm(t_pointer, T, new_left, b_to_o);
+            (*this)[ss1].lbtm(t_pointer, new_left, b_to_o);
         }
-        T = std::vector<Matrix>(); 
+        free(t_pointer);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -453,35 +461,34 @@ public:
     // invariant: phys_out, phys_offset
 private:
     unsigned mps_block, l_size, r_size;
-    mutable std::vector<Matrix> T;
     mutable value_type* t_pointer;
 
     template <class DefaultMatrix, class OtherMatrix>
-    void create_T_generic_left(Boundary<OtherMatrix, SymmGroup> const & left, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
+    void create_T_left(Boundary<OtherMatrix, SymmGroup> const & left, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
     {
         if (!this->size()) return;
 
-        T.resize(t_key_vec.size());
+        char gemmtrans[2] = {'N', 'T'};
+        value_type one(1);
+        value_type zero(0);
+        int M = (*this)[0].get_m_size(), N = r_size;
+
+        std::size_t t_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(M * N);
+        std::size_t buffer_size = t_size * t_key_vec.size();
+        if (posix_memalign(reinterpret_cast<void**>(&t_pointer), ALIGNMENT, buffer_size * sizeof(value_type)))
+            throw std::bad_alloc();
+
         for (unsigned pos = 0; pos < t_key_vec.size(); ++pos)
         {
             unsigned long b, b_block, lb_ket, in_offset;
             char trans;
             bit_twiddling::unpack(t_key_vec[pos], b, b_block, lb_ket, in_offset, trans);
 
-            if (trans) {
-                T[pos] = Matrix(num_cols(left[b][b_block]), r_size, 0);
-                boost::numeric::bindings::blas::gemm(value_type(1), transpose(left[b][b_block]),
-                                                     mps.data()[lb_ket], value_type(0), T[pos],
-                                                     0, in_offset, 0, num_rows(mps.data()[lb_ket]),
-                                                     r_size);
-            }
-            else {
-                T[pos] = Matrix(num_rows(left[b][b_block]), r_size, 0);
-                boost::numeric::bindings::blas::gemm(value_type(1), left[b][b_block],
-                                                     mps.data()[lb_ket], value_type(0), T[pos],
-                                                     0, in_offset, 0, num_rows(mps.data()[lb_ket]),
-                                                     r_size);
-            }
+            int K = num_rows(mps.data()[lb_ket]);
+            int LDA = (trans) ? K : M;
+
+            blas_gemm(&gemmtrans[trans], &gemmtrans[0], &M, &N, &K, &one, &left[b][b_block](0,0), &LDA,
+                      &mps.data()[lb_ket](0, in_offset), &K, &zero, t_pointer + pos * t_size, &M);
         }
     }
 
