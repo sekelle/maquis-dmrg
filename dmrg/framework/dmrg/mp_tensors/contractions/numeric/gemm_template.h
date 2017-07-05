@@ -30,6 +30,8 @@
 #define MAQUIS_GEMM_TEMPLATE_H
 
 #include <complex>
+#include <boost/numeric/bindings/blas/detail/blas.h>
+
 
 template <class T>
 inline typename boost::enable_if<boost::is_same<T, double> >::type
@@ -40,7 +42,7 @@ blas_gemm(const char* transa, const char* transb,
           const T* beta, T* c, const int* ldc
          )
 {
-    dgemm_(transa, transb, m,n,k, alpha, a,lda, b,ldb, beta, c,ldc);
+    BLAS_DGEMM(transa, transb, m,n,k, alpha, a,lda, b,ldb, beta, c,ldc);
 }
 
 template <class T>
@@ -52,7 +54,7 @@ blas_gemm(const char* transa, const char* transb,
           const T* beta, T* c, const int* ldc
          )
 {
-    sgemm_(transa, transb, m,n,k, alpha, a,lda, b,ldb, beta, c,ldc);
+    BLAS_SGEMM(transa, transb, m,n,k, alpha, a,lda, b,ldb, beta, c,ldc);
 }
 
 template <class T>
@@ -64,7 +66,7 @@ blas_gemm(const char* transa, const char* transb,
           const T* beta, T* c, const int* ldc
          )
 {
-    zgemm_(transa, transb, m,n,k, alpha, a,lda, b,ldb, beta, c,ldc);
+    BLAS_ZGEMM(transa, transb, m,n,k, alpha, a,lda, b,ldb, beta, c,ldc);
 }
 
 template <class T>
@@ -76,7 +78,7 @@ blas_gemm(const char* transa, const char* transb,
           const T* beta, T* c, const int* ldc
          )
 {
-    cgemm_(transa, transb, m,n,k, alpha, a,lda, b,ldb, beta, c,ldc);
+    BLAS_SGEMM(transa, transb, m,n,k, alpha, a,lda, b,ldb, beta, c,ldc);
 }
 
 #endif

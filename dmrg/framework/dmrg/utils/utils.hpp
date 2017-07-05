@@ -29,6 +29,8 @@
 
 #include <cstddef>
 #include <complex>
+#include <limits>
+#include <boost/static_assert.hpp>
 
 #include "dmrg/utils/proc_statm.h"
 #include "dmrg/utils/proc_status.h"
@@ -112,7 +114,9 @@ namespace bit_twiddling
     template <unsigned A, typename T>
     inline T round_up(T x)
     {
-        // round up x to nearest multiple of A (A must be a power of 2)
+        // round up x to nearest multiple of A
+        BOOST_STATIC_ASSERT((A & (A-1)) == 0); // check that A is a power of 2
+        BOOST_STATIC_ASSERT(!std::numeric_limits<T>::is_signed);
         return (x+(A-1)) & (~(A-1));
     }
 
