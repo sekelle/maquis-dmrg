@@ -34,33 +34,28 @@
 
 #include <new>
 #include <cassert>
+#include <complex>
 #include <cstddef>
+#include <limits>
 #include <cstring>
 #include <malloc.h>
 #include <stdint.h>
+#include <boost/static_assert.hpp>
+// BLAS declarations
+#include <boost/numeric/bindings/blas/detail/blas.h>
 
 #include "numeric.h"
 
 #define ALIGNMENT 32
 
-
-extern "C" {
-    void MKL_Verbose(int);
-
-    void dgemm_( const char* transa, const char* transb,
-            const int* m, const int* n,
-            const int* k, const double* alpha, const double* a,
-            const int* lda, const double* b, const int* ldb,
-            const double* beta, double* c, const int* ldc );
-}
-
 template <unsigned A, typename T>
 inline T round_up(T x)
 {
-    // round up x to nearest multiple of A (A must be a power of 2)
+    // round up x to nearest multiple of A
+    BOOST_STATIC_ASSERT((A & (A-1)) == 0); // check that A is a power of 2
+    BOOST_STATIC_ASSERT(!std::numeric_limits<T>::is_signed);
     return (x+(A-1)) & (~(A-1));
 }
-
 
 inline void mydaxpy(std::size_t n, double a, const double* x, double* y)
 {
@@ -68,17 +63,17 @@ inline void mydaxpy(std::size_t n, double a, const double* x, double* y)
   __m256d x0 = _mm256_broadcast_sd(&a);
 
   // alignnment
-  assert((uintptr_t)(x) % 32 == 0);
-  assert((uintptr_t)(y) % 32 == 0);
+  assert((uintptr_t)(x) % ALIGNMENT == 0);
+  assert((uintptr_t)(y) % ALIGNMENT == 0);
 
   std::size_t ndiv4 = n/4;
 
   for (std::size_t i=0; i<ndiv4; ++i) {
     __m256d x1 = _mm256_load_pd(x+4*i);
     __m256d x2 = _mm256_load_pd(y+4*i);
-    __m256d x3 = _mm256_mul_pd(x0, x1);
-    __m256d x4 = _mm256_add_pd(x2, x3);
-    //__m256d x4 = _mm256_fmadd_pd(x0, x1, x2);
+    //__m256d x3 = _mm256_mul_pd(x0, x1);
+    //__m256d x4 = _mm256_add_pd(x2, x3);
+    __m256d x4 = _mm256_fmadd_pd(x0, x1, x2);
     _mm256_store_pd(y+4*i, x4);
   }
 
@@ -93,9 +88,9 @@ inline void blas_dgemm(const double* A, const double* B, double* C, int M, int K
     char trans = 'T';
     char notrans = 'N';
     if (trA)
-        dgemm_(&trans, &notrans, &M, &N, &K, &one, A, &K, B, &K, &one, C, &M);
+        BLAS_DGEMM(&trans, &notrans, &M, &N, &K, &one, A, &K, B, &K, &one, C, &M);
     else
-        dgemm_(&notrans, &notrans, &M, &N, &K, &one, A, &M, B, &K, &one, C, &M);
+        BLAS_DGEMM(&notrans, &notrans, &M, &N, &K, &one, A, &M, B, &K, &one, C, &M);
 }
 
 
@@ -105,13 +100,15 @@ void dgemm_ddot(unsigned ls, unsigned ms, unsigned rs, unsigned b1size,
 {
     typedef unsigned long uint;
 
+    fortran_int_t one = 1;
     uint t_size = ms * rs;
-    uint t_size_padded = round_up<4>(t_size);
+    uint t_size_padded = round_up<ALIGNMENT/sizeof(double)>(t_size);
+    fortran_int_t t_size_fortran = t_size;
 
     double * s_buffer;
     if (posix_memalign(reinterpret_cast<void**>(&s_buffer), ALIGNMENT, t_size * sizeof(double)))
         throw std::bad_alloc();
-    //double * s_buffer = (double*)memalign(ALIGNMENT, t_size * sizeof(double));
+
     for (uint i = 0; i < b1size; ++i)
     {
         std::memset(s_buffer, 0, t_size * sizeof(double));
@@ -120,7 +117,8 @@ void dgemm_ddot(unsigned ls, unsigned ms, unsigned rs, unsigned b1size,
         for (uint j = 0; j < b2sz[i]; ++j)
         {
             unsigned tpos = tidx_i[j];
-            mydaxpy(t_size, alpha_i[j], t + tpos * t_size_padded, s_buffer);
+            //mydaxpy(t_size, alpha_i[j], t + tpos * t_size_padded, s_buffer);
+            BLAS_DAXPY(&t_size_fortran, alpha_i+j, t + tpos * t_size_padded, &one, s_buffer, &one);
         }
 
         blas_dgemm(left[i], s_buffer, out, ls, ms, rs, transL[i]);

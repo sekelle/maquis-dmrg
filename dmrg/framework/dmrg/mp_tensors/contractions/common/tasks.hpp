@@ -473,7 +473,7 @@ private:
         value_type zero(0);
         int M = (*this)[0].get_m_size(), N = r_size;
 
-        std::size_t t_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(M * N);
+        std::size_t t_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>((size_t)(M * N));
         std::size_t buffer_size = t_size * t_key_vec.size();
         if (posix_memalign(reinterpret_cast<void**>(&t_pointer), ALIGNMENT, buffer_size * sizeof(value_type)))
             throw std::bad_alloc();
@@ -500,7 +500,7 @@ private:
         int M = mps.row_dim()[mps_block].second; 
         int N = r_size;
 
-        std::size_t t_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(M * N);
+        std::size_t t_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>((size_t)(M * N));
         std::size_t buffer_size = t_size * t_key_vec.size();
         if (posix_memalign(reinterpret_cast<void**>(&t_pointer), ALIGNMENT, buffer_size * sizeof(value_type)))
             throw std::bad_alloc();
