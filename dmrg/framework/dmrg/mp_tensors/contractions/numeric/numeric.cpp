@@ -40,7 +40,6 @@
 #include <cstring>
 #include <malloc.h>
 #include <stdint.h>
-// stdlib.h needed for Intel?
 #include <stdlib.h>
 
 #include <boost/static_assert.hpp>
