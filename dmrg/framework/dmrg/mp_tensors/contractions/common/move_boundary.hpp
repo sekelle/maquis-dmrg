@@ -87,8 +87,8 @@ namespace contraction {
         {
             typedef typename SymmGroup::charge charge;
             typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
-            typedef typename Schedule<Matrix, SymmGroup>::schedule_t schedule_t;
-            typedef typename Schedule<Matrix, SymmGroup>::block_type::const_iterator const_iterator;
+            typedef BoundarySchedule<Matrix, SymmGroup> schedule_t;
+            typedef typename schedule_t::block_type::const_iterator const_iterator;
 
             LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
             Boundary<OtherMatrix, SymmGroup> ret;
@@ -167,8 +167,8 @@ namespace contraction {
         {
             typedef typename SymmGroup::charge charge;
             typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
-            typedef typename Schedule<Matrix, SymmGroup>::schedule_t schedule_t;
-            typedef typename Schedule<Matrix, SymmGroup>::block_type::const_iterator const_iterator;
+            typedef BoundarySchedule<Matrix, SymmGroup> schedule_t;
+            typedef typename schedule_t::block_type::const_iterator const_iterator;
 
             RightIndices<Matrix, OtherMatrix, SymmGroup> right_indices(right, mpo);
             Boundary<OtherMatrix, SymmGroup> ret;
@@ -237,8 +237,8 @@ namespace contraction {
         {
             typedef typename SymmGroup::charge charge;
             typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
-            typedef typename Schedule<Matrix, SymmGroup>::schedule_t schedule_t;
-            typedef typename Schedule<Matrix, SymmGroup>::block_type::const_iterator const_iterator;
+            typedef BoundarySchedule<Matrix, SymmGroup> schedule_t;
+            typedef typename schedule_t::block_type::const_iterator const_iterator;
 
             LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
             Boundary<OtherMatrix, SymmGroup> ret;
@@ -288,16 +288,27 @@ namespace contraction {
             }
 
             // Contraction
-            omp_for(index_type rb_ket, parallel::range<index_type>(0,loop_max), {
-                charge rc_ket = ket_right_i[rb_ket].first;
-                for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it) // mc loop
-                {
-                    charge rc_bra = it->first;
-                    it->second.allocate(rc_bra, rc_ket, ret);
-                    for (size_t s = 0; s < it->second.size(); ++s) // physical index loop
-                        it->second[s].prop_l(bra_tensor, ket_tensor, it->second.get_b_to_o(), left, ret);
+            #ifdef MAQUIS_OPENMP
+            #pragma omp parallel
+            #endif
+            {
+                #ifdef MAQUIS_OPENMP
+                #pragma omp single
+                #endif
+                for(index_type rb_ket = 0; rb_ket < loop_max; ++rb_ket) {
+                    charge rc_ket = ket_right_i[rb_ket].first;
+                    #ifdef MAQUIS_OPENMP
+                    #pragma omp task
+                    #endif
+                    for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it) // mc loop
+                    {
+                        charge rc_bra = it->first;
+                        it->second.allocate(rc_bra, rc_ket, ret);
+                        for (size_t s = 0; s < it->second.size(); ++s) // physical index loop
+                            it->second[s].prop_l(bra_tensor, ket_tensor, it->second.get_b_to_o(), left, ret);
+                    }
                 }
-            });
+            }
 
             return ret;
         }
@@ -312,8 +323,8 @@ namespace contraction {
         {
             typedef typename SymmGroup::charge charge;
             typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
-            typedef typename Schedule<Matrix, SymmGroup>::schedule_t schedule_t;
-            typedef typename Schedule<Matrix, SymmGroup>::block_type::const_iterator const_iterator;
+            typedef BoundarySchedule<Matrix, SymmGroup> schedule_t;
+            typedef typename schedule_t::block_type::const_iterator const_iterator;
 
             RightIndices<Matrix, OtherMatrix, SymmGroup> right_indices(right, mpo);
             Boundary<OtherMatrix, SymmGroup> ret;
@@ -361,16 +372,27 @@ namespace contraction {
             }
 
             // Contraction
-            omp_for(index_type lb_bra, parallel::range<index_type>(0,loop_max), {
-                charge lc_bra = bra_left_i[lb_bra].first;
-                for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it) // lc_ket loop
-                {
-                    charge lc_ket = it->first;
-                    it->second.allocate(lc_ket, lc_bra, ret); // allocate all (lc_ket,lc_bra) blocks
-                    for (size_t s = 0; s < it->second.size(); ++s) // physical index loop
-                        it->second[s].prop(ket_tensor, bra_tensor.data()[lb_bra], it->second.get_b_to_o(), right, ret);
+            #ifdef MAQUIS_OPENMP
+            #pragma omp parallel
+            #endif
+            {
+                #ifdef MAQUIS_OPENMP
+                #pragma omp single
+                #endif
+                for(index_type lb_bra = 0; lb_bra < loop_max; ++lb_bra) {
+                    charge lc_bra = bra_left_i[lb_bra].first;
+                    #ifdef MAQUIS_OPENMP
+                    #pragma omp task
+                    #endif
+                    for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it) // lc_ket loop
+                    {
+                        charge lc_ket = it->first;
+                        it->second.allocate(lc_ket, lc_bra, ret); // allocate all (lc_ket,lc_bra) blocks
+                        for (size_t s = 0; s < it->second.size(); ++s) // physical index loop
+                            it->second[s].prop(ket_tensor, bra_tensor.data()[lb_bra], it->second.get_b_to_o(), right, ret);
+                    }
                 }
-            });
+            }
 
             return ret;
         }

@@ -47,16 +47,19 @@ namespace SU2 {
                     ProductBasis<SymmGroup> const & right_pb,
                     unsigned lb_out,
                     typename common::Schedule<Matrix, SymmGroup>::block_type & mpsb)
+                    //std::vector<common::ContractionGroup<typename common::Schedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup> > & mpsb)
     {
         typedef MPOTensor_detail::index_type index_type;
         typedef typename MPOTensor<Matrix, SymmGroup>::row_proxy row_proxy;
         typedef typename SymmGroup::charge charge;
         typedef typename Matrix::value_type value_type;
-        typedef typename common::Schedule<Matrix, SymmGroup>::micro_task micro_task;
         typedef typename common::Schedule<Matrix, SymmGroup>::block_type block_type;
-        typedef typename block_type::mapped_value_type cgroup;
+        //typedef typename block_type::mapped_value_type cgroup;
+        typedef typename block_type::value_type::value_type cgroup;
         typedef typename cgroup::t_key t_key;
         typedef std::map<t_key, unsigned> t_map_t;
+
+        mpsb.resize(phys_i.size());
 
         charge lc_out = left_i[lb_out].first;
         unsigned ls_out = left_i[lb_out].second;
@@ -78,8 +81,8 @@ namespace SU2 {
                 if (std::find(mc_charges.begin(), mc_charges.end(), lc_in) == mc_charges.end()) continue;
                 unsigned ls_in = left_i[lb_in].second;
 
-                typename block_type::mapped_value_type cg(lb_in, phys_i[s].second, ls_out, ls_in, rs_out,
-                                                          out_offset);
+                cgroup cg(lb_in, phys_i[s].second, ls_out, ls_in, rs_out,
+                          out_offset);
 
                 ::SU2::Wigner9jCache<value_type, SymmGroup> w9j(lc_out, lc_in, rc_out);
 
@@ -119,8 +122,7 @@ namespace SU2 {
 
                                 char right_transpose = mpo.herm_info.right_skip(b2);
                                 unsigned b2_eff = (right_transpose) ? mpo.herm_info.right_conj(b2) : b2;
-                                typename block_type::mapped_value_type::t_key tq
-                                    = bit_twiddling::pack(b2_eff, b_right, in_offset, right_transpose);
+                                typename cgroup::t_key tq = bit_twiddling::pack(b2_eff, b_right, in_offset, right_transpose);
                                 
                                 detail::op_iterate_shtm<Matrix, typename common::Schedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
                                     (W, w_block, couplings, cg, tq, rs_in, t_index);
@@ -133,7 +135,8 @@ namespace SU2 {
                 cg.t_key_vec.resize(t_index.size());
                 for (typename t_map_t::const_iterator kit = t_index.begin(); kit != t_index.end(); ++kit)
                     cg.t_key_vec[kit->second] = kit->first;
-                if (cg.n_tasks()) mpsb[lc_in].push_back(cg);
+                //if (cg.n_tasks()) mpsb[lc_in].push_back(cg);
+                if (cg.n_tasks()) mpsb[s].push_back(cg);
 
             } // mci
         } // phys_out
