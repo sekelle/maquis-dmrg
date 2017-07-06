@@ -40,6 +40,9 @@
 #include <cstring>
 #include <malloc.h>
 #include <stdint.h>
+// stdlib.h needed for Intel?
+#include <stdlib.h>
+
 #include <boost/static_assert.hpp>
 // BLAS declarations
 #include <boost/numeric/bindings/blas/detail/blas.h>
