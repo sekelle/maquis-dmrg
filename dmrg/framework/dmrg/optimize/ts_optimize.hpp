@@ -183,26 +183,12 @@ public:
 
             boost::chrono::high_resolution_clock::time_point now, then;
 
-            // TODO : remove
-            int twosweep = 2*sweep + (-lr + 1)/2;
-            
     	    // Create TwoSite objects
     	    TwoSiteTensor<Matrix, SymmGroup> tst(mps[site1], mps[site2]);
     	    MPSTensor<Matrix, SymmGroup> twin_mps = tst.make_mps();
             tst.clear();
             SiteProblem<Matrix, typename base::BoundaryMatrix, SymmGroup>
                 sp(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1]);
-
-            //if (twosweep == 5)
-            //{
-            //    save_boundary(left_[site1], "left_5_" + boost::lexical_cast<std::string>(site1));
-            //    save_boundary(right_[site2+1], "right_5_" + boost::lexical_cast<std::string>(site2+1));
-
-            //    storage::archive ari("initial_5_" + boost::lexical_cast<std::string>(site1), "w");
-            //    twin_mps.save(ari);
-            //    storage::archive ssari("ssinitial_5_" + boost::lexical_cast<std::string>(site2), "w");
-            //    mps[site2].save(ssari);
-            //}
 
             /// Compute orthogonal vectors
             std::vector<MPSTensor<Matrix, SymmGroup> > ortho_vecs(base::northo);
@@ -212,7 +198,6 @@ public:
                                                                     base::ortho_left_[n][site1], base::ortho_right_[n][site2+1]);
             }
 
-            //std::pair<typename maquis::traits::real_type<value_type>::type, MPSTensor<Matrix, SymmGroup> > res;
             std::pair<double, MPSTensor<Matrix, SymmGroup> > res;
             double jcd_time;
 
@@ -292,8 +277,6 @@ public:
         		//mps[site2].divide_by_scalar(mps[site2].scalar_norm());	
 
         		t = mps[site2].normalize_left(DefaultSolver());
-                // MD: DEBUGGING OUTPUT
-                maquis::cout << "Propagating t with norm " << t.norm() << std::endl;
         		if (site2 < L-1) mps[site2+1].multiply_from_left(t);
 
                 if (site1 != L-2)
