@@ -591,39 +591,10 @@ private:
 template <class Matrix, class SymmGroup>
 class MPSBlock : public std::map<typename SymmGroup::charge, ContractionGroupVector<Matrix, SymmGroup> >
 {
-    typedef boost::tuple<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t> stats_t;
-
 public:
     typedef std::map<typename SymmGroup::charge, ContractionGroupVector<Matrix, SymmGroup> > base;
-    typedef typename base::const_iterator const_iterator;
     typedef typename base::mapped_type mapped_type;
     typedef typename mapped_type::value_type mapped_value_type;
-
-    std::size_t n_tasks() const
-    {
-        std::size_t ret = 0;
-        for (const_iterator it = this->begin(); it != this->end(); ++ it)
-            for (int i = 0; i < it->second.size(); ++i)
-                ret += (it->second)[i].n_tasks();    
-        return ret;
-    }
-
-    template <class DefaultMatrix, class OtherMatrix>
-    stats_t data_stats(MPSTensor<DefaultMatrix, SymmGroup> const & mps, RightIndices<DefaultMatrix, OtherMatrix, SymmGroup> const & right) const
-    {
-        stats_t ret = boost::make_tuple(0,0,0,0,0);
-        for (const_iterator it = this->begin(); it != this->end(); ++ it)
-            for (int i = 0; i < it->second.size(); ++i)
-            {
-                stats_t cg = (it->second)[i].data_stats(mps, right);
-                get<0>(ret) += get<0>(cg); 
-                get<1>(ret) += get<1>(cg); 
-                get<2>(ret) += get<2>(cg); 
-                get<3>(ret) += get<3>(cg); 
-                get<4>(ret) += get<4>(cg); 
-            }
-        return ret;
-    }
 };
 
 template <class Matrix, class SymmGroup>
@@ -644,19 +615,44 @@ struct BoundarySchedule : public std::vector<MPSBlock<
 }; 
 
 template <class Matrix, class SymmGroup>
-struct Schedule_ : public std::vector<MPSBlock<Matrix, SymmGroup> >
+struct Schedule_ : public std::vector<std::vector<std::vector<ContractionGroup<Matrix, SymmGroup> > > >
 {
-    typedef std::vector<MPSBlock<Matrix, SymmGroup> > base;
+    typedef std::vector<std::vector<std::vector<ContractionGroup<Matrix, SymmGroup> > > > base;
+    typedef typename base::value_type::const_iterator const_iterator;
+    typedef boost::tuple<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t> stats_t;
 
     Schedule_() {}
     Schedule_(std::size_t dim) : base(dim), load_balance(dim) {}
-    double mflops(double time)
+
+    double mflops(double time) const { return total_flops*niter / time / 1e6; }
+    double bandwidth(double time) const { return total_mem*niter / time / 1e6; }
+
+    std::size_t n_tasks(std::size_t p) const
     {
-        return total_flops*niter / time / 1e6;
+        std::size_t ret = 0;
+        for (const_iterator it = (*this)[p].begin(); it != (*this)[p].end(); ++it)
+            for (std::size_t i = 0; i < it->size(); ++i)
+                ret += (*it)[i].n_tasks();
+        return ret;
     }
-    double bandwidth(double time)
+
+    template <class DefaultMatrix, class OtherMatrix>
+    stats_t data_stats(std::size_t p,
+                       MPSTensor<DefaultMatrix, SymmGroup> const & mps,
+                       RightIndices<DefaultMatrix, OtherMatrix, SymmGroup> const & right) const
     {
-        return total_mem*niter / time / 1e6;
+        stats_t ret = boost::make_tuple(0,0,0,0,0);
+        for (const_iterator it = (*this)[p].begin(); it != (*this)[p].end(); ++it)
+            for (std::size_t i = 0; i < it->size(); ++i)
+            {
+                stats_t cg = (*it)[i].data_stats(mps, right);
+                get<0>(ret) += get<0>(cg);
+                get<1>(ret) += get<1>(cg);
+                get<2>(ret) += get<2>(cg);
+                get<3>(ret) += get<3>(cg);
+                get<4>(ret) += get<4>(cg);
+            }
+        return ret;
     }
 
     size_t total_flops, total_mem;
@@ -669,8 +665,8 @@ struct Schedule
 {
     typedef typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, ALIGNMENT>::type AlignedMatrix;
     typedef typename MatrixGroup<AlignedMatrix, SymmGroup>::micro_task micro_task;
-    typedef MPSBlock<AlignedMatrix, SymmGroup> block_type;
     typedef Schedule_<AlignedMatrix, SymmGroup> schedule_t;
+    typedef typename schedule_t::value_type block_type;
 }; 
 
 template<class Matrix, class OtherMatrix, class SymmGroup, class TaskCalc>
@@ -684,7 +680,6 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
     typedef typename SymmGroup::charge charge;
     typedef typename Matrix::value_type value_type;
     typedef MPOTensor_detail::index_type index_type;
-    typedef typename MatrixGroup<Matrix, SymmGroup>::micro_task micro_task;
 
     boost::chrono::high_resolution_clock::time_point now = boost::chrono::high_resolution_clock::now();
 
@@ -717,9 +712,9 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
         size_t sz = 0, a = 0, b = 0, c = 0, d = 0, e = 0;
         for (size_t block = 0; block < loop_max; ++block)
         {
-            sz += contraction_schedule[block].n_tasks();
+            sz += contraction_schedule.n_tasks(block);
             boost::tuple<size_t, size_t, size_t, size_t, size_t> flops
-                = contraction_schedule[block].data_stats(initial, right_indices);
+                = contraction_schedule.data_stats(block, initial, right_indices);
             a += get<0>(flops);
             b += get<1>(flops);
             c += get<2>(flops);

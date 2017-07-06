@@ -56,16 +56,17 @@ namespace common {
         block_matrix<Matrix, SymmGroup> collector(ket_basis);
 
         index_type loop_max = tasks.size();
-        omp_for(index_type task_block, parallel::range<index_type>(0,loop_max), {
+        index_type inner_loop_max = physical_i.size();
 
-            size_t mps_block = tasks.load_balance[task_block];
-            Matrix destination(ket_basis.left_size(mps_block), ket_basis.right_size(mps_block));
-            for (const_iterator it = tasks[mps_block].begin(); it != tasks[mps_block].end(); ++it)
-                for (size_t s = 0; s < it->second.size(); ++s)
-                    it->second[s].contract(ket_tensor, left, right, &destination(0,0));
-
-            swap(collector[mps_block], destination);
-        });
+        #ifdef MAQUIS_OPENMP
+        #pragma omp parallel for collapse(2) schedule (dynamic,1)
+        #endif
+        for (index_type task_block = 0; task_block < loop_max; ++task_block)
+            for (index_type s = 0; s < inner_loop_max; ++s) {
+                index_type mps_block = tasks.load_balance[task_block];
+                for (index_type cgi = 0; cgi < tasks[mps_block][s].size(); ++cgi)
+                    tasks[mps_block][s][cgi].contract(ket_tensor, left, right, &collector[mps_block](0,0));
+            }
 
         reshape_right_to_left_new(physical_i, left_i, right_i, collector, ret.data());
 

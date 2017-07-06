@@ -51,7 +51,7 @@ namespace SU2 {
         typedef typename Matrix::value_type value_type;
         typedef typename MPOTensor<Matrix, SymmGroup>::col_proxy col_proxy;
         typedef MPOTensor_detail::index_type index_type;
-        typedef typename common::Schedule<Matrix, SymmGroup>::block_type block_type;
+        typedef typename common::BoundarySchedule<Matrix, SymmGroup>::block_type block_type;
         typedef typename block_type::mapped_value_type::t_key t_key;
         typedef std::map<t_key, unsigned> t_map_t;
 
@@ -137,7 +137,7 @@ namespace SU2 {
                                 typename block_type::mapped_value_type::t_key tq
                                     = bit_twiddling::pack(b1_eff, b_left, lb_ket, ket_offset, left_transpose);
                                 
-                                detail::op_iterate_shtm<Matrix, typename common::Schedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
+                                detail::op_iterate_shtm<Matrix, typename common::BoundarySchedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
                                     (W, w_block, couplings, cg, tq, rs_ket, t_index);
                             } // w_block
                         } //op_index
