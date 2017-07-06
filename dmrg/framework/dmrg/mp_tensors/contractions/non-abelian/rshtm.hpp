@@ -45,7 +45,7 @@ namespace SU2 {
                      Index<SymmGroup> const & phys_i,
                      ProductBasis<SymmGroup> const & right_pb,
                      unsigned lb_bra,
-                     typename common::Schedule<Matrix, SymmGroup>::block_type & mpsb)
+                     typename common::BoundarySchedule<Matrix, SymmGroup>::block_type & mpsb)
     {
         typedef MPOTensor_detail::index_type index_type;
         typedef typename MPOTensor<Matrix, SymmGroup>::row_proxy row_proxy;

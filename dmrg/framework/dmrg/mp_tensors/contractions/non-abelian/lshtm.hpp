@@ -44,7 +44,7 @@ namespace SU2 {
                      ProductBasis<SymmGroup> const & bra_right_pb,
                      ProductBasis<SymmGroup> const & ket_right_pb,
                      unsigned rb_ket,
-                     typename common::Schedule<Matrix, SymmGroup>::block_type & mpsb,
+                     typename common::BoundarySchedule<Matrix, SymmGroup>::block_type & mpsb,
                      bool skip = true)
     {
         typedef typename SymmGroup::charge charge;

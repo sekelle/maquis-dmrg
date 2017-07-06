@@ -627,6 +627,23 @@ public:
 };
 
 template <class Matrix, class SymmGroup>
+struct BoundarySchedule : public std::vector<MPSBlock<
+            typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, ALIGNMENT>::type
+                                                      , SymmGroup> >
+{
+    typedef typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, ALIGNMENT>::type AlignedMatrix;
+    typedef typename MatrixGroup<AlignedMatrix, SymmGroup>::micro_task micro_task;
+    typedef MPSBlock<AlignedMatrix, SymmGroup> block_type;
+
+    typedef std::vector<MPSBlock<AlignedMatrix, SymmGroup> > base;
+
+    BoundarySchedule() {}
+    BoundarySchedule(std::size_t dim) : base(dim), load_balance(dim) {}
+
+    std::vector<size_t> load_balance;
+}; 
+
+template <class Matrix, class SymmGroup>
 struct Schedule_ : public std::vector<MPSBlock<Matrix, SymmGroup> >
 {
     typedef std::vector<MPSBlock<Matrix, SymmGroup> > base;

@@ -87,8 +87,8 @@ namespace contraction {
         {
             typedef typename SymmGroup::charge charge;
             typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
-            typedef typename Schedule<Matrix, SymmGroup>::schedule_t schedule_t;
-            typedef typename Schedule<Matrix, SymmGroup>::block_type::const_iterator const_iterator;
+            typedef BoundarySchedule<Matrix, SymmGroup> schedule_t;
+            typedef typename schedule_t::block_type::const_iterator const_iterator;
 
             LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
             Boundary<OtherMatrix, SymmGroup> ret;
@@ -167,8 +167,8 @@ namespace contraction {
         {
             typedef typename SymmGroup::charge charge;
             typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
-            typedef typename Schedule<Matrix, SymmGroup>::schedule_t schedule_t;
-            typedef typename Schedule<Matrix, SymmGroup>::block_type::const_iterator const_iterator;
+            typedef BoundarySchedule<Matrix, SymmGroup> schedule_t;
+            typedef typename schedule_t::block_type::const_iterator const_iterator;
 
             RightIndices<Matrix, OtherMatrix, SymmGroup> right_indices(right, mpo);
             Boundary<OtherMatrix, SymmGroup> ret;
@@ -237,8 +237,8 @@ namespace contraction {
         {
             typedef typename SymmGroup::charge charge;
             typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
-            typedef typename Schedule<Matrix, SymmGroup>::schedule_t schedule_t;
-            typedef typename Schedule<Matrix, SymmGroup>::block_type::const_iterator const_iterator;
+            typedef BoundarySchedule<Matrix, SymmGroup> schedule_t;
+            typedef typename schedule_t::block_type::const_iterator const_iterator;
 
             LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
             Boundary<OtherMatrix, SymmGroup> ret;
@@ -312,8 +312,8 @@ namespace contraction {
         {
             typedef typename SymmGroup::charge charge;
             typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
-            typedef typename Schedule<Matrix, SymmGroup>::schedule_t schedule_t;
-            typedef typename Schedule<Matrix, SymmGroup>::block_type::const_iterator const_iterator;
+            typedef BoundarySchedule<Matrix, SymmGroup> schedule_t;
+            typedef typename schedule_t::block_type::const_iterator const_iterator;
 
             RightIndices<Matrix, OtherMatrix, SymmGroup> right_indices(right, mpo);
             Boundary<OtherMatrix, SymmGroup> ret;
