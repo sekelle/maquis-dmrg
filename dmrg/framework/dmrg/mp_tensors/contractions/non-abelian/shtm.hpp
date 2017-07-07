@@ -47,14 +47,12 @@ namespace SU2 {
                     ProductBasis<SymmGroup> const & right_pb,
                     unsigned lb_out,
                     typename common::Schedule<Matrix, SymmGroup>::block_type & mpsb)
-                    //std::vector<common::ContractionGroup<typename common::Schedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup> > & mpsb)
     {
         typedef MPOTensor_detail::index_type index_type;
         typedef typename MPOTensor<Matrix, SymmGroup>::row_proxy row_proxy;
         typedef typename SymmGroup::charge charge;
         typedef typename Matrix::value_type value_type;
         typedef typename common::Schedule<Matrix, SymmGroup>::block_type block_type;
-        //typedef typename block_type::mapped_value_type cgroup;
         typedef typename block_type::value_type::value_type cgroup;
         typedef typename cgroup::t_key t_key;
         typedef std::map<t_key, unsigned> t_map_t;
@@ -135,7 +133,6 @@ namespace SU2 {
                 cg.t_key_vec.resize(t_index.size());
                 for (typename t_map_t::const_iterator kit = t_index.begin(); kit != t_index.end(); ++kit)
                     cg.t_key_vec[kit->second] = kit->first;
-                //if (cg.n_tasks()) mpsb[lc_in].push_back(cg);
                 if (cg.n_tasks()) mpsb[s].push_back(cg);
 
             } // mci
