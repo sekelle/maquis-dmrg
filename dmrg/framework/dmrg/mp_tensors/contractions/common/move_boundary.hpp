@@ -270,8 +270,8 @@ namespace contraction {
             // Schedule
             unsigned loop_max = ket_right_i.size();
             schedule_t tasks(loop_max);
-            omp_for(unsigned mb, parallel::range<unsigned>(0,loop_max), {
-                task_calc(mpo, bra_tensor, ket_tensor, left_indices, bra_right_pb, ket_right_pb, mb, tasks[mb], true);
+            omp_for(unsigned rb_ket, parallel::range<unsigned>(0,loop_max), {
+                task_calc(mpo, bra_tensor, ket_tensor, left_indices, bra_right_pb, ket_right_pb, rb_ket, tasks[rb_ket], true);
             });
 
             // set up the indices of the new boundary
