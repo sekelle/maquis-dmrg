@@ -596,6 +596,9 @@ public:
     typedef std::map<typename SymmGroup::charge, ContractionGroupVector<Matrix, SymmGroup> > base;
     typedef typename base::mapped_type mapped_type;
     typedef typename mapped_type::value_type mapped_value_type;
+
+    std::map<typename SymmGroup::charge, std::vector<std::size_t> > b2o;
+    std::size_t boundary_size;
 };
 
 template <class Matrix, class SymmGroup>

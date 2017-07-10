@@ -65,7 +65,9 @@ namespace SU2 {
         unsigned rs_ket = ket_right_i[rb_ket].second;
 
         const int site_basis_max_diff = 2;
-        std::map<charge, std::vector<index_type> > b2o; // associate (rb_bra, b2) with an offset into the boundary
+
+        // associate (rb_bra, b2) with an offset into the boundary
+        std::map<charge, std::vector<std::size_t>>& b2o = mpsb.b2o;
 
         for (unsigned rb_bra = 0; rb_bra < bra_right_i.size(); ++rb_bra)
         {
@@ -149,19 +151,17 @@ namespace SU2 {
                 if (cg.n_tasks())
                 {
                     cg.t_key_vec.resize(t_index.size());
-                    for (typename t_map_t::const_iterator kit = t_index.begin(); kit != t_index.end(); ++kit)
-                    cg.t_key_vec[kit->second] = kit->first;
+                    for (auto kit = t_index.begin(); kit != t_index.end(); ++kit)
+                        cg.t_key_vec[kit->second] = kit->first;
 
                     mpsb[rc_bra].push_back(cg);
 
                     // mark each used b2 with 1
-                    std::vector<index_type> & b2o_rc_bra = b2o[rc_bra];
+                    auto& b2o_rc_bra = b2o[rc_bra];
                     b2o_rc_bra.resize(mpo.col_dim());
-                    for (unsigned mgi = 0 ; mgi < cg.size(); ++mgi) {
-                        std::vector<index_type> const & bs = cg[mgi].get_bs();
-                        for (index_type i = 0; i < bs.size(); ++i)
-                                b2o_rc_bra[bs[i]] = 1;
-                    }
+                    for (auto& mg : cg)
+                        for (index_type b : mg.get_bs())
+                            b2o_rc_bra[b] = 1;
                 }
             } // phys_out
         } // rb_bra
@@ -170,36 +170,32 @@ namespace SU2 {
         for (auto rc_bra_it = mpsb.begin(); rc_bra_it != mpsb.end(); ++rc_bra_it)
         {
             charge rc_bra = rc_bra_it->first;
-            maquis::cout << rc_bra << std::endl;
+            //maquis::cout << rc_bra << std::endl;
             std::size_t rs_bra = bra_right_i.size_of_block(rc_bra);
 
-            // map b2 into the mg index
-            std::vector<index_type> & b2o_rc_bra = b2o[rc_bra];
+            // map b2 into a memory offset
+            auto& b2o_rc_bra = b2o[rc_bra];
             std::size_t mem_rc_bra = std::accumulate(b2o_rc_bra.begin(), b2o_rc_bra.end(), 0) * rs_bra * rs_ket;
             index_type cnt = 0;
             for(index_type b = 0; b < b2o_rc_bra.size(); ++b)
-                if (b2o_rc_bra[b]) b2o_rc_bra[b] = cnt++;
-                else b2o_rc_bra[b] = cnt;
+                if (b2o_rc_bra[b]) b2o_rc_bra[b] = rs_bra * rs_ket * cnt++ + mem_offset;
+                else               b2o_rc_bra[b] = rs_bra * rs_ket * cnt   + mem_offset;
 
-            //for (auto & cg : mpsb[rc_bra])
-            for (auto it = mpsb[rc_bra].begin(); it != mpsb[rc_bra].end(); ++it)
-            {
-                auto& cg = *it;
-                for (unsigned mgi = 0 ; mgi < cg.size(); ++mgi)
+            for (auto& cg : mpsb[rc_bra])
+                for (auto& mg : cg)
                 {
-                    auto& mg = cg[mgi];
-
                     for (index_type b = 0; b < mg.get_bs().size(); ++b)
-                        mg.get_ks()[b] = b2o_rc_bra[mg.get_bs()[b]] * rs_bra * rs_ket + mem_offset;
+                        mg.get_ks()[b] = b2o_rc_bra[mg.get_bs()[b]];
 
-                    std::copy(mg.get_ks().begin(), mg.get_ks().end(), std::ostream_iterator<index_type>(std::cout, " "));
-                    maquis::cout << std::endl;
+                    //std::copy(mg.get_ks().begin(), mg.get_ks().end(), std::ostream_iterator<index_type>(std::cout, " "));
+                    //maquis::cout << std::endl;
                 }
-            }
+
             mem_offset += mem_rc_bra;
         }
-
-        maquis::cout << std::endl;
+        
+        mpsb.boundary_size = mem_offset;
+        //maquis::cout << std::endl;
     }
 
 } // namespace SU2
