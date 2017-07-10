@@ -305,6 +305,7 @@ public:
     unsigned get_r_size() const { return r_size; }
 
     std::vector<index_type> const & get_bs() const { return bs; }
+    std::vector<index_type>       & get_ks()       { return ks; }
     std::vector<index_type> const & get_ks() const { return ks; }
 
     mutable unsigned offset;
