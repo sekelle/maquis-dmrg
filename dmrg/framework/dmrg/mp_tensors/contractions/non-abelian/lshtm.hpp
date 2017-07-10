@@ -87,8 +87,6 @@ namespace SU2 {
                 typename block_type::mapped_value_type cg(lb_bra, phys_i[s].second, rs_bra, ls_bra, rs_ket,
                                                           bra_offset, true);
 
-                //::SU2::Wigner9jCache<value_type, SymmGroup> w9j(rc_bra, rc_ket, lc_bra);
-
                 t_map_t t_index;
                 for (index_type b2 = 0; b2 < mpo.col_dim(); ++b2)
                 {
@@ -122,18 +120,6 @@ namespace SU2 {
                                                                  A,      K,    Ap,
                                                                lc_bra, SymmGroup::fuse(rc_bra, -lc_bra), rc_bra,
                                                                scale, couplings);
-
-                                //value_type scale = left.conj_scales[b1][b_left] * access.scale(op_index)
-                                //                 * sqrt( (SymmGroup::spin(lc_ket)+1.) * (Ap+1.) * (SymmGroup::spin(rc_bra)+1.)
-                                //                        / ((SymmGroup::spin(rc_ket)+1.) * (A+1.) * (SymmGroup::spin(lc_bra)+1.))
-                                //                       );
-                                //int TwoS = std::abs(SymmGroup::spin(lc_ket) - SymmGroup::spin(rc_ket));
-                                //int TwoSp = std::abs(SymmGroup::spin(lc_bra) - SymmGroup::spin(rc_bra));
-                                //int sum = SymmGroup::spin(lc_ket) + TwoS + SymmGroup::spin(rc_ket) 
-                                //        + Ap + K + A
-                                //        + SymmGroup::spin(lc_bra) + TwoSp + SymmGroup::spin(rc_bra);
-                                //scale = ( (sum/2)%2 == 0) ? scale : -scale;
-                                //w9j.set_scale(Ap, K, A, SymmGroup::spin(lc_ket), scale, couplings);
 
                                 char left_transpose = mpo.herm_info.left_skip(b1);
                                 unsigned b1_eff = (left_transpose) ? mpo.herm_info.left_conj(b1) : b1;
