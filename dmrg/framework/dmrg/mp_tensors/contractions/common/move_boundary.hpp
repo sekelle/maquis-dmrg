@@ -120,14 +120,14 @@ namespace contraction {
             });
 
             // set up the indices of the new boundary
-            for(unsigned rb_ket = 0; rb_ket < loop_max; ++rb_ket)
+            for(unsigned rb_bra = 0; rb_bra < loop_max; ++rb_bra)
             {
-                charge rc_ket = right_i[rb_ket].first;
-                unsigned rs_ket = right_i[rb_ket].second;
-                for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
+                charge rc_bra = right_i[rb_bra].first;
+                unsigned ls_paired = out_left_i.size_of_block(rc_bra);
+                for (const_iterator it = tasks[rb_bra].begin(); it != tasks[rb_bra].end(); ++it)
                 {
-                    charge rc_bra = it->first;
-                    unsigned ls_paired = out_left_i.size_of_block(rc_bra);
+                    charge rc_ket = it->first;
+                    unsigned rs_ket = right_i.size_of_block(rc_ket);
                     it->second.reserve(rc_bra, rc_ket, ls_paired, rs_ket, ret);
 
                     for (unsigned s = 0; s < it->second.size(); ++s)
@@ -144,11 +144,11 @@ namespace contraction {
             }
 
             // Contraction
-            omp_for(index_type rb_ket, parallel::range<index_type>(0,loop_max), {
-                charge rc_ket = right_i[rb_ket].first;
-                for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it) // mc loop
+            omp_for(index_type rb_bra, parallel::range<index_type>(0,loop_max), {
+                charge rc_bra = right_i[rb_bra].first;
+                for (const_iterator it = tasks[rb_bra].begin(); it != tasks[rb_bra].end(); ++it) // mc loop
                 {
-                    charge rc_bra = it->first;
+                    charge rc_ket = it->first;
                     it->second.allocate(rc_bra, rc_ket, ret);
                     for (unsigned s = 0; s < it->second.size(); ++s) // physical index loop
                         it->second[s].lbtm(ket_tensor, it->second.get_b_to_o(), left, ret);
@@ -243,6 +243,7 @@ namespace contraction {
             LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
             Boundary<OtherMatrix, SymmGroup> ret;
             ret.resize(mpo.col_dim());
+            ret.data().resize(bra_tensor_in.col_dim().size());
 
             MPSTensor<Matrix, SymmGroup> buffer; // holds the conjugate tensor if we deal with complex numbers
             MPSTensor<Matrix, SymmGroup> const & bra_tensor = set_conjugate(bra_tensor_in, buffer);
@@ -258,7 +259,8 @@ namespace contraction {
             // MPS indices
             assert(bra_tensor.site_dim() == ket_tensor.site_dim());
             Index<SymmGroup> const & physical_i = ket_tensor.site_dim(),
-                                     ket_right_i = ket_tensor.col_dim();
+                                     ket_right_i = ket_tensor.col_dim(),
+                                     bra_right_i = bra_tensor.col_dim();
 
             ProductBasis<SymmGroup> bra_right_pb(physical_i, bra_tensor.col_dim(),
                     boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
@@ -268,21 +270,21 @@ namespace contraction {
                                     -boost::lambda::_1, boost::lambda::_2));
 
             // Schedule
-            unsigned loop_max = ket_right_i.size();
+            unsigned loop_max = bra_right_i.size();
             schedule_t tasks(loop_max);
-            omp_for(unsigned rb_ket, parallel::range<unsigned>(0,loop_max), {
-                task_calc(mpo, bra_tensor, ket_tensor, left_indices, bra_right_pb, ket_right_pb, rb_ket, tasks[rb_ket], true);
+            omp_for(unsigned rb_bra, parallel::range<unsigned>(0,loop_max), {
+                task_calc(mpo, bra_tensor, ket_tensor, left_indices, bra_right_pb, ket_right_pb, rb_bra, tasks[rb_bra], true);
             });
 
             // set up the indices of the new boundary
-            for(size_t rb_ket = 0; rb_ket < loop_max; ++rb_ket)
+            for(size_t rb_bra = 0; rb_bra < loop_max; ++rb_bra)
             {
-                charge rc_ket = ket_right_i[rb_ket].first;
-                size_t rs_ket = ket_right_i[rb_ket].second;
-                for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
+                charge rc_bra = bra_right_i[rb_bra].first;
+                size_t rs_bra = bra_right_i[rb_bra].second;
+                for (const_iterator it = tasks[rb_bra].begin(); it != tasks[rb_bra].end(); ++it)
                 {
-                    charge rc_bra = it->first;
-                    size_t rs_bra = ket_right_i.size_of_block(rc_bra);
+                    charge rc_ket = it->first;
+                    size_t rs_ket = ket_right_i.size_of_block(rc_ket);
                     it->second.reserve(rc_bra, rc_ket, rs_bra, rs_ket, ret); // allocate all (rc_bra,rc_ket) blocks
                 }
             }
@@ -295,14 +297,14 @@ namespace contraction {
                 #ifdef MAQUIS_OPENMP
                 #pragma omp single
                 #endif
-                for(index_type rb_ket = 0; rb_ket < loop_max; ++rb_ket) {
-                    charge rc_ket = ket_right_i[rb_ket].first;
+                for(index_type rb_bra = 0; rb_bra < loop_max; ++rb_bra) {
+                    charge rc_bra = bra_right_i[rb_bra].first;
                     #ifdef MAQUIS_OPENMP
                     #pragma omp task
                     #endif
-                    for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it) // mc loop
+                    for (const_iterator it = tasks[rb_bra].begin(); it != tasks[rb_bra].end(); ++it)
                     {
-                        charge rc_bra = it->first;
+                        charge rc_ket = it->first;
                         it->second.allocate(rc_bra, rc_ket, ret);
                         for (size_t s = 0; s < it->second.size(); ++s) // physical index loop
                             it->second[s].prop_l(bra_tensor, ket_tensor, it->second.get_b_to_o(), left, ret);

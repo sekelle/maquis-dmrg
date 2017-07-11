@@ -43,7 +43,7 @@ namespace SU2 {
                      common::LeftIndices<Matrix, OtherMatrix, SymmGroup> const & left,
                      ProductBasis<SymmGroup> const & bra_right_pb,
                      ProductBasis<SymmGroup> const & ket_right_pb,
-                     unsigned rb_ket,
+                     unsigned rb_bra,
                      typename common::BoundarySchedule<Matrix, SymmGroup>::block_type & mpsb,
                      bool skip = true)
     {
@@ -61,19 +61,19 @@ namespace SU2 {
         Index<SymmGroup> const & bra_right_i = bra.col_dim();
         Index<SymmGroup> const & phys_i = ket.site_dim();
 
-        charge rc_ket = ket_right_i[rb_ket].first;
-        unsigned rs_ket = ket_right_i[rb_ket].second;
+        charge rc_bra = bra_right_i[rb_bra].first;
+        unsigned rs_bra = bra_right_i[rb_bra].second;
 
         const int site_basis_max_diff = 2;
 
         // associate (rb_bra, b2) with an offset into the boundary
         std::map<charge, std::vector<std::size_t>>& b2o = mpsb.b2o;
 
-        for (unsigned rb_bra = 0; rb_bra < bra_right_i.size(); ++rb_bra)
+        for (unsigned rb_ket = 0; rb_ket < ket_right_i.size(); ++rb_ket)
         {
-            charge rc_bra = bra_right_i[rb_bra].first;
+            charge rc_ket = ket_right_i[rb_ket].first;
             if (std::abs(SymmGroup::particleNumber(rc_bra) - SymmGroup::particleNumber(rc_ket)) > site_basis_max_diff) continue;
-            unsigned rs_bra = bra_right_i[rb_bra].second;
+            unsigned rs_ket = ket_right_i[rb_ket].second;
 
             for (unsigned s = 0; s < phys_i.size(); ++s)
             {
@@ -140,44 +140,44 @@ namespace SU2 {
                     for (auto kit = t_index.begin(); kit != t_index.end(); ++kit)
                         cg.t_key_vec[kit->second] = kit->first;
 
-                    mpsb[rc_bra].push_back(cg);
+                    mpsb[rc_ket].push_back(cg);
 
                     // mark each used b2 with 1
-                    auto& b2o_rc_bra = b2o[rc_bra];
-                    b2o_rc_bra.resize(mpo.col_dim());
+                    auto& b2o_rc_ket = b2o[rc_ket];
+                    b2o_rc_ket.resize(mpo.col_dim());
                     for (auto& mg : cg)
                         for (index_type b : mg.get_bs())
-                            b2o_rc_bra[b] = 1;
+                            b2o_rc_ket[b] = 1;
                 }
             } // phys_out
         } // rb_bra
 
         std::size_t mem_offset = 0;
-        for (auto rc_bra_it = mpsb.begin(); rc_bra_it != mpsb.end(); ++rc_bra_it)
+        for (auto rc_ket_it = mpsb.begin(); rc_ket_it != mpsb.end(); ++rc_ket_it)
         {
-            charge rc_bra = rc_bra_it->first;
-            //maquis::cout << rc_bra << std::endl;
-            std::size_t rs_bra = bra_right_i.size_of_block(rc_bra);
+            charge rc_ket = rc_ket_it->first;
+            //maquis::cout << rc_ket << std::endl;
+            std::size_t rs_ket = ket_right_i.size_of_block(rc_ket);
 
             // map b2 into a memory offset
-            auto& b2o_rc_bra = b2o[rc_bra];
-            std::size_t mem_rc_bra = std::accumulate(b2o_rc_bra.begin(), b2o_rc_bra.end(), 0) * rs_bra * rs_ket;
+            auto& b2o_rc_ket = b2o[rc_ket];
+            std::size_t mem_rc_ket = std::accumulate(b2o_rc_ket.begin(), b2o_rc_ket.end(), 0) * rs_bra * rs_ket;
             index_type cnt = 0;
-            for(index_type b = 0; b < b2o_rc_bra.size(); ++b)
-                if (b2o_rc_bra[b]) b2o_rc_bra[b] = rs_bra * rs_ket * cnt++ + mem_offset;
-                else               b2o_rc_bra[b] = rs_bra * rs_ket * cnt   + mem_offset;
+            for(index_type b = 0; b < b2o_rc_ket.size(); ++b)
+                if (b2o_rc_ket[b]) b2o_rc_ket[b] = rs_bra * rs_ket * cnt++ + mem_offset;
+                else               b2o_rc_ket[b] = rs_bra * rs_ket * cnt   + mem_offset;
 
-            for (auto& cg : mpsb[rc_bra])
+            for (auto& cg : mpsb[rc_ket])
                 for (auto& mg : cg)
                 {
                     for (index_type b = 0; b < mg.get_bs().size(); ++b)
-                        mg.get_ks()[b] = b2o_rc_bra[mg.get_bs()[b]];
+                        mg.get_ks()[b] = b2o_rc_ket[mg.get_bs()[b]];
 
                     //std::copy(mg.get_ks().begin(), mg.get_ks().end(), std::ostream_iterator<index_type>(std::cout, " "));
                     //maquis::cout << std::endl;
                 }
 
-            mem_offset += mem_rc_bra;
+            mem_offset += mem_rc_ket;
         }
         
         mpsb.boundary_size = mem_offset;

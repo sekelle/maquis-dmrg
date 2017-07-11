@@ -111,8 +111,12 @@ public:
     block_matrix<Matrix, SymmGroup> & operator[](std::size_t k) { return data_[k]; }
     block_matrix<Matrix, SymmGroup> const & operator[](std::size_t k) const { return data_[k]; }
 
+    std::vector<std::vector<value_type> >      & data() { return data2_; }
+    std::vector<std::vector<value_type> > const& data() const { return data2_; }
+
 private:
     std::vector<block_matrix<Matrix, SymmGroup> > data_;
+    std::vector<std::vector<value_type> > data2_;
 };
 
 
