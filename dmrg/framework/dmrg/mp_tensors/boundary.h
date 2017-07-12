@@ -36,6 +36,7 @@
 #include "dmrg/block_matrix/block_matrix.h"
 #include "dmrg/block_matrix/indexing.h"
 #include "utils/function_objects.h"
+#include "dmrg/utils/aligned_allocator.hpp"
 #include "dmrg/utils/parallel.hpp"
 
 
@@ -46,6 +47,8 @@ public:
     typedef typename maquis::traits::scalar_type<Matrix>::type scalar_type;
     typedef typename Matrix::value_type value_type;
     typedef std::pair<typename SymmGroup::charge, std::size_t> access_type;
+
+    typedef std::vector<std::vector<value_type, maquis::aligned_allocator<value_type, ALIGNMENT>>> data_t;
 
     friend class boost::serialization::access;
 
@@ -111,12 +114,12 @@ public:
     block_matrix<Matrix, SymmGroup> & operator[](std::size_t k) { return data_[k]; }
     block_matrix<Matrix, SymmGroup> const & operator[](std::size_t k) const { return data_[k]; }
 
-    std::vector<std::vector<value_type> >      & data() { return data2_; }
-    std::vector<std::vector<value_type> > const& data() const { return data2_; }
+    data_t      & data()       { return data2_; }
+    data_t const& data() const { return data2_; }
 
 private:
     std::vector<block_matrix<Matrix, SymmGroup> > data_;
-    std::vector<std::vector<value_type> > data2_;
+    data_t data2_;
 };
 
 

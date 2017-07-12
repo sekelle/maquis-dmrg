@@ -243,7 +243,6 @@ namespace contraction {
             LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
             Boundary<OtherMatrix, SymmGroup> ret;
             ret.resize(mpo.col_dim());
-            ret.data().resize(bra_tensor_in.col_dim().size());
 
             MPSTensor<Matrix, SymmGroup> buffer; // holds the conjugate tensor if we deal with complex numbers
             MPSTensor<Matrix, SymmGroup> const & bra_tensor = set_conjugate(bra_tensor_in, buffer);
@@ -276,6 +275,7 @@ namespace contraction {
                 task_calc(mpo, bra_tensor, ket_tensor, left_indices, bra_right_pb, ket_right_pb, rb_bra, tasks[rb_bra], true);
             });
 
+            ret.data().resize(loop_max);
             // set up the indices of the new boundary
             for(size_t rb_bra = 0; rb_bra < loop_max; ++rb_bra)
             {
@@ -299,6 +299,7 @@ namespace contraction {
                 #endif
                 for(index_type rb_bra = 0; rb_bra < loop_max; ++rb_bra) {
                     charge rc_bra = bra_right_i[rb_bra].first;
+                    ret.data()[rb_bra].resize(tasks[rb_bra].boundary_size);
                     #ifdef MAQUIS_OPENMP
                     #pragma omp task
                     #endif
@@ -307,7 +308,7 @@ namespace contraction {
                         charge rc_ket = it->first;
                         it->second.allocate(rc_bra, rc_ket, ret);
                         for (size_t s = 0; s < it->second.size(); ++s) // physical index loop
-                            it->second[s].prop_l(bra_tensor, ket_tensor, it->second.get_b_to_o(), left, ret);
+                            it->second[s].prop_l(bra_tensor, ket_tensor, it->second.get_b_to_o(), left, ret, ret.data()[rb_bra].data());
                     }
                 }
             }

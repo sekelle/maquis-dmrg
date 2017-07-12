@@ -67,7 +67,7 @@ namespace SU2 {
         const int site_basis_max_diff = 2;
 
         // associate (rb_bra, b2) with an offset into the boundary
-        std::map<charge, std::vector<std::size_t>>& b2o = mpsb.b2o;
+        auto& b2o = mpsb.b2o;
 
         for (unsigned rb_ket = 0; rb_ket < ket_right_i.size(); ++rb_ket)
         {
@@ -158,14 +158,15 @@ namespace SU2 {
             charge rc_ket = rc_ket_it->first;
             //maquis::cout << rc_ket << std::endl;
             std::size_t rs_ket = ket_right_i.size_of_block(rc_ket);
+            std::size_t l_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(rs_bra * rs_ket);
 
             // map b2 into a memory offset
             auto& b2o_rc_ket = b2o[rc_ket];
-            std::size_t mem_rc_ket = std::accumulate(b2o_rc_ket.begin(), b2o_rc_ket.end(), 0) * rs_bra * rs_ket;
+            std::size_t mem_rc_ket = std::accumulate(b2o_rc_ket.begin(), b2o_rc_ket.end(), 0) * l_size;
             index_type cnt = 0;
             for(index_type b = 0; b < b2o_rc_ket.size(); ++b)
-                if (b2o_rc_ket[b]) b2o_rc_ket[b] = rs_bra * rs_ket * cnt++ + mem_offset;
-                else               b2o_rc_ket[b] = rs_bra * rs_ket * cnt   + mem_offset;
+                if (b2o_rc_ket[b]) b2o_rc_ket[b] = l_size * cnt++ + mem_offset;
+                else               b2o_rc_ket[b] = -1;
 
             for (auto& cg : mpsb[rc_ket])
                 for (auto& mg : cg)
@@ -179,9 +180,9 @@ namespace SU2 {
 
             mem_offset += mem_rc_ket;
         }
-        
-        mpsb.boundary_size = mem_offset;
         //maquis::cout << std::endl;
+
+        mpsb.boundary_size = mem_offset;
     }
 
 } // namespace SU2

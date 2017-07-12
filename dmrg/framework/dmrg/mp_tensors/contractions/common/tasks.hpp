@@ -41,8 +41,6 @@
 #include "dmrg/mp_tensors/contractions/numeric/numeric.h"
 #include "dmrg/mp_tensors/contractions/numeric/gemm_template.h"
 
-#define ALIGNMENT 32
-
 namespace contraction {
 namespace common {
 
@@ -234,7 +232,7 @@ public:
 
     template <class DefaultMatrix, class OtherMatrix>
     void prop_l(DefaultMatrix const & bra, const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret,
-                std::vector<unsigned> const & b_to_o) const
+                std::vector<unsigned> const & b_to_o, value_type* lptr) const
     {
         value_type one=1;
         char tr = 'T';
@@ -255,6 +253,7 @@ public:
                                                     &S(0,0), alpha[i][j]);
 
             blas_gemm(&tr, &notr, &M, &N, &K, &one, &bra(0,offset), &K, &S(0,0), &K, &one, &ret[b2][b_to_o[b2]](0,0), &M);
+            std::copy(&ret[b2][b_to_o[b2]](0,0), &ret[b2][b_to_o[b2]](0,0) + M*N, lptr + ks[i]);
         }
     }
 
@@ -305,8 +304,8 @@ public:
     unsigned get_r_size() const { return r_size; }
 
     std::vector<index_type> const & get_bs() const { return bs; }
-    std::vector<index_type>       & get_ks()       { return ks; }
-    std::vector<index_type> const & get_ks() const { return ks; }
+    std::vector<std::size_t>       & get_ks()       { return ks; }
+    std::vector<std::size_t> const & get_ks() const { return ks; }
 
     mutable unsigned offset;
 
@@ -318,7 +317,8 @@ private:
     std::vector<value_type*> alpha;
     std::vector<unsigned*> tidx;
 
-    std::vector<index_type> bs, ks;
+    std::vector<index_type> bs;
+    std::vector<std::size_t> ks;
     std::vector<unsigned> b2sz;
     std::vector<char> trans;
 };
@@ -385,13 +385,14 @@ public:
                 MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
                 std::vector<unsigned> const & b_to_o,
                 Boundary<OtherMatrix, SymmGroup> const & left,
-                Boundary<OtherMatrix, SymmGroup> & new_left) const
+                Boundary<OtherMatrix, SymmGroup> & new_left,
+                value_type* lptr) const
     {
         create_T_left(left, ket_mps);
         for (int ss1 = 0; ss1 < this->size(); ++ss1)
         {
             if (!(*this)[ss1].n_tasks()) continue;
-            (*this)[ss1].prop_l(bra_mps.data()[mps_block], t_pointer, new_left, b_to_o);
+            (*this)[ss1].prop_l(bra_mps.data()[mps_block], t_pointer, new_left, b_to_o, lptr);
         }
         free(t_pointer);
     }
@@ -597,7 +598,7 @@ public:
     typedef typename base::mapped_type mapped_type;
     typedef typename mapped_type::value_type mapped_value_type;
 
-    std::map<typename SymmGroup::charge, std::vector<std::size_t> > b2o;
+    std::map<typename SymmGroup::charge, std::vector<long int> > b2o;
     std::size_t boundary_size;
 };
 
@@ -765,7 +766,5 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
 
 } // namespace common
 } // namespace contraction
-
-#undef ALIGNMENT
 
 #endif
