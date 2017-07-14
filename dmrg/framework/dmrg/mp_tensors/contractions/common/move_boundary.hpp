@@ -275,7 +275,6 @@ namespace contraction {
                 task_calc(mpo, bra_tensor, ket_tensor, left_indices, bra_right_pb, ket_right_pb, rb_bra, tasks[rb_bra], true);
             });
 
-            ret.data().resize(loop_max);
             // set up the indices of the new boundary
             for(size_t rb_bra = 0; rb_bra < loop_max; ++rb_bra)
             {
@@ -299,7 +298,6 @@ namespace contraction {
                 #endif
                 for(index_type rb_bra = 0; rb_bra < loop_max; ++rb_bra) {
                     charge rc_bra = bra_right_i[rb_bra].first;
-                    ret.data()[rb_bra].resize(tasks[rb_bra].boundary_size);
                     #ifdef MAQUIS_OPENMP
                     #pragma omp task
                     #endif
@@ -308,10 +306,21 @@ namespace contraction {
                         charge rc_ket = it->first;
                         it->second.allocate(rc_bra, rc_ket, ret);
                         for (size_t s = 0; s < it->second.size(); ++s) // physical index loop
-                            it->second[s].prop_l(bra_tensor, ket_tensor, it->second.get_b_to_o(), left, ret, ret.data()[rb_bra].data());
+                            it->second[s].prop_l(bra_tensor, ket_tensor, it->second.get_b_to_o(), left, ret);
                     }
                 }
             }
+
+            // TODO: clean out debug
+            //for(auto c1 : bra_right_i)
+            //for(auto c2 : bra_right_i)
+            //for(size_t b = 0; b < mpo.col_dim(); ++b)
+            //    if (ret[b].has_block(c1.first, c2.first))
+            //    {
+            //        assert(ret.b2o()[bra_right_i.position(c1.first)][c2.first][b] >= 0);
+            //        assert(ret[b](c1.first,c2.first)(0,0)
+            //            == ret.data()[bra_right_i.position(c1.first)] [ret.b2o()[bra_right_i.position(c1.first)][c2.first][b]]);
+            //    }
 
             return ret;
         }

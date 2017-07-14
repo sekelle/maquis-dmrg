@@ -232,7 +232,7 @@ public:
 
     template <class DefaultMatrix, class OtherMatrix>
     void prop_l(DefaultMatrix const & bra, const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret,
-                std::vector<unsigned> const & b_to_o, value_type* lptr) const
+                std::vector<unsigned> const & b_to_o) const
     {
         value_type one=1;
         char tr = 'T';
@@ -253,7 +253,6 @@ public:
                                                     &S(0,0), alpha[i][j]);
 
             blas_gemm(&tr, &notr, &M, &N, &K, &one, &bra(0,offset), &K, &S(0,0), &K, &one, &ret[b2][b_to_o[b2]](0,0), &M);
-            std::copy(&ret[b2][b_to_o[b2]](0,0), &ret[b2][b_to_o[b2]](0,0) + M*N, lptr + ks[i]);
         }
     }
 
@@ -385,14 +384,13 @@ public:
                 MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
                 std::vector<unsigned> const & b_to_o,
                 Boundary<OtherMatrix, SymmGroup> const & left,
-                Boundary<OtherMatrix, SymmGroup> & new_left,
-                value_type* lptr) const
+                Boundary<OtherMatrix, SymmGroup> & new_left) const
     {
         create_T_left(left, ket_mps);
         for (int ss1 = 0; ss1 < this->size(); ++ss1)
         {
             if (!(*this)[ss1].n_tasks()) continue;
-            (*this)[ss1].prop_l(bra_mps.data()[mps_block], t_pointer, new_left, b_to_o, lptr);
+            (*this)[ss1].prop_l(bra_mps.data()[mps_block], t_pointer, new_left, b_to_o);
         }
         free(t_pointer);
     }
@@ -584,9 +582,17 @@ public:
 
     std::vector<unsigned> const & get_b_to_o() const { return b_to_o; }
 
+    void set_size(std::size_t s) { cohort_size = s; }
+    std::vector<long int>      & get_offsets()       { return mpo_offsets; }
+    std::vector<long int> const& get_offsets() const { return mpo_offsets; }
+
 private:
     // b_to_o[b] = position o of sector (mc,lc) in boundary index b
     mutable std::vector<unsigned> b_to_o;
+
+    unsigned cohort_index;
+    std::size_t cohort_size;
+    std::vector<long int> mpo_offsets;
 };
 
 
@@ -597,9 +603,6 @@ public:
     typedef std::map<typename SymmGroup::charge, ContractionGroupVector<Matrix, SymmGroup> > base;
     typedef typename base::mapped_type mapped_type;
     typedef typename mapped_type::value_type mapped_value_type;
-
-    std::map<typename SymmGroup::charge, std::vector<long int> > b2o;
-    std::size_t boundary_size;
 };
 
 template <class Matrix, class SymmGroup>

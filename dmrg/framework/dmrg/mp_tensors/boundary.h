@@ -49,6 +49,7 @@ public:
     typedef std::pair<typename SymmGroup::charge, std::size_t> access_type;
 
     typedef std::vector<std::vector<value_type, maquis::aligned_allocator<value_type, ALIGNMENT>>> data_t;
+    typedef std::vector<std::map<typename SymmGroup::charge, std::vector<long int>>> b2o_t;
 
     friend class boost::serialization::access;
 
@@ -61,7 +62,21 @@ public:
              Index<SymmGroup> const & ld = Index<SymmGroup>(),
              std::size_t ad = 1)
     : data_(ad, block_matrix<Matrix, SymmGroup>(ud, ld))
-    { }
+    {
+        //data().resize(ud.size());
+        //b2o().resize(ud.size());
+        //for (std::size_t i = 0; i < ud.size(); ++i)
+        //{
+        //    auto lc = ud[i].first;
+        //    auto rc = ld[i].first;
+        //    std::size_t ls = ud[i].second;
+        //    std::size_t rs = ld[i].second;
+        //    std::size_t block_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(ls*rs);
+        //    data()[i].resize(block_size * ad);
+        //    for (std::size_t b = 0; b < ad; ++b)
+        //        b2o()[i][rc].push_back(b * block_size);
+        //}
+    }
     
     template <class OtherMatrix>
     Boundary(Boundary<OtherMatrix, SymmGroup> const& rhs)
@@ -114,12 +129,8 @@ public:
     block_matrix<Matrix, SymmGroup> & operator[](std::size_t k) { return data_[k]; }
     block_matrix<Matrix, SymmGroup> const & operator[](std::size_t k) const { return data_[k]; }
 
-    data_t      & data()       { return data2_; }
-    data_t const& data() const { return data2_; }
-
 private:
     std::vector<block_matrix<Matrix, SymmGroup> > data_;
-    data_t data2_;
 };
 
 
