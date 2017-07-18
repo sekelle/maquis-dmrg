@@ -40,14 +40,13 @@ namespace contraction {
     template <class Matrix, class SymmGroup>
     typename boost::enable_if<symm_traits::HasSU2<SymmGroup>, std::vector<typename Matrix::value_type> >::type
     conjugate_phases(DualIndex<SymmGroup> const & basis,
-                     MPOTensor<Matrix, SymmGroup> const & mpo,
-                     std::size_t k, bool left, bool forward, bool transpose = false)
+                     MPOTensor_detail::Hermitian const & herm,
+                     std::size_t k, typename SymmGroup::subcharge S,
+                     bool forward, bool transpose = false)
     {
         typedef typename Matrix::value_type value_type;
-        typename SymmGroup::subcharge S = (left) ? mpo.left_spin(k).get() : mpo.right_spin(k).get();
 
         std::vector<value_type> ret(basis.size());
-
         for (std::size_t b = 0; b < basis.size(); ++b)
         {
             value_type scale = (transpose) ? ::SU2::conjugate_correction<typename Matrix::value_type, SymmGroup>
@@ -55,11 +54,10 @@ namespace contraction {
                                       : ::SU2::conjugate_correction<typename Matrix::value_type, SymmGroup>
                                         (basis.left_charge(b), basis.right_charge(b), S);
             if (forward)
-                scale *= (left) ? mpo.herm_left.phase(mpo.herm_left.conj(k)) 
-                                    : mpo.herm_right.phase(mpo.herm_right.conj(k));
+                scale *= herm.phase(herm.conj(k));
             else
-                scale *= (left) ? mpo.herm_left.phase(k)
-                                    : mpo.herm_right.phase(k);
+                scale *= herm.phase(k);
+
             ret[b] = scale;
         }
         return ret;
@@ -68,8 +66,9 @@ namespace contraction {
     template <class Matrix, class SymmGroup>
     typename boost::disable_if<symm_traits::HasSU2<SymmGroup>, std::vector<typename Matrix::value_type> >::type
     conjugate_phases(DualIndex<SymmGroup> const & basis,
-                     MPOTensor<Matrix, SymmGroup> const & mpo,
-                     std::size_t k, bool left, bool forward, bool transpose = false)
+                     MPOTensor_detail::Hermitian const & herm,
+                     std::size_t k, typename SymmGroup::subcharge S,
+                     bool forward, bool transpose = false)
     {
         return std::vector<typename Matrix::value_type>(basis.size(), 1.);
     }
@@ -80,7 +79,11 @@ namespace contraction {
                                                                                        std::size_t k, bool left, bool forward)
     {
         typedef typename Matrix::value_type value_type;
-        std::vector<value_type> scales = conjugate_phases(bm.basis(), mpo, k, left, forward);
+        std::vector<value_type> scales = conjugate_phases<Matrix>(bm.basis()
+                                                          , (left) ? mpo.left_herm : mpo.right_herm
+                                                          , k
+                                                          , (left) ? mpo.left_spin(k).get() : mpo.right_spin(k).get()
+                                                          , forward);
 
         for (std::size_t b = 0; b < bm.n_blocks(); ++b)
             bm[b] *= scales[b];
@@ -119,7 +122,7 @@ namespace contraction {
                     parallel::guard group(scheduler(b1), parallel::groups_granularity);
 
                     (*this)[b1] = left[mpo.herm_left.conj(b1)].basis(); 
-                    conj_scales[b1] = conjugate_phases((*this)[b1], mpo, b1, true, false, true);
+                    conj_scales[b1] = conjugate_phases<Matrix>((*this)[b1], mpo.herm_left, b1, mpo.left_spin(b1).get(), false, true);
                     trans_storage[b1] = true;
                 }
                 else {
@@ -188,7 +191,7 @@ namespace contraction {
 
                     (*this)[b2] = right[mpo.herm_right.conj(b2)].basis();
                     bool transpose = true;
-                    conj_scales[b2] = conjugate_phases((*this)[b2], mpo, b2, false, true, transpose);
+                    conj_scales[b2] = conjugate_phases<Matrix>((*this)[b2], mpo.herm_right, b2, mpo.right_spin(b2).get(), true, transpose);
                     trans_storage[b2] = true;
                 }
                 else {

@@ -187,6 +187,7 @@ namespace MPOTensor_detail
         else
         return mpo.right_spin(k).get();
     }
-}
+
+} // namespace MPOTensor_detail
 
 #endif
