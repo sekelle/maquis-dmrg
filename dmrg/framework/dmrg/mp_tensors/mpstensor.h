@@ -43,9 +43,6 @@ enum DecompMethod {QR, SVD};
 static DecompMethod DefaultSolver() {return QR;} // QR or SVD
 
 template<class Matrix, class SymmGroup>
-class TwoSiteTensor;
-
-template<class Matrix, class SymmGroup>
 class MPSTensor
 {
 public:

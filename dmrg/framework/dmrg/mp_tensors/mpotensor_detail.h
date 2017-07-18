@@ -138,61 +138,38 @@ namespace MPOTensor_detail
 
     class Hermitian
     {
-        friend Hermitian operator * (Hermitian const &, Hermitian const &);
-
     public:
-        Hermitian(index_type ld, index_type rd)
+        Hermitian(index_type d)
         {
-            LeftHerm.resize(ld);
-            RightHerm.resize(rd);
-            LeftPhase = std::vector<int>(ld, 1);
-            RightPhase = std::vector<int>(rd, 1);
+            Herm.resize(d);
+            Phase = std::vector<int>(d, 1);
 
             index_type z=0;
-            std::generate(LeftHerm.begin(), LeftHerm.end(), boost::lambda::var(z)++);
-            z=0;
-            std::generate(RightHerm.begin(), RightHerm.end(), boost::lambda::var(z)++);
+            std::generate(Herm.begin(), Herm.end(), boost::lambda::var(z)++);
         }
 
-        Hermitian(std::vector<index_type> const & lh,
-                  std::vector<index_type> const & rh,
-                  std::vector<int> const & lp,
-                  std::vector<int> const & rp)
-        : LeftHerm(lh), RightHerm(rh), LeftPhase(lp), RightPhase(rp)
+        Hermitian(std::vector<index_type> const & h, std::vector<int> const & p)
+        : Herm(h), Phase(p)
         {}
 
-        bool left_skip(index_type b1) const { return LeftHerm[b1] < b1; }
-        bool right_skip(index_type b2) const { return RightHerm[b2] < b2; }
+        bool       skip(index_type b) const { return Herm[b] < b; }
+        index_type conj(index_type b) const { return Herm[b]; }
 
-        index_type  left_conj(index_type b1) const { return  LeftHerm[b1]; }
-        index_type right_conj(index_type b2) const { return RightHerm[b2]; }
-
-        std::size_t left_size() const { return LeftHerm.size(); }
-        std::size_t right_size() const { return RightHerm.size(); }
-
-        int left_phase(std::size_t i) const { return LeftPhase[i]; }
-        int right_phase(std::size_t i) const { return RightPhase[i]; }
+        std::size_t size()       const { return Herm.size(); }
+        int phase(std::size_t i) const { return Phase[i]; }
 
     private:
-        std::vector<index_type> LeftHerm;
-        std::vector<index_type> RightHerm;
-
-        std::vector<int> LeftPhase;
-        std::vector<int> RightPhase;
+        std::vector<index_type> Herm;
+        std::vector<int> Phase;
 
         friend class boost::serialization::access;
 
         template <class Archive>
         void serialize(Archive & ar, const unsigned int version)
         {
-            ar & LeftHerm & RightHerm & LeftPhase & RightPhase;
+            ar & Herm & Phase;
         }
     };
-
-    inline Hermitian operator * (Hermitian const & a, Hermitian const & b)
-    {
-        return Hermitian(a.LeftHerm, b.RightHerm, a.LeftPhase, b.RightPhase);
-    } 
 
     template <class Matrix, class SymmGroup>
     typename boost::disable_if<symm_traits::HasSU2<SymmGroup>, int>::type get_spin(MPOTensor<Matrix, SymmGroup> const & mpo,
@@ -210,6 +187,7 @@ namespace MPOTensor_detail
         else
         return mpo.right_spin(k).get();
     }
-}
+
+} // namespace MPOTensor_detail
 
 #endif
