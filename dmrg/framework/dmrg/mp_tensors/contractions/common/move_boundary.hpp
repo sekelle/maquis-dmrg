@@ -288,6 +288,11 @@ namespace contraction {
                 }
             }
 
+            unsigned enumerator = 0;
+            for(size_t rb_bra = 0; rb_bra < loop_max; ++rb_bra)
+                for (auto& entry : tasks[rb_bra])
+                    entry.second.set_index(enumerator++);
+
             // Contraction
             #ifdef MAQUIS_OPENMP
             #pragma omp parallel
