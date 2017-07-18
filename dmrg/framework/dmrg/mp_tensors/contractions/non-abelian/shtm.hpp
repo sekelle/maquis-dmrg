@@ -90,7 +90,7 @@ namespace SU2 {
                     unsigned b_left = left.position(b1, lc_out, lc_in); if (b_left == left[b1].size()) continue;
                     int A = mpo.left_spin(b1).get(); if (!::SU2::triangle<SymmGroup>(lc_in, A, lc_out)) continue;
 
-                    index_type b1_eff = (mpo.herm_info.left_skip(b1)) ? mpo.herm_info.left_conj(b1) : b1;
+                    index_type b1_eff = (mpo.herm_left.skip(b1)) ? mpo.herm_left.conj(b1) : b1;
 
                     for (typename row_proxy::const_iterator row_it = mpo.row(b1).begin(); row_it != mpo.row(b1).end(); ++row_it) {
                         index_type b2 = row_it.index();
@@ -118,8 +118,8 @@ namespace SU2 {
                                                  *  left.conj_scales[b1][b_left];
                                 w9j.set_scale(A, K, Ap, rc_in, scale, couplings);
 
-                                char right_transpose = mpo.herm_info.right_skip(b2);
-                                unsigned b2_eff = (right_transpose) ? mpo.herm_info.right_conj(b2) : b2;
+                                char right_transpose = mpo.herm_right.skip(b2);
+                                unsigned b2_eff = (right_transpose) ? mpo.herm_right.conj(b2) : b2;
                                 typename cgroup::t_key tq = bit_twiddling::pack(b2_eff, b_right, in_offset, right_transpose);
                                 
                                 detail::op_iterate_shtm<Matrix, typename common::Schedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
@@ -127,7 +127,7 @@ namespace SU2 {
                             } // w_block
                         } //op_index
                     } // b2
-                    for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(b1_eff, b_left, mpo.herm_info.left_skip(b1));
+                    for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(b1_eff, b_left, mpo.herm_left.skip(b1));
                 } // b1
 
                 cg.t_key_vec.resize(t_index.size());

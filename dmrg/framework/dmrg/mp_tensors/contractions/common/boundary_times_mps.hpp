@@ -55,11 +55,11 @@ namespace contraction {
                                       : ::SU2::conjugate_correction<typename Matrix::value_type, SymmGroup>
                                         (basis.left_charge(b), basis.right_charge(b), S);
             if (forward)
-                scale *= (left) ? mpo.herm_info.left_phase(mpo.herm_info.left_conj(k)) 
-                                    : mpo.herm_info.right_phase(mpo.herm_info.right_conj(k));
+                scale *= (left) ? mpo.herm_left.phase(mpo.herm_left.conj(k)) 
+                                    : mpo.herm_right.phase(mpo.herm_right.conj(k));
             else
-                scale *= (left) ? mpo.herm_info.left_phase(k)
-                                    : mpo.herm_info.right_phase(k);
+                scale *= (left) ? mpo.herm_left.phase(k)
+                                    : mpo.herm_right.phase(k);
             ret[b] = scale;
         }
         return ret;
@@ -114,11 +114,11 @@ namespace contraction {
             index_type loop_max = left.aux_dim();
             omp_for(index_type b1, parallel::range(index_type(0),loop_max), {
                 // exploit hermiticity if available
-                if (mpo.herm_info.left_skip(b1))
+                if (mpo.herm_left.skip(b1))
                 {   
                     parallel::guard group(scheduler(b1), parallel::groups_granularity);
 
-                    (*this)[b1] = left[mpo.herm_info.left_conj(b1)].basis(); 
+                    (*this)[b1] = left[mpo.herm_left.conj(b1)].basis(); 
                     conj_scales[b1] = conjugate_phases((*this)[b1], mpo, b1, true, false, true);
                     trans_storage[b1] = true;
                 }
@@ -182,11 +182,11 @@ namespace contraction {
             omp_for(index_type b2, parallel::range(index_type(0),loop_max), {
 
                 // exploit hermiticity if available
-                if (mpo.herm_info.right_skip(b2))
+                if (mpo.herm_right.skip(b2))
                 {
                     parallel::guard group(scheduler(b2), parallel::groups_granularity);
 
-                    (*this)[b2] = right[mpo.herm_info.right_conj(b2)].basis();
+                    (*this)[b2] = right[mpo.herm_right.conj(b2)].basis();
                     bool transpose = true;
                     conj_scales[b2] = conjugate_phases((*this)[b2], mpo, b2, false, true, transpose);
                     trans_storage[b2] = true;

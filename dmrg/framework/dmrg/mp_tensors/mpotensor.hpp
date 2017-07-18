@@ -32,7 +32,8 @@ MPOTensor<Matrix, SymmGroup>::MPOTensor(index_type ld
                                        ,index_type rd
                                        ,prempo_t tags
                                        ,op_table_ptr tbl_
-                                       ,MPOTensor_detail::Hermitian h_
+                                       ,MPOTensor_detail::Hermitian const & hleft
+                                       ,MPOTensor_detail::Hermitian const & hright
                                        ,spin_index const & lspins
                                        ,spin_index const & rspins)
 : left_i(ld)
@@ -41,7 +42,8 @@ MPOTensor<Matrix, SymmGroup>::MPOTensor(index_type ld
 , right_spins(rspins)
 , col_tags(ld, rd)
 , operator_table(tbl_)
-, herm_info(ld, rd)
+, herm_left(ld)
+, herm_right(rd)
 {
     using namespace boost::tuples;
     row_index.resize(ld);
@@ -95,8 +97,11 @@ MPOTensor<Matrix, SymmGroup>::MPOTensor(index_type ld
     num_one_cols_ = std::count(col_non_zeros.begin(), col_non_zeros.end(), 1);
 
     // if the optional Hermitian object h_ is valid, adopt it
-    if (h_.left_size() == left_i && h_.right_size() == right_i)
-        herm_info = h_;
+    if (hleft.size() == left_i && hright.size() == right_i)
+    {
+        herm_left = hleft;
+        herm_right = hright;
+    }
 }
 
 /*
@@ -278,7 +283,7 @@ template<class Matrix, class SymmGroup>
 template<class Archive>
 void MPOTensor<Matrix, SymmGroup>::serialize(Archive & ar, const unsigned int version)
 {
-    ar & herm_info & left_i & right_i & left_spins & right_spins
+    ar & herm_left & herm_right & left_i & right_i & left_spins & right_spins
        & row_non_zeros & col_non_zeros & col_tags & row_index & operator_table;
 }
 

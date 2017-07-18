@@ -89,7 +89,7 @@ namespace SU2 {
                 t_map_t t_index;
                 for (index_type b2 = 0; b2 < mpo.col_dim(); ++b2)
                 {
-                    if (mpo.herm_info.right_skip(b2) && skip) continue;
+                    if (mpo.herm_right.skip(b2) && skip) continue;
                     int Ap = mpo.right_spin(b2).get(); if (!::SU2::triangle<SymmGroup>(rc_ket, Ap, rc_bra)) continue;
 
                     for (typename col_proxy::const_iterator col_it = mpo.column(b2).begin(); col_it != mpo.column(b2).end(); ++col_it) {
@@ -132,8 +132,8 @@ namespace SU2 {
                                 //scale = ( (sum/2)%2 == 0) ? scale : -scale;
                                 //w9j.set_scale(Ap, K, A, SymmGroup::spin(lc_ket), scale, couplings);
 
-                                char left_transpose = mpo.herm_info.left_skip(b1);
-                                unsigned b1_eff = (left_transpose) ? mpo.herm_info.left_conj(b1) : b1;
+                                char left_transpose = mpo.herm_left.skip(b1);
+                                unsigned b1_eff = (left_transpose) ? mpo.herm_left.conj(b1) : b1;
                                 typename block_type::mapped_value_type::t_key tq
                                     = bit_twiddling::pack(b1_eff, b_left, lb_ket, ket_offset, left_transpose);
                                 
@@ -142,7 +142,7 @@ namespace SU2 {
                             } // w_block
                         } //op_index
                     } // b1
-                    for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(b2, 0, !mpo.herm_info.right_skip(b2));
+                    for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(b2, 0, !mpo.herm_right.skip(b2));
                 } // b2
 
                 cg.t_key_vec.resize(t_index.size());

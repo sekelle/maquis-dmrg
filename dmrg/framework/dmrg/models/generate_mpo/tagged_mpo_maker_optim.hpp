@@ -294,19 +294,20 @@ namespace generate_mpo
                 if (verbose)
                     maquis::cout << "MPO Bond " << p << ": " << rcd.second << "/" << cnt << std::endl;
 
-                MPOTensor_detail::Hermitian h_(LeftHerm, RightHerm, LeftPhase, RightPhase);
+                MPOTensor_detail::Hermitian hleft(LeftHerm, LeftPhase);
+                MPOTensor_detail::Hermitian hright(RightHerm, RightPhase);
 
                 if (p == 0)
                     mpo.push_back( MPOTensor<Matrix, SymmGroup>(1, rcd.second, pre_tensor,
-                                     tag_handler->get_operator_table(), h_, left_spins, right_spins)
+                                     tag_handler->get_operator_table(), hleft, hright, left_spins, right_spins)
                                  );
                 else if (p == length - 1)
                     mpo.push_back( MPOTensor<Matrix, SymmGroup>(rcd.first, 1, pre_tensor,
-                                     tag_handler->get_operator_table(), h_, left_spins, right_spins)
+                                     tag_handler->get_operator_table(), hleft, hright, left_spins, right_spins)
                                  );
                 else
                     mpo.push_back( MPOTensor<Matrix, SymmGroup>(rcd.first, rcd.second, pre_tensor,
-                                     tag_handler->get_operator_table(), h_, left_spins, right_spins)
+                                     tag_handler->get_operator_table(), hleft, hright, left_spins, right_spins)
                                  );
                 swap(left, right);
                 swap(left_spins, right_spins);
