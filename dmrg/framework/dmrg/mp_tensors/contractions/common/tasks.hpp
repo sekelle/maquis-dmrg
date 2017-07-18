@@ -583,7 +583,10 @@ public:
     std::vector<unsigned> const & get_b_to_o() const { return b_to_o; }
 
     void set_size(std::size_t s) { cohort_size = s; }
-    void set_index(unsigned i)   { cohort_index = i; }
+
+    unsigned get_index()       const { return cohort_index; }
+    void set_index(unsigned i)       { cohort_index = i; }
+
     std::vector<long int>      & get_offsets()       { return mpo_offsets; }
     std::vector<long int> const& get_offsets() const { return mpo_offsets; }
 

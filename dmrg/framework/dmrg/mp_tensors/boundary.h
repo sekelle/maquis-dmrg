@@ -44,10 +44,21 @@ class BoundaryIndex
 {
     typedef typename Matrix::value_type value_type;
 
+    template <class, class> friend class BoundaryIndex;
+
 public:
 
     BoundaryIndex() {}
     BoundaryIndex(unsigned nblocks, unsigned nci) : lb_rb_ci(nblocks), offsets(nci), conjugate_scales(nci), transposes(nci) {}
+
+    template <class OtherMatrix>
+    BoundaryIndex(BoundaryIndex<OtherMatrix, SymmGroup> const& rhs)
+    {
+        lb_rb_ci = rhs.lb_rb_ci;
+        offsets  = rhs.offsets;
+        conjugate_scales = rhs.conjugate_scales;
+        transposes = rhs.transposes;
+    }
 
     long int   offset         (unsigned ci, unsigned b) { return offsets[ci][b]; }
     value_type conjugate_scale(unsigned ci, unsigned b) { return conjugate_scales[ci][b]; }
@@ -80,6 +91,14 @@ private:
     std::vector<std::vector<long int>>   offsets;
     std::vector<std::vector<value_type>> conjugate_scales;
     std::vector<std::vector<char>>       transposes;
+
+    friend class boost::serialization::access;
+
+    template <class Archive>
+    void serialize(Archive & ar, const unsigned int version)
+    {
+        ar & lb_rb_ci & offsets & conjugate_scales & transposes;
+    }
 };
 
 template<class Matrix, class SymmGroup>
@@ -97,7 +116,7 @@ public:
 
     template<class Archive>
     void serialize(Archive &ar, const unsigned int version){
-        ar & data_;
+        ar & data_ & index;
     }
     
     Boundary(Index<SymmGroup> const & ud = Index<SymmGroup>(),
@@ -126,6 +145,8 @@ public:
         data_.reserve(rhs.aux_dim());
         for (std::size_t n=0; n<rhs.aux_dim(); ++n)
             data_.push_back(rhs[n]);
+
+        index = rhs.index;
     }
 
     std::size_t aux_dim() const { 
@@ -170,6 +191,8 @@ public:
 
     block_matrix<Matrix, SymmGroup> & operator[](std::size_t k) { return data_[k]; }
     block_matrix<Matrix, SymmGroup> const & operator[](std::size_t k) const { return data_[k]; }
+
+    BoundaryIndex<Matrix, SymmGroup> index;
 
 private:
     std::vector<block_matrix<Matrix, SymmGroup> > data_;

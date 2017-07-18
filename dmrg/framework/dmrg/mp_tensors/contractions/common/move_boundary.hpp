@@ -276,7 +276,7 @@ namespace contraction {
             });
 
             // set up the indices of the new boundary
-            for(size_t rb_bra = 0; rb_bra < loop_max; ++rb_bra)
+            for(unsigned rb_bra = 0; rb_bra < loop_max; ++rb_bra)
             {
                 charge rc_bra = bra_right_i[rb_bra].first;
                 size_t rs_bra = bra_right_i[rb_bra].second;
@@ -289,9 +289,16 @@ namespace contraction {
             }
 
             unsigned enumerator = 0;
-            for(size_t rb_bra = 0; rb_bra < loop_max; ++rb_bra)
-                for (auto& entry : tasks[rb_bra])
-                    entry.second.set_index(enumerator++);
+            for(unsigned rb_bra = 0; rb_bra < loop_max; ++rb_bra)
+                for (auto& element: tasks[rb_bra])
+                    element.second.set_index(enumerator++);
+
+            BoundaryIndex<Matrix, SymmGroup> b_index(loop_max, enumerator);
+            for(unsigned rb_bra = 0; rb_bra < loop_max; ++rb_bra)
+                for (auto& element: tasks[rb_bra])
+                    b_index.add_cohort(rb_bra, ket_right_i.position(element.first),
+                                       element.second.get_index(), element.second.get_offsets());
+            ret.index = b_index;
 
             // Contraction
             #ifdef MAQUIS_OPENMP
