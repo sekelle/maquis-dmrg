@@ -66,9 +66,6 @@ namespace SU2 {
 
         const int site_basis_max_diff = 2;
 
-        // associate (rb_bra, b2) with an offset into the boundary
-        std::map<charge, std::vector<long int>> b2o;
-
         for (unsigned rb_ket = 0; rb_ket < ket_right_i.size(); ++rb_ket)
         {
             charge rc_ket = ket_right_i[rb_ket].first;
