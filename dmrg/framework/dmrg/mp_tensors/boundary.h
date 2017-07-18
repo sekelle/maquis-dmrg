@@ -39,6 +39,48 @@
 #include "dmrg/utils/aligned_allocator.hpp"
 #include "dmrg/utils/parallel.hpp"
 
+template<class Matrix, class SymmGroup>
+class BoundaryIndex
+{
+    typedef typename Matrix::value_type value_type;
+
+public:
+
+    BoundaryIndex() {}
+    BoundaryIndex(unsigned nblocks, unsigned nci) : lb_rb_ci(nblocks), offsets(nci), conjugate_scales(nci), transposes(nci) {}
+
+    long int   offset         (unsigned ci, unsigned b) { return offsets[ci][b]; }
+    value_type conjugate_scale(unsigned ci, unsigned b) { return conjugate_scales[ci][b]; }
+    bool       trans          (unsigned ci, unsigned b) { return transposes[ci][b]; }
+
+    void add_cohort(unsigned lb, unsigned rb, unsigned ci, std::vector<long int> const & off_)
+    {
+        assert(lb < lb_rb_ci.size());
+        assert(ci < offsets.size());
+
+        lb_rb_ci[lb].push_back(std::make_pair(rb, ci));
+        offsets[ci] = off_;
+    }
+
+    template <class MPOMatrix>
+    void compute_conj_scales(MPOTensor<MPOMatrix, SymmGroup> const & mpo )
+    {
+        for (auto& v : conjugate_scales)
+        {
+            v.resize(mpo.col_dim());
+        }
+    }
+
+    std::vector<std::pair<unsigned, unsigned>> const & operator[](size_t block) const { return lb_rb_ci[block]; } 
+
+private:
+    //                                rb_ket     ci
+    std::vector<std::vector<std::pair<unsigned, unsigned>>> lb_rb_ci;
+
+    std::vector<std::vector<long int>>   offsets;
+    std::vector<std::vector<value_type>> conjugate_scales;
+    std::vector<std::vector<char>>       transposes;
+};
 
 template<class Matrix, class SymmGroup>
 class Boundary : public storage::disk::serializable<Boundary<Matrix, SymmGroup> >
