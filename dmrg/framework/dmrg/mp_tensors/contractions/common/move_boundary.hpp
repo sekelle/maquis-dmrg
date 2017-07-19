@@ -244,6 +244,8 @@ namespace contraction {
             Boundary<OtherMatrix, SymmGroup> ret;
             ret.resize(mpo.col_dim());
 
+            assert(left.index.equivalent(left_indices));
+
             MPSTensor<Matrix, SymmGroup> buffer; // holds the conjugate tensor if we deal with complex numbers
             MPSTensor<Matrix, SymmGroup> const & bra_tensor = set_conjugate(bra_tensor_in, buffer);
 
@@ -288,16 +290,12 @@ namespace contraction {
                 }
             }
 
-            unsigned enumerator = 0;
+            BoundaryIndex<Matrix, SymmGroup> b_index(bra_right_i, ket_right_i);
             for(unsigned rb_bra = 0; rb_bra < loop_max; ++rb_bra)
                 for (auto& element: tasks[rb_bra])
-                    element.second.set_index(enumerator++);
+                    b_index.add_cohort(rb_bra, ket_right_i.position(element.first), element.second.get_offsets());
 
-            BoundaryIndex<Matrix, SymmGroup> b_index(loop_max, enumerator);
-            for(unsigned rb_bra = 0; rb_bra < loop_max; ++rb_bra)
-                for (auto& element: tasks[rb_bra])
-                    b_index.add_cohort(rb_bra, ket_right_i.position(element.first),
-                                       element.second.get_index(), element.second.get_offsets());
+            b_index.complement_transpose(mpo.herm_right);
             ret.index = b_index;
 
             // Contraction

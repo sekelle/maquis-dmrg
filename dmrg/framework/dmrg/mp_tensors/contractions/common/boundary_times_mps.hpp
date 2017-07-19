@@ -109,6 +109,7 @@ namespace contraction {
 
         LeftIndices(Boundary<OtherMatrix, SymmGroup> const & left,
                     MPOTensor<Matrix, SymmGroup> const & mpo) : base(left.aux_dim())
+                                                              , index(left.index)
                                                               , conj_scales(left.aux_dim())
                                                               , trans_storage(left.aux_dim())
         {
@@ -155,6 +156,8 @@ namespace contraction {
             else
                 return (*this)[b1].position(lc,mc);
         }
+
+        BoundaryIndex<OtherMatrix, SymmGroup> index;
 
         std::map<charge, std::vector<charge> > deltas;
         std::vector<std::vector<value_type> > conj_scales;

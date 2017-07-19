@@ -43,48 +43,156 @@ template<class Matrix, class SymmGroup>
 class BoundaryIndex
 {
     typedef typename Matrix::value_type value_type;
+    typedef typename SymmGroup::charge charge;
 
     template <class, class> friend class BoundaryIndex;
 
 public:
 
     BoundaryIndex() {}
-    BoundaryIndex(unsigned nblocks, unsigned nci) : lb_rb_ci(nblocks), offsets(nci), conjugate_scales(nci), transposes(nci) {}
+    BoundaryIndex(Index<SymmGroup> const & bra, Index<SymmGroup> const & ket)
+    : bra_index(bra), ket_index(ket), lb_rb_ci(bra.size())  {}
 
     template <class OtherMatrix>
     BoundaryIndex(BoundaryIndex<OtherMatrix, SymmGroup> const& rhs)
     {
+        bra_index = rhs.bra_index;
+        ket_index = rhs.ket_index;
+
         lb_rb_ci = rhs.lb_rb_ci;
         offsets  = rhs.offsets;
         conjugate_scales = rhs.conjugate_scales;
         transposes = rhs.transposes;
     }
 
-    long int   offset         (unsigned ci, unsigned b) { return offsets[ci][b]; }
-    value_type conjugate_scale(unsigned ci, unsigned b) { return conjugate_scales[ci][b]; }
-    bool       trans          (unsigned ci, unsigned b) { return transposes[ci][b]; }
+    unsigned   n_cohorts      ()                        const { return offsets.size(); }
+    long int   offset         (unsigned ci, unsigned b) const { return offsets[ci][b]; }
+    value_type conjugate_scale(unsigned ci, unsigned b) const { return conjugate_scales[ci][b]; }
+    bool       trans          (unsigned ci, unsigned b) const { return transposes[ci][b]; }
 
-    void add_cohort(unsigned lb, unsigned rb, unsigned ci, std::vector<long int> const & off_)
+    bool has(unsigned lb, unsigned rb) const
+    {
+        for (auto pair : lb_rb_ci[lb])
+            if (rb == pair.first) return true;
+
+        return false;
+    }
+
+    unsigned cohort_index(unsigned lb, unsigned rb) const
+    {
+        for (auto pair : lb_rb_ci[lb])
+            if (rb == pair.first) return pair.second;
+
+        return n_cohorts();
+    }
+
+    unsigned add_cohort(unsigned lb, unsigned rb, std::vector<long int> const & off_)
     {
         assert(lb < lb_rb_ci.size());
-        assert(ci < offsets.size());
 
+        unsigned ci = n_cohorts();
         lb_rb_ci[lb].push_back(std::make_pair(rb, ci));
-        offsets[ci] = off_;
+
+        offsets.push_back(off_);
+        conjugate_scales.push_back(std::vector<value_type>(off_.size()));
+        transposes      .push_back(std::vector<char>      (off_.size()));
+
+        return ci;
+    }
+
+    void complement_transpose(MPOTensor_detail::Hermitian const & herm)
+    {
+        for (unsigned lb = 0; lb < lb_rb_ci.size(); ++lb)
+            for (auto pair : lb_rb_ci[lb])
+            {
+                unsigned rb = pair.first;
+                unsigned ci_A = pair.second; // source transpose ci
+                unsigned ci_B = cohort_index(rb, lb);
+                if (ci_B == n_cohorts())
+                    ci_B = add_cohort(rb, lb, std::vector<long int>(herm.size(), -1));
+
+                for (unsigned b = 0; b < herm.size(); ++b)
+                {
+                    if (herm.skip(b))
+                    {
+                        assert(offsets[ci_B][b] == -1);
+                        offsets[ci_B][b] = offsets[ci_A][herm.conj(b)];
+                    }
+                }
+            }
     }
 
     template <class MPOMatrix>
-    void compute_conj_scales(MPOTensor<MPOMatrix, SymmGroup> const & mpo )
+    void compute_conj_scales(MPOTensor_detail::Hermitian const & herm)
     {
         for (auto& v : conjugate_scales)
         {
-            v.resize(mpo.col_dim());
+            v.resize(herm.size());
         }
     }
 
-    std::vector<std::pair<unsigned, unsigned>> const & operator[](size_t block) const { return lb_rb_ci[block]; } 
+    std::vector<std::pair<unsigned, unsigned>> const & operator[](size_t block) const {
+        assert(block < lb_rb_ci.size());
+        return lb_rb_ci[block];
+    }
+
+    bool sane(MPOTensor_detail::Hermitian const & herm) const
+    {
+        for (unsigned lb = 0; lb < lb_rb_ci.size(); ++lb)
+            for (auto pair : lb_rb_ci[lb])
+            {
+                unsigned rb = pair.first;
+                unsigned ci = pair.second; // source transpose ci
+                for (unsigned b = 0; b < herm.size(); ++b)
+                    if (herm.skip(b)) if (offsets[ci][b] != -1) return false;
+            }
+
+        return true;
+    }
+
+    template <class Index>
+    bool equivalent(Index const& ref) const
+    {
+        for (unsigned b = 0; b < ref.size(); ++b)
+        {
+            for (unsigned k = 0; k < ref[b].size(); ++k)
+            {
+                charge lc = ref[b].left_charge(k);
+                charge rc = ref[b].right_charge(k);
+
+                unsigned lb = bra_index.position(lc);
+                unsigned rb = ket_index.position(rc);
+
+                // check we have the block from ref
+                if (ref.position(b, lc, rc) != ref[b].size())
+                    if (offsets[cohort_index(lb,rb)][b] == -1)
+                        return false;
+            }
+        }
+
+        for (unsigned lb = 0; lb < lb_rb_ci.size(); ++lb)
+            for (auto pair : lb_rb_ci[lb])
+            {
+                unsigned rb = pair.first;
+                unsigned ci= pair.second; // source transpose ci
+
+                for (unsigned b = 0; b < offsets[ci].size(); ++b)
+                {
+                    charge lc = bra_index[lb].first;
+                    charge rc = ket_index[rb].first;
+
+                    // check if ref has current block
+                    if (offsets[ci][b] != -1)
+                        if (ref.position(b, lc, rc) == ref[b].size())
+                            return false;
+                }
+            }
+
+        return true;
+    }
 
 private:
+    Index<SymmGroup> bra_index, ket_index;
     //                                rb_ket     ci
     std::vector<std::vector<std::pair<unsigned, unsigned>>> lb_rb_ci;
 
@@ -116,27 +224,27 @@ public:
 
     template<class Archive>
     void serialize(Archive &ar, const unsigned int version){
-        ar & data_ & index;
-    }
+        ar & data_ & index; }
     
     Boundary(Index<SymmGroup> const & ud = Index<SymmGroup>(),
              Index<SymmGroup> const & ld = Index<SymmGroup>(),
              std::size_t ad = 1)
     : data_(ad, block_matrix<Matrix, SymmGroup>(ud, ld))
+    , index(ud, ld)
     {
-        //data().resize(ud.size());
-        //b2o().resize(ud.size());
-        //for (std::size_t i = 0; i < ud.size(); ++i)
-        //{
-        //    auto lc = ud[i].first;
-        //    auto rc = ld[i].first;
-        //    std::size_t ls = ud[i].second;
-        //    std::size_t rs = ld[i].second;
-        //    std::size_t block_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(ls*rs);
-        //    data()[i].resize(block_size * ad);
-        //    for (std::size_t b = 0; b < ad; ++b)
-        //        b2o()[i][rc].push_back(b * block_size);
-        //}
+        for (std::size_t i = 0; i < ud.size(); ++i)
+        {
+            //auto lc = ud[i].first;
+            //auto rc = ld[i].first;
+            std::size_t ls = ud[i].second;
+            std::size_t rs = ld[i].second;
+            std::size_t block_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(ls*rs);
+            //data()[i].resize(block_size * ad);
+            std::vector<long int> offsets(ad);
+            for (std::size_t b = 0; b < ad; ++b)
+                offsets[b] = b * block_size;
+            index.add_cohort(i,i,offsets);
+        }
     }
     
     template <class OtherMatrix>

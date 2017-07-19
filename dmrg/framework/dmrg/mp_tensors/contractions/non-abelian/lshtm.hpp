@@ -146,29 +146,29 @@ namespace SU2 {
                 }
             } // phys_out
 
-            auto& cohort = mpsb[rc_ket];
-            auto& b2o = cohort.get_offsets();
-            std::size_t l_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(rs_bra * rs_ket);
-            cohort.set_size(std::accumulate(b2o.begin(), b2o.end(), 0) * l_size);
+            if (mpsb.count(rc_ket) > 0)
+            {
+                auto& cohort = mpsb[rc_ket];
+                auto& b2o = cohort.get_offsets();
+                std::size_t l_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(rs_bra * rs_ket);
+                cohort.set_size(std::accumulate(b2o.begin(), b2o.end(), 0) * l_size);
 
-            index_type cnt = 0;
-            for(index_type b = 0; b < b2o.size(); ++b)
-                if   (b2o[b]) b2o[b] = l_size * cnt++;
-                else          b2o[b] = -1;
+                index_type cnt = 0;
+                for(index_type b = 0; b < b2o.size(); ++b)
+                    if   (b2o[b]) b2o[b] = l_size * cnt++;
+                    else          b2o[b] = -1;
 
-            for (auto& cg : mpsb[rc_ket])
-                for (auto& mg : cg)
-                {
-                    for (index_type b = 0; b < mg.get_bs().size(); ++b)
-                        mg.get_ks()[b] = b2o[mg.get_bs()[b]];
+                for (auto& cg : mpsb[rc_ket])
+                    for (auto& mg : cg)
+                    {
+                        for (index_type b = 0; b < mg.get_bs().size(); ++b)
+                            mg.get_ks()[b] = b2o[mg.get_bs()[b]];
 
-                    //std::copy(mg.get_ks().begin(), mg.get_ks().end(), std::ostream_iterator<index_type>(std::cout, " "));
-                    //maquis::cout << std::endl;
-                }
-
-        } // rb_bra
-
-        //maquis::cout << std::endl;
+                        //std::copy(mg.get_ks().begin(), mg.get_ks().end(), std::ostream_iterator<index_type>(std::cout, " "));
+                        //maquis::cout << std::endl;
+                    }
+            }
+        } // rb_ket
     }
 
 } // namespace SU2

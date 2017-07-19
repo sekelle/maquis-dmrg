@@ -28,6 +28,8 @@
 #ifndef CONTRACTIONS_SU2_SHTM_HPP
 #define CONTRACTIONS_SU2_SHTM_HPP
 
+#include <boost/range/adaptor/reversed.hpp>
+
 #include "dmrg/block_matrix/symmetry/gsl_coupling.h"
 #include "dmrg/mp_tensors/mpstensor.h"
 #include "dmrg/mp_tensors/mpotensor.h"
@@ -73,8 +75,12 @@ namespace SU2 {
             unsigned rs_out = right_i[rb_out].second;
             unsigned out_offset = right_pb(phys_out, rc_out);
             
+            //for (auto lbci : boost::adaptors::reverse(left.index[lb_out]))
             for (unsigned lb_in = 0; lb_in < left_i.size(); ++lb_in)
             {
+                //unsigned lb_in = lbci.first;
+                //unsigned ci = lbci.second;
+
                 charge lc_in = left_i[lb_in].first;
                 if (std::find(mc_charges.begin(), mc_charges.end(), lc_in) == mc_charges.end()) continue;
                 unsigned ls_in = left_i[lb_in].second;
@@ -135,7 +141,7 @@ namespace SU2 {
                     cg.t_key_vec[kit->second] = kit->first;
                 if (cg.n_tasks()) mpsb[s].push_back(cg);
 
-            } // mci
+            } // lb_in
         } // phys_out
     }
 
