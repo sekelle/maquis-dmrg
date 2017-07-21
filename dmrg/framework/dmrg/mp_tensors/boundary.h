@@ -72,6 +72,9 @@ public:
 
     bool has(unsigned lb, unsigned rb) const
     {
+        if (lb >= lb_rb_ci.size())
+            return false;
+
         for (auto pair : lb_rb_ci[lb])
             if (rb == pair.first) return true;
 
@@ -80,10 +83,18 @@ public:
 
     unsigned cohort_index(unsigned lb, unsigned rb) const
     {
+        if (lb >= lb_rb_ci.size())
+            return n_cohorts();
+
         for (auto pair : lb_rb_ci[lb])
             if (rb == pair.first) return pair.second;
 
         return n_cohorts();
+    }
+
+    unsigned cohort_index(charge lc, charge rc) const
+    {
+        return cohort_index(bra_index.position(lc), ket_index.position(rc));
     }
 
     unsigned add_cohort(unsigned lb, unsigned rb, std::vector<long int> const & off_)
@@ -218,13 +229,13 @@ public:
     typedef std::pair<typename SymmGroup::charge, std::size_t> access_type;
 
     typedef std::vector<std::vector<value_type, maquis::aligned_allocator<value_type, ALIGNMENT>>> data_t;
-    typedef std::vector<std::map<typename SymmGroup::charge, std::vector<long int>>> b2o_t;
 
     friend class boost::serialization::access;
 
     template<class Archive>
     void serialize(Archive &ar, const unsigned int version){
-        ar & data_ & index; }
+        ar & data_ & index;
+    }
     
     Boundary(Index<SymmGroup> const & ud = Index<SymmGroup>(),
              Index<SymmGroup> const & ld = Index<SymmGroup>(),
@@ -232,6 +243,7 @@ public:
     : data_(ad, block_matrix<Matrix, SymmGroup>(ud, ld))
     , index(ud, ld)
     {
+        data().resize(ud.size());
         for (std::size_t i = 0; i < ud.size(); ++i)
         {
             //auto lc = ud[i].first;
@@ -239,7 +251,7 @@ public:
             std::size_t ls = ud[i].second;
             std::size_t rs = ld[i].second;
             std::size_t block_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(ls*rs);
-            //data()[i].resize(block_size * ad);
+            data()[i].resize(block_size * ad);
             std::vector<long int> offsets(ad);
             for (std::size_t b = 0; b < ad; ++b)
                 offsets[b] = b * block_size;
@@ -300,9 +312,14 @@ public:
     block_matrix<Matrix, SymmGroup> & operator[](std::size_t k) { return data_[k]; }
     block_matrix<Matrix, SymmGroup> const & operator[](std::size_t k) const { return data_[k]; }
 
+    data_t const& data() const { return data2; }
+    data_t      & data()       { return data2; }
+
     BoundaryIndex<Matrix, SymmGroup> index;
 
 private:
+    data_t data2;
+
     std::vector<block_matrix<Matrix, SymmGroup> > data_;
 };
 

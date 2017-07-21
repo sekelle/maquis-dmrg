@@ -232,7 +232,7 @@ public:
 
     template <class DefaultMatrix, class OtherMatrix>
     void prop_l(DefaultMatrix const & bra, const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret,
-                std::vector<unsigned> const & b_to_o) const
+                std::vector<unsigned> const & b_to_o, unsigned ci) const
     {
         value_type one=1;
         char tr = 'T';
@@ -253,6 +253,8 @@ public:
                                                     &S(0,0), alpha[i][j]);
 
             blas_gemm(&tr, &notr, &M, &N, &K, &one, &bra(0,offset), &K, &S(0,0), &K, &one, &ret[b2][b_to_o[b2]](0,0), &M);
+ 
+            std::copy(&ret[b2][b_to_o[b2]](0,0), &ret[b2][b_to_o[b2]](0,0) + M*N, &ret.data()[ci][ks[i]]);
         }
     }
 
@@ -383,6 +385,7 @@ public:
     void prop_l(MPSTensor<DefaultMatrix, SymmGroup> const & bra_mps,
                 MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
                 std::vector<unsigned> const & b_to_o,
+                unsigned ci,
                 Boundary<OtherMatrix, SymmGroup> const & left,
                 Boundary<OtherMatrix, SymmGroup> & new_left) const
     {
@@ -390,7 +393,7 @@ public:
         for (int ss1 = 0; ss1 < this->size(); ++ss1)
         {
             if (!(*this)[ss1].n_tasks()) continue;
-            (*this)[ss1].prop_l(bra_mps.data()[mps_block], t_pointer, new_left, b_to_o);
+            (*this)[ss1].prop_l(bra_mps.data()[mps_block], t_pointer, new_left, b_to_o, ci);
         }
         free(t_pointer);
     }
@@ -537,7 +540,7 @@ public:
     typedef typename base::value_type value_type;
 
     template <class OtherMatrix>
-    void allocate(charge mc, charge lc, Boundary<OtherMatrix, SymmGroup> & new_right) const
+    void allocate(charge mc, charge lc, unsigned ci, Boundary<OtherMatrix, SymmGroup> & new_right) const
     {
         b_to_o.resize(new_right.aux_dim());    
 
@@ -559,6 +562,9 @@ public:
                 }
             }
         }
+
+        if (ci < new_right.data().size())
+            new_right.data()[ci].resize(cohort_size);
     }
 
     template <class OtherMatrix>
@@ -584,9 +590,6 @@ public:
 
     void set_size(std::size_t s) { cohort_size = s; }
 
-    unsigned get_index()       const { return cohort_index; }
-    void set_index(unsigned i)       { cohort_index = i; }
-
     std::vector<long int>      & get_offsets()       { return mpo_offsets; }
     std::vector<long int> const& get_offsets() const { return mpo_offsets; }
 
@@ -594,7 +597,6 @@ private:
     // b_to_o[b] = position o of sector (mc,lc) in boundary index b
     mutable std::vector<unsigned> b_to_o;
 
-    unsigned cohort_index;
     std::size_t cohort_size;
     std::vector<long int> mpo_offsets;
 };

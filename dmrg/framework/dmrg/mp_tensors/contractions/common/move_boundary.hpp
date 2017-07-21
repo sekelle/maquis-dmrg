@@ -149,7 +149,7 @@ namespace contraction {
                 for (const_iterator it = tasks[rb_bra].begin(); it != tasks[rb_bra].end(); ++it) // mc loop
                 {
                     charge rc_ket = it->first;
-                    it->second.allocate(rc_bra, rc_ket, ret);
+                    it->second.allocate(rc_bra, rc_ket, 0, ret);
                     for (unsigned s = 0; s < it->second.size(); ++s) // physical index loop
                         it->second[s].lbtm(ket_tensor, it->second.get_b_to_o(), left, ret);
                 }
@@ -218,7 +218,7 @@ namespace contraction {
                 for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it) // lc_ket loop
                 {
                     charge lc_ket = it->first;
-                    it->second.allocate(lc_ket, lc_bra, ret);
+                    it->second.allocate(lc_ket, lc_bra, 0, ret);
                     for (size_t s = 0; s < it->second.size(); ++s) // physical index loop
                         it->second[s].rbtm(ket_tensor, it->second.get_b_to_o(), right, ret);
                 }
@@ -277,6 +277,15 @@ namespace contraction {
                 task_calc(mpo, bra_tensor, ket_tensor, left_indices, bra_right_pb, ket_right_pb, rb_bra, tasks[rb_bra], true);
             });
 
+            BoundaryIndex<Matrix, SymmGroup> b_index(bra_right_i, ket_right_i);
+            for(unsigned rb_bra = 0; rb_bra < loop_max; ++rb_bra)
+                for (auto& element: tasks[rb_bra])
+                    b_index.add_cohort(rb_bra, ket_right_i.position(element.first), element.second.get_offsets());
+
+            ret.data().resize(b_index.n_cohorts());
+            b_index.complement_transpose(mpo.herm_right);
+            ret.index = b_index;
+
             // set up the indices of the new boundary
             for(unsigned rb_bra = 0; rb_bra < loop_max; ++rb_bra)
             {
@@ -289,14 +298,6 @@ namespace contraction {
                     it->second.reserve(rc_bra, rc_ket, rs_bra, rs_ket, ret); // allocate all (rc_bra,rc_ket) blocks
                 }
             }
-
-            BoundaryIndex<Matrix, SymmGroup> b_index(bra_right_i, ket_right_i);
-            for(unsigned rb_bra = 0; rb_bra < loop_max; ++rb_bra)
-                for (auto& element: tasks[rb_bra])
-                    b_index.add_cohort(rb_bra, ket_right_i.position(element.first), element.second.get_offsets());
-
-            b_index.complement_transpose(mpo.herm_right);
-            ret.index = b_index;
 
             // Contraction
             #ifdef MAQUIS_OPENMP
@@ -314,23 +315,26 @@ namespace contraction {
                     for (const_iterator it = tasks[rb_bra].begin(); it != tasks[rb_bra].end(); ++it)
                     {
                         charge rc_ket = it->first;
-                        it->second.allocate(rc_bra, rc_ket, ret);
+                        unsigned ci = b_index.cohort_index(rb_bra, ket_right_i.position(rc_ket));
+                        it->second.allocate(rc_bra, rc_ket, ci, ret);
                         for (size_t s = 0; s < it->second.size(); ++s) // physical index loop
-                            it->second[s].prop_l(bra_tensor, ket_tensor, it->second.get_b_to_o(), left, ret);
+                            it->second[s].prop_l(bra_tensor, ket_tensor, it->second.get_b_to_o(), ci, left, ret);
                     }
                 }
             }
 
             // TODO: clean out debug
-            //for(auto c1 : bra_right_i)
-            //for(auto c2 : bra_right_i)
-            //for(size_t b = 0; b < mpo.col_dim(); ++b)
-            //    if (ret[b].has_block(c1.first, c2.first))
-            //    {
-            //        assert(ret.b2o()[bra_right_i.position(c1.first)][c2.first][b] >= 0);
-            //        assert(ret[b](c1.first,c2.first)(0,0)
-            //            == ret.data()[bra_right_i.position(c1.first)] [ret.b2o()[bra_right_i.position(c1.first)][c2.first][b]]);
-            //    }
+            for(auto c1 : bra_right_i)
+            for(auto c2 : bra_right_i)
+            for(size_t b = 0; b < mpo.col_dim(); ++b)
+                if (ret[b].has_block(c1.first, c2.first))
+                {
+                    //assert(ret.b2o()[bra_right_i.position(c1.first)][c2.first][b] >= 0);
+                    unsigned ci = ret.index.cohort_index(c1.first, c2.first);
+                    long int offset = ret.index.offset(ci, b);
+
+                    assert(ret[b](c1.first,c2.first)(0,0) == ret.data()[ci][offset]);
+                }
 
             return ret;
         }
@@ -409,7 +413,7 @@ namespace contraction {
                     for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it) // lc_ket loop
                     {
                         charge lc_ket = it->first;
-                        it->second.allocate(lc_ket, lc_bra, ret); // allocate all (lc_ket,lc_bra) blocks
+                        it->second.allocate(lc_ket, lc_bra, 0, ret); // allocate all (lc_ket,lc_bra) blocks
                         for (size_t s = 0; s < it->second.size(); ++s) // physical index loop
                             it->second[s].prop(ket_tensor, bra_tensor.data()[lb_bra], it->second.get_b_to_o(), right, ret);
                     }
