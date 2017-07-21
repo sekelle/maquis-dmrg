@@ -531,7 +531,7 @@ private:
 
                                                              // size == phys_i.size()
 template <class Matrix, class SymmGroup>                     // invariant: mc, m_size
-class ContractionGroupVector : public std::vector<ContractionGroup<Matrix, SymmGroup> > 
+class Cohort : public std::vector<ContractionGroup<Matrix, SymmGroup> > 
 {
     typedef typename SymmGroup::charge charge;
     typedef std::vector<ContractionGroup<Matrix, SymmGroup> > base;
@@ -607,10 +607,10 @@ private:
 
 
 template <class Matrix, class SymmGroup>
-class MPSBlock : public std::map<typename SymmGroup::charge, ContractionGroupVector<Matrix, SymmGroup> >
+class MPSBlock : public std::map<typename SymmGroup::charge, Cohort<Matrix, SymmGroup> >
 {
 public:
-    typedef std::map<typename SymmGroup::charge, ContractionGroupVector<Matrix, SymmGroup> > base;
+    typedef std::map<typename SymmGroup::charge, Cohort<Matrix, SymmGroup> > base;
     typedef typename base::mapped_type mapped_type;
     typedef typename mapped_type::value_type mapped_value_type;
 };
