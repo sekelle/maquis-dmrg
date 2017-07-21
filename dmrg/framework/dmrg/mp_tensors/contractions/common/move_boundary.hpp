@@ -283,7 +283,7 @@ namespace contraction {
                     e.second.set_index(b_index.add_cohort(rb_bra, ket_right_i.position(e.first), e.second.get_offsets()));
 
             ret.data().resize(b_index.n_cohorts());
-            b_index.complement_transpose(mpo.herm_right);
+            b_index.complement_transpose(mpo.herm_right, true);
             ret.index = b_index;
 
             // set up the indices of the new boundary

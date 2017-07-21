@@ -39,6 +39,37 @@
 #include "dmrg/utils/aligned_allocator.hpp"
 #include "dmrg/utils/parallel.hpp"
 
+namespace detail {
+
+    template <class T, class SymmGroup>
+    typename boost::enable_if<symm_traits::HasSU2<SymmGroup>, T>::type
+    conjugate_correction(typename SymmGroup::charge lc, typename SymmGroup::charge rc)
+    {
+        assert( SymmGroup::spin(lc) >= 0);
+        assert( SymmGroup::spin(rc) >= 0);
+
+        typename SymmGroup::subcharge S = std::min(SymmGroup::spin(rc), SymmGroup::spin(lc));
+        typename SymmGroup::subcharge spin_diff = SymmGroup::spin(rc) - SymmGroup::spin(lc);
+
+        switch (spin_diff) {
+            case  0: return  T(1.);                           break;
+            case  1: return -T( sqrt((S + 1.)/(S + 2.)) );    break;
+            case -1: return  T( sqrt((S + 2.)/(S + 1.)) );    break;
+            case  2: return -T( sqrt((S + 1.) / (S + 3.)) );  break;
+            case -2: return -T( sqrt((S + 3.) / (S + 1.)) );  break;
+            default:
+                throw std::runtime_error("hermitian conjugate for reduced tensor operators only implemented up to rank 1");
+        }
+    }
+
+    template <class T, class SymmGroup>
+    typename boost::disable_if<symm_traits::HasSU2<SymmGroup>, T>::type
+    conjugate_correction(typename SymmGroup::charge lc, typename SymmGroup::charge rc)
+    {
+        return T(1.);
+    }
+}
+
 template<class Matrix, class SymmGroup>
 class BoundaryIndex
 {
@@ -105,13 +136,13 @@ public:
         lb_rb_ci[lb].push_back(std::make_pair(rb, ci));
 
         offsets.push_back(off_);
-        conjugate_scales.push_back(std::vector<value_type>(off_.size()));
+        conjugate_scales.push_back(std::vector<value_type>(off_.size(), 1.));
         transposes      .push_back(std::vector<char>      (off_.size()));
 
         return ci;
     }
 
-    void complement_transpose(MPOTensor_detail::Hermitian const & herm)
+    void complement_transpose(MPOTensor_detail::Hermitian const & herm, bool forward)
     {
         for (unsigned lb = 0; lb < lb_rb_ci.size(); ++lb)
             for (auto pair : lb_rb_ci[lb])
@@ -128,18 +159,12 @@ public:
                     {
                         assert(offsets[ci_B][b] == -1);
                         offsets[ci_B][b] = offsets[ci_A][herm.conj(b)];
+                        conjugate_scales[ci_B][b] = detail::conjugate_correction<value_type, SymmGroup>
+                                                        (bra_index[lb].first, ket_index[rb].first)
+                                                      * herm.phase( (forward) ? b : herm.conj(b));
                     }
                 }
             }
-    }
-
-    template <class MPOMatrix>
-    void compute_conj_scales(MPOTensor_detail::Hermitian const & herm)
-    {
-        for (auto& v : conjugate_scales)
-        {
-            v.resize(herm.size());
-        }
     }
 
     std::vector<std::pair<unsigned, unsigned>> const & operator[](size_t block) const {
@@ -178,6 +203,10 @@ public:
                 if (ref.position(b, lc, rc) != ref[b].size())
                     if (offsets[cohort_index(lb,rb)][b] == -1)
                         return false;
+
+                //if(ref.conj_scales[b][k] != conjugate_scales[cohort_index(lb,rb)][b]);
+                //    maquis::cout << ref.conj_scales[b][k] << " " << conjugate_scales[cohort_index(lb,rb)][b] << std::endl;
+                assert(ref.conj_scales[b][k] == conjugate_scales[cohort_index(lb,rb)][b]);
             }
         }
 
