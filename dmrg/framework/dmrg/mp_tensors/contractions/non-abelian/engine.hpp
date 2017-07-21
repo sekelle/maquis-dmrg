@@ -36,7 +36,6 @@
 #include "dmrg/mp_tensors/contractions/non-abelian/shtm.hpp"
 #include "dmrg/mp_tensors/contractions/non-abelian/rshtm.hpp"
 #include "dmrg/mp_tensors/contractions/non-abelian/lshtm.hpp"
-#include "dmrg/mp_tensors/contractions/non-abelian/gemm.hpp"
 #include "dmrg/mp_tensors/contractions/non-abelian/h_diag.hpp"
 
 namespace contraction {

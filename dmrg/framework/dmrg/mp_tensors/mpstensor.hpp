@@ -35,8 +35,6 @@
 
 #include "utils/traits.hpp"
 
-#include "dmrg/mp_tensors/contractions/non-abelian/gemm.hpp"
-
 // implementation of join functions
 #include "dmrg/mp_tensors/mps_join.h"
 

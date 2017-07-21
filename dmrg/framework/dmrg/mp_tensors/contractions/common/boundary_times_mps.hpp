@@ -34,6 +34,29 @@
 #include "dmrg/block_matrix/indexing.h"
 
 
+namespace SU2 {
+
+    template <class T, class SymmGroup>
+    T conjugate_correction(typename SymmGroup::charge lc, typename SymmGroup::charge rc)
+    {
+        assert( SymmGroup::spin(lc) >= 0);
+        assert( SymmGroup::spin(rc) >= 0);
+
+        typename SymmGroup::subcharge S = std::min(SymmGroup::spin(rc), SymmGroup::spin(lc));
+        typename SymmGroup::subcharge spin_diff = SymmGroup::spin(rc) - SymmGroup::spin(lc);
+
+        switch (spin_diff) {
+            case  0: return 1.;                               break;
+            case  1: return -T( sqrt((S + 1.)/(S + 2.)) );    break;
+            case -1: return  T( sqrt((S + 2.)/(S + 1.)) );    break;
+            case  2: return -T( sqrt((S + 1.) / (S + 3.)) );  break;
+            case -2: return -T( sqrt((S + 3.) / (S + 1.)) );  break;
+            default:
+                throw std::runtime_error("hermitian conjugate for reduced tensor operators only implemented up to rank 1");
+        }
+    }
+}
+
 namespace contraction {
     namespace common {
 
@@ -41,22 +64,20 @@ namespace contraction {
     typename boost::enable_if<symm_traits::HasSU2<SymmGroup>, std::vector<typename Matrix::value_type> >::type
     conjugate_phases(DualIndex<SymmGroup> const & basis,
                      MPOTensor_detail::Hermitian const & herm,
-                     std::size_t k, typename SymmGroup::subcharge S,
-                     bool forward, bool transpose = false)
+                     std::size_t k, bool forward, bool transpose = false)
     {
         typedef typename Matrix::value_type value_type;
 
         std::vector<value_type> ret(basis.size());
         for (std::size_t b = 0; b < basis.size(); ++b)
         {
-            value_type scale = (transpose) ? ::SU2::conjugate_correction<typename Matrix::value_type, SymmGroup>
-                                        (basis.right_charge(b), basis.left_charge(b), S)
-                                      : ::SU2::conjugate_correction<typename Matrix::value_type, SymmGroup>
-                                        (basis.left_charge(b), basis.right_charge(b), S);
-            if (forward)
-                scale *= herm.phase(herm.conj(k));
-            else
-                scale *= herm.phase(k);
+            typename SymmGroup::charge l = basis.left_charge(b), r = basis.right_charge(b);
+            if (transpose) std::swap(l,r);
+
+            value_type scale = ::SU2::conjugate_correction<typename Matrix::value_type, SymmGroup>(l, r);
+
+            if (forward) scale *= herm.phase(herm.conj(k));
+            else         scale *= herm.phase(k);
 
             ret[b] = scale;
         }
@@ -67,8 +88,7 @@ namespace contraction {
     typename boost::disable_if<symm_traits::HasSU2<SymmGroup>, std::vector<typename Matrix::value_type> >::type
     conjugate_phases(DualIndex<SymmGroup> const & basis,
                      MPOTensor_detail::Hermitian const & herm,
-                     std::size_t k, typename SymmGroup::subcharge S,
-                     bool forward, bool transpose = false)
+                     std::size_t k, bool forward, bool transpose = false)
     {
         return std::vector<typename Matrix::value_type>(basis.size(), 1.);
     }
@@ -79,11 +99,8 @@ namespace contraction {
                                                                                        std::size_t k, bool left, bool forward)
     {
         typedef typename Matrix::value_type value_type;
-        std::vector<value_type> scales = conjugate_phases<Matrix>(bm.basis()
-                                                          , (left) ? mpo.left_herm : mpo.right_herm
-                                                          , k
-                                                          , (left) ? mpo.left_spin(k).get() : mpo.right_spin(k).get()
-                                                          , forward);
+        std::vector<value_type> scales
+            = conjugate_phases<Matrix>(bm.basis(), (left) ? mpo.left_herm : mpo.right_herm, k, forward);
 
         for (std::size_t b = 0; b < bm.n_blocks(); ++b)
             bm[b] *= scales[b];
@@ -123,7 +140,7 @@ namespace contraction {
                     parallel::guard group(scheduler(b1), parallel::groups_granularity);
 
                     (*this)[b1] = left[mpo.herm_left.conj(b1)].basis(); 
-                    conj_scales[b1] = conjugate_phases<Matrix>((*this)[b1], mpo.herm_left, b1, mpo.left_spin(b1).get(), false, true);
+                    conj_scales[b1] = conjugate_phases<Matrix>((*this)[b1], mpo.herm_left, b1, false, true);
                     trans_storage[b1] = true;
                 }
                 else {
@@ -194,7 +211,7 @@ namespace contraction {
 
                     (*this)[b2] = right[mpo.herm_right.conj(b2)].basis();
                     bool transpose = true;
-                    conj_scales[b2] = conjugate_phases<Matrix>((*this)[b2], mpo.herm_right, b2, mpo.right_spin(b2).get(), true, transpose);
+                    conj_scales[b2] = conjugate_phases<Matrix>((*this)[b2], mpo.herm_right, b2, true, transpose);
                     trans_storage[b2] = true;
                 }
                 else {

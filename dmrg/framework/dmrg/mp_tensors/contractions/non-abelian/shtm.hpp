@@ -34,7 +34,6 @@
 #include "dmrg/mp_tensors/mpstensor.h"
 #include "dmrg/mp_tensors/mpotensor.h"
 #include "dmrg/mp_tensors/contractions/non-abelian/micro_kernels.hpp"
-#include "dmrg/mp_tensors/contractions/non-abelian/gemm.hpp"
 
 namespace contraction {
 namespace SU2 {
@@ -75,11 +74,12 @@ namespace SU2 {
             unsigned rs_out = right_i[rb_out].second;
             unsigned out_offset = right_pb(phys_out, rc_out);
             
-            //for (auto lbci : boost::adaptors::reverse(left.index[lb_out]))
-            for (unsigned lb_in = 0; lb_in < left_i.size(); ++lb_in)
+            for (auto lbci : boost::adaptors::reverse(left.index[lb_out]))
+            //for (unsigned lb_in = 0; lb_in < left_i.size(); ++lb_in)
             {
-                //unsigned lb_in = lbci.first;
-                //unsigned ci = lbci.second;
+                unsigned lb_in = lbci.first;
+                unsigned ci = lbci.second;
+                unsigned ci_conj = left.index.cohort_index(lb_in, lb_out);
 
                 charge lc_in = left_i[lb_in].first;
                 if (std::find(mc_charges.begin(), mc_charges.end(), lc_in) == mc_charges.end()) continue;
