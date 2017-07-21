@@ -73,11 +73,10 @@ namespace contraction {
         {
             typename SymmGroup::charge l = basis.left_charge(b), r = basis.right_charge(b);
             if (transpose) std::swap(l,r);
-
-            value_type scale = ::SU2::conjugate_correction<typename Matrix::value_type, SymmGroup>(l, r);
-
-            if (forward) scale *= herm.phase(herm.conj(k));
-            else         scale *= herm.phase(k);
+ 
+            // M(l,r) == scale * M(r,l)^T
+            value_type scale = ::SU2::conjugate_correction<typename Matrix::value_type, SymmGroup>(l,r);
+            scale *= herm.phase( (forward) ? herm.conj(k) : k );
 
             ret[b] = scale;
         }
