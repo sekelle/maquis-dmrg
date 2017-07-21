@@ -540,7 +540,7 @@ public:
     typedef typename base::value_type value_type;
 
     template <class OtherMatrix>
-    void allocate(charge mc, charge lc, unsigned ci, Boundary<OtherMatrix, SymmGroup> & new_right) const
+    void allocate(charge mc, charge lc, Boundary<OtherMatrix, SymmGroup> & new_right) const
     {
         b_to_o.resize(new_right.aux_dim());    
 
@@ -563,8 +563,8 @@ public:
             }
         }
 
-        if (ci < new_right.data().size())
-            new_right.data()[ci].resize(cohort_size);
+        if (cohort_index < new_right.data().size())
+            new_right.data()[cohort_index].resize(cohort_size);
     }
 
     template <class OtherMatrix>
@@ -588,7 +588,10 @@ public:
 
     std::vector<unsigned> const & get_b_to_o() const { return b_to_o; }
 
-    void set_size(std::size_t s) { cohort_size = s; }
+    unsigned get_index() const    { return cohort_index; }
+
+    void set_size(std::size_t s)  { cohort_size = s; }
+    void set_index(unsigned s)    { cohort_index = s; }
 
     std::vector<long int>      & get_offsets()       { return mpo_offsets; }
     std::vector<long int> const& get_offsets() const { return mpo_offsets; }
@@ -598,6 +601,7 @@ private:
     mutable std::vector<unsigned> b_to_o;
 
     std::size_t cohort_size;
+    unsigned    cohort_index;
     std::vector<long int> mpo_offsets;
 };
 

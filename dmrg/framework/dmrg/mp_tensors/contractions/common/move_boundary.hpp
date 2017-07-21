@@ -149,7 +149,7 @@ namespace contraction {
                 for (const_iterator it = tasks[rb_bra].begin(); it != tasks[rb_bra].end(); ++it) // mc loop
                 {
                     charge rc_ket = it->first;
-                    it->second.allocate(rc_bra, rc_ket, 0, ret);
+                    it->second.allocate(rc_bra, rc_ket, ret);
                     for (unsigned s = 0; s < it->second.size(); ++s) // physical index loop
                         it->second[s].lbtm(ket_tensor, it->second.get_b_to_o(), left, ret);
                 }
@@ -218,7 +218,7 @@ namespace contraction {
                 for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it) // lc_ket loop
                 {
                     charge lc_ket = it->first;
-                    it->second.allocate(lc_ket, lc_bra, 0, ret);
+                    it->second.allocate(lc_ket, lc_bra, ret);
                     for (size_t s = 0; s < it->second.size(); ++s) // physical index loop
                         it->second[s].rbtm(ket_tensor, it->second.get_b_to_o(), right, ret);
                 }
@@ -279,8 +279,8 @@ namespace contraction {
 
             BoundaryIndex<Matrix, SymmGroup> b_index(bra_right_i, ket_right_i);
             for(unsigned rb_bra = 0; rb_bra < loop_max; ++rb_bra)
-                for (auto& element: tasks[rb_bra])
-                    b_index.add_cohort(rb_bra, ket_right_i.position(element.first), element.second.get_offsets());
+                for (auto& e : tasks[rb_bra])
+                    e.second.set_index(b_index.add_cohort(rb_bra, ket_right_i.position(e.first), e.second.get_offsets()));
 
             ret.data().resize(b_index.n_cohorts());
             b_index.complement_transpose(mpo.herm_right);
@@ -315,10 +315,9 @@ namespace contraction {
                     for (const_iterator it = tasks[rb_bra].begin(); it != tasks[rb_bra].end(); ++it)
                     {
                         charge rc_ket = it->first;
-                        unsigned ci = b_index.cohort_index(rb_bra, ket_right_i.position(rc_ket));
-                        it->second.allocate(rc_bra, rc_ket, ci, ret);
+                        it->second.allocate(rc_bra, rc_ket, ret);
                         for (size_t s = 0; s < it->second.size(); ++s) // physical index loop
-                            it->second[s].prop_l(bra_tensor, ket_tensor, it->second.get_b_to_o(), ci, left, ret);
+                            it->second[s].prop_l(bra_tensor, ket_tensor, it->second.get_b_to_o(), it->second.get_index(), left, ret);
                     }
                 }
             }
@@ -413,7 +412,7 @@ namespace contraction {
                     for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it) // lc_ket loop
                     {
                         charge lc_ket = it->first;
-                        it->second.allocate(lc_ket, lc_bra, 0, ret); // allocate all (lc_ket,lc_bra) blocks
+                        it->second.allocate(lc_ket, lc_bra, ret); // allocate all (lc_ket,lc_bra) blocks
                         for (size_t s = 0; s < it->second.size(); ++s) // physical index loop
                             it->second[s].prop(ket_tensor, bra_tensor.data()[lb_bra], it->second.get_b_to_o(), right, ret);
                     }
