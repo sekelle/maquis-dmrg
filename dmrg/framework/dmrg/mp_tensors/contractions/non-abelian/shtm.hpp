@@ -66,8 +66,6 @@ namespace SU2 {
         charge lc_out = left_i[lb_out_mps].first;
         unsigned ls_out = left_i[lb_out_mps].second;
 
-        std::vector<charge> const & mc_charges = left.deltas.at(lc_out);
-
         // output physical index, output offset range = out_right offset + ss2*rs_out
         //                                              for ss2 in {0, 1, .., phys_i[s].second}
         for (unsigned s = 0; s < phys_i.size(); ++s)
@@ -79,35 +77,22 @@ namespace SU2 {
             unsigned out_offset = right_pb(phys_out, rc_out);
             
             for (auto lbci : boost::adaptors::reverse(left.index[lb_out]))
-            //for (unsigned lb_in = 0; lb_in < left_i.size(); ++lb_in)
             {
-                unsigned lb_in = lbci.first;
-                unsigned ci = lbci.second, ci_conj = left.index.cohort_index(lb_in, lb_out);
+                charge lc_in = left.index.ket_i()[lbci.first].first;
+                unsigned lb_in = left_i.position(lc_in); if (lb_in == left_i.size()) continue;
+                unsigned ls_in = left_i[lb_in].second;
+                unsigned ci = lbci.second, ci_conj = left.index.cohort_index(lbci.first, lb_out);
 
-                //unsigned ci = left.index.cohort_index(lb_out, lb_in), ci_conj = left.index.cohort_index(lb_in, lb_out);
-
-                //charge lc_in = left_i[lb_in].first;
-                charge lc_in = left.index.ket_i()[lb_in].first;
-                unsigned lb_in_mps = left_i.position(lc_in);
-                if (lb_in_mps == left_i.size()) continue;
-
-                //unsigned ci = left.index.cohort_index(lc_out, lc_in), ci_conj = left.index.cohort_index(lc_in, lc_out);
-                //if (ci != left.index.cohort_index(lb_out, lb_in)) { maquis::cout << "lb/lc mismatch\n"; exit(1); }
-
-                if (std::find(mc_charges.begin(), mc_charges.end(), lc_in) == mc_charges.end()) continue;
-                unsigned ls_in = left_i[lb_in_mps].second;
-
-                cgroup cg(lb_in_mps, phys_i[s].second, ls_out, ls_in, rs_out, out_offset);
+                cgroup cg(lb_in, phys_i[s].second, ls_out, ls_in, rs_out, out_offset);
 
                 ::SU2::Wigner9jCache<value_type, SymmGroup> w9j(lc_out, lc_in, rc_out);
 
                 t_map_t t_index;
                 for (index_type b1 = 0; b1 < mpo.row_dim(); ++b1)
                 {
-                    unsigned b_left = left.position(b1, lc_out, lc_in); if (b_left == left[b1].size()) continue;
+                    if (left.index.offset(ci, b1) < 0) continue;
                     int A = mpo.left_spin(b1).get(); if (!::SU2::triangle<SymmGroup>(lc_in, A, lc_out)) continue;
 
-                    index_type b1_eff = (mpo.herm_left.skip(b1)) ? mpo.herm_left.conj(b1) : b1;
                     index_type ci_eff = (mpo.herm_left.skip(b1)) ? ci_conj : ci;
 
                     for (typename row_proxy::const_iterator row_it = mpo.row(b1).begin(); row_it != mpo.row(b1).end(); ++row_it) {
@@ -134,14 +119,8 @@ namespace SU2 {
                                 value_type couplings[4];
                                 value_type scale = right.conj_scales[b2][b_right] * access.scale(op_index)
                                                  *  left.index.conjugate_scale(ci, b1);
-                                                 //*  left.conj_scales[b1][b_left];
 
                                 w9j.set_scale(A, K, Ap, rc_in, scale, couplings);
-                                if (std::abs(left.index.conjugate_scale(ci, b1) -left.conj_scales[b1][b_left]) > 1e-10)
-                                {
-                                    maquis::cout << left.index.conjugate_scale(ci, b1) << " vs " << left.conj_scales[b1][b_left] << std::endl; 
-                                    //throw std::runtime_error("scale check failed\n");
-                                }
 
                                 char right_transpose = mpo.herm_right.skip(b2);
                                 unsigned b2_eff = (right_transpose) ? mpo.herm_right.conj(b2) : b2;
@@ -152,7 +131,6 @@ namespace SU2 {
                             } // w_block
                         } //op_index
                     } // b2
-                    //for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(b1_eff, b_left, mpo.herm_left.skip(b1));
                     for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(ci_eff, left.index.offset(ci, b1), mpo.herm_left.skip(b1));
                 } // b1
 

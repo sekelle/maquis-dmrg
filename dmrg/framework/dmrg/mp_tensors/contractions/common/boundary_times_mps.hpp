@@ -148,19 +148,6 @@ namespace contraction {
                     conj_scales[b1] = std::vector<value_type>(left[b1].n_blocks(), value_type(1.));
                     trans_storage[b1] = false;
                 }
-
-                DualIndex<SymmGroup> const & di = (*this)[b1];
-                parallel_critical
-                for (std::size_t k = 0; k < di.size(); ++k)
-                {
-                    charge lc = di.left_charge(k);
-                    charge mc = di.right_charge(k);
-                    if (trans_storage[b1]) std::swap(lc,mc);
-                    std::vector<charge> & lcfixed = deltas[lc];
-                    if (std::find(lcfixed.begin(), lcfixed.end(), mc) == lcfixed.end())
-                        lcfixed.push_back(mc);
-                }
-
             });
         }
 
@@ -174,7 +161,6 @@ namespace contraction {
 
         BoundaryIndex<OtherMatrix, SymmGroup> index;
 
-        std::map<charge, std::vector<charge> > deltas;
         std::vector<std::vector<value_type> > conj_scales;
     private:
         std::vector<char> trans_storage; // vector<bool> not thread safe !!
