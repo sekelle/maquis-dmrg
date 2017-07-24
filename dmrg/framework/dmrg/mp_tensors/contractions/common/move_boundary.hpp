@@ -244,7 +244,8 @@ namespace contraction {
             Boundary<OtherMatrix, SymmGroup> ret;
             ret.resize(mpo.col_dim());
 
-            assert(left.index.equivalent(left_indices));
+            if(!left.index.equivalent(left_indices, left, mpo.herm_left))
+                throw std::runtime_error("check 1 failed\n");
 
             MPSTensor<Matrix, SymmGroup> buffer; // holds the conjugate tensor if we deal with complex numbers
             MPSTensor<Matrix, SymmGroup> const & bra_tensor = set_conjugate(bra_tensor_in, buffer);
@@ -321,19 +322,6 @@ namespace contraction {
                     }
                 }
             }
-
-            // TODO: clean out debug
-            for(auto c1 : bra_right_i)
-            for(auto c2 : bra_right_i)
-            for(size_t b = 0; b < mpo.col_dim(); ++b)
-                if (ret[b].has_block(c1.first, c2.first))
-                {
-                    //assert(ret.b2o()[bra_right_i.position(c1.first)][c2.first][b] >= 0);
-                    unsigned ci = ret.index.cohort_index(c1.first, c2.first);
-                    long int offset = ret.index.offset(ci, b);
-
-                    assert(ret[b](c1.first,c2.first)(0,0) == ret.data()[ci][offset]);
-                }
 
             return ret;
         }

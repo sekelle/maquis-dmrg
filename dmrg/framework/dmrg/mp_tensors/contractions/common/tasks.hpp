@@ -192,7 +192,8 @@ public:
         const value_type** left_mat = new const value_type*[b2sz.size()];
 
         for (index_type i = 0; i < b2sz.size(); ++i)
-            left_mat[i] = &left[bs[i]][ks[i]](0,0);
+            //left_mat[i] = &left[bs[i]][ks[i]](0,0);
+            left_mat[i] = &left.data()[bs[i]][ks[i]];
 
         Matrix ret(l_size, r_size);
         dgemm_ddot(l_size, m_size, r_size, b2sz.size(), b2sz.data(), &trans[0], tidx.data(), alpha.data(), left_mat, t_pointer, &ret(0,0));
@@ -703,6 +704,9 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
 
     LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
     RightIndices<Matrix, OtherMatrix, SymmGroup> right_indices(right, mpo);
+
+    if (!left.index.equivalent(left_indices, left, mpo.herm_left))
+        throw std::runtime_error("shtm shed lboundary check failed\n");
 
     // MPS indices
     Index<SymmGroup> const & physical_i = initial.site_dim(),

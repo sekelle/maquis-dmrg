@@ -100,6 +100,8 @@ public:
     long int   offset         (unsigned ci, unsigned b) const { return offsets[ci][b]; }
     value_type conjugate_scale(unsigned ci, unsigned b) const { return conjugate_scales[ci][b]; }
     bool       trans          (unsigned ci, unsigned b) const { return transposes[ci][b]; }
+    Index<SymmGroup> const& bra_i  ()                   const { return bra_index; }
+    Index<SymmGroup> const& ket_i  ()                   const { return ket_index; }
 
     bool has(unsigned lb, unsigned rb) const
     {
@@ -134,8 +136,7 @@ public:
 
         unsigned ci = n_cohorts();
         lb_rb_ci[lb].push_back(std::make_pair(rb, ci));
-
-        offsets.push_back(off_);
+offsets.push_back(off_);
         conjugate_scales.push_back(std::vector<value_type>(off_.size(), 1.));
         transposes      .push_back(std::vector<char>      (off_.size()));
 
@@ -160,7 +161,7 @@ public:
                         assert(offsets[ci_B][b] == -1);
                         offsets[ci_B][b] = offsets[ci_A][herm.conj(b)];
                         conjugate_scales[ci_B][b] = detail::conjugate_correction<value_type, SymmGroup>
-                                                        (bra_index[lb].first, ket_index[rb].first)
+                                                        (ket_index[rb].first, bra_index[lb].first)
                                                       * herm.phase( (forward) ? b : herm.conj(b));
                     }
                 }
@@ -172,25 +173,13 @@ public:
         return lb_rb_ci[block];
     }
 
-    bool sane(MPOTensor_detail::Hermitian const & herm) const
-    {
-        for (unsigned lb = 0; lb < lb_rb_ci.size(); ++lb)
-            for (auto pair : lb_rb_ci[lb])
-            {
-                unsigned rb = pair.first;
-                unsigned ci = pair.second; // source transpose ci
-                for (unsigned b = 0; b < herm.size(); ++b)
-                    if (herm.skip(b)) if (offsets[ci][b] != -1) return false;
-            }
-
-        return true;
-    }
-
-    template <class Index>
-    bool equivalent(Index const& ref) const
+    template <class Index, class Data, class Herm>
+    bool equivalent(Index const& ref, Data const& boundary, Herm const& herm) const
     {
         for (unsigned b = 0; b < ref.size(); ++b)
         {
+            unsigned b_eff = herm.skip(b) ? herm.conj(b) : b;
+
             for (unsigned k = 0; k < ref[b].size(); ++k)
             {
                 charge lc = ref[b].left_charge(k);
@@ -200,13 +189,34 @@ public:
                 unsigned rb = ket_index.position(rc);
 
                 // check we have the block from ref
-                if (ref.position(b, lc, rc) != ref[b].size())
-                    if (offsets[cohort_index(lb,rb)][b] == -1)
-                        return false;
+                unsigned kk = ref.position(b, lc, rc);
+                if (kk != ref[b].size())
+                {
+                    unsigned ci = cohort_index(lb,rb);
+                    unsigned ci_eff = herm.skip(b) ? cohort_index(rb,lb) : ci;
+                    long int off = offsets[ci][b];
 
-                //if(ref.conj_scales[b][k] != conjugate_scales[cohort_index(lb,rb)][b]);
-                //    maquis::cout << ref.conj_scales[b][k] << " " << conjugate_scales[cohort_index(lb,rb)][b] << std::endl;
-                assert(ref.conj_scales[b][k] == conjugate_scales[cohort_index(lb,rb)][b]);
+                    if (offsets[ci][b] == -1)
+                    {
+                        maquis::cout << "missing block\n";
+                        return false;
+                    }
+
+                    size_t sz = num_rows(boundary[b_eff][kk])* num_cols(boundary[b_eff][kk]);
+                    for (size_t i = 0; i < sz; ++i)
+                        if ( *(&boundary[b_eff][kk](0,0)+i) != boundary.data()[ci_eff][off + i])
+                        {
+                            maquis::cout << "data wrong\n" << std::endl;
+                            return false;
+                        }
+
+                    if( std::abs(ref.conj_scales[b][kk] - conjugate_scales[ci][b]) > 1e-10 )
+                    {
+                        maquis::cout << "conj scale wrong: " << ref.conj_scales[b][kk]
+                                     << " vs " << conjugate_scales[ci][b] << std::endl;
+                        return false;
+                    }
+                }
             }
         }
 
@@ -280,11 +290,11 @@ public:
             std::size_t ls = ud[i].second;
             std::size_t rs = ld[i].second;
             std::size_t block_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(ls*rs);
-            data()[i].resize(block_size * ad);
+            data()[i].resize(block_size * ad, value_type(1.));
             std::vector<long int> offsets(ad);
             for (std::size_t b = 0; b < ad; ++b)
                 offsets[b] = b * block_size;
-            index.add_cohort(i,i,offsets);
+            index.add_cohort(i, i, offsets);
         }
     }
     
@@ -296,6 +306,7 @@ public:
             data_.push_back(rhs[n]);
 
         index = rhs.index;
+        data2 = rhs.data();
     }
 
     std::size_t aux_dim() const { 
