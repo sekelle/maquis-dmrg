@@ -159,13 +159,8 @@ namespace SU2 {
 
                 for (auto& cg : mpsb[rc_ket])
                     for (auto& mg : cg)
-                    {
                         for (index_type b = 0; b < mg.get_bs().size(); ++b)
                             mg.get_ks()[b] = b2o[mg.get_bs()[b]];
-
-                        //std::copy(mg.get_ks().begin(), mg.get_ks().end(), std::ostream_iterator<index_type>(std::cout, " "));
-                        //maquis::cout << std::endl;
-                    }
             }
         } // rb_ket
     }
