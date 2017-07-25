@@ -255,9 +255,10 @@ public:
                                                     t_pointer + tidx[i][j] * t_size_padded + t_size,
                                                     &S(0,0), alpha[i][j]);
 
-            blas_gemm(&tr, &notr, &M, &N, &K, &one, &bra(0,offset), &K, &S(0,0), &K, &one, &ret[b2][b_to_o[b2]](0,0), &M);
+            //blas_gemm(&tr, &notr, &M, &N, &K, &one, &bra(0,offset), &K, &S(0,0), &K, &one, &ret[b2][b_to_o[b2]](0,0), &M);
+            blas_gemm(&tr, &notr, &M, &N, &K, &one, &bra(0,offset), &K, &S(0,0), &K, &one, &ret.data()[ci][ks[i]], &M);
  
-            std::copy(&ret[b2][b_to_o[b2]](0,0), &ret[b2][b_to_o[b2]](0,0) + M*N, &ret.data()[ci][ks[i]]);
+            //std::copy(&ret[b2][b_to_o[b2]](0,0), &ret[b2][b_to_o[b2]](0,0) + M*N, &ret.data()[ci][ks[i]]);
         }
     }
 
@@ -593,6 +594,7 @@ public:
     std::vector<unsigned> const & get_b_to_o() const { return b_to_o; }
 
     unsigned get_index() const    { return cohort_index; }
+    size_t   get_size () const    { return cohort_size; }
 
     void set_size(std::size_t s)  { cohort_size = s; }
     void set_index(unsigned s)    { cohort_index = s; }
@@ -707,9 +709,6 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
 
     LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
     RightIndices<Matrix, OtherMatrix, SymmGroup> right_indices(right, mpo);
-
-    if (!left.index.equivalent(left_indices, left, mpo.herm_left))
-        throw std::runtime_error("shtm shed lboundary check failed\n");
 
     // MPS indices
     Index<SymmGroup> const & physical_i = initial.site_dim(),
