@@ -177,9 +177,11 @@ public:
                                                     t_pointer + tidx_i[j] * t_size_padded + t_size,
                                                     &S(0,0), alpha_i[j]);
             if (trans[i])
-                blas_gemm(&tr, &notr, &M, &N, &K, &one, &left[b1][ks[i]](0,0), &K, &S(0,0), &K, &one, &ret(0,0), &M);
+                //blas_gemm(&tr, &notr, &M, &N, &K, &one, &left[b1][ks[i]](0,0), &K, &S(0,0), &K, &one, &ret(0,0), &M);
+                blas_gemm(&tr, &notr, &M, &N, &K, &one, &left.data()[b1][ks[i]], &K, &S(0,0), &K, &one, &ret(0,0), &M);
             else
-                blas_gemm(&notr, &notr, &M, &N, &K, &one, &left[b1][ks[i]](0,0), &M, &S(0,0), &K, &one, &ret(0,0), &M);
+                //blas_gemm(&notr, &notr, &M, &N, &K, &one, &left[b1][ks[i]](0,0), &M, &S(0,0), &K, &one, &ret(0,0), &M);
+                blas_gemm(&notr, &notr, &M, &N, &K, &one, &left.data()[b1][ks[i]], &M, &S(0,0), &K, &one, &ret(0,0), &M);
         }
 
         return ret;

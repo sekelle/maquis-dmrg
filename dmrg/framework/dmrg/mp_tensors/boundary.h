@@ -32,12 +32,13 @@
 #include <set>
 #include <boost/archive/binary_oarchive.hpp>
 
-#include "dmrg/utils/storage.h"
-#include "dmrg/block_matrix/block_matrix.h"
-#include "dmrg/block_matrix/indexing.h"
+#include "dmrg/sim/matrix_types.h"
 #include "utils/function_objects.h"
 #include "dmrg/utils/aligned_allocator.hpp"
 #include "dmrg/utils/parallel.hpp"
+#include "dmrg/block_matrix/block_matrix.h"
+#include "dmrg/utils/storage.h"
+#include "dmrg/mp_tensors/mpotensor_detail.h"
 
 namespace detail {
 
@@ -80,7 +81,7 @@ class BoundaryIndex
 
 public:
 
-    BoundaryIndex() {}
+    //BoundaryIndex() {}
     BoundaryIndex(Index<SymmGroup> const & bra, Index<SymmGroup> const & ket)
     : bra_index(bra), ket_index(ket), lb_rb_ci(bra.size())  {}
 
@@ -114,7 +115,7 @@ public:
         return false;
     }
 
-    unsigned cohort_index(unsigned lb, unsigned rb) const
+    unsigned cohort_index(unsigned lb, unsigned rb, int tag = 0) const
     {
         if (lb >= lb_rb_ci.size())
             return n_cohorts();
@@ -127,7 +128,7 @@ public:
 
     unsigned cohort_index(charge lc, charge rc) const
     {
-        return cohort_index(bra_index.position(lc), ket_index.position(rc));
+        return cohort_index(bra_index.position(lc), ket_index.position(rc), 0);
     }
 
     unsigned add_cohort(unsigned lb, unsigned rb, std::vector<long int> const & off_)
@@ -136,7 +137,7 @@ public:
 
         unsigned ci = n_cohorts();
         lb_rb_ci[lb].push_back(std::make_pair(rb, ci));
-offsets.push_back(off_);
+        offsets.push_back(off_);
         conjugate_scales.push_back(std::vector<value_type>(off_.size(), 1.));
         transposes      .push_back(std::vector<char>      (off_.size()));
 
@@ -150,7 +151,7 @@ offsets.push_back(off_);
             {
                 unsigned rb = pair.first;
                 unsigned ci_A = pair.second; // source transpose ci
-                unsigned ci_B = cohort_index(rb, lb);
+                unsigned ci_B = cohort_index(ket_index[rb].first, bra_index[lb].first);
                 if (ci_B == n_cohorts())
                     ci_B = add_cohort(rb, lb, std::vector<long int>(herm.size(), -1));
 
@@ -162,7 +163,7 @@ offsets.push_back(off_);
                         offsets[ci_B][b] = offsets[ci_A][herm.conj(b)];
                         conjugate_scales[ci_B][b] = detail::conjugate_correction<value_type, SymmGroup>
                                                         (ket_index[rb].first, bra_index[lb].first)
-                                                      * herm.phase( (forward) ? b : herm.conj(b));
+                                                      * value_type(herm.phase( (forward) ? b : herm.conj(b)));
                     }
                 }
             }
@@ -282,11 +283,11 @@ public:
     : data_(ad, block_matrix<Matrix, SymmGroup>(ud, ld))
     , index(ud, ld)
     {
+        assert(ud.size() == ld.size());
+
         data().resize(ud.size());
         for (std::size_t i = 0; i < ud.size(); ++i)
         {
-            //auto lc = ud[i].first;
-            //auto rc = ld[i].first;
             std::size_t ls = ud[i].second;
             std::size_t rs = ld[i].second;
             std::size_t block_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(ls*rs);
@@ -299,14 +300,11 @@ public:
     }
     
     template <class OtherMatrix>
-    Boundary(Boundary<OtherMatrix, SymmGroup> const& rhs)
+    Boundary(Boundary<OtherMatrix, SymmGroup> const& rhs) : index(rhs.index), data2(rhs.data())
     {
         data_.reserve(rhs.aux_dim());
         for (std::size_t n=0; n<rhs.aux_dim(); ++n)
             data_.push_back(rhs[n]);
-
-        index = rhs.index;
-        data2 = rhs.data();
     }
 
     std::size_t aux_dim() const { 
