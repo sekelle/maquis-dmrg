@@ -30,6 +30,8 @@
 #include <boost/utility.hpp>
 #include <boost/type_traits.hpp>
 
+#include "dmrg/models/op_handler.h"
+
 template<class Matrix, class SymmGroup>
 class MPOTensor;
 
