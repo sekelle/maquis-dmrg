@@ -493,7 +493,8 @@ private:
             int K = num_rows(mps.data()[lb_ket]);
             int LDA = (trans) ? K : M;
 
-            blas_gemm(&gemmtrans[trans], &gemmtrans[0], &M, &N, &K, &one, &left[b][b_block](0,0), &LDA,
+            //blas_gemm(&gemmtrans[trans], &gemmtrans[0], &M, &N, &K, &one, &left[b][b_block](0,0), &LDA,
+            blas_gemm(&gemmtrans[trans], &gemmtrans[0], &M, &N, &K, &one, &left.data()[b][b_block], &LDA,
                       &mps.data()[lb_ket](0, in_offset), &K, &zero, t_pointer + pos * t_size, &M);
         }
     }
