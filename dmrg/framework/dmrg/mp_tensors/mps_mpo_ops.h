@@ -122,7 +122,7 @@ typename Matrix::value_type expval(MPS<Matrix, SymmGroup> const & bra,
     }
 
     // MD: if bra and ket are different, result might be complex!
-    return left.traces()[0];
+    return left.trace();
 }
 
 

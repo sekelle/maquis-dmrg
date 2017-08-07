@@ -95,12 +95,18 @@ public:
         offsets  = rhs.offsets;
         conjugate_scales = rhs.conjugate_scales;
         transposes = rhs.transposes;
+        sizes = rhs.sizes;
     }
 
     unsigned   n_cohorts      ()                        const { return offsets.size(); }
     long int   offset         (unsigned ci, unsigned b) const { return offsets[ci][b]; }
+    bool       has_block      (unsigned ci, unsigned b) const { return offsets[ci][b] > -1; }
     value_type conjugate_scale(unsigned ci, unsigned b) const { return conjugate_scales[ci][b]; }
     bool       trans          (unsigned ci, unsigned b) const { return transposes[ci][b]; }
+    size_t     aux_dim        ()                        const { if (n_cohorts()) return offsets[0].size();
+                                                                else             return 0;
+                                                              }
+    size_t     block_size     (unsigned ci)             const { return sizes[ci]; }
     Index<SymmGroup> const& bra_i  ()                   const { return bra_index; }
     Index<SymmGroup> const& ket_i  ()                   const { return ket_index; }
 
@@ -140,6 +146,7 @@ public:
         offsets.push_back(off_);
         conjugate_scales.push_back(std::vector<value_type>(off_.size(), 1.));
         transposes      .push_back(std::vector<char>      (off_.size()));
+        sizes           .push_back(bra_index[lb].second * ket_index[rb].second);
 
         return ci;
     }
@@ -169,9 +176,9 @@ public:
             }
     }
 
-    std::vector<std::pair<unsigned, unsigned>> const & operator[](size_t block) const {
-        assert(block < lb_rb_ci.size());
-        return lb_rb_ci[block];
+    std::vector<std::pair<unsigned, unsigned>> const & operator[](size_t lb) const {
+        assert(lb < lb_rb_ci.size());
+        return lb_rb_ci[lb];
     }
 
     template <class Index, class Data, class Herm>
@@ -244,12 +251,13 @@ public:
 
 private:
     Index<SymmGroup> bra_index, ket_index;
-    //                                rb_ket     ci
+    //     lb_ket                       rb_ket     ci
     std::vector<std::vector<std::pair<unsigned, unsigned>>> lb_rb_ci;
 
     std::vector<std::vector<long int>>   offsets;
     std::vector<std::vector<value_type>> conjugate_scales;
     std::vector<std::vector<char>>       transposes;
+    std::vector<std::size_t>             sizes;
 
     friend class boost::serialization::access;
 
@@ -288,10 +296,13 @@ public:
         data().resize(ud.size());
         for (std::size_t i = 0; i < ud.size(); ++i)
         {
-            std::size_t ls = ud[i].second;
-            std::size_t rs = ld[i].second;
+            // assume diagonal blocks for initial boundaries
+            assert(ud[i].first == ld[i].first);
+
+            std::size_t ls = ud[i].second, rs = ld[i].second;
             std::size_t block_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(ls*rs);
-            data()[i].resize(block_size * ad, value_type(1.));
+            data()[i].resize(block_size * ad, value_type(0.));
+            std::fill(data()[i].begin(), data()[i].begin() + ls * rs, value_type(1.));
             std::vector<long int> offsets(ad);
             for (std::size_t b = 0; b < ad; ++b)
                 offsets[b] = b * block_size;
@@ -311,7 +322,8 @@ public:
         return data_.size(); 
     }
 
-    void resize(size_t n){
+    void resize(size_t n)
+    {
         if(n < data_.size()) 
             return data_.resize(n);
         data_.reserve(n);
@@ -319,9 +331,29 @@ public:
             data_.push_back(block_matrix<Matrix, SymmGroup>());
     }
     
-    std::vector<scalar_type> traces() const {
-        std::vector<scalar_type> ret; ret.reserve(data_.size());
-        for (size_t k=0; k < data_.size(); ++k) ret.push_back(data_[k].trace());
+    std::vector<scalar_type> traces() const
+    {
+        if (!index.n_cohorts())
+            throw std::runtime_error("Could not carry out multi_expval because resulting boundary was empty");
+
+        std::vector<scalar_type> ret(index.aux_dim(), scalar_type(0));
+        for (size_t ci = 0; ci < data().size(); ++ci)
+            for (size_t b = 0; b < index.aux_dim(); ++b)
+                if (index.has_block(ci, b))
+                    ret[b] += std::accumulate(&data()[ci][index.offset(ci, b)],
+                                              &data()[ci][index.offset(ci, b)] + index.block_size(ci), scalar_type(0));
+
+        return ret;
+    }
+
+    scalar_type trace() const
+    {
+        assert(index.aux_dim() <= 1);
+
+        scalar_type ret(0);
+        for (auto& v : data())
+            ret += std::accumulate(v.begin(), v.end(), scalar_type(0));
+
         return ret;
     }
 

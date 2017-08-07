@@ -285,17 +285,17 @@ namespace contraction {
             ret.index = b_index;
 
             // set up the indices of the new boundary
-            //for(unsigned rb_bra = 0; rb_bra < loop_max; ++rb_bra)
-            //{
-            //    charge rc_bra = bra_right_i[rb_bra].first;
-            //    size_t rs_bra = bra_right_i[rb_bra].second;
-            //    for (const_iterator it = tasks[rb_bra].begin(); it != tasks[rb_bra].end(); ++it)
-            //    {
-            //        charge rc_ket = it->first;
-            //        size_t rs_ket = ket_right_i.size_of_block(rc_ket);
-            //        it->second.reserve(rc_bra, rc_ket, rs_bra, rs_ket, ret); // allocate all (rc_bra,rc_ket) blocks
-            //    }
-            //}
+            for(unsigned rb_bra = 0; rb_bra < loop_max; ++rb_bra)
+            {
+                charge rc_bra = bra_right_i[rb_bra].first;
+                size_t rs_bra = bra_right_i[rb_bra].second;
+                for (const_iterator it = tasks[rb_bra].begin(); it != tasks[rb_bra].end(); ++it)
+                {
+                    charge rc_ket = it->first;
+                    size_t rs_ket = ket_right_i.size_of_block(rc_ket);
+                    it->second.reserve(rc_bra, rc_ket, rs_bra, rs_ket, ret); // allocate all (rc_bra,rc_ket) blocks
+                }
+            }
 
             // Contraction
             #ifdef MAQUIS_OPENMP
@@ -313,7 +313,7 @@ namespace contraction {
                     for (const_iterator it = tasks[rb_bra].begin(); it != tasks[rb_bra].end(); ++it)
                     {
                         charge rc_ket = it->first;
-                        //it->second.allocate(rc_bra, rc_ket, ret);
+                        it->second.allocate(rc_bra, rc_ket, ret);
                         ret.data()[it->second.get_index()].resize(it->second.get_size());
                         for (size_t s = 0; s < it->second.size(); ++s) // physical index loop
                             it->second[s].prop_l(bra_tensor, ket_tensor, it->second.get_b_to_o(), it->second.get_index(), left, ret);
