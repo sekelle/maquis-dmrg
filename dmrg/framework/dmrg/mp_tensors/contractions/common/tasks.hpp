@@ -259,7 +259,7 @@ public:
             blas_gemm(&tr, &notr, &M, &N, &K, &one, &bra(0,offset), &K, &S(0,0), &K, &one, &ret.data()[ci][ks[i]], &M);
  
             //std::copy(&ret[b2][b_to_o[b2]](0,0), &ret[b2][b_to_o[b2]](0,0) + M*N, &ret.data()[ci][ks[i]]);
-            std::copy(&ret.data()[ci][ks[i]], &ret.data()[ci][ks[i]] + M*N, &ret[b2][b_to_o[b2]](0,0));
+            //std::copy(&ret.data()[ci][ks[i]], &ret.data()[ci][ks[i]] + M*N, &ret[b2][b_to_o[b2]](0,0));
         }
     }
 
