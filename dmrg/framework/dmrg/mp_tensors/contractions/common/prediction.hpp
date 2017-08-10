@@ -69,10 +69,11 @@ namespace contraction {
 
                     //value_type one(1);
                     typename Matrix::value_type zero(0);
+                    typename Matrix::value_type alpha_v(alpha);
                     char tr = 'T';
                     char notr = 'N';
                     int M = l_size, N = l_size, K = half_dm.data()[ci].size() / l_size;
-                    blas_gemm(&notr, &tr, &M, &N, &K, &alpha, &half_dm.data()[ci][0], &M, &half_dm.data()[ci][0], &N, &zero, &tdm(0,0), &M);
+                    blas_gemm(&notr, &tr, &M, &N, &K, &alpha_v, &half_dm.data()[ci][0], &M, &half_dm.data()[ci][0], &N, &zero, &tdm(0,0), &M);
 
                     charge lc = half_dm.index.bra_i()[lb].first;
                     charge rc = half_dm.index.ket_i()[lb].first;

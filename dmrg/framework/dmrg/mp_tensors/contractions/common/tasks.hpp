@@ -247,7 +247,7 @@ public:
         Matrix S(m_size, r_size);
         for (index_type i = 0; i < b2sz.size(); ++i)
         {
-            index_type b2 = bs[i];
+            //index_type b2 = bs[i];
             memset(&S(0,0), 0, m_size * r_size * sizeof(typename Matrix::value_type));
 
             for (index_type j = 0; j < b2sz[i]; ++j)
@@ -273,7 +273,7 @@ public:
         Matrix S(m_size, r_size);
         for (index_type i = 0; i < b2sz.size(); ++i)
         {
-            index_type b2 = bs[i];
+            //index_type b2 = bs[i];
             memset(&S(0,0), 0, m_size * r_size * sizeof(typename Matrix::value_type));
 
             for (index_type j = 0; j < b2sz[i]; ++j)
@@ -282,8 +282,8 @@ public:
                                                     &S(0,0), alpha[i][j]);
             for (unsigned c = 0; c < r_size; ++c)
             {
-                maquis::dmrg::detail::iterator_axpy(&S(0,c), &S(0,c) + m_size, &ret[b2][b_to_o[b2]](offset,c), 1.0);
-                maquis::dmrg::detail::iterator_axpy(&S(0,c), &S(0,c) + m_size, &ret.data()[ci][ks[i]] + c * l_size, 1.0);
+                //maquis::dmrg::detail::iterator_axpy(&S(0,c), &S(0,c) + m_size, &ret[b2][b_to_o[b2]](offset,c), 1.0);
+                maquis::dmrg::detail::iterator_axpy(&S(0,c), &S(0,c) + m_size, &ret.data()[ci][bs[i]] + c * l_size, 1.0);
             }
         }
     }
@@ -315,6 +315,7 @@ public:
 
     void     set_l_size(unsigned l) { l_size = l; }
 
+    std::vector<index_type>       & get_bs()       { return bs; }
     std::vector<index_type> const & get_bs() const { return bs; }
     std::vector<std::size_t>       & get_ks()       { return ks; }
     std::vector<std::size_t> const & get_ks() const { return ks; }

@@ -122,40 +122,35 @@ namespace contraction {
             BoundaryIndex<Matrix, SymmGroup> b_index(out_left_i, right_i);
             for(unsigned rb_bra = 0; rb_bra < loop_max; ++rb_bra)
             {
-                charge rc_bra = right_i[rb_bra].first;
-                unsigned ls_paired = out_left_i.size_of_block(rc_bra);
+                charge rc_bra = out_left_i[rb_bra].first;
+                unsigned ls_paired = out_left_i[rb_bra].second;
                 for (auto& e : tasks[rb_bra])
                 {
                     charge rc_ket = e.first;
                     unsigned rs_ket = right_i.size_of_block(rc_ket);
 
-                    // rescale the offsets for the larger paired sector sizes
                     std::vector<long int> & offsets = e.second.get_offsets();
                     size_t block_size = ls_paired * rs_ket;
                     index_type cnt = 0;
-                    for (size_t i = 0; i < offsets.size(); ++i)
-                        if (offsets[i] > -1)
-                            offsets[i] = block_size * cnt++; 
+                    // rescale the offsets for the larger paired sector sizes
+                    for (index_type b = 0; b < offsets.size(); ++b) if (offsets[b] > -1) offsets[b] = block_size * cnt++; 
                     
                     e.second.set_size(cnt * block_size);
                     e.second.set_index(b_index.add_cohort(rb_bra, right_i.position(rc_ket), e.second.get_offsets()));
 
-                    for (unsigned s = 0; s < e.second.size(); ++s)
+                    for (auto& cg : e.second)
                     {
-                        unsigned lb_bra = e.second[s].get_mps_block();
+                        unsigned lb_bra = cg.get_mps_block();
                         charge lc_bra = left_i[lb_bra].first;
                         charge phys_out = SymmGroup::fuse(rc_bra, -lc_bra);
 
                         unsigned base_offset = left_pb(phys_out, lc_bra);
-                        for (unsigned ss = 0; ss < e.second[s].size(); ++ss)
+                        for (unsigned ss = 0; ss < cg.size(); ++ss)
                         {
-                            unsigned intra_b_offset = base_offset + ss * e.second[s][ss].get_m_size();
-                            for (index_type b_small = 0; b_small < e.second[s][ss].get_bs().size(); ++b_small) 
-                            {
-                                index_type b = e.second[s][ss].get_bs()[b_small];
-                                e.second[s][ss].get_ks()[b_small] = intra_b_offset + offsets[b];
-                                e.second[s][ss].set_l_size(ls_paired);
-                            }
+                            cg[ss].set_l_size(ls_paired);
+                            unsigned intra_b_offset = base_offset + ss * cg[ss].get_m_size();
+                            for (index_type b = 0; b < cg[ss].get_bs().size(); ++b) 
+                                cg[ss].get_bs()[b] = intra_b_offset + offsets[cg[ss].get_bs()[b]];
                         }
                     }
                 }
@@ -165,28 +160,28 @@ namespace contraction {
             ret.index = b_index;
 
             // set up the indices of the new boundary
-            for(unsigned rb_bra = 0; rb_bra < loop_max; ++rb_bra)
-            {
-                charge rc_bra = right_i[rb_bra].first;
-                unsigned ls_paired = out_left_i.size_of_block(rc_bra);
-                for (const_iterator it = tasks[rb_bra].begin(); it != tasks[rb_bra].end(); ++it)
-                {
-                    charge rc_ket = it->first;
-                    unsigned rs_ket = right_i.size_of_block(rc_ket);
-                    it->second.reserve(rc_bra, rc_ket, ls_paired, rs_ket, ret);
+            //for(unsigned rb_bra = 0; rb_bra < loop_max; ++rb_bra)
+            //{
+            //    charge rc_bra = right_i[rb_bra].first;
+            //    unsigned ls_paired = out_left_i.size_of_block(rc_bra);
+            //    for (const_iterator it = tasks[rb_bra].begin(); it != tasks[rb_bra].end(); ++it)
+            //    {
+            //        charge rc_ket = it->first;
+            //        unsigned rs_ket = right_i.size_of_block(rc_ket);
+            //        it->second.reserve(rc_bra, rc_ket, ls_paired, rs_ket, ret);
 
-                    for (unsigned s = 0; s < it->second.size(); ++s)
-                    {
-                        unsigned lb_bra = it->second[s].get_mps_block();
-                        charge lc_bra = left_i[lb_bra].first;
-                        charge phys_out = SymmGroup::fuse(rc_bra, -lc_bra);
+            //        for (unsigned s = 0; s < it->second.size(); ++s)
+            //        {
+            //            unsigned lb_bra = it->second[s].get_mps_block();
+            //            charge lc_bra = left_i[lb_bra].first;
+            //            charge phys_out = SymmGroup::fuse(rc_bra, -lc_bra);
 
-                        unsigned base_offset = left_pb(phys_out, lc_bra);
-                        for (unsigned ss = 0; ss < it->second[s].size(); ++ss)
-                            it->second[s][ss].offset = base_offset + ss * it->second[s][ss].get_m_size();
-                    }
-                }
-            }
+            //            unsigned base_offset = left_pb(phys_out, lc_bra);
+            //            for (unsigned ss = 0; ss < it->second[s].size(); ++ss)
+            //                it->second[s][ss].offset = base_offset + ss * it->second[s][ss].get_m_size();
+            //        }
+            //    }
+            //}
 
             // Contraction
             omp_for(index_type rb_bra, parallel::range<index_type>(0,loop_max), {
@@ -194,7 +189,7 @@ namespace contraction {
                 for (const_iterator it = tasks[rb_bra].begin(); it != tasks[rb_bra].end(); ++it) // mc loop
                 {
                     charge rc_ket = it->first;
-                    it->second.allocate(rc_bra, rc_ket, ret);
+                    //it->second.allocate(rc_bra, rc_ket, ret);
                     ret.data()[it->second.get_index()].resize(it->second.get_size());
                     for (unsigned s = 0; s < it->second.size(); ++s) // physical index loop
                         it->second[s].lbtm(ket_tensor, it->second.get_b_to_o(), it->second.get_index(), left, ret);
