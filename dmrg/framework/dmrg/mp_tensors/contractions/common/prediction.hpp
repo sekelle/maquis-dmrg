@@ -52,22 +52,15 @@ namespace contraction {
             
             Boundary<Matrix, SymmGroup> half_dm = lbtm(mps, left, mpo, NULL);
 
-            block_matrix<Matrix, SymmGroup> dm2 = dm;
             for (unsigned lb = 0; lb < half_dm.index.bra_i().size(); ++lb)
                 for (auto lbci : half_dm.index[lb])
                 {
                     unsigned ci = lbci.second;
-
                     size_t l_size = half_dm.index.bra_i()[lb].second;
                     assert (half_dm.data()[ci].size() % l_size == 0);
-                    //Matrix wblock(l_size, half_dm.data()[ci].size() / l_size);
-                    //std::copy(half_dm.data()[ci].begin(), half_dm.data()[ci].end(), wblock.get_values().begin());
 
                     Matrix tdm(l_size, l_size);
-                    //gemm(wblock, transpose(wblock), tdm);
-                    //tdm *= alpha;
 
-                    //value_type one(1);
                     typename Matrix::value_type zero(0);
                     typename Matrix::value_type alpha_v(alpha);
                     char tr = 'T';
@@ -78,7 +71,7 @@ namespace contraction {
                     charge lc = half_dm.index.bra_i()[lb].first;
                     charge rc = half_dm.index.ket_i()[lb].first;
 
-                    dm2.match_and_add_block(tdm, lc, rc);
+                    dm.match_and_add_block(tdm, lc, rc);
                 }
             
             mps.make_left_paired();
@@ -95,9 +88,6 @@ namespace contraction {
             //                                   tdm.basis().right_charge(k));
             //    }
             //}
-
-            //maquis::cout << "NORM " << (dm - dm2).norm() << std::endl;
-            dm = dm2;
 
             mps.make_left_paired();
             assert( weak_equal(dm.left_basis(), mps.data().left_basis()) );
