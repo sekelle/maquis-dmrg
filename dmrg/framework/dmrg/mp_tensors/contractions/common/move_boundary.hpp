@@ -191,8 +191,8 @@ namespace contraction {
                     charge rc_ket = it->first;
                     //it->second.allocate(rc_bra, rc_ket, ret);
                     ret.data()[it->second.get_index()].resize(it->second.get_size());
-                    for (unsigned s = 0; s < it->second.size(); ++s) // physical index loop
-                        it->second[s].lbtm(ket_tensor, it->second.get_b_to_o(), it->second.get_index(), left, ret);
+                    for (auto const& cg : it->second) // physical index loop
+                        cg.lbtm(ket_tensor, it->second.get_b_to_o(), it->second.get_index(), left, ret);
                 }
             });
 
@@ -260,8 +260,8 @@ namespace contraction {
                 {
                     charge lc_ket = it->first;
                     it->second.allocate(lc_ket, lc_bra, ret);
-                    for (size_t s = 0; s < it->second.size(); ++s) // physical index loop
-                        it->second[s].rbtm(ket_tensor, it->second.get_b_to_o(), right, ret);
+                    for (auto const& cg : it->second) // physical index loop
+                        cg.rbtm(ket_tensor, it->second.get_b_to_o(), right, ret);
                 }
             });
 
@@ -356,8 +356,8 @@ namespace contraction {
                         charge rc_ket = it->first;
                         //it->second.allocate(rc_bra, rc_ket, ret);
                         ret.data()[it->second.get_index()].resize(it->second.get_size());
-                        for (size_t s = 0; s < it->second.size(); ++s) // physical index loop
-                            it->second[s].prop_l(bra_tensor, ket_tensor, it->second.get_b_to_o(), it->second.get_index(), left, ret);
+                        for (auto const& cg : it->second) // physical index loop
+                            cg.prop_l(bra_tensor, ket_tensor, it->second.get_b_to_o(), it->second.get_index(), left, ret);
                     }
                 }
             }
@@ -440,8 +440,8 @@ namespace contraction {
                     {
                         charge lc_ket = it->first;
                         it->second.allocate(lc_ket, lc_bra, ret); // allocate all (lc_ket,lc_bra) blocks
-                        for (size_t s = 0; s < it->second.size(); ++s) // physical index loop
-                            it->second[s].prop(ket_tensor, bra_tensor.data()[lb_bra], it->second.get_b_to_o(), right, ret);
+                        for (auto const& cg : it->second) // physical index loop
+                            cg.prop(ket_tensor, bra_tensor.data()[lb_bra], it->second.get_b_to_o(), right, ret);
                     }
                 }
             }
