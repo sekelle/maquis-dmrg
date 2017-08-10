@@ -150,7 +150,7 @@ namespace contraction {
                             cg[ss].set_l_size(ls_paired);
                             unsigned intra_b_offset = base_offset + ss * cg[ss].get_m_size();
                             for (index_type b = 0; b < cg[ss].get_bs().size(); ++b) 
-                                cg[ss].get_bs()[b] = intra_b_offset + offsets[cg[ss].get_bs()[b]];
+                                cg[ss].get_ks()[b] = intra_b_offset + offsets[cg[ss].get_bs()[b]];
                         }
                     }
                 }

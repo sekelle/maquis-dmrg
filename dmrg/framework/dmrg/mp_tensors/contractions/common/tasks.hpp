@@ -283,7 +283,7 @@ public:
             for (unsigned c = 0; c < r_size; ++c)
             {
                 //maquis::dmrg::detail::iterator_axpy(&S(0,c), &S(0,c) + m_size, &ret[b2][b_to_o[b2]](offset,c), 1.0);
-                maquis::dmrg::detail::iterator_axpy(&S(0,c), &S(0,c) + m_size, &ret.data()[ci][bs[i]] + c * l_size, 1.0);
+                maquis::dmrg::detail::iterator_axpy(&S(0,c), &S(0,c) + m_size, &ret.data()[ci][ks[i]] + c * l_size, 1.0);
             }
         }
     }
