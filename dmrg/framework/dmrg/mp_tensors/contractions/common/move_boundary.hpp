@@ -119,6 +119,51 @@ namespace contraction {
                 task_calc(mpo, ket_tensor, ket_tensor, left_indices, right_pb, right_pb, mb, tasks[mb], false);
             });
 
+            BoundaryIndex<Matrix, SymmGroup> b_index(out_left_i, right_i);
+            for(unsigned rb_bra = 0; rb_bra < loop_max; ++rb_bra)
+            {
+                charge rc_bra = right_i[rb_bra].first;
+                unsigned ls_paired = out_left_i.size_of_block(rc_bra);
+                for (auto& e : tasks[rb_bra])
+                {
+                    charge rc_ket = e.first;
+                    unsigned rs_ket = right_i.size_of_block(rc_ket);
+
+                    // rescale the offsets for the larger paired sector sizes
+                    std::vector<long int> & offsets = e.second.get_offsets();
+                    size_t block_size = ls_paired * rs_ket;
+                    index_type cnt = 0;
+                    for (size_t i = 0; i < offsets.size(); ++i)
+                        if (offsets[i] > -1)
+                            offsets[i] = block_size * cnt++; 
+                    
+                    e.second.set_size(cnt * block_size);
+                    e.second.set_index(b_index.add_cohort(rb_bra, right_i.position(rc_ket), e.second.get_offsets()));
+
+                    for (unsigned s = 0; s < e.second.size(); ++s)
+                    {
+                        unsigned lb_bra = e.second[s].get_mps_block();
+                        charge lc_bra = left_i[lb_bra].first;
+                        charge phys_out = SymmGroup::fuse(rc_bra, -lc_bra);
+
+                        unsigned base_offset = left_pb(phys_out, lc_bra);
+                        for (unsigned ss = 0; ss < e.second[s].size(); ++ss)
+                        {
+                            unsigned intra_b_offset = base_offset + ss * e.second[s][ss].get_m_size();
+                            for (index_type b_small = 0; b_small < e.second[s][ss].get_bs().size(); ++b_small) 
+                            {
+                                index_type b = e.second[s][ss].get_bs()[b_small];
+                                e.second[s][ss].get_ks()[b_small] = intra_b_offset + offsets[b];
+                                e.second[s][ss].set_l_size(ls_paired);
+                            }
+                        }
+                    }
+                }
+            }
+
+            ret.data().resize(b_index.n_cohorts());
+            ret.index = b_index;
+
             // set up the indices of the new boundary
             for(unsigned rb_bra = 0; rb_bra < loop_max; ++rb_bra)
             {
@@ -150,8 +195,9 @@ namespace contraction {
                 {
                     charge rc_ket = it->first;
                     it->second.allocate(rc_bra, rc_ket, ret);
+                    ret.data()[it->second.get_index()].resize(it->second.get_size());
                     for (unsigned s = 0; s < it->second.size(); ++s) // physical index loop
-                        it->second[s].lbtm(ket_tensor, it->second.get_b_to_o(), left, ret);
+                        it->second[s].lbtm(ket_tensor, it->second.get_b_to_o(), it->second.get_index(), left, ret);
                 }
             });
 

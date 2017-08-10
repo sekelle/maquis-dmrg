@@ -45,27 +45,58 @@ namespace contraction {
                                     LBTM lbtm,
                                     double alpha, double cutoff, std::size_t Mmax)
         {
+            typedef typename SymmGroup::charge charge;
             mps.make_left_paired();
             block_matrix<Matrix, SymmGroup> dm;
             gemm(mps.data(), transpose(conjugate(mps.data())), dm);
             
             Boundary<Matrix, SymmGroup> half_dm = lbtm(mps, left, mpo, NULL);
+
+            block_matrix<Matrix, SymmGroup> dm2 = dm;
+            for (unsigned lb = 0; lb < half_dm.index.bra_i().size(); ++lb)
+                for (auto lbci : half_dm.index[lb])
+                {
+                    unsigned ci = lbci.second;
+
+                    size_t l_size = half_dm.index.bra_i()[lb].second;
+                    assert (half_dm.data()[ci].size() % l_size == 0);
+                    //Matrix wblock(l_size, half_dm.data()[ci].size() / l_size);
+                    //std::copy(half_dm.data()[ci].begin(), half_dm.data()[ci].end(), wblock.get_values().begin());
+
+                    Matrix tdm(l_size, l_size);
+                    //gemm(wblock, transpose(wblock), tdm);
+                    //tdm *= alpha;
+
+                    //value_type one(1);
+                    typename Matrix::value_type zero(0);
+                    char tr = 'T';
+                    char notr = 'N';
+                    int M = l_size, N = l_size, K = half_dm.data()[ci].size() / l_size;
+                    blas_gemm(&notr, &tr, &M, &N, &K, &alpha, &half_dm.data()[ci][0], &M, &half_dm.data()[ci][0], &N, &zero, &tdm(0,0), &M);
+
+                    charge lc = half_dm.index.bra_i()[lb].first;
+                    charge rc = half_dm.index.ket_i()[lb].first;
+
+                    dm2.match_and_add_block(tdm, lc, rc);
+                }
             
             mps.make_left_paired();
-            for (std::size_t b = 0; b < half_dm.aux_dim(); ++b)
-            {
-                block_matrix<Matrix, SymmGroup> tdm;
-                gemm(half_dm[b], transpose(conjugate(half_dm[b])), tdm);
-                
-                
-                tdm *= alpha;
-                for (std::size_t k = 0; k < tdm.n_blocks(); ++k) {
-                    if (mps.data().basis().has(tdm.basis().left_charge(k), tdm.basis().right_charge(k)))
-                        dm.match_and_add_block(tdm[k],
-                                               tdm.basis().left_charge(k),
-                                               tdm.basis().right_charge(k));
-                }
-            }
+            //for (std::size_t b = 0; b < half_dm.aux_dim(); ++b)
+            //{
+            //    block_matrix<Matrix, SymmGroup> tdm;
+            //    gemm(half_dm[b], transpose(conjugate(half_dm[b])), tdm);
+
+            //    tdm *= alpha;
+            //    for (std::size_t k = 0; k < tdm.n_blocks(); ++k) {
+            //        if (mps.data().basis().has(tdm.basis().left_charge(k), tdm.basis().right_charge(k)))
+            //            dm.match_and_add_block(tdm[k],
+            //                                   tdm.basis().left_charge(k),
+            //                                   tdm.basis().right_charge(k));
+            //    }
+            //}
+
+            //maquis::cout << "NORM " << (dm - dm2).norm() << std::endl;
+            dm = dm2;
 
             mps.make_left_paired();
             assert( weak_equal(dm.left_basis(), mps.data().left_basis()) );

@@ -264,7 +264,8 @@ public:
     }
 
     template <class OtherMatrix>
-    void lbtm(const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret, std::vector<unsigned> const & b_to_o) const
+    void lbtm(const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret, std::vector<unsigned> const & b_to_o,
+              unsigned ci) const
     {
         uint t_size = m_size * r_size;
         uint t_size_padded = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(t_size);
@@ -280,7 +281,10 @@ public:
                                                     t_pointer + tidx[i][j] * t_size_padded + t_size,
                                                     &S(0,0), alpha[i][j]);
             for (unsigned c = 0; c < r_size; ++c)
+            {
                 maquis::dmrg::detail::iterator_axpy(&S(0,c), &S(0,c) + m_size, &ret[b2][b_to_o[b2]](offset,c), 1.0);
+                maquis::dmrg::detail::iterator_axpy(&S(0,c), &S(0,c) + m_size, &ret.data()[ci][ks[i]] + c * l_size, 1.0);
+            }
         }
     }
 
@@ -308,6 +312,8 @@ public:
 
     unsigned get_m_size() const { return m_size; }
     unsigned get_r_size() const { return r_size; }
+
+    void     set_l_size(unsigned l) { l_size = l; }
 
     std::vector<index_type> const & get_bs() const { return bs; }
     std::vector<std::size_t>       & get_ks()       { return ks; }
@@ -406,6 +412,7 @@ public:
     template <class DefaultMatrix, class OtherMatrix>
     void lbtm(MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
               std::vector<unsigned> const & b_to_o,
+              unsigned ci,
               Boundary<OtherMatrix, SymmGroup> const & left,
               Boundary<OtherMatrix, SymmGroup> & new_left) const
     {
@@ -413,7 +420,7 @@ public:
         for (int ss1 = 0; ss1 < this->size(); ++ss1)
         {
             if (!(*this)[ss1].n_tasks()) continue;
-            (*this)[ss1].lbtm(t_pointer, new_left, b_to_o);
+            (*this)[ss1].lbtm(t_pointer, new_left, b_to_o, ci);
         }
         free(t_pointer);
     }
