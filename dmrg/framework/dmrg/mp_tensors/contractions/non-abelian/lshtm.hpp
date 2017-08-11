@@ -124,16 +124,16 @@ namespace SU2 {
                                 unsigned ci_eff = (left_transpose) ? left.cohort_index(lc_ket, lc_bra) : ci;
                                 size_t left_offset = left.offset(ci, b1);
 
-                                typename block_type::mapped_value_type::t_key tq
+                                //typename block_type::mapped_value_type::t_key tq
+                                auto tq = bit_twiddling::pack(ci_eff, left_offset, lb_ket, ket_offset, left_transpose);
                                     //= bit_twiddling::pack(b1_eff, b_left, lb_ket, ket_offset, left_transpose);
-                                    = bit_twiddling::pack(ci_eff, left_offset, lb_ket, ket_offset, left_transpose);
                                 
                                 detail::op_iterate_shtm<Matrix, typename common::BoundarySchedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
                                     (W, w_block, couplings, cg, tq, rs_ket, t_index);
                             } // w_block
                         } //op_index
                     } // b1
-                    for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(b2, 0, !mpo.herm_right.skip(b2));
+                    for (auto& mg : cg) mg.add_line(b2, 0, !mpo.herm_right.skip(b2));
                 } // b2
 
                 if (cg.n_tasks())
