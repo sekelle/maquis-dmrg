@@ -40,7 +40,7 @@ namespace SU2 {
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
     void shtm_tasks(MPOTensor<Matrix, SymmGroup> const & mpo,
-                    common::LeftIndices<Matrix, OtherMatrix, SymmGroup> const & left,
+                    BoundaryIndex<Matrix, SymmGroup> const & left,
                     common::RightIndices<Matrix, OtherMatrix, SymmGroup> const & right,
                     Index<SymmGroup> const & left_i,
                     Index<SymmGroup> const & right_i,
@@ -60,8 +60,8 @@ namespace SU2 {
 
         mpsb.resize(phys_i.size());
 
-        unsigned lb_out = left.index.bra_i().position(left_i[lb_out_mps].first);
-        if (lb_out == left.index.bra_i().size()) return;
+        unsigned lb_out = left.bra_i().position(left_i[lb_out_mps].first);
+        if (lb_out == left.bra_i().size()) return;
 
         charge lc_out = left_i[lb_out_mps].first;
         unsigned ls_out = left_i[lb_out_mps].second;
@@ -76,12 +76,12 @@ namespace SU2 {
             unsigned rs_out = right_i[rb_out].second;
             unsigned out_offset = right_pb(phys_out, rc_out);
             
-            for (auto lbci : boost::adaptors::reverse(left.index[lb_out]))
+            for (auto lbci : boost::adaptors::reverse(left[lb_out]))
             {
-                charge lc_in = left.index.ket_i()[lbci.first].first;
+                charge lc_in = left.ket_i()[lbci.first].first;
                 unsigned lb_in = left_i.position(lc_in); if (lb_in == left_i.size()) continue;
                 unsigned ls_in = left_i[lb_in].second;
-                unsigned ci = lbci.second, ci_conj = left.index.cohort_index(lbci.first, lb_out);
+                unsigned ci = lbci.second, ci_conj = left.cohort_index(lbci.first, lb_out);
 
                 cgroup cg(lb_in, phys_i[s].second, ls_out, ls_in, rs_out, out_offset);
 
@@ -90,7 +90,7 @@ namespace SU2 {
                 t_map_t t_index;
                 for (index_type b1 = 0; b1 < mpo.row_dim(); ++b1)
                 {
-                    if (left.index.offset(ci, b1) < 0) continue;
+                    if (left.offset(ci, b1) < 0) continue;
                     int A = mpo.left_spin(b1).get(); if (!::SU2::triangle<SymmGroup>(lc_in, A, lc_out)) continue;
 
                     index_type ci_eff = (mpo.herm_left.skip(b1)) ? ci_conj : ci;
@@ -118,7 +118,7 @@ namespace SU2 {
 
                                 value_type couplings[4];
                                 value_type scale = right.conj_scales[b2][b_right] * access.scale(op_index)
-                                                 *  left.index.conjugate_scale(ci, b1);
+                                                 *  left.conjugate_scale(ci, b1);
 
                                 w9j.set_scale(A, K, Ap, rc_in, scale, couplings);
 
@@ -131,7 +131,7 @@ namespace SU2 {
                             } // w_block
                         } //op_index
                     } // b2
-                    for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(ci_eff, left.index.offset(ci, b1), mpo.herm_left.skip(b1));
+                    for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(ci_eff, left.offset(ci, b1), mpo.herm_left.skip(b1));
                 } // b1
 
                 cg.t_key_vec.resize(t_index.size());

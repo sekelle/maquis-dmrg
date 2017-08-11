@@ -305,7 +305,6 @@ public:
 
     unsigned get_m_size() const { return m_size; }
     unsigned get_r_size() const { return r_size; }
-
     void     set_l_size(unsigned l) { l_size = l; }
 
     std::vector<index_type>       & get_bs()       { return bs; }
@@ -696,7 +695,6 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
 
     boost::chrono::high_resolution_clock::time_point now = boost::chrono::high_resolution_clock::now();
 
-    LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
     RightIndices<Matrix, OtherMatrix, SymmGroup> right_indices(right, mpo);
 
     // MPS indices
@@ -714,7 +712,7 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
     unsigned loop_max = left_i.size();
     omp_for(index_type mb, parallel::range<index_type>(0,loop_max), {
         contraction_schedule.load_balance[mb] = mb;
-        task_calc(mpo, left_indices, right_indices, left_i,
+        task_calc(mpo, left.index, right_indices, left_i,
                   right_i, physical_i, out_right_pb, mb, contraction_schedule[mb]);
     });
 

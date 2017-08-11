@@ -111,62 +111,6 @@ namespace contraction {
     { }
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
-    class LeftIndices : public std::vector<DualIndex<SymmGroup> >
-    {
-        typedef std::vector<DualIndex<SymmGroup> > base;
-        typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
-        typedef typename SymmGroup::charge charge;
-        typedef typename Matrix::value_type value_type;
-
-    public:
-
-        LeftIndices() {}
-
-        LeftIndices(Boundary<OtherMatrix, SymmGroup> const & left,
-                    MPOTensor<Matrix, SymmGroup> const & mpo) : base(left.aux_dim())
-                                                              , index(left.index)
-                                                              , conj_scales(left.aux_dim())
-                                                              , trans_storage(left.aux_dim())
-        {
-            parallel::scheduler_permute scheduler(mpo.placement_l, parallel::groups_granularity);
-
-            index_type loop_max = left.aux_dim();
-            omp_for(index_type b1, parallel::range(index_type(0),loop_max), {
-                // exploit hermiticity if available
-                if (mpo.herm_left.skip(b1))
-                {   
-                    parallel::guard group(scheduler(b1), parallel::groups_granularity);
-
-                    (*this)[b1] = left[mpo.herm_left.conj(b1)].basis(); 
-                    conj_scales[b1] = conjugate_phases<Matrix>((*this)[b1], mpo.herm_left, b1, false, true);
-                    trans_storage[b1] = true;
-                }
-                else {
-                    parallel::guard group(scheduler(b1), parallel::groups_granularity);
-
-                    (*this)[b1] = left[b1].basis(); 
-                    conj_scales[b1] = std::vector<value_type>(left[b1].n_blocks(), value_type(1.));
-                    trans_storage[b1] = false;
-                }
-            });
-        }
-
-        std::size_t position(index_type b1, charge lc, charge mc) const
-        {
-            if(trans_storage[b1])
-                return (*this)[b1].position(mc,lc);
-            else
-                return (*this)[b1].position(lc,mc);
-        }
-
-        BoundaryIndex<OtherMatrix, SymmGroup> index;
-
-        std::vector<std::vector<value_type> > conj_scales;
-    private:
-        std::vector<char> trans_storage; // vector<bool> not thread safe !!
-    };
-
-    template<class Matrix, class OtherMatrix, class SymmGroup>
     class RightIndices : public std::vector<DualIndex<SymmGroup> >
     {
         typedef std::vector<DualIndex<SymmGroup> > base;

@@ -90,8 +90,6 @@ namespace contraction {
             typedef BoundarySchedule<Matrix, SymmGroup> schedule_t;
             typedef typename schedule_t::block_type::const_iterator const_iterator;
 
-            LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
-
             if (!ket_tensor.is_right_paired())
             {
                 parallel_critical
@@ -114,7 +112,7 @@ namespace contraction {
             unsigned loop_max = right_i.size();
             schedule_t tasks(loop_max);
             omp_for(unsigned mb, parallel::range<unsigned>(0,loop_max), {
-                task_calc(mpo, ket_tensor, ket_tensor, left_indices, right_pb, right_pb, mb, tasks[mb], false);
+                task_calc(mpo, ket_tensor, ket_tensor, left.index, right_pb, right_pb, mb, tasks[mb], false);
             });
 
             BoundaryIndex<Matrix, SymmGroup> b_index(out_left_i, right_i);
@@ -253,8 +251,6 @@ namespace contraction {
             typedef BoundarySchedule<Matrix, SymmGroup> schedule_t;
             typedef typename schedule_t::block_type::const_iterator const_iterator;
 
-            LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
-
             MPSTensor<Matrix, SymmGroup> buffer; // holds the conjugate tensor if we deal with complex numbers
             MPSTensor<Matrix, SymmGroup> const & bra_tensor = set_conjugate(bra_tensor_in, buffer);
 
@@ -283,7 +279,7 @@ namespace contraction {
             unsigned loop_max = bra_right_i.size();
             schedule_t tasks(loop_max);
             omp_for(unsigned rb_bra, parallel::range<unsigned>(0,loop_max), {
-                task_calc(mpo, bra_tensor, ket_tensor, left_indices, bra_right_pb, ket_right_pb, rb_bra, tasks[rb_bra], true);
+                task_calc(mpo, bra_tensor, ket_tensor, left.index, bra_right_pb, ket_right_pb, rb_bra, tasks[rb_bra], true);
             });
 
             BoundaryIndex<Matrix, SymmGroup> b_index(bra_right_i, ket_right_i);
