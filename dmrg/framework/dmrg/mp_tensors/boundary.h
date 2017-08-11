@@ -269,7 +269,7 @@ private:
     template <class Archive>
     void serialize(Archive & ar, const unsigned int version)
     {
-        ar & lb_rb_ci & offsets & conjugate_scales & transposes;
+        ar & lb_rb_ci & offsets & conjugate_scales & transposes & sizes & n_blocks_;
     }
 };
 
