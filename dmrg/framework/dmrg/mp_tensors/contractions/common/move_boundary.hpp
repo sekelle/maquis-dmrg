@@ -91,8 +91,6 @@ namespace contraction {
             typedef typename schedule_t::block_type::const_iterator const_iterator;
 
             LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
-            Boundary<OtherMatrix, SymmGroup> ret;
-            ret.resize(mpo.col_dim());
 
             if (!ket_tensor.is_right_paired())
             {
@@ -135,8 +133,7 @@ namespace contraction {
                     // rescale the offsets for the larger paired sector sizes
                     for (index_type b = 0; b < offsets.size(); ++b) if (offsets[b] > -1) offsets[b] = block_size * cnt++; 
                     
-                    e.second.set_size(cnt * block_size);
-                    e.second.set_index(b_index.add_cohort(rb_bra, right_i.position(rc_ket), e.second.get_offsets()));
+                    b_index.add_cohort(rb_bra, right_i.position(rc_ket), e.second.get_offsets());
 
                     for (auto& cg : e.second)
                     {
@@ -156,32 +153,8 @@ namespace contraction {
                 }
             }
 
-            ret.data().resize(b_index.n_cohorts());
-            ret.index = b_index;
-
-            // set up the indices of the new boundary
-            //for(unsigned rb_bra = 0; rb_bra < loop_max; ++rb_bra)
-            //{
-            //    charge rc_bra = right_i[rb_bra].first;
-            //    unsigned ls_paired = out_left_i.size_of_block(rc_bra);
-            //    for (const_iterator it = tasks[rb_bra].begin(); it != tasks[rb_bra].end(); ++it)
-            //    {
-            //        charge rc_ket = it->first;
-            //        unsigned rs_ket = right_i.size_of_block(rc_ket);
-            //        it->second.reserve(rc_bra, rc_ket, ls_paired, rs_ket, ret);
-
-            //        for (unsigned s = 0; s < it->second.size(); ++s)
-            //        {
-            //            unsigned lb_bra = it->second[s].get_mps_block();
-            //            charge lc_bra = left_i[lb_bra].first;
-            //            charge phys_out = SymmGroup::fuse(rc_bra, -lc_bra);
-
-            //            unsigned base_offset = left_pb(phys_out, lc_bra);
-            //            for (unsigned ss = 0; ss < it->second[s].size(); ++ss)
-            //                it->second[s][ss].offset = base_offset + ss * it->second[s][ss].get_m_size();
-            //        }
-            //    }
-            //}
+            Boundary<OtherMatrix, SymmGroup> ret;
+            ret.reserve(b_index);
 
             // Contraction
             omp_for(index_type rb_bra, parallel::range<index_type>(0,loop_max), {
@@ -189,10 +162,9 @@ namespace contraction {
                 for (const_iterator it = tasks[rb_bra].begin(); it != tasks[rb_bra].end(); ++it) // mc loop
                 {
                     charge rc_ket = it->first;
-                    //it->second.allocate(rc_bra, rc_ket, ret);
-                    ret.data()[it->second.get_index()].resize(it->second.get_size());
+                    ret.template allocate<1>(rc_bra, rc_ket);
                     for (auto const& cg : it->second) // physical index loop
-                        cg.lbtm(ket_tensor, it->second.get_b_to_o(), it->second.get_index(), left, ret);
+                        cg.lbtm(ket_tensor, ret.index.cohort_index(rc_bra, rc_ket), left, ret);
                 }
             });
 
@@ -282,8 +254,6 @@ namespace contraction {
             typedef typename schedule_t::block_type::const_iterator const_iterator;
 
             LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
-            Boundary<OtherMatrix, SymmGroup> ret;
-            ret.resize(mpo.col_dim());
 
             MPSTensor<Matrix, SymmGroup> buffer; // holds the conjugate tensor if we deal with complex numbers
             MPSTensor<Matrix, SymmGroup> const & bra_tensor = set_conjugate(bra_tensor_in, buffer);
@@ -319,24 +289,11 @@ namespace contraction {
             BoundaryIndex<Matrix, SymmGroup> b_index(bra_right_i, ket_right_i);
             for(unsigned rb_bra = 0; rb_bra < loop_max; ++rb_bra)
                 for (auto& e : tasks[rb_bra])
-                    e.second.set_index(b_index.add_cohort(rb_bra, ket_right_i.position(e.first), e.second.get_offsets()));
+                    b_index.add_cohort(rb_bra, ket_right_i.position(e.first), e.second.get_offsets());
 
-            ret.data().resize(b_index.n_cohorts());
             b_index.complement_transpose(mpo.herm_right, true);
-            ret.index = b_index;
-
-            // set up the indices of the new boundary
-            //for(unsigned rb_bra = 0; rb_bra < loop_max; ++rb_bra)
-            //{
-            //    charge rc_bra = bra_right_i[rb_bra].first;
-            //    size_t rs_bra = bra_right_i[rb_bra].second;
-            //    for (const_iterator it = tasks[rb_bra].begin(); it != tasks[rb_bra].end(); ++it)
-            //    {
-            //        charge rc_ket = it->first;
-            //        size_t rs_ket = ket_right_i.size_of_block(rc_ket);
-            //        it->second.reserve(rc_bra, rc_ket, rs_bra, rs_ket, ret); // allocate all (rc_bra,rc_ket) blocks
-            //    }
-            //}
+            Boundary<OtherMatrix, SymmGroup> ret;
+            ret.reserve(b_index);
 
             // Contraction
             #ifdef MAQUIS_OPENMP
@@ -354,10 +311,9 @@ namespace contraction {
                     for (const_iterator it = tasks[rb_bra].begin(); it != tasks[rb_bra].end(); ++it)
                     {
                         charge rc_ket = it->first;
-                        //it->second.allocate(rc_bra, rc_ket, ret);
-                        ret.data()[it->second.get_index()].resize(it->second.get_size());
+                        ret.allocate(rc_bra, rc_ket);
                         for (auto const& cg : it->second) // physical index loop
-                            cg.prop_l(bra_tensor, ket_tensor, it->second.get_b_to_o(), it->second.get_index(), left, ret);
+                            cg.prop_l(bra_tensor, ket_tensor, ret.index.cohort_index(rc_bra, rc_ket), left, ret);
                     }
                 }
             }

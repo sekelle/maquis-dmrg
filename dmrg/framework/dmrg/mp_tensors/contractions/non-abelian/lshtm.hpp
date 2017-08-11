@@ -139,13 +139,11 @@ namespace SU2 {
                 if (cg.n_tasks())
                 {
                     cg.t_key_vec.resize(t_index.size());
-                    for (auto kit = t_index.begin(); kit != t_index.end(); ++kit)
-                        cg.t_key_vec[kit->second] = kit->first;
+                    for (auto const& kit : t_index) cg.t_key_vec[kit.second] = kit.first;
 
                     mpsb[rc_ket].push_back(cg);
 
-                    // mark each used b2 with 1
-                    auto& b2o = mpsb[rc_ket].get_offsets();
+                    auto& b2o = mpsb[rc_ket].get_offsets(); // mark each used b2 with 1
                     b2o.resize(mpo.col_dim());
                     for (auto& mg : cg) for (index_type b : mg.get_bs()) b2o[b] = 1;
                 }
@@ -153,15 +151,11 @@ namespace SU2 {
 
             if (mpsb.count(rc_ket) > 0)
             {
-                auto& cohort = mpsb[rc_ket];
-                auto& b2o = cohort.get_offsets();
+                auto& b2o = mpsb[rc_ket].get_offsets();
                 std::size_t l_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(rs_bra * rs_ket);
-                cohort.set_size(std::accumulate(b2o.begin(), b2o.end(), 0) * l_size);
 
                 index_type cnt = 0;
-                for(index_type b = 0; b < b2o.size(); ++b)
-                    if   (b2o[b]) b2o[b] = l_size * cnt++;
-                    else          b2o[b] = -1;
+                for(auto& b : b2o) if (b) b = l_size * cnt++; else b = -1;
 
                 for (auto& cg : mpsb[rc_ket])
                     for (auto& mg : cg)

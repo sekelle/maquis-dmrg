@@ -235,7 +235,7 @@ public:
 
     template <class DefaultMatrix, class OtherMatrix>
     void prop_l(DefaultMatrix const & bra, const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret,
-                std::vector<unsigned> const & b_to_o, unsigned ci) const
+                unsigned ci) const
     {
         value_type one=1;
         char tr = 'T';
@@ -257,15 +257,11 @@ public:
 
             //blas_gemm(&tr, &notr, &M, &N, &K, &one, &bra(0,offset), &K, &S(0,0), &K, &one, &ret[b2][b_to_o[b2]](0,0), &M);
             blas_gemm(&tr, &notr, &M, &N, &K, &one, &bra(0,offset), &K, &S(0,0), &K, &one, &ret.data()[ci][ks[i]], &M);
- 
-            //std::copy(&ret[b2][b_to_o[b2]](0,0), &ret[b2][b_to_o[b2]](0,0) + M*N, &ret.data()[ci][ks[i]]);
-            //std::copy(&ret.data()[ci][ks[i]], &ret.data()[ci][ks[i]] + M*N, &ret[b2][b_to_o[b2]](0,0));
         }
     }
 
     template <class OtherMatrix>
-    void lbtm(const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret, std::vector<unsigned> const & b_to_o,
-              unsigned ci) const
+    void lbtm(const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret, unsigned ci) const
     {
         uint t_size = m_size * r_size;
         uint t_size_padded = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(t_size);
@@ -281,10 +277,7 @@ public:
                                                     t_pointer + tidx[i][j] * t_size_padded + t_size,
                                                     &S(0,0), alpha[i][j]);
             for (unsigned c = 0; c < r_size; ++c)
-            {
-                //maquis::dmrg::detail::iterator_axpy(&S(0,c), &S(0,c) + m_size, &ret[b2][b_to_o[b2]](offset,c), 1.0);
                 maquis::dmrg::detail::iterator_axpy(&S(0,c), &S(0,c) + m_size, &ret.data()[ci][ks[i]] + c * l_size, 1.0);
-            }
         }
     }
 
@@ -396,7 +389,6 @@ public:
     template <class DefaultMatrix, class OtherMatrix>
     void prop_l(MPSTensor<DefaultMatrix, SymmGroup> const & bra_mps,
                 MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
-                std::vector<unsigned> const & b_to_o,
                 unsigned ci,
                 Boundary<OtherMatrix, SymmGroup> const & left,
                 Boundary<OtherMatrix, SymmGroup> & new_left) const
@@ -405,14 +397,13 @@ public:
         for (int ss1 = 0; ss1 < this->size(); ++ss1)
         {
             if (!(*this)[ss1].n_tasks()) continue;
-            (*this)[ss1].prop_l(bra_mps.data()[mps_block], t_pointer, new_left, b_to_o, ci);
+            (*this)[ss1].prop_l(bra_mps.data()[mps_block], t_pointer, new_left, ci);
         }
         free(t_pointer);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
     void lbtm(MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
-              std::vector<unsigned> const & b_to_o,
               unsigned ci,
               Boundary<OtherMatrix, SymmGroup> const & left,
               Boundary<OtherMatrix, SymmGroup> & new_left) const
@@ -421,7 +412,7 @@ public:
         for (int ss1 = 0; ss1 < this->size(); ++ss1)
         {
             if (!(*this)[ss1].n_tasks()) continue;
-            (*this)[ss1].lbtm(t_pointer, new_left, b_to_o, ci);
+            (*this)[ss1].lbtm(t_pointer, new_left, ci);
         }
         free(t_pointer);
     }
@@ -576,9 +567,6 @@ public:
                 }
             }
         }
-
-        //if (cohort_index < new_right.data().size())
-        //    new_right.data()[cohort_index].resize(cohort_size);
     }
 
     template <class OtherMatrix>
@@ -602,12 +590,6 @@ public:
 
     std::vector<unsigned> const & get_b_to_o() const { return b_to_o; }
 
-    unsigned get_index() const    { return cohort_index; }
-    size_t   get_size () const    { return cohort_size; }
-
-    void set_size(std::size_t s)  { cohort_size = s; }
-    void set_index(unsigned s)    { cohort_index = s; }
-
     std::vector<long int>      & get_offsets()       { return mpo_offsets; }
     std::vector<long int> const& get_offsets() const { return mpo_offsets; }
 
@@ -615,8 +597,6 @@ private:
     // b_to_o[b] = position o of sector (mc,lc) in boundary index b
     mutable std::vector<unsigned> b_to_o;
 
-    std::size_t cohort_size;
-    unsigned    cohort_index;
     std::vector<long int> mpo_offsets;
 };
 

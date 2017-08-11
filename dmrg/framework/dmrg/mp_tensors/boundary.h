@@ -96,6 +96,7 @@ public:
         conjugate_scales = rhs.conjugate_scales;
         transposes = rhs.transposes;
         sizes = rhs.sizes;
+        n_blocks_ = rhs.n_blocks_;
     }
 
     unsigned   n_cohorts      ()                        const { return offsets.size(); }
@@ -107,6 +108,8 @@ public:
                                                                 else             return 0;
                                                               }
     size_t     block_size     (unsigned ci)             const { return sizes[ci]; }
+    size_t       n_blocks     (unsigned ci)             const { return n_blocks_[ci]; }
+
     Index<SymmGroup> const& bra_i  ()                   const { return bra_index; }
     Index<SymmGroup> const& ket_i  ()                   const { return ket_index; }
 
@@ -147,6 +150,7 @@ public:
         conjugate_scales.push_back(std::vector<value_type>(off_.size(), 1.));
         transposes      .push_back(std::vector<char>      (off_.size()));
         sizes           .push_back(bra_index[lb].second * ket_index[rb].second);
+        n_blocks_       .push_back(std::count_if(off_.begin(), off_.end(), [](long int o) { return o > -1; }));
 
         return ci;
     }
@@ -258,6 +262,7 @@ private:
     std::vector<std::vector<value_type>> conjugate_scales;
     std::vector<std::vector<char>>       transposes;
     std::vector<std::size_t>             sizes;
+    std::vector<unsigned>                n_blocks_;
 
     friend class boost::serialization::access;
 
@@ -272,6 +277,7 @@ template<class Matrix, class SymmGroup>
 class Boundary : public storage::disk::serializable<Boundary<Matrix, SymmGroup> >
 {
 public:
+    typedef typename SymmGroup::charge charge;
     typedef typename maquis::traits::scalar_type<Matrix>::type scalar_type;
     typedef typename Matrix::value_type value_type;
     typedef std::pair<typename SymmGroup::charge, std::size_t> access_type;
@@ -320,6 +326,19 @@ public:
 
     std::size_t aux_dim() const { 
         return data_.size(); 
+    }
+
+    void reserve(BoundaryIndex<Matrix, SymmGroup> const & idx)
+    {
+        index = idx;
+        data().resize(idx.n_cohorts());
+    }
+
+    template <int A = ALIGNMENT/sizeof(value_type)>
+    void allocate(charge rc, charge lc)
+    {
+        unsigned ci = index.cohort_index(rc, lc);
+        data()[ci].resize(bit_twiddling::round_up<A>(index.block_size(ci)) * index.n_blocks(ci));
     }
 
     void resize(size_t n)
