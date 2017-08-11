@@ -47,7 +47,6 @@ namespace SU2 {
                      typename common::BoundarySchedule<Matrix, SymmGroup>::block_type & mpsb)
     {
         typedef MPOTensor_detail::index_type index_type;
-        typedef typename MPOTensor<Matrix, SymmGroup>::row_proxy row_proxy;
         typedef typename SymmGroup::charge charge;
         typedef typename Matrix::value_type value_type;
         typedef typename common::BoundarySchedule<Matrix, SymmGroup>::block_type block_type;
@@ -86,7 +85,7 @@ namespace SU2 {
                     if (mpo.herm_left.skip(b1)) continue;
                     int A = mpo.left_spin(b1).get(); if (!::SU2::triangle<SymmGroup>(lc_ket, A, lc_bra)) continue;
 
-                    for (typename row_proxy::const_iterator row_it = mpo.row(b1).begin(); row_it != mpo.row(b1).end(); ++row_it) {
+                    for (auto row_it = mpo.row(b1).begin(); row_it != mpo.row(b1).end(); ++row_it) {
                         index_type b2 = row_it.index();
 
                         MPOTensor_detail::term_descriptor<Matrix, SymmGroup, true> access = mpo.at(b1,b2);
@@ -120,12 +119,11 @@ namespace SU2 {
                             } // w_block
                         } //op_index
                     } // b2
-                    for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(b1, 0, !mpo.herm_left.skip(b1));
+                    for (auto& mg : cg) mg.add_line(b1, 0, !mpo.herm_left.skip(b1));
                 } // b1
 
                 cg.t_key_vec.resize(t_index.size());
-                for (typename t_map_t::const_iterator kit = t_index.begin(); kit != t_index.end(); ++kit)
-                    cg.t_key_vec[kit->second] = kit->first;
+                for (auto const& kit : t_index) cg.t_key_vec[kit.second] = kit.first;
                 if (cg.n_tasks()) mpsb[lc_ket].push_back(cg);
 
             } // lb_ket
