@@ -105,8 +105,7 @@ namespace SU2 {
                                 charge lc_ket = SymmGroup::fuse(rc_ket, -phys_in);
                                 unsigned lb_ket = ket_left_i.position(lc_ket); if (lb_ket == ket_left_i.size()) continue;
                                 //unsigned b_left = left.position(b1, lc_bra, lc_ket); if (b_left == left[b1].size()) continue;
-                                unsigned ci = left.cohort_index(lc_bra, lc_ket); if (ci == left.n_cohorts()) continue;
-                                                                                       if (left.offset(ci, b1) < 0) continue;
+                                unsigned ci = left.cohort_index(lc_bra, lc_ket); if (!left.has_block(ci, b1)) continue;
                                 unsigned ls_ket = ket_left_i[lb_ket].second;
                                 unsigned ket_offset = ket_right_pb(phys_in, rc_ket);
 

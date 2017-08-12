@@ -75,21 +75,6 @@ namespace contraction {
                 }
             
             mps.make_left_paired();
-            //for (std::size_t b = 0; b < half_dm.aux_dim(); ++b)
-            //{
-            //    block_matrix<Matrix, SymmGroup> tdm;
-            //    gemm(half_dm[b], transpose(conjugate(half_dm[b])), tdm);
-
-            //    tdm *= alpha;
-            //    for (std::size_t k = 0; k < tdm.n_blocks(); ++k) {
-            //        if (mps.data().basis().has(tdm.basis().left_charge(k), tdm.basis().right_charge(k)))
-            //            dm.match_and_add_block(tdm[k],
-            //                                   tdm.basis().left_charge(k),
-            //                                   tdm.basis().right_charge(k));
-            //    }
-            //}
-
-            mps.make_left_paired();
             assert( weak_equal(dm.left_basis(), mps.data().left_basis()) );
             
             block_matrix<Matrix, SymmGroup> U;

@@ -46,7 +46,7 @@ namespace SU2 {
                     Index<SymmGroup> const & right_i,
                     Index<SymmGroup> const & phys_i,
                     ProductBasis<SymmGroup> const & right_pb,
-                    unsigned lb_out_mps,
+                    unsigned lb_out,
                     typename common::Schedule<Matrix, SymmGroup>::block_type & mpsb)
     {
         typedef MPOTensor_detail::index_type index_type;
@@ -59,11 +59,8 @@ namespace SU2 {
 
         mpsb.resize(phys_i.size());
 
-        unsigned lb_out = left.bra_i().position(left_i[lb_out_mps].first);
-        if (lb_out == left.bra_i().size()) return;
-
-        charge lc_out = left_i[lb_out_mps].first;
-        unsigned ls_out = left_i[lb_out_mps].second;
+        charge lc_out = left_i[lb_out].first;
+        unsigned ls_out = left_i[lb_out].second;
 
         // output physical index, output offset range = out_right offset + ss2*rs_out
         //                                              for ss2 in {0, 1, .., phys_i[s].second}
@@ -75,12 +72,12 @@ namespace SU2 {
             unsigned rs_out = right_i[rb_out].second;
             unsigned out_offset = right_pb(phys_out, rc_out);
             
-            for (auto lbci : boost::adaptors::reverse(left[lb_out]))
+            for (auto lbci : boost::adaptors::reverse(left(lc_out)))
             {
-                charge lc_in = left.ket_i()[lbci.first].first;
-                unsigned lb_in = left_i.position(lc_in); if (lb_in == left_i.size()) continue;
+                charge lc_in = lbci.first;
+                unsigned lb_in = left_i.position(lbci.first); if (lb_in == left_i.size()) continue;
                 unsigned ls_in = left_i[lb_in].second;
-                unsigned ci = lbci.second, ci_conj = left.cohort_index(lbci.first, lb_out);
+                unsigned ci = lbci.second, ci_conj = left.cohort_index(lc_in, lc_out);
 
                 cgroup cg(lb_in, phys_i[s].second, ls_out, ls_in, rs_out, out_offset);
 
@@ -89,7 +86,7 @@ namespace SU2 {
                 t_map_t t_index;
                 for (index_type b1 = 0; b1 < mpo.row_dim(); ++b1)
                 {
-                    if (left.offset(ci, b1) < 0) continue;
+                    if (!left.has_block(ci, b1)) continue;
                     int A = mpo.left_spin(b1).get(); if (!::SU2::triangle<SymmGroup>(lc_in, A, lc_out)) continue;
 
                     index_type ci_eff = (mpo.herm_left.skip(b1)) ? ci_conj : ci;

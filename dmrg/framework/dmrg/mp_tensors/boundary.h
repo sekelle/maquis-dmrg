@@ -81,9 +81,8 @@ class BoundaryIndex
 
 public:
 
-    //BoundaryIndex() {}
     BoundaryIndex(Index<SymmGroup> const & bra, Index<SymmGroup> const & ket)
-    : bra_index(bra), ket_index(ket), lb_rb_ci(bra.size())  {}
+    : bra_index(bra), ket_index(ket), lb_rb_ci(bra.size()), lb_rc_ci(bra.size())  {}
 
     template <class OtherMatrix>
     BoundaryIndex(BoundaryIndex<OtherMatrix, SymmGroup> const& rhs)
@@ -92,6 +91,7 @@ public:
         ket_index = rhs.ket_index;
 
         lb_rb_ci = rhs.lb_rb_ci;
+        lb_rc_ci = rhs.lb_rc_ci;
         offsets  = rhs.offsets;
         conjugate_scales = rhs.conjugate_scales;
         transposes = rhs.transposes;
@@ -101,7 +101,7 @@ public:
 
     unsigned   n_cohorts      ()                        const { return offsets.size(); }
     long int   offset         (unsigned ci, unsigned b) const { return offsets[ci][b]; }
-    bool       has_block      (unsigned ci, unsigned b) const { return offsets[ci][b] > -1; }
+    bool       has_block      (unsigned ci, unsigned b) const { return ci < n_cohorts() && offsets[ci][b] > -1; }
     value_type conjugate_scale(unsigned ci, unsigned b) const { return conjugate_scales[ci][b]; }
     bool       trans          (unsigned ci, unsigned b) const { return transposes[ci][b]; }
     size_t     aux_dim        ()                        const { if (n_cohorts()) return offsets[0].size();
@@ -112,17 +112,6 @@ public:
 
     Index<SymmGroup> const& bra_i  ()                   const { return bra_index; }
     Index<SymmGroup> const& ket_i  ()                   const { return ket_index; }
-
-    bool has(unsigned lb, unsigned rb) const
-    {
-        if (lb >= lb_rb_ci.size())
-            return false;
-
-        for (auto pair : lb_rb_ci[lb])
-            if (rb == pair.first) return true;
-
-        return false;
-    }
 
     unsigned cohort_index(unsigned lb, unsigned rb, int tag = 0) const
     {
@@ -146,9 +135,12 @@ public:
 
         unsigned ci = n_cohorts();
         lb_rb_ci[lb].push_back(std::make_pair(rb, ci));
+        lb_rc_ci[lb].push_back(std::make_pair(ket_index[rb].first, ci));
+
         offsets.push_back(off_);
         conjugate_scales.push_back(std::vector<value_type>(off_.size(), 1.));
         transposes      .push_back(std::vector<char>      (off_.size()));
+
         sizes           .push_back(bra_index[lb].second * ket_index[rb].second);
         n_blocks_       .push_back(std::count_if(off_.begin(), off_.end(), [](long int o) { return o > -1; }));
 
@@ -183,6 +175,14 @@ public:
     std::vector<std::pair<unsigned, unsigned>> const & operator[](size_t lb) const {
         assert(lb < lb_rb_ci.size());
         return lb_rb_ci[lb];
+    }
+
+    std::vector<std::pair<charge, unsigned>> const & operator()(charge lc) const {
+        unsigned lb = bra_index.position(lc);
+        if (lb < bra_index.size())
+            return lb_rc_ci[lb];
+        else
+            return empty;
     }
 
     template <class Index, class Data, class Herm>
@@ -257,6 +257,7 @@ private:
     Index<SymmGroup> bra_index, ket_index;
     //     lb_ket                       rb_ket     ci
     std::vector<std::vector<std::pair<unsigned, unsigned>>> lb_rb_ci;
+    std::vector<std::vector<std::pair<charge, unsigned>>>   lb_rc_ci;
 
     std::vector<std::vector<long int>>   offsets;
     std::vector<std::vector<value_type>> conjugate_scales;
@@ -271,6 +272,8 @@ private:
     {
         ar & lb_rb_ci & offsets & conjugate_scales & transposes & sizes & n_blocks_;
     }
+    
+    std::vector<std::pair<charge, unsigned>> empty;
 };
 
 template<class Matrix, class SymmGroup>
