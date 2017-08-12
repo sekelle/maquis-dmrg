@@ -52,29 +52,29 @@ namespace contraction {
             
             Boundary<Matrix, SymmGroup> half_dm = lbtm(mps, left, mpo, NULL);
 
-            for (unsigned lb = 0; lb < half_dm.index.bra_i().size(); ++lb)
-                for (auto lbci : half_dm.index[lb])
+            omp_for(unsigned lb, parallel::range<unsigned>(0,mps.data().basis().size()),
+            {
+                charge lc = mps.data().basis().left_charge(lb);
+                size_t ls = mps.data().basis().left_size(lb);
+                for (auto lcci : half_dm.index(lc))
                 {
-                    unsigned ci = lbci.second;
-                    size_t l_size = half_dm.index.bra_i()[lb].second;
-                    assert (half_dm.data()[ci].size() % l_size == 0);
+                    unsigned ci = lcci.second;
+                    assert (half_dm.data()[ci].size() % ls == 0);
 
-                    Matrix tdm(l_size, l_size);
+                    Matrix tdm(ls, ls);
 
                     typename Matrix::value_type zero(0);
                     typename Matrix::value_type alpha_v(alpha);
                     char tr = 'T';
                     char notr = 'N';
-                    int M = l_size, N = l_size, K = half_dm.data()[ci].size() / l_size;
+                    int M = ls, N = ls, K = half_dm.data()[ci].size() / ls;
                     blas_gemm(&notr, &tr, &M, &N, &K, &alpha_v, &half_dm.data()[ci][0], &M, &half_dm.data()[ci][0], &N, &zero, &tdm(0,0), &M);
 
-                    charge lc = half_dm.index.bra_i()[lb].first;
-                    charge rc = half_dm.index.ket_i()[lb].first;
-
-                    dm.match_and_add_block(tdm, lc, rc);
+                    parallel_critical
+                    dm.match_and_add_block(tdm, lc, lc);
                 }
+            });
             
-            mps.make_left_paired();
             assert( weak_equal(dm.left_basis(), mps.data().left_basis()) );
             
             block_matrix<Matrix, SymmGroup> U;
