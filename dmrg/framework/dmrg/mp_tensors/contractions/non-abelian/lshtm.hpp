@@ -51,8 +51,7 @@ namespace SU2 {
         typedef typename MPOTensor<Matrix, SymmGroup>::col_proxy col_proxy;
         typedef MPOTensor_detail::index_type index_type;
         typedef typename common::BoundarySchedule<Matrix, SymmGroup>::block_type block_type;
-        typedef typename block_type::mapped_value_type::t_key t_key;
-        typedef std::map<t_key, unsigned> t_map_t;
+        typedef std::map<typename block_type::mapped_value_type::t_key, unsigned> t_map_t;
 
         Index<SymmGroup> const & ket_left_i = ket.row_dim();
         Index<SymmGroup> const & ket_right_i = ket.col_dim();
@@ -124,7 +123,6 @@ namespace SU2 {
                                 unsigned ci_eff = (left_transpose) ? left.cohort_index(lc_ket, lc_bra) : ci;
                                 size_t left_offset = left.offset(ci, b1);
 
-                                //typename block_type::mapped_value_type::t_key tq
                                 auto tq = bit_twiddling::pack(ci_eff, left_offset, lb_ket, ket_offset, left_transpose);
                                     //= bit_twiddling::pack(b1_eff, b_left, lb_ket, ket_offset, left_transpose);
                                 
