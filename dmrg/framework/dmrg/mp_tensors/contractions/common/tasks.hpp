@@ -156,9 +156,6 @@ public:
     typename boost::disable_if<boost::is_same<typename OtherMatrix::value_type, double>, Matrix>::type
     contract(Boundary<OtherMatrix, SymmGroup> const & left, const value_type* t_pointer) const
     {
-        value_type one=1;
-        char tr = 'T';
-        char notr = 'N';
         int M = l_size, N = r_size, K = m_size;
         uint t_size = m_size * r_size;
         uint t_size_padded = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(t_size);
@@ -178,10 +175,10 @@ public:
                                                     &S(0,0), alpha_i[j]);
             if (trans[i])
                 //blas_gemm(&tr, &notr, &M, &N, &K, &one, &left[b1][ks[i]](0,0), &K, &S(0,0), &K, &one, &ret(0,0), &M);
-                blas_gemm(&tr, &notr, &M, &N, &K, &one, &left.data()[b1][ks[i]], &K, &S(0,0), &K, &one, &ret(0,0), &M);
+                blas_gemm('T', 'N', M, N, K, value_type(1), &left.data()[b1][ks[i]], K, &S(0,0), K, value_type(1), &ret(0,0), M);
             else
                 //blas_gemm(&notr, &notr, &M, &N, &K, &one, &left[b1][ks[i]](0,0), &M, &S(0,0), &K, &one, &ret(0,0), &M);
-                blas_gemm(&notr, &notr, &M, &N, &K, &one, &left.data()[b1][ks[i]], &M, &S(0,0), &K, &one, &ret(0,0), &M);
+                blas_gemm('N', 'N', M, N, K, value_type(1), &left.data()[b1][ks[i]], M, &S(0,0), K, value_type(1), &ret(0,0), M);
         }
 
         return ret;
@@ -209,9 +206,6 @@ public:
     void prop(DefaultMatrix const & bra, const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret,
               std::vector<unsigned> const & b_to_o) const
     {
-        value_type one=1;
-        char tr = 'T';
-        char notr = 'N';
         int M = m_size, N = l_size, K = r_size;
         uint t_size = m_size * r_size;
         uint t_size_padded = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(t_size);
@@ -229,7 +223,7 @@ public:
                                                     t_pointer + tidx_i[j] * t_size_padded + t_size,
                                                     &S(0,0), alpha_i[j]);
 
-            blas_gemm(&notr, &tr, &M, &N, &K, &one, &S(0,0), &M, &bra(0, offset), &N, &one, &ret[b1][b_to_o[b1]](0,0), &M);
+            blas_gemm('N', 'T', M, N, K, value_type(1), &S(0,0), M, &bra(0, offset), N, value_type(1), &ret[b1][b_to_o[b1]](0,0), M);
         }
     }
 
@@ -237,9 +231,6 @@ public:
     void prop_l(DefaultMatrix const & bra, const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret,
                 unsigned ci) const
     {
-        value_type one=1;
-        char tr = 'T';
-        char notr = 'N';
         int M = l_size, N = r_size, K = m_size;
         uint t_size = m_size * r_size;
         uint t_size_padded = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(t_size);
@@ -256,7 +247,7 @@ public:
                                                     &S(0,0), alpha[i][j]);
 
             //blas_gemm(&tr, &notr, &M, &N, &K, &one, &bra(0,offset), &K, &S(0,0), &K, &one, &ret[b2][b_to_o[b2]](0,0), &M);
-            blas_gemm(&tr, &notr, &M, &N, &K, &one, &bra(0,offset), &K, &S(0,0), &K, &one, &ret.data()[ci][ks[i]], &M);
+            blas_gemm('T', 'N', M, N, K, value_type(1), &bra(0,offset), K, &S(0,0), K, value_type(1), &ret.data()[ci][ks[i]], M);
         }
     }
 
@@ -475,8 +466,6 @@ private:
         if (!this->size()) return;
 
         char gemmtrans[2] = {'N', 'T'};
-        value_type one(1);
-        value_type zero(0);
         int M = (*this)[0].get_m_size(), N = r_size;
 
         std::size_t t_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>((size_t)(M * N));
@@ -494,8 +483,8 @@ private:
             int LDA = (trans) ? K : M;
 
             //blas_gemm(&gemmtrans[trans], &gemmtrans[0], &M, &N, &K, &one, &left[b][b_block](0,0), &LDA,
-            blas_gemm(&gemmtrans[trans], &gemmtrans[0], &M, &N, &K, &one, &left.data()[b][b_block], &LDA,
-                      &mps.data()[lb_ket](0, in_offset), &K, &zero, t_pointer + pos * t_size, &M);
+            blas_gemm(gemmtrans[trans], gemmtrans[0], M, N, K, value_type(1), &left.data()[b][b_block], LDA,
+                      &mps.data()[lb_ket](0, in_offset), K, value_type(0), t_pointer + pos * t_size, M);
         }
     }
 
@@ -513,9 +502,6 @@ private:
             throw std::bad_alloc();
 
         char gemmtrans[2] = {'N', 'T'};
-        value_type one(1);
-        value_type zero(0);
-
         const value_type* mpsdata = &mps.data()[mps_block](0,0);
 
         for (unsigned pos = 0; pos < t_key_vec.size(); ++pos)
@@ -527,8 +513,8 @@ private:
             int K = (trans) ? right[b2].basis().right_size(r_block) : right[b2].basis().left_size(r_block); 
             int LDB = right[b2].basis().left_size(r_block);
 
-            blas_gemm(&gemmtrans[0], &gemmtrans[trans], &M, &N, &K, &one, mpsdata + in_offset * M, &M,
-                      &right[b2][r_block](0,0), &LDB, &zero, t_pointer + pos * t_size, &M);
+            blas_gemm(gemmtrans[0], gemmtrans[trans], M, N, K, value_type(1), mpsdata + in_offset * M, M,
+                      &right[b2][r_block](0,0), LDB, value_type(0), t_pointer + pos * t_size, M);
         }
     }
 };

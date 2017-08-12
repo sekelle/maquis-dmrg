@@ -65,10 +65,8 @@ namespace contraction {
 
                     typename Matrix::value_type zero(0);
                     typename Matrix::value_type alpha_v(alpha);
-                    char tr = 'T';
-                    char notr = 'N';
                     int M = ls, N = ls, K = half_dm.data()[ci].size() / ls;
-                    blas_gemm(&notr, &tr, &M, &N, &K, &alpha_v, &half_dm.data()[ci][0], &M, &half_dm.data()[ci][0], &N, &zero, &tdm(0,0), &M);
+                    blas_gemm('N', 'T', M, N, K, alpha_v, &half_dm.data()[ci][0], M, &half_dm.data()[ci][0], N, zero, &tdm(0,0), M);
 
                     parallel_critical
                     dm.match_and_add_block(tdm, lc, lc);
