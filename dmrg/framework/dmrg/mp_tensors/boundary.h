@@ -132,6 +132,7 @@ public:
     unsigned add_cohort(unsigned lb, unsigned rb, std::vector<long int> const & off_)
     {
         assert(lb < lb_rb_ci.size());
+        assert(cohort_index(lb, rb) == n_cohorts());
 
         unsigned ci = n_cohorts();
         lb_rb_ci[lb].push_back(std::make_pair(rb, ci));
