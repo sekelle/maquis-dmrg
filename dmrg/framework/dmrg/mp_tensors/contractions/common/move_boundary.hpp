@@ -348,7 +348,8 @@ namespace contraction {
             // MPS indices
             Index<SymmGroup> const & physical_i = bra_tensor.site_dim(),
                                      bra_left_i = bra_tensor.row_dim(),
-                                     bra_right_i = bra_tensor.col_dim();
+                                     bra_right_i = bra_tensor.col_dim(),
+                                     ket_left_i = ket_tensor.row_dim();
 
             ProductBasis<SymmGroup> bra_right_pb(physical_i, bra_right_i,
                     boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
@@ -361,6 +362,14 @@ namespace contraction {
                 task_calc(mpo, right_indices, bra_left_i,
                           bra_right_i, physical_i, bra_right_pb, lb_bra, tasks[lb_bra]);
             });
+
+            BoundaryIndex<Matrix, SymmGroup> b_index(ket_left_i, bra_left_i);
+            for(unsigned lb_bra = 0; lb_bra < loop_max; ++lb_bra)
+                for (auto& e : tasks[lb_bra])
+                    b_index.add_cohort(ket_left_i.position(e.first), lb_bra, e.second.get_offsets());
+
+            b_index.complement_transpose(mpo.herm_left, false);
+            ret.reserve(b_index);
 
             // set up the indices of the new boundary
             for(size_t lb_bra = 0; lb_bra < loop_max; ++lb_bra)
@@ -392,8 +401,10 @@ namespace contraction {
                     {
                         charge lc_ket = it->first;
                         it->second.allocate(lc_ket, lc_bra, ret); // allocate all (lc_ket,lc_bra) blocks
+                        ret.allocate(lc_ket, lc_bra);
                         for (auto const& cg : it->second) // physical index loop
-                            cg.prop(ket_tensor, bra_tensor.data()[lb_bra], it->second.get_b_to_o(), right, ret);
+                            cg.prop(ket_tensor, bra_tensor.data()[lb_bra], it->second.get_b_to_o(),
+                                    ret.index.cohort_index(lc_ket, lc_bra), right, ret);
                     }
                 }
             }

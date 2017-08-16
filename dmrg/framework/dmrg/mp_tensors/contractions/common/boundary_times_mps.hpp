@@ -124,6 +124,7 @@ namespace contraction {
 
         RightIndices(Boundary<OtherMatrix, SymmGroup> const & right,
                      MPOTensor<Matrix, SymmGroup> const & mpo) : base(right.aux_dim())
+                                                               , index(right.index)
                                                                , conj_scales(right.aux_dim())
                                                                , trans_storage(right.aux_dim())
         {
@@ -168,6 +169,7 @@ namespace contraction {
                 return (*this)[b2].left_size(block);
         }
 
+        BoundaryIndex<Matrix, SymmGroup> index;
         std::vector<std::vector<value_type> > conj_scales;
     private:
         std::vector<char> trans_storage; // vector<bool> not thread safe !!

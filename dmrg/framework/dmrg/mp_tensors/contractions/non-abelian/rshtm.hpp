@@ -61,19 +61,20 @@ namespace SU2 {
 
         // output physical index, output offset range = out_right offset + ss2*rs_bra
         //                                              for ss2 in {0, 1, .., phys_i[s].second}
-        for (unsigned s = 0; s < phys_i.size(); ++s)
-        {
-            charge phys_out = phys_i[s].first;
-            charge rc_bra = SymmGroup::fuse(lc_bra, phys_out);
-            unsigned rb_bra = right_i.position(rc_bra); if (rb_bra == right_i.size()) continue;
-            unsigned rs_bra = right_i[rb_bra].second;
-            unsigned bra_offset = right_pb(phys_out, rc_bra);
 
-            for (unsigned lb_ket = 0; lb_ket < left_i.size(); ++lb_ket)
+        for (unsigned lb_ket = 0; lb_ket < left_i.size(); ++lb_ket)
+        {
+            charge lc_ket = left_i[lb_ket].first;
+            if (std::abs(SymmGroup::particleNumber(lc_ket) - SymmGroup::particleNumber(lc_bra)) > site_basis_max_diff) continue;
+            unsigned ls_ket = left_i[lb_ket].second;
+
+            for (unsigned s = 0; s < phys_i.size(); ++s)
             {
-                charge lc_ket = left_i[lb_ket].first;
-                if (std::abs(SymmGroup::particleNumber(lc_ket) - SymmGroup::particleNumber(lc_bra)) > site_basis_max_diff) continue;
-                unsigned ls_ket = left_i[lb_ket].second;
+                charge phys_out = phys_i[s].first;
+                charge rc_bra = SymmGroup::fuse(lc_bra, phys_out);
+                unsigned rb_bra = right_i.position(rc_bra); if (rb_bra == right_i.size()) continue;
+                unsigned rs_bra = right_i[rb_bra].second;
+                unsigned bra_offset = right_pb(phys_out, rc_bra);
 
                 typename block_type::mapped_value_type cg(lb_ket, phys_i[s].second, ls_bra, ls_ket, rs_bra, bra_offset);
 
@@ -101,12 +102,17 @@ namespace SU2 {
 
                                 charge rc_ket = SymmGroup::fuse(lc_ket, phys_in);
                                 unsigned b_right = right.position(b2, rc_ket, rc_bra); if (b_right == right[b2].size()) continue;
+                                unsigned ci = right.index.cohort_index(rc_ket, rc_bra); if (!right.index.has_block(ci, b2)) continue;
                                 unsigned rs_ket = right.left_size(b2, b_right);
                                 if (!right_i.has(rc_ket)) continue;
                                 unsigned ket_offset = right_pb(phys_in, rc_ket);
 
+                                assert(ci != right.index.n_cohorts());
+                                assert(right.conj_scales[b2][b_right] == right.index.conjugate_scale(ci, b2));
+
                                 value_type couplings[4];
-                                value_type scale = right.conj_scales[b2][b_right] * access.scale(op_index);
+                                //value_type scale = right.conj_scales[b2][b_right] * access.scale(op_index);
+                                value_type scale = right.index.conjugate_scale(ci, b2) * access.scale(op_index);
                                 w9j.set_scale(A, K, Ap, rc_ket, scale, couplings);
 
                                 char right_transpose = mpo.herm_right.skip(b2);
@@ -122,12 +128,33 @@ namespace SU2 {
                     for (auto& mg : cg) mg.add_line(b1, 0, !mpo.herm_left.skip(b1));
                 } // b1
 
-                cg.t_key_vec.resize(t_index.size());
-                for (auto const& kit : t_index) cg.t_key_vec[kit.second] = kit.first;
-                if (cg.n_tasks()) mpsb[lc_ket].push_back(cg);
+                if (cg.n_tasks())
+                {
+                    cg.t_key_vec.resize(t_index.size());
+                    for (auto const& kit : t_index) cg.t_key_vec[kit.second] = kit.first;
 
-            } // lb_ket
-        } // phys_out
+                    mpsb[lc_ket].push_back(cg);
+
+                    auto& b2o = mpsb[lc_ket].get_offsets();
+                    b2o.resize(mpo.row_dim());
+                    for (auto& mg : cg) for (index_type b : mg.get_bs()) b2o[b] = 1;
+                }
+            } // phys_out
+
+            if (mpsb.count(lc_ket) > 0) 
+            {
+                auto& b2o = mpsb[lc_ket].get_offsets();
+                std::size_t block_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(ls_ket * ls_bra);
+
+                index_type cnt = 0;
+                for(auto& b : b2o) if (b) b = block_size * cnt++; else b = -1;
+
+                for (auto& cg : mpsb[lc_ket])
+                    for (auto& mg : cg)
+                        for (index_type b = 0; b < mg.get_bs().size(); ++b)
+                            mg.get_ks()[b] = b2o[mg.get_bs()[b]];
+            }
+        } // lb_ket
     }
 
 } // namespace SU2

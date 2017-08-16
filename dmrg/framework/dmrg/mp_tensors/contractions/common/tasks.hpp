@@ -204,7 +204,7 @@ public:
 
     template <class DefaultMatrix, class OtherMatrix>
     void prop(DefaultMatrix const & bra, const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret,
-              std::vector<unsigned> const & b_to_o) const
+              std::vector<unsigned> const & b_to_o, unsigned ci) const
     {
         int M = m_size, N = l_size, K = r_size;
         uint t_size = m_size * r_size;
@@ -224,6 +224,7 @@ public:
                                                     &S(0,0), alpha_i[j]);
 
             blas_gemm('N', 'T', M, N, K, value_type(1), &S(0,0), M, &bra(0, offset), N, value_type(1), &ret[b1][b_to_o[b1]](0,0), M);
+            blas_gemm('N', 'T', M, N, K, value_type(1), &S(0,0), M, &bra(0, offset), N, value_type(1), &ret.data()[ci][ks[i]], M);
         }
     }
 
@@ -364,6 +365,7 @@ public:
     void prop(MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
               DefaultMatrix const & bra_matrix,
               std::vector<unsigned> const & b_to_o,
+              unsigned ci,
               Boundary<OtherMatrix, SymmGroup> const & right,
               Boundary<OtherMatrix, SymmGroup> & new_right) const
     {
@@ -371,7 +373,7 @@ public:
         for (int ss1 = 0; ss1 < this->size(); ++ss1)
         {
             if (!(*this)[ss1].n_tasks()) continue;
-            (*this)[ss1].prop(bra_matrix, t_pointer, new_right, b_to_o);
+            (*this)[ss1].prop(bra_matrix, t_pointer, new_right, b_to_o, ci);
         }
         free(t_pointer);
     }
