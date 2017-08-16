@@ -149,10 +149,10 @@ namespace SU2 {
             if (mpsb.count(rc_ket) > 0)
             {
                 auto& b2o = mpsb[rc_ket].get_offsets();
-                std::size_t l_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(rs_bra * rs_ket);
+                std::size_t block_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(rs_bra * rs_ket);
 
                 index_type cnt = 0;
-                for(auto& b : b2o) if (b) b = l_size * cnt++; else b = -1;
+                for(auto& b : b2o) if (b) b = block_size * cnt++; else b = -1;
 
                 for (auto& cg : mpsb[rc_ket])
                     for (auto& mg : cg)
