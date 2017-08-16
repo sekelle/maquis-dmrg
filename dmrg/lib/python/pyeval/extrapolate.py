@@ -83,7 +83,7 @@ def inset(fig, ax, flist, sweepnr=None):
  
 def plot(flist, sweepnr=None):
 
-    extr = extrapolate_base.energy2y([flist[0]], sweepnr)
+    extr = extrapolate_base.energy2y(flist, sweepnr)
     xdata = extr.xdata()
     ydata = extr.ydata()
 
