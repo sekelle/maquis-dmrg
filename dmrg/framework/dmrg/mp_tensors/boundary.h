@@ -113,6 +113,20 @@ public:
     Index<SymmGroup> const& bra_i  ()                   const { return bra_index; }
     Index<SymmGroup> const& ket_i  ()                   const { return ket_index; }
 
+    size_t left_size (unsigned ci) const 
+    {
+        for (unsigned lb = 0; lb < lb_rb_ci.size(); ++lb)
+        for (auto pair : lb_rb_ci[lb])
+            if (ci == pair.second) return bra_index[lb].second;
+    }
+
+    size_t right_size (unsigned ci) const 
+    {
+        for (unsigned lb = 0; lb < lb_rb_ci.size(); ++lb)
+        for (auto pair : lb_rb_ci[lb])
+            if (ci == pair.second) return ket_index[pair.first].second;
+    }
+
     unsigned cohort_index(unsigned lb, unsigned rb, int tag = 0) const
     {
         if (lb >= lb_rb_ci.size())

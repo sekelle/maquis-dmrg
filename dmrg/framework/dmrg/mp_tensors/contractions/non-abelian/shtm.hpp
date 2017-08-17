@@ -106,21 +106,31 @@ namespace SU2 {
                                 charge phys_in = W.basis().left_charge(w_block);
 
                                 charge rc_in = SymmGroup::fuse(lc_in, phys_in);
-                                unsigned b_right = right.position(b2, rc_in, rc_out); if (b_right == right[b2].size()) continue;
-                                unsigned rs_in = right.left_size(b2, b_right);
+                                //unsigned b_right = right.position(b2, rc_in, rc_out); if (b_right == right[b2].size()) continue;
+                                unsigned ci_right = right.index.cohort_index(rc_in, rc_out); if (!right.index.has_block(ci_right, b2)) continue;
+                                //unsigned rs_in = right.left_size(b2, b_right);
+                                unsigned rb_in = right_i.position(rc_in);
                                 // this shouldnt be required, but in rare cases apparently mps[i-1].col_dim() != mps[i].row_dim()
-                                if (!right_i.has(rc_in)) continue;
+                                //if (!right_i.has(rc_in)) continue;
+                                if (rb_in == right_i.size()) continue;
+                                unsigned rs_in = right_i[rb_in].second;
                                 unsigned in_offset = right_pb(phys_in, rc_in);
 
                                 value_type couplings[4];
-                                value_type scale = right.conj_scales[b2][b_right] * access.scale(op_index)
+                                //value_type scale = right.conj_scales[b2][b_right] * access.scale(op_index)
+                                value_type scale = right.index.conjugate_scale(ci_right, b2) * access.scale(op_index)
                                                  *  left.conjugate_scale(ci, b1);
 
                                 w9j.set_scale(A, K, Ap, rc_in, scale, couplings);
 
                                 char right_transpose = mpo.herm_right.skip(b2);
-                                unsigned b2_eff = (right_transpose) ? mpo.herm_right.conj(b2) : b2;
-                                typename cgroup::t_key tq = bit_twiddling::pack(b2_eff, b_right, in_offset, right_transpose);
+                                //unsigned b2_eff = (right_transpose) ? mpo.herm_right.conj(b2) : b2;
+                                unsigned ci_right_eff = (right_transpose) ? right.index.cohort_index(rc_out, rc_in) : ci_right;
+                                size_t right_offset = right.index.offset(ci_right, b2);
+                                //typename cgroup::t_key tq = bit_twiddling::pack(b2_eff, b_right, in_offset, right_transpose);
+                                typename cgroup::t_key tq = bit_twiddling::pack(ci_right_eff, right_offset, in_offset, right_transpose);
+                                //assert(ci_right_eff == right.index.cohort_index(right[b2_eff].left_charge(b_right),
+                                //                                                right[b2_eff].right_charge(b_right)));
                                 
                                 detail::op_iterate_shtm<Matrix, typename common::Schedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
                                     (W, w_block, couplings, cg, tq, rs_in, t_index);

@@ -333,6 +333,7 @@ namespace contraction {
             RightIndices<Matrix, OtherMatrix, SymmGroup> right_indices(right, mpo);
             Boundary<OtherMatrix, SymmGroup> ret;
             ret.resize(mpo.row_dim());
+            //assert (right.index.equivalent(right_indices, right, mpo.herm_right));
 
             MPSTensor<Matrix, SymmGroup> buffer; // holds the conjugate tensor if we deal with complex numbers
             MPSTensor<Matrix, SymmGroup> const & bra_tensor = set_conjugate(bra_tensor_in, buffer);
@@ -372,17 +373,17 @@ namespace contraction {
             ret.reserve(b_index);
 
             // set up the indices of the new boundary
-            for(size_t lb_bra = 0; lb_bra < loop_max; ++lb_bra)
-            {
-                charge lc_bra = bra_left_i[lb_bra].first;
-                size_t ls_bra = bra_left_i[lb_bra].second;
-                for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it)
-                {
-                    charge lc_ket = it->first;
-                    size_t ls_ket = bra_left_i.size_of_block(lc_ket);
-                    it->second.reserve(lc_ket, lc_bra, ls_ket, ls_bra, ret); // allocate all (lc_ket,lc_bra) blocks
-                }
-            }
+            //for(size_t lb_bra = 0; lb_bra < loop_max; ++lb_bra)
+            //{
+            //    charge lc_bra = bra_left_i[lb_bra].first;
+            //    size_t ls_bra = bra_left_i[lb_bra].second;
+            //    for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it)
+            //    {
+            //        charge lc_ket = it->first;
+            //        size_t ls_ket = bra_left_i.size_of_block(lc_ket);
+            //        it->second.reserve(lc_ket, lc_bra, ls_ket, ls_bra, ret); // allocate all (lc_ket,lc_bra) blocks
+            //    }
+            //}
 
             // Contraction
             #ifdef MAQUIS_OPENMP
@@ -400,7 +401,7 @@ namespace contraction {
                     for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it) // lc_ket loop
                     {
                         charge lc_ket = it->first;
-                        it->second.allocate(lc_ket, lc_bra, ret); // allocate all (lc_ket,lc_bra) blocks
+                        //it->second.allocate(lc_ket, lc_bra, ret); // allocate all (lc_ket,lc_bra) blocks
                         ret.allocate(lc_ket, lc_bra);
                         for (auto const& cg : it->second) // physical index loop
                             cg.prop(ket_tensor, bra_tensor.data()[lb_bra], it->second.get_b_to_o(),

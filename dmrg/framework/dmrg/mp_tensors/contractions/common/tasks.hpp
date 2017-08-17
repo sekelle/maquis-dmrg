@@ -223,7 +223,7 @@ public:
                                                     t_pointer + tidx_i[j] * t_size_padded + t_size,
                                                     &S(0,0), alpha_i[j]);
 
-            blas_gemm('N', 'T', M, N, K, value_type(1), &S(0,0), M, &bra(0, offset), N, value_type(1), &ret[b1][b_to_o[b1]](0,0), M);
+            //blas_gemm('N', 'T', M, N, K, value_type(1), &S(0,0), M, &bra(0, offset), N, value_type(1), &ret[b1][b_to_o[b1]](0,0), M);
             blas_gemm('N', 'T', M, N, K, value_type(1), &S(0,0), M, &bra(0, offset), N, value_type(1), &ret.data()[ci][ks[i]], M);
         }
     }
@@ -444,8 +444,10 @@ public:
             char trans;
             bit_twiddling::unpack(*it, b2, r_block, offset, trans);
 
-            unsigned m2_size = right[b2].left_size(r_block);
-            unsigned r_size = right[b2].right_size(r_block);
+            //unsigned m2_size = right[b2].left_size(r_block);
+            //unsigned r_size = right[b2].right_size(r_block);
+            unsigned m2_size = right.index.left_size(b2);
+            unsigned r_size = right.index.right_size(b2);
 
             tgemm_flops += 2 * m1_size * m2_size * r_size;
         }
@@ -495,7 +497,7 @@ private:
     {
         if (!this->size()) return;
 
-        int M = mps.row_dim()[mps_block].second; 
+        int M = mps.row_dim()[mps_block].second; // == m_size
         int N = r_size;
 
         std::size_t t_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>((size_t)(M * N));
@@ -512,11 +514,20 @@ private:
             char trans;
             bit_twiddling::unpack(t_key_vec[pos], b2, r_block, in_offset, trans);
 
-            int K = (trans) ? right[b2].basis().right_size(r_block) : right[b2].basis().left_size(r_block); 
-            int LDB = right[b2].basis().left_size(r_block);
+            //int K = (trans) ? right[b2].basis().right_size(r_block) : right[b2].basis().left_size(r_block); 
+            int K = (trans) ? right.index.right_size(b2) : right.index.left_size(b2);
+            //assert( K == (trans) ? right.index.right_size(ci) : right.index.left_size(ci) );
+            //int LDB = right[b2].basis().left_size(r_block);
+            int LDB = right.index.left_size(b2);
+            //assert( LDB == right.index.left_size(ci) );
+
+            //assert( right.index.offset(ci, b2) < right.data()[ci].size() );
+            //assert( right[b2][r_block](0,0) == right.data()[ci][right.index.offset(ci, b2)] );
+            assert( r_block < right.data()[b2].size() );
 
             blas_gemm(gemmtrans[0], gemmtrans[trans], M, N, K, value_type(1), mpsdata + in_offset * M, M,
-                      &right[b2][r_block](0,0), LDB, value_type(0), t_pointer + pos * t_size, M);
+                      //&right[b2][r_block](0,0), LDB, value_type(0), t_pointer + pos * t_size, M);
+                      &right.data()[b2][r_block], LDB, value_type(0), t_pointer + pos * t_size, M);
         }
     }
 };
