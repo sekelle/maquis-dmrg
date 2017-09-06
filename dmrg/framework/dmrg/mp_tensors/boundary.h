@@ -145,7 +145,6 @@ public:
 
     unsigned add_cohort(unsigned lb, unsigned rb, std::vector<long int> const & off_)
     {
-        //assert(lb < lb_rb_ci.size());
         assert(cohort_index(lb, rb) == n_cohorts());
 
         unsigned ci = n_cohorts();
@@ -176,8 +175,7 @@ public:
                 //unsigned rb = pair.first;
                 //unsigned ci_A = pair.second; // source transpose ci
                 unsigned ci_A = lbrb_ci(lb, rb);
-                //unsigned ci_B = cohort_index(ket_index[rb].first, bra_index[lb].first);
-                unsigned ci_B = cohort_index(rb, lb);
+                unsigned ci_B = cohort_index(ket_index[rb].first, bra_index[lb].first);
                 if (ci_B == n_cohorts())
                     ci_B = add_cohort(rb, lb, std::vector<long int>(herm.size(), -1));
 
