@@ -95,7 +95,8 @@ public:
         offsets  = rhs.offsets;
         conjugate_scales = rhs.conjugate_scales;
         transposes = rhs.transposes;
-        sizes = rhs.sizes;
+        left_sizes = rhs.left_sizes;
+        right_sizes = rhs.right_sizes;
         n_blocks_ = rhs.n_blocks_;
     }
 
@@ -107,25 +108,14 @@ public:
     size_t     aux_dim        ()                        const { if (n_cohorts()) return offsets[0].size();
                                                                 else             return 0;
                                                               }
-    size_t     block_size     (unsigned ci)             const { return sizes[ci]; }
-    size_t       n_blocks     (unsigned ci)             const { return n_blocks_[ci]; }
+    size_t     block_size     (unsigned ci)             const { return left_sizes[ci] * right_sizes[ci]; }
+    size_t     left_size      (unsigned ci)             const { return left_sizes[ci]; }
+    size_t     right_size     (unsigned ci)             const { return right_sizes[ci]; }
+
+    size_t     n_blocks       (unsigned ci)             const { return n_blocks_[ci]; }
 
     Index<SymmGroup> const& bra_i  ()                   const { return bra_index; }
     Index<SymmGroup> const& ket_i  ()                   const { return ket_index; }
-
-    size_t left_size (unsigned ci) const 
-    {
-        for (unsigned lb = 0; lb < lb_rb_ci.size(); ++lb)
-        for (auto pair : lb_rb_ci[lb])
-            if (ci == pair.second) return bra_index[lb].second;
-    }
-
-    size_t right_size (unsigned ci) const 
-    {
-        for (unsigned lb = 0; lb < lb_rb_ci.size(); ++lb)
-        for (auto pair : lb_rb_ci[lb])
-            if (ci == pair.second) return ket_index[pair.first].second;
-    }
 
     unsigned cohort_index(unsigned lb, unsigned rb, int tag = 0) const
     {
@@ -156,7 +146,8 @@ public:
         conjugate_scales.push_back(std::vector<value_type>(off_.size(), 1.));
         transposes      .push_back(std::vector<char>      (off_.size()));
 
-        sizes           .push_back(bra_index[lb].second * ket_index[rb].second);
+        left_sizes      .push_back(bra_index[lb].second);
+        right_sizes     .push_back(ket_index[rb].second);
         n_blocks_       .push_back(std::count_if(off_.begin(), off_.end(), [](long int o) { return o > -1; }));
 
         return ci;
@@ -277,7 +268,8 @@ private:
     std::vector<std::vector<long int>>   offsets;
     std::vector<std::vector<value_type>> conjugate_scales;
     std::vector<std::vector<char>>       transposes;
-    std::vector<std::size_t>             sizes;
+    std::vector<std::size_t>             left_sizes;
+    std::vector<std::size_t>             right_sizes;
     std::vector<unsigned>                n_blocks_;
 
     friend class boost::serialization::access;
@@ -285,7 +277,7 @@ private:
     template <class Archive>
     void serialize(Archive & ar, const unsigned int version)
     {
-        ar & lb_rb_ci & offsets & conjugate_scales & transposes & sizes & n_blocks_;
+        ar & lb_rb_ci & offsets & conjugate_scales & transposes & left_sizes & right_sizes & n_blocks_;
     }
     
     std::vector<std::pair<charge, unsigned>> empty;
