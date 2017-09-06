@@ -105,9 +105,7 @@ namespace SU2 {
                                 unsigned ci = right.index.cohort_index(rc_ket, rc_bra); if (!right.index.has_block(ci, b2)) continue;
                                 unsigned rb_ket = right_i.position(rc_ket);
                                 if (rb_ket == right_i.size()) continue;
-                                //unsigned rs_ket = right.left_size(b2, b_right);
                                 unsigned rs_ket = right_i[rb_ket].second;
-                                //if (!right_i.has(rc_ket)) continue;
                                 unsigned ket_offset = right_pb(phys_in, rc_ket);
 
                                 assert(ci != right.index.n_cohorts());

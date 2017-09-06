@@ -108,10 +108,8 @@ namespace SU2 {
                                 charge rc_in = SymmGroup::fuse(lc_in, phys_in);
                                 //unsigned b_right = right.position(b2, rc_in, rc_out); if (b_right == right[b2].size()) continue;
                                 unsigned ci_right = right.index.cohort_index(rc_in, rc_out); if (!right.index.has_block(ci_right, b2)) continue;
-                                //unsigned rs_in = right.left_size(b2, b_right);
                                 unsigned rb_in = right_i.position(rc_in);
                                 // this shouldnt be required, but in rare cases apparently mps[i-1].col_dim() != mps[i].row_dim()
-                                //if (!right_i.has(rc_in)) continue;
                                 if (rb_in == right_i.size()) continue;
                                 unsigned rs_in = right_i[rb_in].second;
                                 unsigned in_offset = right_pb(phys_in, rc_in);
@@ -129,8 +127,6 @@ namespace SU2 {
                                 size_t right_offset = right.index.offset(ci_right, b2);
                                 //typename cgroup::t_key tq = bit_twiddling::pack(b2_eff, b_right, in_offset, right_transpose);
                                 typename cgroup::t_key tq = bit_twiddling::pack(ci_right_eff, right_offset, in_offset, right_transpose);
-                                //assert(ci_right_eff == right.index.cohort_index(right[b2_eff].left_charge(b_right),
-                                //                                                right[b2_eff].right_charge(b_right)));
                                 
                                 detail::op_iterate_shtm<Matrix, typename common::Schedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
                                     (W, w_block, couplings, cg, tq, rs_in, t_index);
