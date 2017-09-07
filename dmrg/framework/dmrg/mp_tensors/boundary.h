@@ -82,7 +82,7 @@ class BoundaryIndex
 public:
 
     BoundaryIndex(Index<SymmGroup> const & bra, Index<SymmGroup> const & ket)
-    : bra_index(bra), ket_index(ket), /*lb_rb_ci(bra.size()),*/ lb_rc_ci(bra.size())
+    : bra_index(bra), ket_index(ket), lb_rc_ci(bra.size())
     , lbrb_ci(bra.size(), ket.size(), std::numeric_limits<unsigned>::max())
     {}
 
@@ -92,7 +92,6 @@ public:
         bra_index = rhs.bra_index;
         ket_index = rhs.ket_index;
 
-        lb_rb_ci = rhs.lb_rb_ci;
         lb_rc_ci = rhs.lb_rc_ci;
         lbrb_ci = rhs.lbrb_ci;
 
@@ -118,9 +117,6 @@ public:
 
     size_t     n_blocks       (unsigned ci)             const { return n_blocks_[ci]; }
 
-    Index<SymmGroup> const& bra_i  ()                   const { return bra_index; }
-    Index<SymmGroup> const& ket_i  ()                   const { return ket_index; }
-
     unsigned cohort_index(unsigned lb, unsigned rb, int tag = 0) const
     {
         if (lb < num_rows(lbrb_ci) && rb < num_cols(lbrb_ci)
@@ -128,14 +124,6 @@ public:
             return lbrb_ci(lb, rb);
         else
             return n_cohorts();
-
-        //if (lb >= lb_rb_ci.size())
-        //    return n_cohorts();
-
-        //for (auto pair : lb_rb_ci[lb])
-        //    if (rb == pair.first) return pair.second;
-
-        //return n_cohorts();
     }
 
     unsigned cohort_index(charge lc, charge rc) const
@@ -148,7 +136,6 @@ public:
         assert(cohort_index(lb, rb) == n_cohorts());
 
         unsigned ci = n_cohorts();
-        //lb_rb_ci[lb].push_back(std::make_pair(rb, ci));
         lb_rc_ci[lb].push_back(std::make_pair(ket_index[rb].first, ci));
         lbrb_ci(lb, rb) = ci;
 
@@ -165,15 +152,11 @@ public:
 
     void complement_transpose(MPOTensor_detail::Hermitian const & herm, bool forward)
     {
-        //for (unsigned lb = 0; lb < lb_rb_ci.size(); ++lb)
-        //    for (auto pair : lb_rb_ci[lb])
         for (unsigned rb = 0; rb < num_cols(lbrb_ci); ++rb)
             for (unsigned lb = 0; lb < num_rows(lbrb_ci); ++lb)
             {
                 if (lbrb_ci(lb, rb) == std::numeric_limits<unsigned>::max()) continue;
 
-                //unsigned rb = pair.first;
-                //unsigned ci_A = pair.second; // source transpose ci
                 unsigned ci_A = lbrb_ci(lb, rb);
                 unsigned ci_B = cohort_index(ket_index[rb].first, bra_index[lb].first);
                 if (ci_B == n_cohorts())
@@ -192,11 +175,6 @@ public:
                 }
             }
     }
-
-    //std::vector<std::pair<unsigned, unsigned>> const & operator[](size_t lb) const {
-    //    assert(lb < lb_rb_ci.size());
-    //    return lb_rb_ci[lb];
-    //}
 
     std::vector<std::pair<charge, unsigned>> const & operator()(charge lc) const {
         unsigned lb = bra_index.position(lc);
@@ -253,23 +231,23 @@ public:
             }
         }
 
-        for (unsigned lb = 0; lb < lb_rb_ci.size(); ++lb)
-            for (auto pair : lb_rb_ci[lb])
-            {
-                unsigned rb = pair.first;
-                unsigned ci= pair.second; // source transpose ci
+        //for (unsigned lb = 0; lb < lb_rb_ci.size(); ++lb)
+        //    for (auto pair : lb_rb_ci[lb])
+        //    {
+        //        unsigned rb = pair.first;
+        //        unsigned ci= pair.second; // source transpose ci
 
-                for (unsigned b = 0; b < offsets[ci].size(); ++b)
-                {
-                    charge lc = bra_index[lb].first;
-                    charge rc = ket_index[rb].first;
+        //        for (unsigned b = 0; b < offsets[ci].size(); ++b)
+        //        {
+        //            charge lc = bra_index[lb].first;
+        //            charge rc = ket_index[rb].first;
 
-                    // check if ref has current block
-                    if (offsets[ci][b] != -1)
-                        if (ref.position(b, lc, rc) == ref[b].size())
-                            return false;
-                }
-            }
+        //            // check if ref has current block
+        //            if (offsets[ci][b] != -1)
+        //                if (ref.position(b, lc, rc) == ref[b].size())
+        //                    return false;
+        //        }
+        //    }
 
         return true;
     }
@@ -277,7 +255,6 @@ public:
 private:
     Index<SymmGroup> bra_index, ket_index;
     //     lb_ket                       rb_ket     ci
-    std::vector<std::vector<std::pair<unsigned, unsigned>>> lb_rb_ci;
     std::vector<std::vector<std::pair<charge, unsigned>>>   lb_rc_ci;
     alps::numeric::matrix<unsigned> lbrb_ci;
 
@@ -293,7 +270,7 @@ private:
     template <class Archive>
     void serialize(Archive & ar, const unsigned int version)
     {
-        ar & lb_rb_ci & offsets & conjugate_scales & transposes & left_sizes & right_sizes & n_blocks_;
+        ar & offsets & conjugate_scales & transposes & left_sizes & right_sizes & n_blocks_;
     }
     
     std::vector<std::pair<charge, unsigned>> empty;
