@@ -56,21 +56,20 @@ namespace contraction {
             {
                 charge lc = mps.data().basis().left_charge(lb);
                 size_t ls = mps.data().basis().left_size(lb);
+                Matrix tdm(ls, ls);
+
                 for (auto lcci : half_dm.index(lc))
                 {
                     unsigned ci = lcci.second;
                     assert (half_dm.data()[ci].size() % ls == 0);
 
-                    Matrix tdm(ls, ls);
-
-                    typename Matrix::value_type zero(0);
+                    typename Matrix::value_type one(1);
                     typename Matrix::value_type alpha_v(alpha);
                     int M = ls, N = ls, K = half_dm.data()[ci].size() / ls;
-                    blas_gemm('N', 'T', M, N, K, alpha_v, &half_dm.data()[ci][0], M, &half_dm.data()[ci][0], N, zero, &tdm(0,0), M);
-
-                    parallel_critical
-                    dm.match_and_add_block(tdm, lc, lc);
+                    blas_gemm('N', 'T', M, N, K, alpha_v, &half_dm.data()[ci][0], M, &half_dm.data()[ci][0], N, one, &tdm(0,0), M);
                 }
+
+                dm[lb] += tdm;
             });
             
             assert( weak_equal(dm.left_basis(), mps.data().left_basis()) );
