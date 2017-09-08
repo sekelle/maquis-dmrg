@@ -275,18 +275,37 @@ public:
 
     template <class OtherMatrix>
     void rbtm(const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret,
-         std::vector<unsigned> const & b_to_o) const
+         std::vector<unsigned> const & b_to_o, unsigned ci) const
     {
         uint t_size = m_size * r_size;
         uint t_size_padded = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(t_size);
 
+        Matrix S(m_size, r_size);
         for (index_type i = 0; i < b2sz.size(); ++i)
         {
+            memset(&S(0,0), 0, m_size * r_size * sizeof(typename Matrix::value_type));
+
             index_type b1 = bs[i];
+            //for (index_type j = 0; j < b2sz[i]; ++j)
+            //    maquis::dmrg::detail::iterator_axpy(t_pointer + tidx[i][j] * t_size_padded,
+            //                                        t_pointer + tidx[i][j] * t_size_padded + t_size,
+            //                                        &ret[b1][b_to_o[b1]](0, offset), alpha[i][j]);
+
+            //for (index_type j = 0; j < b2sz[i]; ++j)
+            //    maquis::dmrg::detail::iterator_axpy(t_pointer + tidx[i][j] * t_size_padded,
+            //                                        t_pointer + tidx[i][j] * t_size_padded + t_size,
+            //                                        &ret.data()[ci][ret.index.offset(ci, b1) + m_size * offset], alpha[i][j]);
+
             for (index_type j = 0; j < b2sz[i]; ++j)
                 maquis::dmrg::detail::iterator_axpy(t_pointer + tidx[i][j] * t_size_padded,
                                                     t_pointer + tidx[i][j] * t_size_padded + t_size,
-                                                    &ret[b1][b_to_o[b1]](0, offset), alpha[i][j]);
+                                                    &S(0,0), alpha[i][j]);
+
+            size_t sz2 = ret.data()[ci].size() / (ret.index.left_size(ci) * ret.index.right_size(ci));
+            size_t lda = m_size * sz2;
+            size_t real_i = ret.index.offset(ci, b1) / ret.index.block_size(ci);
+            for (unsigned c = 0; c < r_size; ++c)
+                maquis::dmrg::detail::iterator_axpy(&S(0,c), &S(0,c) + m_size, &ret.data()[ci][0] + (offset + c) * lda + real_i * m_size, 1.0);
         }
     }
 
@@ -412,6 +431,7 @@ public:
     template <class DefaultMatrix, class OtherMatrix>
     void rbtm(MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
               std::vector<unsigned> const & b_to_o,
+              unsigned ci,
               Boundary<OtherMatrix, SymmGroup> const & right,
               Boundary<OtherMatrix, SymmGroup> & new_right) const
     {
@@ -419,7 +439,7 @@ public:
         for (int ss1 = 0; ss1 < this->size(); ++ss1)
         {
             if (!(*this)[ss1].n_tasks()) continue;
-            (*this)[ss1].rbtm(t_pointer, new_right, b_to_o);
+            (*this)[ss1].rbtm(t_pointer, new_right, b_to_o, ci);
         }
         free(t_pointer);
     }
