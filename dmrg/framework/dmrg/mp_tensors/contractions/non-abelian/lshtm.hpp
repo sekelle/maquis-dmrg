@@ -104,13 +104,11 @@ namespace SU2 {
 
                                 charge lc_ket = SymmGroup::fuse(rc_ket, -phys_in);
                                 unsigned lb_ket = ket_left_i.position(lc_ket); if (lb_ket == ket_left_i.size()) continue;
-                                //unsigned b_left = left.position(b1, lc_bra, lc_ket); if (b_left == left[b1].size()) continue;
                                 unsigned ci = left.cohort_index(lc_bra, lc_ket); if (!left.has_block(ci, b1)) continue;
                                 unsigned ls_ket = ket_left_i[lb_ket].second;
                                 unsigned ket_offset = ket_right_pb(phys_in, rc_ket);
 
                                 value_type couplings[4];
-                                //value_type scale = left.conj_scales[b1][b_left] * access.scale(op_index);
                                 value_type scale = left.conjugate_scale(ci, b1) * access.scale(op_index);
                                 ::SU2::set_coupling<SymmGroup>(lc_ket, SymmGroup::fuse(rc_ket, -lc_ket), rc_ket,
                                                                  A,      K,    Ap,
@@ -118,12 +116,10 @@ namespace SU2 {
                                                                scale, couplings);
 
                                 char left_transpose = mpo.herm_left.skip(b1);
-                                //unsigned b1_eff = (left_transpose) ? mpo.herm_left.conj(b1) : b1;
                                 unsigned ci_eff = (left_transpose) ? left.cohort_index(lc_ket, lc_bra) : ci;
                                 size_t left_offset = left.offset(ci, b1);
 
                                 auto tq = bit_twiddling::pack(ci_eff, left_offset, lb_ket, ket_offset, left_transpose);
-                                    //= bit_twiddling::pack(b1_eff, b_left, lb_ket, ket_offset, left_transpose);
                                 
                                 detail::op_iterate_shtm<Matrix, typename common::BoundarySchedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
                                     (W, w_block, couplings, cg, tq, rs_ket, t_index);

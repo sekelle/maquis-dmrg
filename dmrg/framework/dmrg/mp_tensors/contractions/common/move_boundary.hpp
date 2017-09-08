@@ -226,29 +226,15 @@ namespace contraction {
 
             ret.reserve(b_index);
 
-            // set up the indices of the new boundary
-            //for(size_t lb_bra = 0; lb_bra < loop_max; ++lb_bra)
-            //{
-            //    charge lc_bra = left_i[lb_bra].first;
-            //    size_t rs_paired = out_right_i.size_of_block(lc_bra);
-            //    for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it)
-            //    {
-            //        charge lc_ket = it->first;
-            //        size_t ls_ket = left_i.size_of_block(lc_ket);
-            //        it->second.reserve(lc_ket, lc_bra, ls_ket, rs_paired, ret); // allocate all (lc_ket,lc_bra) blocks
-            //    }
-            //}
-
             // Contraction
             omp_for(index_type lb_bra, parallel::range<index_type>(0,loop_max), {
                 charge lc_bra = left_i[lb_bra].first;
                 for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it) // lc_ket loop
                 {
                     charge lc_ket = it->first;
-                    //it->second.allocate(lc_ket, lc_bra, ret);
                     ret.template allocate<1>(lc_ket, lc_bra);
                     for (auto const& cg : it->second) // physical index loop
-                        cg.rbtm(ket_tensor, it->second.get_b_to_o(), ret.index.cohort_index(lc_ket, lc_bra), right, ret);
+                        cg.rbtm(ket_tensor, ret.index.cohort_index(lc_ket, lc_bra), right, ret);
                 }
             });
 
@@ -388,19 +374,6 @@ namespace contraction {
             b_index.complement_transpose(mpo.herm_left, false);
             ret.reserve(b_index);
 
-            // set up the indices of the new boundary
-            //for(size_t lb_bra = 0; lb_bra < loop_max; ++lb_bra)
-            //{
-            //    charge lc_bra = bra_left_i[lb_bra].first;
-            //    size_t ls_bra = bra_left_i[lb_bra].second;
-            //    for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it)
-            //    {
-            //        charge lc_ket = it->first;
-            //        size_t ls_ket = bra_left_i.size_of_block(lc_ket);
-            //        it->second.reserve(lc_ket, lc_bra, ls_ket, ls_bra, ret); // allocate all (lc_ket,lc_bra) blocks
-            //    }
-            //}
-
             // Contraction
             #ifdef MAQUIS_OPENMP
             #pragma omp parallel
@@ -417,11 +390,9 @@ namespace contraction {
                     for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it) // lc_ket loop
                     {
                         charge lc_ket = it->first;
-                        //it->second.allocate(lc_ket, lc_bra, ret); // allocate all (lc_ket,lc_bra) blocks
                         ret.allocate(lc_ket, lc_bra);
                         for (auto const& cg : it->second) // physical index loop
-                            cg.prop(ket_tensor, bra_tensor.data()[lb_bra], it->second.get_b_to_o(),
-                                    ret.index.cohort_index(lc_ket, lc_bra), right, ret);
+                            cg.prop(ket_tensor, bra_tensor.data()[lb_bra], ret.index.cohort_index(lc_ket, lc_bra), right, ret);
                     }
                 }
             }

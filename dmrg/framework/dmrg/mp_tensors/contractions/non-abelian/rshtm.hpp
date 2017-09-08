@@ -62,7 +62,6 @@ namespace SU2 {
 
         // output physical index, output offset range = out_right offset + ss2*rs_bra
         //                                              for ss2 in {0, 1, .., phys_i[s].second}
-
         for (unsigned lb_ket = 0; lb_ket < left_i.size(); ++lb_ket)
         {
             charge lc_ket = left_i[lb_ket].first;
@@ -102,7 +101,6 @@ namespace SU2 {
                                 charge phys_in = W.basis().left_charge(w_block);
 
                                 charge rc_ket = SymmGroup::fuse(lc_ket, phys_in);
-                                //unsigned b_right = right.position(b2, rc_ket, rc_bra); if (b_right == right[b2].size()) continue;
                                 unsigned ci = right.index.cohort_index(rc_ket, rc_bra); if (!right.index.has_block(ci, b2)) continue;
                                 unsigned rb_ket = right_i.position(rc_ket);
                                 if (rb_ket == right_i.size()) continue;
@@ -112,16 +110,13 @@ namespace SU2 {
                                 assert(ci != right.index.n_cohorts());
 
                                 value_type couplings[4];
-                                //value_type scale = right.conj_scales[b2][b_right] * access.scale(op_index);
                                 value_type scale = right.index.conjugate_scale(ci, b2) * access.scale(op_index);
                                 w9j.set_scale(A, K, Ap, rc_ket, scale, couplings);
 
                                 char right_transpose = mpo.herm_right.skip(b2);
-                                //unsigned b2_eff = (right_transpose) ? mpo.herm_right.conj(b2) : b2;
                                 unsigned ci_eff = (right_transpose) ? right.index.cohort_index(rc_bra, rc_ket) : ci;
                                 size_t right_offset = right.index.offset(ci, b2);
                                 typename block_type::mapped_value_type::t_key tq
-                                    //= bit_twiddling::pack(b2_eff, b_right, ket_offset, right_transpose);
                                     = bit_twiddling::pack(ci_eff, right_offset, 0, ket_offset, right_transpose);
                                 
                                 detail::op_iterate_shtm<Matrix, typename common::BoundarySchedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
