@@ -122,7 +122,7 @@ namespace SU2 {
                                 size_t right_offset = right.index.offset(ci, b2);
                                 typename block_type::mapped_value_type::t_key tq
                                     //= bit_twiddling::pack(b2_eff, b_right, ket_offset, right_transpose);
-                                    = bit_twiddling::pack(ci_eff, right_offset, ket_offset, right_transpose);
+                                    = bit_twiddling::pack(ci_eff, right_offset, 0, ket_offset, right_transpose);
                                 
                                 detail::op_iterate_shtm<Matrix, typename common::BoundarySchedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
                                     (W, w_block, couplings, cg, tq, rs_ket, t_index);

@@ -460,9 +460,9 @@ public:
         unsigned m1_size = mps.row_dim()[mps_block].second;
         for (typename std::vector<t_key>::const_iterator it = t_key_vec.begin(); it != t_key_vec.end(); ++it)
         {
-            unsigned long b2, r_block, offset;
+            unsigned long b2, r_block, dummy, offset;
             char trans;
-            bit_twiddling::unpack(*it, b2, r_block, offset, trans);
+            bit_twiddling::unpack(*it, b2, r_block, dummy, offset, trans);
 
             //unsigned m2_size = right[b2].left_size(r_block);
             //unsigned r_size = right[b2].right_size(r_block);
@@ -531,9 +531,9 @@ private:
 
         for (unsigned pos = 0; pos < t_key_vec.size(); ++pos)
         {
-            unsigned long b2, r_block, in_offset;
+            unsigned long b2, r_block, dummy, in_offset;
             char trans;
-            bit_twiddling::unpack(t_key_vec[pos], b2, r_block, in_offset, trans);
+            bit_twiddling::unpack(t_key_vec[pos], b2, r_block, dummy, in_offset, trans);
 
             //int K = (trans) ? right[b2].basis().right_size(r_block) : right[b2].basis().left_size(r_block); 
             int K = (trans) ? right.index.right_size(b2) : right.index.left_size(b2);

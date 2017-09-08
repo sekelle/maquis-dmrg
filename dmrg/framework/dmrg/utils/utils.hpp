@@ -120,30 +120,6 @@ namespace bit_twiddling
         return (x+(A-1)) & (~(A-1));
     }
 
-
-    inline __uint128_t pack(unsigned long a, unsigned long b, unsigned long c, char d)
-    {
-        //return (a << 43) + (b<<22) + (c<<1) + d;
-        return ((__uint128_t)a << 85) + ((__uint128_t)b << 43) + ((__uint128_t)c << 1) + d;
-    }
-
-    inline void unpack(__uint128_t tuple, unsigned long& p1, unsigned long& p2, unsigned long& p3, char& p4)
-    {
-        //static const unsigned long mask1 = ((1ul<<21)-1)<<1;
-        //static const unsigned long mask2 = mask1 << 21;
-        //static const unsigned long mask3 = mask2 << 21;
-        //p1 = (tuple & mask3) >> 43;
-        //p2 = (tuple & mask2) >> 22;
-        //p3 = (tuple & mask1) >> 1;
-        static const __uint128_t mask1 = ((1ul<<42)-1)<<1;
-        static const __uint128_t mask2 = mask1 << 42;
-        static const __uint128_t mask3 = mask2 << 42;
-        p1 = (tuple & mask3) >> 85;
-        p2 = (tuple & mask2) >> 43;
-        p3 = (tuple & mask1) >> 1;
-        p4 = tuple & 1;
-    }
-
     inline __uint128_t add_last(__uint128_t tuple, unsigned long p1)
     {
         return tuple += (p1<<1);

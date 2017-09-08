@@ -126,7 +126,7 @@ namespace SU2 {
                                 unsigned ci_right_eff = (right_transpose) ? right.index.cohort_index(rc_out, rc_in) : ci_right;
                                 size_t right_offset = right.index.offset(ci_right, b2);
                                 //typename cgroup::t_key tq = bit_twiddling::pack(b2_eff, b_right, in_offset, right_transpose);
-                                typename cgroup::t_key tq = bit_twiddling::pack(ci_right_eff, right_offset, in_offset, right_transpose);
+                                typename cgroup::t_key tq = bit_twiddling::pack(ci_right_eff, right_offset, 0, in_offset, right_transpose);
                                 
                                 detail::op_iterate_shtm<Matrix, typename common::Schedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
                                     (W, w_block, couplings, cg, tq, rs_in, t_index);
