@@ -505,6 +505,7 @@ private:
 
             int K = num_rows(mps.data()[lb_ket]);
             int LDA = (trans) ? K : M;
+            assert( K == (trans) ? left.index.right_size(b) : left.index.left_size(b) );
 
             //blas_gemm(&gemmtrans[trans], &gemmtrans[0], &M, &N, &K, &one, &left[b][b_block](0,0), &LDA,
             blas_gemm(gemmtrans[trans], gemmtrans[0], M, N, K, value_type(1), &left.data()[b][b_block], LDA,
@@ -536,13 +537,9 @@ private:
 
             //int K = (trans) ? right[b2].basis().right_size(r_block) : right[b2].basis().left_size(r_block); 
             int K = (trans) ? right.index.right_size(b2) : right.index.left_size(b2);
-            //assert( K == (trans) ? right.index.right_size(ci) : right.index.left_size(ci) );
             //int LDB = right[b2].basis().left_size(r_block);
             int LDB = right.index.left_size(b2);
-            //assert( LDB == right.index.left_size(ci) );
 
-            //assert( right.index.offset(ci, b2) < right.data()[ci].size() );
-            //assert( right[b2][r_block](0,0) == right.data()[ci][right.index.offset(ci, b2)] );
             assert( r_block < right.data()[b2].size() );
 
             blas_gemm(gemmtrans[0], gemmtrans[trans], M, N, K, value_type(1), mpsdata + in_offset * M, M,
