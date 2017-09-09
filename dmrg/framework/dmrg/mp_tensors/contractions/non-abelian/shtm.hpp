@@ -41,7 +41,7 @@ namespace SU2 {
     template<class Matrix, class OtherMatrix, class SymmGroup>
     void shtm_tasks(MPOTensor<Matrix, SymmGroup> const & mpo,
                     BoundaryIndex<Matrix, SymmGroup> const & left,
-                    common::RightIndices<Matrix, OtherMatrix, SymmGroup> const & right,
+                    BoundaryIndex<Matrix, SymmGroup> const & right,
                     Index<SymmGroup> const & left_i,
                     Index<SymmGroup> const & right_i,
                     Index<SymmGroup> const & phys_i,
@@ -106,21 +106,21 @@ namespace SU2 {
                                 charge phys_in = W.basis().left_charge(w_block);
 
                                 charge rc_in = SymmGroup::fuse(lc_in, phys_in);
-                                unsigned ci_right = right.index.cohort_index(rc_in, rc_out); if (!right.index.has_block(ci_right, b2)) continue;
+                                unsigned ci_right = right.cohort_index(rc_in, rc_out); if (!right.has_block(ci_right, b2)) continue;
                                 unsigned rb_in = right_i.position(rc_in);
                                 if (rb_in == right_i.size()) continue;
                                 unsigned rs_in = right_i[rb_in].second;
                                 unsigned in_offset = right_pb(phys_in, rc_in);
 
                                 value_type couplings[4];
-                                value_type scale = right.index.conjugate_scale(ci_right, b2) * access.scale(op_index)
+                                value_type scale = right.conjugate_scale(ci_right, b2) * access.scale(op_index)
                                                  *  left.conjugate_scale(ci, b1);
 
                                 w9j.set_scale(A, K, Ap, rc_in, scale, couplings);
 
                                 char right_transpose = mpo.herm_right.skip(b2);
-                                unsigned ci_right_eff = (right_transpose) ? right.index.cohort_index(rc_out, rc_in) : ci_right;
-                                size_t right_offset = right.index.offset(ci_right, b2);
+                                unsigned ci_right_eff = (right_transpose) ? right.cohort_index(rc_out, rc_in) : ci_right;
+                                size_t right_offset = right.offset(ci_right, b2);
                                 typename cgroup::t_key tq = bit_twiddling::pack(ci_right_eff, right_offset, 0, in_offset, right_transpose);
                                 
                                 detail::op_iterate_shtm<Matrix, typename common::Schedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>

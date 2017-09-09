@@ -432,7 +432,7 @@ public:
 
     template <class DefaultMatrix, class OtherMatrix>
     boost::tuple<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t>
-    data_stats(MPSTensor<DefaultMatrix, SymmGroup> const & mps, RightIndices<DefaultMatrix, OtherMatrix, SymmGroup> const & right) const
+    data_stats(MPSTensor<DefaultMatrix, SymmGroup> const & mps, BoundaryIndex<OtherMatrix, SymmGroup> const & right) const
     {
         std::size_t t_move = 0, l_load = 0, lgemm_flops = 0, tgemm_flops = 0, collect=0;
         for (int i = 0; i < this->size(); ++i)
@@ -446,12 +446,12 @@ public:
         unsigned m1_size = mps.row_dim()[mps_block].second;
         for (typename std::vector<t_key>::const_iterator it = t_key_vec.begin(); it != t_key_vec.end(); ++it)
         {
-            unsigned long b2, r_block, dummy, offset;
+            unsigned long ci, offset, dummy, mps_off;
             char trans;
-            bit_twiddling::unpack(*it, b2, r_block, dummy, offset, trans);
+            bit_twiddling::unpack(*it, ci, offset, dummy, mps_off, trans);
 
-            unsigned m2_size = right.index.left_size(b2);
-            unsigned r_size = right.index.right_size(b2);
+            unsigned m2_size = right.left_size(ci);
+            unsigned r_size = right.right_size(ci);
 
             tgemm_flops += 2 * m1_size * m2_size * r_size;
         }
@@ -483,15 +483,14 @@ private:
 
         for (unsigned pos = 0; pos < t_key_vec.size(); ++pos)
         {
-            unsigned long b, b_block, lb_ket, in_offset;
+            unsigned long ci, offset, lb_ket, in_offset;
             char trans;
-            bit_twiddling::unpack(t_key_vec[pos], b, b_block, lb_ket, in_offset, trans);
+            bit_twiddling::unpack(t_key_vec[pos], ci, offset, lb_ket, in_offset, trans);
 
-            int K = num_rows(mps.data()[lb_ket]);
-            int LDA = (trans) ? K : M;
-            assert( K == (trans) ? left.index.right_size(b) : left.index.left_size(b) );
+            int K = (trans) ? left.index.left_size(ci) : left.index.right_size(ci);
+            int LDA = left.index.left_size(ci);
 
-            blas_gemm(gemmtrans[trans], gemmtrans[0], M, N, K, value_type(1), &left.data()[b][b_block], LDA,
+            blas_gemm(gemmtrans[trans], gemmtrans[0], M, N, K, value_type(1), &left.data()[ci][offset], LDA,
                       &mps.data()[lb_ket](0, in_offset), K, value_type(0), t_pointer + pos * t_size, M);
         }
     }
@@ -514,16 +513,15 @@ private:
 
         for (unsigned pos = 0; pos < t_key_vec.size(); ++pos)
         {
-            unsigned long b2, r_block, dummy, in_offset;
+            unsigned long ci, offset, dummy, in_offset;
             char trans;
-            bit_twiddling::unpack(t_key_vec[pos], b2, r_block, dummy, in_offset, trans);
+            bit_twiddling::unpack(t_key_vec[pos], ci, offset, dummy, in_offset, trans);
 
-            int K = (trans) ? right.index.right_size(b2) : right.index.left_size(b2);
-            int LDB = right.index.left_size(b2);
-            assert( r_block < right.data()[b2].size() );
+            int K = (trans) ? right.index.right_size(ci) : right.index.left_size(ci);
+            int LDB = right.index.left_size(ci);
 
             blas_gemm(gemmtrans[0], gemmtrans[trans], M, N, K, value_type(1), mpsdata + in_offset * M, M,
-                      &right.data()[b2][r_block], LDB, value_type(0), t_pointer + pos * t_size, M);
+                      &right.data()[ci][offset], LDB, value_type(0), t_pointer + pos * t_size, M);
         }
     }
 };
@@ -597,7 +595,7 @@ struct Schedule_ : public std::vector<std::vector<std::vector<ContractionGroup<M
     template <class DefaultMatrix, class OtherMatrix>
     stats_t data_stats(std::size_t p,
                        MPSTensor<DefaultMatrix, SymmGroup> const & mps,
-                       RightIndices<DefaultMatrix, OtherMatrix, SymmGroup> const & right) const
+                       BoundaryIndex<OtherMatrix, SymmGroup> const & right) const
     {
         stats_t ret = boost::make_tuple(0,0,0,0,0);
         for (const_iterator it = (*this)[p].begin(); it != (*this)[p].end(); ++it)
@@ -641,8 +639,6 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
 
     boost::chrono::high_resolution_clock::time_point now = boost::chrono::high_resolution_clock::now();
 
-    RightIndices<Matrix, OtherMatrix, SymmGroup> right_indices(right, mpo);
-
     // MPS indices
     Index<SymmGroup> const & physical_i = initial.site_dim(),
                              right_i = initial.col_dim(),
@@ -658,7 +654,7 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
     unsigned loop_max = left_i.size();
     omp_for(index_type mb, parallel::range<index_type>(0,loop_max), {
         contraction_schedule.load_balance[mb] = mb;
-        task_calc(mpo, left.index, right_indices, left_i,
+        task_calc(mpo, left.index, right.index, left_i,
                   right_i, physical_i, out_right_pb, mb, contraction_schedule[mb]);
     });
 
@@ -671,7 +667,7 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
         {
             sz += contraction_schedule.n_tasks(block);
             boost::tuple<size_t, size_t, size_t, size_t, size_t> flops
-                = contraction_schedule.data_stats(block, initial, right_indices);
+                = contraction_schedule.data_stats(block, initial, right.index);
             a += get<0>(flops);
             b += get<1>(flops);
             c += get<2>(flops);

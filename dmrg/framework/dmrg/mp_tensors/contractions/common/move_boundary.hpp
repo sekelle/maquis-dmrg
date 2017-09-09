@@ -181,10 +181,6 @@ namespace contraction {
             typedef BoundarySchedule<Matrix, SymmGroup> schedule_t;
             typedef typename schedule_t::block_type::const_iterator const_iterator;
 
-            RightIndices<Matrix, OtherMatrix, SymmGroup> right_indices(right, mpo);
-            Boundary<OtherMatrix, SymmGroup> ret;
-            ret.resize(mpo.row_dim());
-
             if (!ket_tensor.is_right_paired())
             {
                 parallel_critical
@@ -206,7 +202,7 @@ namespace contraction {
             unsigned loop_max = left_i.size();
             schedule_t tasks(loop_max);
             omp_for(unsigned lb_bra, parallel::range<unsigned>(0,loop_max), {
-                task_calc(mpo, right_indices, left_i,
+                task_calc(mpo, right.index, left_i,
                           right_i, physical_i, right_pb, lb_bra, tasks[lb_bra], false);
             });
 
@@ -224,6 +220,7 @@ namespace contraction {
                     b_index.add_cohort(left_i.position(e.first), lb_bra, offsets);
                 }
 
+            Boundary<OtherMatrix, SymmGroup> ret;
             ret.reserve(b_index);
 
             // Contraction
@@ -333,10 +330,6 @@ namespace contraction {
             typedef BoundarySchedule<Matrix, SymmGroup> schedule_t;
             typedef typename schedule_t::block_type::const_iterator const_iterator;
 
-            RightIndices<Matrix, OtherMatrix, SymmGroup> right_indices(right, mpo);
-            Boundary<OtherMatrix, SymmGroup> ret;
-            ret.resize(mpo.row_dim());
-
             MPSTensor<Matrix, SymmGroup> buffer; // holds the conjugate tensor if we deal with complex numbers
             MPSTensor<Matrix, SymmGroup> const & bra_tensor = set_conjugate(bra_tensor_in, buffer);
 
@@ -362,8 +355,7 @@ namespace contraction {
             unsigned loop_max = bra_left_i.size();
             schedule_t tasks(loop_max);
             omp_for(unsigned lb_bra, parallel::range<unsigned>(0,loop_max), {
-                task_calc(mpo, right_indices, bra_left_i,
-                          bra_right_i, physical_i, bra_right_pb, lb_bra, tasks[lb_bra], true);
+                task_calc(mpo, right.index, bra_left_i, bra_right_i, physical_i, bra_right_pb, lb_bra, tasks[lb_bra], true);
             });
 
             BoundaryIndex<Matrix, SymmGroup> b_index(ket_left_i, bra_left_i);
@@ -372,6 +364,7 @@ namespace contraction {
                     b_index.add_cohort(ket_left_i.position(e.first), lb_bra, e.second.get_offsets());
 
             b_index.complement_transpose(mpo.herm_left, false);
+            Boundary<OtherMatrix, SymmGroup> ret;
             ret.reserve(b_index);
 
             // Contraction
