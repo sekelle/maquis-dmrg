@@ -141,7 +141,7 @@ public:
 
         offsets.push_back(off_);
         conjugate_scales.push_back(std::vector<value_type>(off_.size(), 1.));
-        transposes      .push_back(std::vector<char>      (off_.size()));
+        transposes      .push_back(std::vector<char>      (off_.size(), 0));
 
         left_sizes      .push_back(bra_index[lb].second);
         right_sizes     .push_back(ket_index[rb].second);
@@ -167,10 +167,12 @@ public:
                     if (herm.skip(b))
                     {
                         assert(offsets[ci_B][b] == -1);
+                        // ci_B @ b is the transpose of ci_A at herm.conj(b)
                         offsets[ci_B][b] = offsets[ci_A][herm.conj(b)];
                         conjugate_scales[ci_B][b] = detail::conjugate_correction<value_type, SymmGroup>
                                                         (ket_index[rb].first, bra_index[lb].first)
                                                       * value_type(herm.phase( (forward) ? b : herm.conj(b)));
+                        transposes[ci_B][b] = 1;
                     }
                 }
             }

@@ -111,7 +111,7 @@ namespace SU2 {
                                 value_type scale = right.conjugate_scale(ci, b2) * access.scale(op_index);
                                 w9j.set_scale(A, K, Ap, rc_ket, scale, couplings);
 
-                                char right_transpose = mpo.herm_right.skip(b2);
+                                char right_transpose = right.trans(ci, b2);
                                 unsigned ci_eff = (right_transpose) ? right.cohort_index(rc_bra, rc_ket) : ci;
                                 size_t right_offset = right.offset(ci, b2);
                                 typename block_type::mapped_value_type::t_key tq

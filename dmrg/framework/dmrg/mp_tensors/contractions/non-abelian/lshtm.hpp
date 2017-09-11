@@ -115,7 +115,7 @@ namespace SU2 {
                                                                lc_bra, SymmGroup::fuse(rc_bra, -lc_bra), rc_bra,
                                                                scale, couplings);
 
-                                char left_transpose = mpo.herm_left.skip(b1);
+                                char left_transpose = left.trans(ci, b1);
                                 unsigned ci_eff = (left_transpose) ? left.cohort_index(lc_ket, lc_bra) : ci;
                                 size_t left_offset = left.offset(ci, b1);
 
