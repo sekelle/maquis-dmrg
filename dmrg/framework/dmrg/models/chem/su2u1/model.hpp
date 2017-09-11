@@ -271,6 +271,15 @@ qc_su2<Matrix, SymmGroup>::qc_su2(Lattice const & lat_, BaseParameters & parms_)
     HERMITIAN(create_couple_up, destroy_couple_up)
     #undef HERMITIAN
 
+    #define SELF_ADJOINT(op) for (int hh=0; hh < op.size(); ++hh) tag_handler->self_adjoint(op[hh]);
+    SELF_ADJOINT(ident);
+    SELF_ADJOINT(ident_full);
+    SELF_ADJOINT(fill);
+    SELF_ADJOINT(count);
+    SELF_ADJOINT(docc);
+    SELF_ADJOINT(count_fill);
+    #undef SELF_ADJOINT
+
 //#define PRINT(op) maquis::cout << #op << "\t" << op << std::endl;
 //    PRINT(ident)
 //    PRINT(ident_full)
