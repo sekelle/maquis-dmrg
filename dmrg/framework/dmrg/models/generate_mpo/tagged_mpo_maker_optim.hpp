@@ -276,10 +276,9 @@ namespace generate_mpo
                     right_spins[out_index] = out_spin;
                 }
 
-                std::vector<index_type> RightHerm(rcd.second);
+                // record adjoint pairs
+                std::vector<index_type> RightHerm(rcd.second, std::numeric_limits<index_type>::max());
                 std::vector<int> RightPhase(rcd.second, 1);
-                index_type z = 0, cnt = 0;
-                std::generate(RightHerm.begin(), RightHerm.end(), boost::lambda::var(z)++);
                 for (typename std::map<prempo_key_type, prempo_key_type>::const_iterator
                                 h_it = HermKeyPairs.begin(); h_it != HermKeyPairs.end(); ++h_it)
                 {
@@ -287,14 +286,14 @@ namespace generate_mpo
                     index_type julia = right[h_it->second];
                     if (romeo < julia)
                     {
-                        cnt++;
-                        std::swap(RightHerm[romeo], RightHerm[julia]);
+                        RightHerm[romeo] = julia;
+                        RightHerm[julia] = romeo;
                         RightPhase[romeo] = HermitianPhases[h_it->first].first;
                         RightPhase[julia] = HermitianPhases[h_it->first].second;
                     }
                 }
                 if (verbose)
-                    maquis::cout << "MPO Bond " << p << ": " << rcd.second << "/" << cnt << std::endl;
+                    maquis::cout << "MPO Bond " << p << ": " << rcd.second << "/" << HermKeyPairs.size()/2 << std::endl;
 
                 MPOTensor_detail::Hermitian hleft(LeftHerm, LeftPhase);
                 MPOTensor_detail::Hermitian hright(RightHerm, RightPhase);
