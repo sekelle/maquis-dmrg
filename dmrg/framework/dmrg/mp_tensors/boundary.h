@@ -376,10 +376,9 @@ template<class Matrix, class SymmGroup>
 std::size_t size_of(Boundary<Matrix, SymmGroup> const & m)
 {
     size_t r = 0;
-    //for (size_t i = 0; i < m.aux_dim(); ++i)
-    //    r += size_of(m[i]);
     for (auto const & v : m.data())
-        r += v.size();
+        r += v.size() * sizeof(typename Matrix::value_type);
+
     return r;
 }
 
