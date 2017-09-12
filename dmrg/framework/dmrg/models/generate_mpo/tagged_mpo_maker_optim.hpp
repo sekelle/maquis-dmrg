@@ -251,6 +251,8 @@ namespace generate_mpo
                         HermKeyPairs[k2] = ck2;
                         HermitianPhases[k2] = phase;
                     }
+
+                    bool sadj = is_self_adjoint(k2);
                 }
 
                 //typedef std::map<index_type, prempo_key_type> key_map_t;
@@ -624,6 +626,14 @@ namespace generate_mpo
             }
 
             return std::make_pair(conj, phase);
+        }
+
+        bool is_self_adjoint(prempo_key_type k)
+        {
+            bool ret = true;
+            for (auto pos_op : k.pos_op)
+                ret = ret && tag_handler->is_self_adjoint(pos_op.second);
+            return ret;
         }
 
     private:
