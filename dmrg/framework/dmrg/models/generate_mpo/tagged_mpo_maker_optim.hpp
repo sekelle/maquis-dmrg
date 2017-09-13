@@ -251,8 +251,6 @@ namespace generate_mpo
                         HermKeyPairs[k2] = ck2;
                         HermitianPhases[k2] = phase;
                     }
-
-                    bool sadj = is_self_adjoint(k2);
                 }
 
                 //typedef std::map<index_type, prempo_key_type> key_map_t;
@@ -292,6 +290,12 @@ namespace generate_mpo
                         RightPhase[julia] = HermitianPhases[h_it->first].second;
                     }
                 }
+
+                // record self adjoint keys
+                for (auto it = right.begin(); it != right.end(); ++it)
+                    if (is_self_adjoint(it->first))
+                       RightHerm[it->second] = it->second;
+
                 if (verbose)
                     maquis::cout << "MPO Bond " << p << ": " << rcd.second << "/" << HermKeyPairs.size()/2 << std::endl;
 
