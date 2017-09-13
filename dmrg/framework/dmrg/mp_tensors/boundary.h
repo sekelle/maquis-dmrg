@@ -164,7 +164,7 @@ public:
 
                 for (unsigned b = 0; b < herm.size(); ++b)
                 {
-                    if (herm.skip(b))
+                    if (herm.skip(b, ket_index[rb].first, bra_index[lb].first))
                     {
                         assert(offsets[ci_B][b] == -1);
                         // ci_B @ b is the transpose of ci_A at herm.conj(b)

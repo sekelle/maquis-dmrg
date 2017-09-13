@@ -154,7 +154,13 @@ namespace MPOTensor_detail
         : Herm(h), Phase(p)
         {}
 
-        bool       skip(index_type b) const { return Herm[b] < b; }
+        template <class Charge>
+        bool skip(index_type b, Charge l, Charge r) const
+        {
+            if (Herm[b] < b) return true;
+            else if (Herm[b] == b) return l < r;
+            else return false;
+        }
         index_type conj(index_type b) const { return Herm[b]; }
 
         std::size_t size()       const { return Herm.size(); }

@@ -85,7 +85,7 @@ namespace SU2 {
                 t_map_t t_index;
                 for (index_type b2 = 0; b2 < mpo.col_dim(); ++b2)
                 {
-                    if (mpo.herm_right.skip(b2) && skip) continue;
+                    if (mpo.herm_right.skip(b2, rc_bra, rc_ket) && skip) continue;
                     int Ap = mpo.right_spin(b2).get(); if (!::SU2::triangle<SymmGroup>(rc_ket, Ap, rc_bra)) continue;
 
                     for (typename col_proxy::const_iterator col_it = mpo.column(b2).begin(); col_it != mpo.column(b2).end(); ++col_it) {
@@ -126,7 +126,7 @@ namespace SU2 {
                             } // w_block
                         } //op_index
                     } // b1
-                    for (auto& mg : cg) mg.add_line(b2, 0, !mpo.herm_right.skip(b2));
+                    for (auto& mg : cg) mg.add_line(b2, 0, !mpo.herm_right.skip(b2, rc_bra, rc_ket));
                 } // b2
 
                 if (cg.n_tasks())
