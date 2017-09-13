@@ -104,27 +104,15 @@ namespace storage {
             std::ofstream ofs(fp.c_str(), std::ofstream::binary);
             Boundary<Matrix, SymmGroup>& o = *ptr;
             size_t loop_max = o.aux_dim();
-            for(size_t b = 0; b < loop_max; ++b){
+            for(size_t b = 0; b < loop_max; ++b)
+            {
                 assert( o[b].reasonable() );
                 for (std::size_t k = 0; k < o[b].n_blocks(); ++k){
                     Matrix& m = o[b][k];
-#ifdef USE_AMBIENT
-                    for(int j = 0; j < m.nt; ++j)
-                    for(int i = 0; i < m.mt; ++i){
-                        if(ambient::weak(m.tile(i,j))) continue;
-                        if(ambient::ext::naked(m.tile(i,j)).state != ambient::locality::local) continue;
-                        char* data = (char*)ambient::ext::naked(m.tile(i,j));
-                        ofs.write(data, m.tile(i,j).num_cols() * m.tile(i,j).num_rows() *
-                                  sizeof(typename Matrix::value_type)/sizeof(char));
-                        std::free(data);
-                        ambient::ext::naked(m.tile(i,j)).data = NULL;
-                    }
-#else
                     for (std::size_t c = 0; c < num_cols(m); ++c)
                         ofs.write((char*)(&m(0, c)), num_rows(m)*
                                  sizeof(typename Matrix::value_type)/sizeof(char));
                     m = Matrix();
-#endif
                 }
             }
             ofs.close();
@@ -144,23 +132,11 @@ namespace storage {
             size_t loop_max = o.aux_dim();
             for(size_t b = 0; b < loop_max; ++b){
                 for (std::size_t k = 0; k < o[b].n_blocks(); ++k){
-#ifdef USE_AMBIENT
-                    Matrix& m = o[b][k];
-                    for(int j = 0; j < m.nt; ++j)
-                    for(int i = 0; i < m.mt; ++i){
-                        if(ambient::weak(m.tile(i,j))) continue;
-                        if(ambient::ext::naked(m.tile(i,j)).state != ambient::locality::local) continue;
-                        ambient::ext::naked(m.tile(i,j)).data = std::malloc(ambient::ext::naked(m.tile(i,j)).spec.extent);
-                        ifs.read((char*)ambient::ext::naked(m.tile(i,j)), m.tile(i,j).num_cols() * m.tile(i,j).num_rows() *
-                                 sizeof(typename Matrix::value_type)/sizeof(char));
-                    }
-#else
                     o[b][k] = Matrix(o[b].left_basis()[k].second,
                                      o[b].right_basis()[k].second);
                     Matrix& m = o[b][k];
                     ifs.read((char*)(&m(0,0)), num_cols(m)*num_rows(m)*
                              sizeof(typename Matrix::value_type)/sizeof(char));
-#endif
                 }
             }
             ifs.close();
@@ -177,20 +153,8 @@ namespace storage {
         void operator()(){
             Boundary<Matrix, SymmGroup>& o = *ptr;
             for (std::size_t b = 0; b < o.aux_dim(); ++b)
-            for (std::size_t k = 0; k < o[b].n_blocks(); ++k){
-#ifdef USE_AMBIENT
-                    Matrix& m = o[b][k];
-                    for(int j = 0; j < m.nt; ++j)
-                    for(int i = 0; i < m.mt; ++i){
-                        if(ambient::weak(m.tile(i,j))) continue;
-                        if(ambient::ext::naked(m.tile(i,j)).state != ambient::locality::local) continue;
-                        char* data = (char*)ambient::ext::naked(m.tile(i,j)); std::free(data);
-                        ambient::ext::naked(m.tile(i,j)).data = NULL;
-                    }
-#else
-                    o[b][k] = Matrix();
-#endif
-            }
+            for (std::size_t k = 0; k < o[b].n_blocks(); ++k)
+                o[b][k] = Matrix();
         }
     private:
         std::string fp;

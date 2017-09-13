@@ -141,14 +141,7 @@ namespace MPOTensor_detail
     class Hermitian
     {
     public:
-        Hermitian(index_type d)
-        {
-            Herm.resize(d);
-            Phase = std::vector<int>(d, 1);
-
-            index_type z=0;
-            std::generate(Herm.begin(), Herm.end(), boost::lambda::var(z)++);
-        }
+        Hermitian(index_type d) : Herm(d, std::numeric_limits<index_type>::max()), Phase(d,1) {}
 
         Hermitian(std::vector<index_type> const & h, std::vector<int> const & p)
         : Herm(h), Phase(p)
