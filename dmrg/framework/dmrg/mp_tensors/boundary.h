@@ -111,11 +111,14 @@ public:
     size_t     aux_dim        ()                        const { if (n_cohorts()) return offsets[0].size();
                                                                 else             return 0;
                                                               }
-    size_t     block_size     (unsigned ci)             const { return left_sizes[ci] * right_sizes[ci]; }
     size_t     left_size      (unsigned ci)             const { return left_sizes[ci]; }
     size_t     right_size     (unsigned ci)             const { return right_sizes[ci]; }
 
     size_t     n_blocks       (unsigned ci)             const { return n_blocks_[ci]; }
+
+    size_t     block_size     (unsigned ci)             const {
+        return bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(left_sizes[ci] * right_sizes[ci]);
+    }
 
     unsigned cohort_index(unsigned lb, unsigned rb, int tag = 0) const
     {
@@ -256,9 +259,9 @@ public:
     template <class OtherMatrix>
     Boundary(Boundary<OtherMatrix, SymmGroup> const& rhs) : index(rhs.index), data2(rhs.data())
     {
-        data_.reserve(rhs.aux_dim());
-        for (std::size_t n=0; n<rhs.aux_dim(); ++n)
-            data_.push_back(rhs[n]);
+        //data_.reserve(rhs.aux_dim());
+        //for (std::size_t n=0; n<rhs.aux_dim(); ++n)
+        //    data_.push_back(rhs[n]);
     }
 
     std::size_t aux_dim() const { 
@@ -275,6 +278,7 @@ public:
     void allocate(charge rc, charge lc)
     {
         unsigned ci = index.cohort_index(rc, lc);
+        assert(ci < data().size());
         data()[ci].resize(bit_twiddling::round_up<A>(index.block_size(ci)) * index.n_blocks(ci));
     }
 

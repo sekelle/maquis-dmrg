@@ -291,7 +291,7 @@ public:
 
             size_t sz2 = ret.data()[ci].size() / (ret.index.left_size(ci) * ret.index.right_size(ci));
             size_t lda = m_size * sz2;
-            size_t real_i = ret.index.offset(ci, b1) / ret.index.block_size(ci);
+            size_t real_i = ret.index.offset(ci, b1) / (ret.index.left_size(ci) * ret.index.right_size(ci));
             for (unsigned c = 0; c < r_size; ++c)
                 maquis::dmrg::detail::iterator_axpy(&S(0,c), &S(0,c) + m_size, &ret.data()[ci][0] + (offset + c) * lda + real_i * m_size, 1.0);
         }
