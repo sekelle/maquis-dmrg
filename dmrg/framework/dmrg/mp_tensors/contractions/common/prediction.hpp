@@ -113,26 +113,8 @@ namespace contraction {
             block_matrix<Matrix, SymmGroup> dm;
             gemm(transpose(conjugate(mps.data())), mps.data(), dm);
 
-            block_matrix<Matrix, SymmGroup> dm2;
-            gemm(transpose(conjugate(mps.data())), mps.data(), dm2);
-                
             Boundary<Matrix, SymmGroup> half_dm = rbtm(mps, right, mpo, NULL);
             
-            mps.make_right_paired();
-            //for (std::size_t b = 0; b < half_dm.aux_dim(); ++b)
-            //{
-            //    block_matrix<Matrix, SymmGroup> tdm;
-            //    gemm(transpose(conjugate(half_dm[b])), half_dm[b], tdm);
-
-            //    tdm *= alpha;
-            //    for (std::size_t k = 0; k < tdm.n_blocks(); ++k) {
-            //        if (mps.data().basis().has(tdm.basis().left_charge(k), tdm.basis().right_charge(k)))
-            //            dm.match_and_add_block(tdm[k],
-            //                                   tdm.basis().left_charge(k),
-            //                                   tdm.basis().right_charge(k));
-            //    }
-            //}
-
             omp_for(unsigned lb, parallel::range<unsigned>(0,mps.data().basis().size()),
             {
                 charge lc = mps.data().basis().left_charge(lb);
@@ -162,13 +144,10 @@ namespace contraction {
                     //}
 
                     parallel_critical
-                    dm2[rb] += tdm;
+                    dm[rb] += tdm;
                 }
             });
-            dm = dm2;
-            //maquis::cout << "norm " << (dm2-dm).norm() << std::endl;
             
-            //mps.make_right_paired();
             assert( weak_equal(dm.right_basis(), mps.data().right_basis()) );
             
             block_matrix<Matrix, SymmGroup> U;
