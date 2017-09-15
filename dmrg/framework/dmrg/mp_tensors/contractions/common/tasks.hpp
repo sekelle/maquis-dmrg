@@ -362,6 +362,7 @@ public:
         {
             if (!(*this)[ss1].n_tasks()) continue;
             Matrix C = (*this)[ss1].contract(left, t_pointer);
+            parallel_critical
             maquis::dmrg::detail::iterator_axpy(&C(0,0), &C(0,0) + num_rows(C) * num_cols(C),
                                                 output + l_size * (*this)[ss1].offset, value_type(1.0));
         }        
