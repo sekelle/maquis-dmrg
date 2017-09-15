@@ -118,7 +118,6 @@ public:
 
     template <int A = ALIGNMENT/sizeof(value_type)>
     size_t     block_size     (unsigned ci)             const {
-        //return bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(left_sizes[ci] * right_sizes[ci]);
         return bit_twiddling::round_up<A>(left_sizes[ci] * right_sizes[ci]);
     }
 
