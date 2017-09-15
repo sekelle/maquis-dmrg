@@ -72,6 +72,7 @@ TagHandler<Matrix, SymmGroup>::TagHandler(TagHandler const & rhs)
     , sign_table(rhs.sign_table)
     , product_tags(rhs.product_tags)
     , hermitian(rhs.hermitian)
+    , self_adjoint_ops(rhs.self_adjoint_ops)
 {}
 
 // simple const query
