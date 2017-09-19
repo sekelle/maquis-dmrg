@@ -143,10 +143,6 @@ namespace MPOTensor_detail
     public:
         Hermitian(index_type d) : Herm(d, std::numeric_limits<index_type>::max()), Phase(d,1) {}
 
-        Hermitian(std::vector<index_type> const & h, std::vector<int> const & p)
-        : Herm(h), Phase(p)
-        {}
-
         template <class Charge>
         bool skip(index_type b, Charge l, Charge r) const
         {
@@ -158,6 +154,19 @@ namespace MPOTensor_detail
 
         std::size_t size()       const { return Herm.size(); }
         int phase(std::size_t i) const { return Phase[i]; }
+
+        void register_hermitian_pair(index_type a, index_type b, int phase_a, int phase_b)
+        {
+            Herm[a] = b;
+            Herm[b] = a;
+            Phase[a] = phase_a;
+            Phase[b] = phase_b;
+        }
+
+        void register_self_adjoint(index_type a)
+        {
+            Herm[a] = a;
+        }
 
     private:
         std::vector<index_type> Herm;

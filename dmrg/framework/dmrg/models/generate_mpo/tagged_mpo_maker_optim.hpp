@@ -212,8 +212,7 @@ namespace generate_mpo
 
             typedef SpinDescriptor<typename symm_traits::SymmType<SymmGroup>::type> spin_desc_t;
             std::vector<spin_desc_t> left_spins(1);
-            std::vector<index_type> LeftHerm(1, std::numeric_limits<index_type>::max());
-            std::vector<int> LeftPhase(1,1);
+            MPOTensor_detail::Hermitian left_herm(1);
             
             for (pos_t p = 0; p < length; ++p) {
                 std::vector<tag_block> pre_tensor; pre_tensor.reserve(prempo[p].size());
@@ -274,50 +273,40 @@ namespace generate_mpo
                     right_spins[out_index] = out_spin;
                 }
 
-                // record adjoint pairs
-                std::vector<index_type> RightHerm(rcd.second, std::numeric_limits<index_type>::max());
-                std::vector<int> RightPhase(rcd.second, 1);
+                MPOTensor_detail::Hermitian right_herm(rcd.second);
                 for (typename std::map<prempo_key_type, prempo_key_type>::const_iterator
                                 h_it = HermKeyPairs.begin(); h_it != HermKeyPairs.end(); ++h_it)
                 {
                     index_type romeo = right[h_it->first];
                     index_type julia = right[h_it->second];
                     if (romeo < julia)
-                    {
-                        RightHerm[romeo] = julia;
-                        RightHerm[julia] = romeo;
-                        RightPhase[romeo] = HermitianPhases[h_it->first].first;
-                        RightPhase[julia] = HermitianPhases[h_it->first].second;
-                    }
+                        right_herm.register_hermitian_pair(romeo, julia, HermitianPhases[h_it->first].first,
+                                                                     HermitianPhases[h_it->first].second);
                 }
 
                 // record self adjoint keys
                 for (auto it = right.begin(); it != right.end(); ++it)
                     if (is_self_adjoint(it->first))
-                        RightHerm[it->second] = it->second;
+                        right_herm.register_self_adjoint(it->second);
 
                 if (verbose)
                     maquis::cout << "MPO Bond " << p << ": " << rcd.second << "/" << HermKeyPairs.size()/2 << std::endl;
 
-                MPOTensor_detail::Hermitian hleft(LeftHerm, LeftPhase);
-                MPOTensor_detail::Hermitian hright(RightHerm, RightPhase);
-
                 if (p == 0)
                     mpo.push_back( MPOTensor<Matrix, SymmGroup>(1, rcd.second, pre_tensor,
-                                     tag_handler->get_operator_table(), hleft, hright, left_spins, right_spins)
+                                     tag_handler->get_operator_table(), left_herm, right_herm, left_spins, right_spins)
                                  );
                 else if (p == length - 1)
                     mpo.push_back( MPOTensor<Matrix, SymmGroup>(rcd.first, 1, pre_tensor,
-                                     tag_handler->get_operator_table(), hleft, hright, left_spins, right_spins)
+                                     tag_handler->get_operator_table(), left_herm, right_herm, left_spins, right_spins)
                                  );
                 else
                     mpo.push_back( MPOTensor<Matrix, SymmGroup>(rcd.first, rcd.second, pre_tensor,
-                                     tag_handler->get_operator_table(), hleft, hright, left_spins, right_spins)
+                                     tag_handler->get_operator_table(), left_herm, right_herm, left_spins, right_spins)
                                  );
                 swap(left, right);
                 swap(left_spins, right_spins);
-                swap(LeftHerm, RightHerm);
-                swap(LeftPhase, RightPhase);
+                swap(left_herm, right_herm);
             }
             
             mpo.setCoreEnergy(core_energy);
