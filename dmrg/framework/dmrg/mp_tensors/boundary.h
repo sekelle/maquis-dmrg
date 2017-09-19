@@ -171,12 +171,72 @@ public:
                     if (herm.skip(b, ket_index[rb].first, bra_index[lb].first))
                     {
                         assert(offsets[ci_B][b] == -1);
-                        // ci_B @ b is the transpose of ci_A at herm.conj(b)
+                        // ci_B[b] <-- ci_A[herm.conj(b)]^T
+                        // (and ci_A[b] <-- ci_B[herm.conj(b)]^T, addressed in different iteration)
                         offsets[ci_B][b] = offsets[ci_A][herm.conj(b)];
                         conjugate_scales[ci_B][b] = detail::conjugate_correction<value_type, SymmGroup>
                                                         (ket_index[rb].first, bra_index[lb].first)
                                                       * value_type(herm.phase( (forward) ? b : herm.conj(b)));
                         transposes[ci_B][b] = 1;
+                    }
+                }
+            }
+    }
+
+    template <class Data>
+    void check_self_adjoint(MPOTensor_detail::Hermitian const & herm, bool forward, Data const & data) const
+    {
+        for (unsigned rb = 0; rb < num_cols(lbrb_ci); ++rb)
+            for (unsigned lb = 0; lb < num_rows(lbrb_ci); ++lb)
+            {
+                if (lbrb_ci(lb, rb) == std::numeric_limits<unsigned>::max()) continue;
+
+                unsigned ci_A = lbrb_ci(lb, rb);
+                unsigned ci_B = cohort_index(ket_index[rb].first, bra_index[lb].first);
+                assert (ci_B != n_cohorts());
+
+                for (unsigned b = 0; b < herm.size(); ++b)
+                {
+                    if (herm.conj(b) == b && ket_index[rb].first < bra_index[lb].first)
+                    if (has_block(ci_A, b))
+                    {
+                        assert(has_block(ci_B, b));
+
+                        // ci_B[b] <-- ci_A[herm.conj(b)]^T
+                        // (and ci_A[b] <-- ci_B[herm.conj(b)]^T, addressed in different iteration)
+                        //offsets[ci_B][b] = offsets[ci_A][herm.conj(b)];
+
+                        value_type conj_scale = detail::conjugate_correction<value_type, SymmGroup>
+                                                        (ket_index[rb].first, bra_index[lb].first)
+                                                      * value_type(herm.phase( (forward) ? b : herm.conj(b)));
+
+                        assert(block_size(ci_B) == block_size(ci_A));
+                        assert(offsets[ci_A][b] + block_size(ci_A) <= data[ci_A].size());
+                        assert(offsets[ci_B][b] + block_size(ci_B) <= data[ci_B].size());
+
+                        Matrix mA(left_size(ci_A), right_size(ci_A));
+                        Matrix mB = transpose(mA);
+
+                        value_type* astart = &mA(0,0);
+                        value_type* bstart = &mB(0,0);
+
+                        std::copy     (&data[ci_A][offsets[ci_A][b]],
+                                       &data[ci_A][offsets[ci_A][b]] + block_size<1>(ci_A),
+                                       astart);
+                        std::transform(&data[ci_B][offsets[ci_B][b]],
+                                       &data[ci_B][offsets[ci_B][b]] + block_size<1>(ci_B),
+                                       bstart, boost::lambda::_1/conj_scale);
+
+                        Matrix mBt = transpose(mB);
+
+                        if (norm_square(mBt - mA) > 1e-6 )
+                        {
+                            for (int i = 0; i < num_rows(mA); ++i)
+                            for (int j = 0; j < num_cols(mA); ++j)
+                                maquis::cout << mA(i,j) / mBt(i,j) << std::endl;
+                        }
+
+                        assert( norm_square(mBt - mA) < 1e-6 );
                     }
                 }
             }
