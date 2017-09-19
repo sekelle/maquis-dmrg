@@ -37,52 +37,6 @@
 #include "dmrg/utils/utils.hpp"
 #include "utils/traits.hpp"
 
-template<class Matrix, class SymmGroup>
-std::vector<Boundary<Matrix, SymmGroup> >
-left_mpo_overlaps(MPS<Matrix, SymmGroup> const & mps, MPO<Matrix, SymmGroup> const & mpo)
-{
-    assert(mpo.length() == mps.length());
-    std::size_t L = mps.length();
-    
-    std::vector<Boundary<Matrix, SymmGroup> > left_(L+1);
-    left_[0] = mps.left_boundary();
-    
-    for (int i = 0; i < L; ++i) {
-        left_[i+1] = contraction::Engine<Matrix, Matrix, SymmGroup>::overlap_mpo_left_step(mps[i], mps[i], left_[i], mpo[i]);
-    }
-    return left_;
-}
-
-template<class Matrix, class SymmGroup>
-std::vector<Boundary<Matrix, SymmGroup> >
-right_mpo_overlaps(MPS<Matrix, SymmGroup> const & mps, MPO<Matrix, SymmGroup> const & mpo)
-{
-    assert(mpo.length() == mps.length());
-    std::size_t L = mps.length();
-    
-    std::vector<Boundary<Matrix, SymmGroup> > right_(L+1);
-    right_[L] = mps.right_boundary();
-    
-    for (int i = L-1; i >= 0; --i) {
-        right_[i] = contraction::Engine<Matrix, Matrix, SymmGroup>::overlap_mpo_right_step(mps[i], mps[i], right_[i+1], mpo[i]);
-    }
-    return right_;
-}
-
-template<class Matrix, class SymmGroup>
-double expval(MPS<Matrix, SymmGroup> const & mps, MPO<Matrix, SymmGroup> const & mpo, int d)
-{
-    if (d == 0) {
-        std::vector<Boundary<Matrix, SymmGroup> > left_ = left_mpo_overlaps(mps, mpo);
-        assert( check_real(left_[mps.length()][0].trace()) );
-        return maquis::real(left_[mps.length()][0].trace());
-    } else {
-        std::vector<Boundary<Matrix, SymmGroup> > right_ = right_mpo_overlaps(mps, mpo);
-        assert( check_real(right_[0][0].trace()) );
-        return maquis::real(right_[0][0].trace());
-    }
-}
-
 namespace mps_mpo_detail {
 
     template<class Matrix, class SymmGroup>
@@ -93,10 +47,6 @@ namespace mps_mpo_detail {
         Index<SymmGroup> i = ket[0].row_dim();
         Index<SymmGroup> j = bra[0].row_dim();
         Boundary<Matrix, SymmGroup> ret(i, j, 1);
-
-        for(typename Index<SymmGroup>::basis_iterator it1 = i.basis_begin(); !it1.end(); ++it1)
-            for(typename Index<SymmGroup>::basis_iterator it2 = j.basis_begin(); !it2.end(); ++it2)
-                ret[0](*it1, *it2) = 1;
 
         return ret;
     }
@@ -142,7 +92,6 @@ std::vector<typename MPS<Matrix, SymmGroup>::scalar_type> multi_expval(MPS<Matri
     assert(mpo.length() == bra.length());
     std::size_t L = bra.length();
     
-    //Boundary<Matrix, SymmGroup> left = make_left_boundary(bra, ket);
     Boundary<Matrix, SymmGroup> left = mps_mpo_detail::mixed_left_boundary(bra, ket);
     
     for (int i = 0; i < L; ++i)
@@ -170,7 +119,7 @@ typename MPS<Matrix, SymmGroup>::scalar_type norm(MPS<Matrix, SymmGroup> const &
     for(size_t i = 0; i < L; ++i) {
         parallel::guard proc(scheduler(i));
         MPSTensor<Matrix, SymmGroup> cpy = mps[i];
-        left = contraction::Engine<Matrix, Matrix, SymmGroup>::overlap_left_step(mps[i], cpy, left); // serial
+        left = contraction::Engine<Matrix, Matrix, SymmGroup>::overlap_left_step(mps[i], cpy, left);
     }
     
     return trace(left);

@@ -162,10 +162,6 @@ make_left_boundary(MPS<Matrix, SymmGroup> const & bra, MPS<Matrix, SymmGroup> co
     Index<SymmGroup> j = bra[0].row_dim();
     Boundary<Matrix, SymmGroup> ret(i, j, 1);
     
-    for(typename Index<SymmGroup>::basis_iterator it1 = i.basis_begin(); !it1.end(); ++it1)
-        for(typename Index<SymmGroup>::basis_iterator it2 = j.basis_begin(); !it2.end(); ++it2)
-            ret[0](*it1, *it2) = 1;
-    
     return ret;
 }
 
@@ -178,10 +174,6 @@ make_right_boundary(MPS<Matrix, SymmGroup> const & bra, MPS<Matrix, SymmGroup> c
     Index<SymmGroup> i = ket[L-1].col_dim();
     Index<SymmGroup> j = bra[L-1].col_dim();
     Boundary<Matrix, SymmGroup> ret(j, i, 1);
-    
-    for(typename Index<SymmGroup>::basis_iterator it1 = i.basis_begin(); !it1.end(); ++it1)
-        for(typename Index<SymmGroup>::basis_iterator it2 = j.basis_begin(); !it2.end(); ++it2)
-            ret[0](*it2, *it1) = 1;
     
     return ret;
 }
