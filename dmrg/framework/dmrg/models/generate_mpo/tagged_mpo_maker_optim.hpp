@@ -212,7 +212,7 @@ namespace generate_mpo
 
             typedef SpinDescriptor<typename symm_traits::SymmType<SymmGroup>::type> spin_desc_t;
             std::vector<spin_desc_t> left_spins(1);
-            std::vector<index_type> LeftHerm(1);
+            std::vector<index_type> LeftHerm(1, std::numeric_limits<index_type>::max());
             std::vector<int> LeftPhase(1,1);
             
             for (pos_t p = 0; p < length; ++p) {
@@ -294,7 +294,7 @@ namespace generate_mpo
                 // record self adjoint keys
                 for (auto it = right.begin(); it != right.end(); ++it)
                     if (is_self_adjoint(it->first))
-                       RightHerm[it->second] = it->second;
+                        RightHerm[it->second] = it->second;
 
                 if (verbose)
                     maquis::cout << "MPO Bond " << p << ": " << rcd.second << "/" << HermKeyPairs.size()/2 << std::endl;
@@ -576,13 +576,14 @@ namespace generate_mpo
             prempo_key_type conj = k;
             for (tag_type i = 0; i < k.pos_op.size(); ++i)
             {
-                // for now exclude cases where some ops are self adjoint
-                // there are no keys where only part of the operators are self adjoint
+                // there are no keys pairs where only part of the operators are adjoints of each other
                 // either they all are or none, so the next two lines make no difference if
                 // all hermitian pairs have been listed
                 //if (k.pos_op[i].second == tag_handler->herm_conj(k.pos_op[i].second))
                 //    return std::make_pair(k, std::make_pair(1,1));
 
+                // tag_handler->herm_conj returns the input if it corresponds to a self adjoint op
+                // or if the property of the op is unknown
                 conj.pos_op[i].second = tag_handler->herm_conj(k.pos_op[i].second);
             }
 
@@ -633,6 +634,8 @@ namespace generate_mpo
 
         bool is_self_adjoint(prempo_key_type k)
         {
+            if (k.pos_op.size() == 0)
+                return false;
             bool ret = true;
             for (auto pos_op : k.pos_op)
                 ret = ret && tag_handler->is_self_adjoint(pos_op.second);
