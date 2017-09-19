@@ -52,8 +52,6 @@ namespace storage {
 
 template<class Matrix, class SymmGroup> class Boundary;
 template<class Matrix, class SymmGroup> class MPSTensor;
-template<class Matrix, class SymmGroup> class block_matrix;
-template<class Matrix, class SymmGroup> class SiteOperator;
 
 namespace alps { namespace numeric {
     template <typename T, typename MemoryBlock> class matrix;
@@ -95,6 +93,7 @@ namespace storage {
             {
                 ofs.write((char*)(&v[0]), v.size() * sizeof(typename Matrix::value_type)/sizeof(char));
                 v.clear();
+                v.shrink_to_fit();
             }
 
             ofs.close();
@@ -132,6 +131,7 @@ namespace storage {
         void operator()(){
             Boundary<Matrix, SymmGroup>& o = *ptr;
             o.data().clear();
+            o.data().shrink_to_fit();
         }
     private:
         std::string fp;
