@@ -227,7 +227,7 @@ namespace generate_mpo
                     prempo_key_type const& k1 = it->first.first;
                     prempo_key_type const& k2 = it->first.second;
                     prempo_value_type const& val = it->second;
-                    
+
                     index_iterator ll = left.find(k1);
                     if (ll == left.end())
                         throw std::runtime_error("k1 not found!");
@@ -361,6 +361,8 @@ namespace generate_mpo
         {
             assert(term.size() == 3);
             int nops = term.size();
+
+            detect_coalescing(term);
             
             /// number of fermionic operators
             int nferm = 0;
@@ -623,12 +625,62 @@ namespace generate_mpo
 
         bool is_self_adjoint(prempo_key_type k)
         {
-            if (k.pos_op.size() == 0)
-                return false;
+            if (k.pos_op.size() == 0)    return false;
+            if (coalesced_keys.count(k)) return true;
+
             bool ret = true;
             for (auto pos_op : k.pos_op)
                 ret = ret && tag_handler->is_self_adjoint(pos_op.second);
+
             return ret;
+        }
+
+        void detect_coalescing(term_descriptor const & term)
+        {
+            // this is to mark mpo indices as self-adjoint that correspont to terms which
+            // only become self-adjoint if combined in pairs,
+            // i.e. flip_1 -- c^t_2 -- c_3     together with
+            //      flip_1 --  c_2  -- c^t_3
+
+            tag_type op1 = term.operator_tag(0);
+            tag_type op2 = term.operator_tag(1);
+            tag_type op3 = term.operator_tag(2);
+
+            if (tag_handler->herm_conj(op3) != op3
+                && tag_handler->herm_conj(op2) != op2
+                && !tag_handler->is_self_adjoint(op1) && tag_handler->herm_conj(op1) == op1)
+            {
+                paired_self_adjoint.insert(term);
+
+                term_descriptor complement = term;
+                boost::get<1>(complement[1]) = tag_handler->herm_conj(op2);
+                boost::get<1>(complement[2]) = tag_handler->herm_conj(op3);
+
+                if (paired_self_adjoint.count(complement))
+                {
+                    prempo_key_type k;
+                    k.pos_op.push_back(to_pair(term[0]));
+                    coalesced_keys.insert(k);
+                }
+            }
+
+            if (tag_handler->herm_conj(op1) != op1
+                && tag_handler->herm_conj(op2) != op2
+                && !tag_handler->is_self_adjoint(op3) && tag_handler->herm_conj(op3) == op3)
+            {
+                paired_self_adjoint.insert(term);
+
+                term_descriptor complement = term;
+                boost::get<1>(complement[0]) = tag_handler->herm_conj(op1);
+                boost::get<1>(complement[1]) = tag_handler->herm_conj(op2);
+
+                if (paired_self_adjoint.count(complement))
+                {
+                    prempo_key_type k;
+                    k.pos_op.push_back(to_pair(term[2]));
+                    coalesced_keys.insert(k);
+                }
+            }
         }
 
     private:
@@ -642,6 +694,9 @@ namespace generate_mpo
         std::vector<prempo_map_type> prempo;
         prempo_key_type trivial_left, trivial_right;
         std::map<pos_t, op_t> site_terms;
+
+        std::set<term_descriptor, ::detail::descriptor_lt<term_descriptor>> paired_self_adjoint;
+        std::set<prempo_key_type> coalesced_keys;
         
         pos_t leftmost_right, rightmost_left;
         bool finalized, verbose;

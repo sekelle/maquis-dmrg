@@ -279,8 +279,9 @@ qc_su2<Matrix, SymmGroup>::qc_su2(Lattice const & lat_, BaseParameters & parms_)
     SELF_ADJOINT(docc);
     SELF_ADJOINT(count_fill);
     SELF_ADJOINT(flip_S0);
-    SELF_ADJOINT(flip_to_S0);
-    SELF_ADJOINT(flip_to_S2);
+    //SELF_ADJOINT(flip_to_S0); // these can be combined with non-self-adjoint operators
+    //SELF_ADJOINT(flip_to_S2); // and therefore are only self-adjoint if both the rest term
+                                // and rest term herm conjugate occur in the final operator
     #undef SELF_ADJOINT
 
 //#define PRINT(op) maquis::cout << #op << "\t" << op << std::endl;
