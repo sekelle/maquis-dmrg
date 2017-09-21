@@ -289,14 +289,14 @@ public:
 
     template<class Archive>
     void serialize(Archive &ar, const unsigned int version){
-        ar & data_ & index;
+        ar & data_ & index_;
     }
     
     Boundary(Index<SymmGroup> const & ud = Index<SymmGroup>(),
              Index<SymmGroup> const & ld = Index<SymmGroup>(),
              std::size_t ad = 1)
     : data_(ad, block_matrix<Matrix, SymmGroup>(ud, ld))
-    , index(ud, ld)
+    , index_(ud, ld)
     {
         assert(ud.size() == ld.size());
 
@@ -313,30 +313,31 @@ public:
             std::vector<long int> offsets(ad);
             for (std::size_t b = 0; b < ad; ++b)
                 offsets[b] = b * block_size;
-            index.add_cohort(i, i, offsets);
+            index_.add_cohort(i, i, offsets);
         }
     }
+
+    Boundary(BoundaryIndex<Matrix, SymmGroup> const & idx) : index_(idx), data2(idx.n_cohorts()) {}
     
     template <class OtherMatrix>
-    Boundary(Boundary<OtherMatrix, SymmGroup> const& rhs) : index(rhs.index), data2(rhs.data())
+    Boundary(Boundary<OtherMatrix, SymmGroup> const& rhs) : index_(rhs.index()), data2(rhs.data())
     {}
+
+    BoundaryIndex<Matrix, SymmGroup> const& index() const
+    {
+        return index_;
+    }
 
     std::size_t aux_dim() const { 
         return data_.size(); 
     }
 
-    void reserve(BoundaryIndex<Matrix, SymmGroup> const & idx)
-    {
-        index = idx;
-        data().resize(idx.n_cohorts());
-    }
-
     template <int A = ALIGNMENT/sizeof(value_type)>
     void allocate(charge rc, charge lc)
     {
-        unsigned ci = index.cohort_index(rc, lc);
+        unsigned ci = index_.cohort_index(rc, lc);
         assert(ci < data().size());
-        data()[ci].resize(index.template block_size<A>(ci) * index.n_blocks(ci));
+        data()[ci].resize(index_.template block_size<A>(ci) * index_.n_blocks(ci));
     }
 
     void resize(size_t n)
@@ -350,22 +351,22 @@ public:
     
     std::vector<scalar_type> traces() const
     {
-        if (!index.n_cohorts())
+        if (!index_.n_cohorts())
             throw std::runtime_error("Could not carry out multi_expval because resulting boundary was empty");
 
-        std::vector<scalar_type> ret(index.aux_dim(), scalar_type(0));
+        std::vector<scalar_type> ret(index_.aux_dim(), scalar_type(0));
         for (size_t ci = 0; ci < data().size(); ++ci)
-            for (size_t b = 0; b < index.aux_dim(); ++b)
-                if (index.has_block(ci, b))
-                    ret[b] += std::accumulate(&data()[ci][index.offset(ci, b)],
-                                              &data()[ci][index.offset(ci, b)] + index.block_size(ci), scalar_type(0));
+            for (size_t b = 0; b < index_.aux_dim(); ++b)
+                if (index_.has_block(ci, b))
+                    ret[b] += std::accumulate(&data()[ci][index_.offset(ci, b)],
+                                              &data()[ci][index_.offset(ci, b)] + index_.block_size(ci), scalar_type(0));
 
         return ret;
     }
 
     scalar_type trace() const
     {
-        assert(index.aux_dim() <= 1);
+        assert(index_.aux_dim() <= 1);
 
         scalar_type ret(0);
         for (auto& v : data())
@@ -402,9 +403,9 @@ public:
     data_t const& data() const { return data2; }
     data_t      & data()       { return data2; }
 
-    BoundaryIndex<Matrix, SymmGroup> index;
 
 private:
+    BoundaryIndex<Matrix, SymmGroup> index_;
     data_t data2;
 
     std::vector<block_matrix<Matrix, SymmGroup> > data_;

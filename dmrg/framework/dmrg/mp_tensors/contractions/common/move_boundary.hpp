@@ -112,7 +112,7 @@ namespace contraction {
             unsigned loop_max = right_i.size();
             schedule_t tasks(loop_max);
             omp_for(unsigned mb, parallel::range<unsigned>(0,loop_max), {
-                task_calc(mpo, ket_tensor, ket_tensor, left.index, right_pb, right_pb, mb, tasks[mb], false);
+                task_calc(mpo, ket_tensor, ket_tensor, left.index(), right_pb, right_pb, mb, tasks[mb], false);
             });
 
             BoundaryIndex<Matrix, SymmGroup> b_index(out_left_i, right_i);
@@ -151,8 +151,7 @@ namespace contraction {
                 }
             }
 
-            Boundary<OtherMatrix, SymmGroup> ret;
-            ret.reserve(b_index);
+            Boundary<OtherMatrix, SymmGroup> ret(b_index);
 
             // Contraction
             omp_for(index_type rb_bra, parallel::range<index_type>(0,loop_max), {
@@ -162,7 +161,7 @@ namespace contraction {
                     charge rc_ket = it->first;
                     ret.template allocate<1>(rc_bra, rc_ket);
                     for (auto const& cg : it->second) // physical index loop
-                        cg.lbtm(ket_tensor, ret.index.cohort_index(rc_bra, rc_ket), left, ret);
+                        cg.lbtm(ket_tensor, ret.index().cohort_index(rc_bra, rc_ket), left, ret);
                 }
             });
 
@@ -202,7 +201,7 @@ namespace contraction {
             unsigned loop_max = left_i.size();
             schedule_t tasks(loop_max);
             omp_for(unsigned lb_bra, parallel::range<unsigned>(0,loop_max), {
-                task_calc(mpo, right.index, left_i,
+                task_calc(mpo, right.index(), left_i,
                           right_i, physical_i, right_pb, lb_bra, tasks[lb_bra], false);
             });
 
@@ -220,8 +219,7 @@ namespace contraction {
                     b_index.add_cohort(left_i.position(e.first), lb_bra, offsets);
                 }
 
-            Boundary<OtherMatrix, SymmGroup> ret;
-            ret.reserve(b_index);
+            Boundary<OtherMatrix, SymmGroup> ret(b_index);
 
             // Contraction
             omp_for(index_type lb_bra, parallel::range<index_type>(0,loop_max), {
@@ -231,7 +229,7 @@ namespace contraction {
                     charge lc_ket = it->first;
                     ret.template allocate<1>(lc_ket, lc_bra);
                     for (auto const& cg : it->second) // physical index loop
-                        cg.rbtm(ket_tensor, ret.index.cohort_index(lc_ket, lc_bra), right, ret);
+                        cg.rbtm(ket_tensor, ret.index().cohort_index(lc_ket, lc_bra), right, ret);
                 }
             });
 
@@ -279,7 +277,7 @@ namespace contraction {
             unsigned loop_max = bra_right_i.size();
             schedule_t tasks(loop_max);
             omp_for(unsigned rb_bra, parallel::range<unsigned>(0,loop_max), {
-                task_calc(mpo, bra_tensor, ket_tensor, left.index, bra_right_pb, ket_right_pb, rb_bra, tasks[rb_bra], true);
+                task_calc(mpo, bra_tensor, ket_tensor, left.index(), bra_right_pb, ket_right_pb, rb_bra, tasks[rb_bra], true);
             });
 
             BoundaryIndex<Matrix, SymmGroup> b_index(bra_right_i, ket_right_i);
@@ -288,8 +286,7 @@ namespace contraction {
                     b_index.add_cohort(rb_bra, ket_right_i.position(e.first), e.second.get_offsets());
 
             b_index.complement_transpose(mpo.herm_right, true);
-            Boundary<OtherMatrix, SymmGroup> ret;
-            ret.reserve(b_index);
+            Boundary<OtherMatrix, SymmGroup> ret(b_index);
 
             // Contraction
             #ifdef MAQUIS_OPENMP
@@ -309,7 +306,7 @@ namespace contraction {
                         charge rc_ket = it->first;
                         ret.allocate(rc_bra, rc_ket);
                         for (auto const& cg : it->second) // physical index loop
-                            cg.prop_l(bra_tensor, ket_tensor, ret.index.cohort_index(rc_bra, rc_ket), left, ret);
+                            cg.prop_l(bra_tensor, ket_tensor, ret.index().cohort_index(rc_bra, rc_ket), left, ret);
                     }
                 }
             }
@@ -355,7 +352,7 @@ namespace contraction {
             unsigned loop_max = bra_left_i.size();
             schedule_t tasks(loop_max);
             omp_for(unsigned lb_bra, parallel::range<unsigned>(0,loop_max), {
-                task_calc(mpo, right.index, bra_left_i, bra_right_i, physical_i, bra_right_pb, lb_bra, tasks[lb_bra], true);
+                task_calc(mpo, right.index(), bra_left_i, bra_right_i, physical_i, bra_right_pb, lb_bra, tasks[lb_bra], true);
             });
 
             BoundaryIndex<Matrix, SymmGroup> b_index(ket_left_i, bra_left_i);
@@ -364,8 +361,7 @@ namespace contraction {
                     b_index.add_cohort(ket_left_i.position(e.first), lb_bra, e.second.get_offsets());
 
             b_index.complement_transpose(mpo.herm_left, false);
-            Boundary<OtherMatrix, SymmGroup> ret;
-            ret.reserve(b_index);
+            Boundary<OtherMatrix, SymmGroup> ret(b_index);
 
             // Contraction
             #ifdef MAQUIS_OPENMP
@@ -385,7 +381,7 @@ namespace contraction {
                         charge lc_ket = it->first;
                         ret.allocate(lc_ket, lc_bra);
                         for (auto const& cg : it->second) // physical index loop
-                            cg.prop(ket_tensor, bra_tensor.data()[lb_bra], ret.index.cohort_index(lc_ket, lc_bra), right, ret);
+                            cg.prop(ket_tensor, bra_tensor.data()[lb_bra], ret.index().cohort_index(lc_ket, lc_bra), right, ret);
                     }
                 }
             }

@@ -110,9 +110,9 @@ namespace storage {
         void operator()(){
             std::ifstream ifs(fp.c_str(), std::ifstream::binary);
             Boundary<Matrix, SymmGroup>& o = *ptr;
-            for (size_t ci = 0; ci < o.index.n_cohorts(); ++ci)
+            for (size_t ci = 0; ci < o.index().n_cohorts(); ++ci)
             {
-                size_t cohort_size = o.index.n_blocks(ci) * o.index.block_size(ci);
+                size_t cohort_size = o.index().n_blocks(ci) * o.index().block_size(ci);
                 o.data()[ci].resize(cohort_size);
                 ifs.read((char*)(&o.data()[ci][0]), cohort_size * sizeof(typename Matrix::value_type)/sizeof(char));
             }

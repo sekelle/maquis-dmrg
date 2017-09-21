@@ -282,16 +282,16 @@ public:
             //for (index_type j = 0; j < b2sz[i]; ++j)
             //    maquis::dmrg::detail::iterator_axpy(t_pointer + tidx[i][j] * t_size_padded,
             //                                        t_pointer + tidx[i][j] * t_size_padded + t_size,
-            //                                        &ret.data()[ci][ret.index.offset(ci, b1) + m_size * offset], alpha[i][j]);
+            //                                        &ret.data()[ci][ret.index().offset(ci, b1) + m_size * offset], alpha[i][j]);
 
             for (index_type j = 0; j < b2sz[i]; ++j)
                 maquis::dmrg::detail::iterator_axpy(t_pointer + tidx[i][j] * t_size_padded,
                                                     t_pointer + tidx[i][j] * t_size_padded + t_size,
                                                     &S(0,0), alpha[i][j]);
 
-            size_t sz2 = ret.data()[ci].size() / (ret.index.left_size(ci) * ret.index.right_size(ci));
+            size_t sz2 = ret.data()[ci].size() / (ret.index().left_size(ci) * ret.index().right_size(ci));
             size_t lda = m_size * sz2;
-            size_t real_i = ret.index.offset(ci, b1) / (ret.index.left_size(ci) * ret.index.right_size(ci));
+            size_t real_i = ret.index().offset(ci, b1) / (ret.index().left_size(ci) * ret.index().right_size(ci));
             for (unsigned c = 0; c < r_size; ++c)
                 maquis::dmrg::detail::iterator_axpy(&S(0,c), &S(0,c) + m_size, &ret.data()[ci][0] + (offset + c) * lda + real_i * m_size, 1.0);
         }
@@ -488,8 +488,8 @@ private:
             char trans;
             bit_twiddling::unpack(t_key_vec[pos], ci, offset, lb_ket, in_offset, trans);
 
-            int K = (trans) ? left.index.left_size(ci) : left.index.right_size(ci);
-            int LDA = left.index.left_size(ci);
+            int K = (trans) ? left.index().left_size(ci) : left.index().right_size(ci);
+            int LDA = left.index().left_size(ci);
 
             blas_gemm(gemmtrans[trans], gemmtrans[0], M, N, K, value_type(1), &left.data()[ci][offset], LDA,
                       &mps.data()[lb_ket](0, in_offset), K, value_type(0), t_pointer + pos * t_size, M);
@@ -518,8 +518,8 @@ private:
             char trans;
             bit_twiddling::unpack(t_key_vec[pos], ci, offset, dummy, in_offset, trans);
 
-            int K = (trans) ? right.index.right_size(ci) : right.index.left_size(ci);
-            int LDB = right.index.left_size(ci);
+            int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
+            int LDB = right.index().left_size(ci);
 
             blas_gemm(gemmtrans[0], gemmtrans[trans], M, N, K, value_type(1), mpsdata + in_offset * M, M,
                       &right.data()[ci][offset], LDB, value_type(0), t_pointer + pos * t_size, M);
@@ -655,7 +655,7 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
     unsigned loop_max = left_i.size();
     omp_for(index_type mb, parallel::range<index_type>(0,loop_max), {
         contraction_schedule.load_balance[mb] = mb;
-        task_calc(mpo, left.index, right.index, left_i,
+        task_calc(mpo, left.index(), right.index(), left_i,
                   right_i, physical_i, out_right_pb, mb, contraction_schedule[mb]);
     });
 
@@ -668,7 +668,7 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
         {
             sz += contraction_schedule.n_tasks(block);
             boost::tuple<size_t, size_t, size_t, size_t, size_t> flops
-                = contraction_schedule.data_stats(block, initial, right.index);
+                = contraction_schedule.data_stats(block, initial, right.index());
             a += get<0>(flops);
             b += get<1>(flops);
             c += get<2>(flops);

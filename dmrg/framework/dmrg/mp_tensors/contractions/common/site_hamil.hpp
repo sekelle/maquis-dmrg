@@ -70,10 +70,9 @@ namespace common {
             index_type max_cgi = *std::max_element(cg_sizes.begin(), cg_sizes.end());
 
             for (index_type cgi = 0; cgi < max_cgi; ++cgi)
-                for (index_type s = 0; s < inner_loop_max; ++s) {
+                for (index_type s = 0; s < inner_loop_max; ++s)
                     if (cgi < tasks[mps_block][s].size())
                         task_enumeration.push_back(boost::make_tuple(mps_block, s, cgi));
-                }
         }
 
         #ifdef MAQUIS_OPENMP
