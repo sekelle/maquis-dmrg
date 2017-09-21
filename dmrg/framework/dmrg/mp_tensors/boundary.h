@@ -403,7 +403,6 @@ public:
     data_t const& data() const { return data2; }
     data_t      & data()       { return data2; }
 
-
 private:
     BoundaryIndex<Matrix, SymmGroup> index_;
     data_t data2;

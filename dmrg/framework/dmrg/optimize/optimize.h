@@ -161,8 +161,8 @@ protected:
             ortho_left_[n].resize(L+1);
             ortho_right_[n].resize(L+1);
             
-            ortho_left_[n][0] = mps.left_boundary()[0];
-            ortho_right_[n][L] = mps.right_boundary()[0];
+            ortho_left_[n][0] = mps.left_boundary_bm();
+            ortho_right_[n][L] = mps.right_boundary_bm();
         }
         
         Storage::drop(left_[0]);

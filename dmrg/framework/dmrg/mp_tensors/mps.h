@@ -101,6 +101,8 @@ public:
     
     Boundary<Matrix, SymmGroup> left_boundary() const;
     Boundary<Matrix, SymmGroup> right_boundary() const;
+    block_matrix<Matrix, SymmGroup> left_boundary_bm() const;
+    block_matrix<Matrix, SymmGroup> right_boundary_bm() const;
     
     void apply(typename operator_selector<Matrix, SymmGroup>::type const&, size_type);
     void apply(typename operator_selector<Matrix, SymmGroup>::type const&,
