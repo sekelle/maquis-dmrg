@@ -33,6 +33,10 @@
 #include "dmrg/mp_tensors/mpstensor.h"
 #include "dmrg/mp_tensors/mpotensor.h"
 
+#include "dmrg/mp_tensors/contractions/non-abelian/shtm.hpp"
+#include "dmrg/mp_tensors/contractions/non-abelian/rshtm.hpp"
+#include "dmrg/mp_tensors/contractions/non-abelian/lshtm.hpp"
+#include "dmrg/mp_tensors/contractions/non-abelian/h_diag.hpp"
 #include "dmrg/mp_tensors/contractions/common/common.h"
 
 namespace contraction {
@@ -147,8 +151,6 @@ namespace contraction {
         {
             return common::predict_lanczos_r2l_sweep<Matrix, OtherMatrix, SymmGroup>(B, psi, A);
         }
-
-        // non-generic method
 
         static MPSTensor<Matrix, SymmGroup>
         site_hamil2(MPSTensor<Matrix, SymmGroup> const & ket_tensor,
