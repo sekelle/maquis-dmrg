@@ -31,6 +31,8 @@
 #include "dmrg/mp_tensors/mpotensor.h"
 #include "dmrg/mp_tensors/boundary.h"
 
+#include "dmrg/mp_tensors/contractions/abelian/special.hpp"
+
 #include <limits>
 
 template<class Matrix, class SymmGroup>
@@ -86,12 +88,12 @@ public:
     
     std::string description() const;
    
-    template<class OtherMatrix>
-    truncation_results grow_l2r_sweep(MPOTensor<Matrix, SymmGroup> const & mpo,
-                                      Boundary<OtherMatrix, SymmGroup> const & left,
-                                      Boundary<OtherMatrix, SymmGroup> const & right,
-                                      std::size_t l, double alpha,
-                                      double cutoff, std::size_t Mmax);
+    //template<class OtherMatrix>
+    //truncation_results grow_l2r_sweep(MPOTensor<Matrix, SymmGroup> const & mpo,
+    //                                  Boundary<OtherMatrix, SymmGroup> const & left,
+    //                                  Boundary<OtherMatrix, SymmGroup> const & right,
+    //                                  std::size_t l, double alpha,
+    //                                  double cutoff, std::size_t Mmax);
     template<class OtherMatrix>
     truncation_results grow_r2l_sweep(MPOTensor<Matrix, SymmGroup> const & mpo,
                                       Boundary<OtherMatrix, SymmGroup> const & left,

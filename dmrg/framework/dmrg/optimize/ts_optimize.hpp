@@ -43,6 +43,7 @@ public:
     typedef typename Matrix::value_type value_type;
 
     typedef optimizer_base<Matrix, SymmGroup, Storage> base;
+    typedef typename base::BoundaryMatrix BoundaryMatrix;
     using base::mpo;
     using base::mps;
     using base::left_;
@@ -190,7 +191,7 @@ public:
     	    TwoSiteTensor<Matrix, SymmGroup> tst(mps[site1], mps[site2]);
     	    MPSTensor<Matrix, SymmGroup> twin_mps = tst.make_mps();
             tst.clear();
-            SiteProblem<Matrix, typename base::BoundaryMatrix, SymmGroup>
+            SiteProblem<Matrix, BoundaryMatrix, SymmGroup>
                 sp(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1]);
 
             //if (twosweep == 5)

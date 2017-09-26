@@ -77,7 +77,7 @@ class optimizer_base
 public:
     typedef typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, 32>::type AlignedMatrix;
     typedef typename storage::constrained<AlignedMatrix>::type BoundaryMatrix;
-private:
+protected:
     typedef contraction::Engine<Matrix, BoundaryMatrix, SymmGroup> contr;
 public:
 

@@ -114,42 +114,82 @@ namespace contraction {
             return common::create_contraction_schedule(mps, left, right, mpo, SU2::shtm_tasks<Matrix, OtherMatrix, SymmGroup>);
         }
 
-        static std::pair<MPSTensor<Matrix, SymmGroup>, truncation_results>
-        predict_new_state_l2r_sweep(MPSTensor<Matrix, SymmGroup> const & mps,
-                                    MPOTensor<Matrix, SymmGroup> const & mpo,
-                                    Boundary<OtherMatrix, SymmGroup> const & left,
-                                    Boundary<OtherMatrix, SymmGroup> const & right,
-                                    double alpha, double cutoff, std::size_t Mmax)
+        //static std::pair<MPSTensor<Matrix, SymmGroup>, truncation_results>
+        //predict_new_state_l2r_sweep(MPSTensor<Matrix, SymmGroup> const & mps,
+        //                            MPOTensor<Matrix, SymmGroup> const & mpo,
+        //                            Boundary<OtherMatrix, SymmGroup> const & left,
+        //                            Boundary<OtherMatrix, SymmGroup> const & right,
+        //                            double alpha, double cutoff, std::size_t Mmax)
+        //{
+        //    return common::predict_new_state_l2r_sweep<Matrix, OtherMatrix, SymmGroup>
+        //           (mps, mpo, left, right, left_boundary_tensor_mpo, alpha, cutoff, Mmax);
+        //}
+
+        //static MPSTensor<Matrix, SymmGroup>
+        //predict_lanczos_l2r_sweep(MPSTensor<Matrix, SymmGroup> B,
+        //                          MPSTensor<Matrix, SymmGroup> const & psi,
+        //                          MPSTensor<Matrix, SymmGroup> const & A)
+        //{
+        //    return common::predict_lanczos_l2r_sweep<Matrix, OtherMatrix, SymmGroup>(B, psi, A);
+        //}
+
+        //static std::pair<MPSTensor<Matrix, SymmGroup>, truncation_results>
+        //predict_new_state_r2l_sweep(MPSTensor<Matrix, SymmGroup> const & mps,
+        //                            MPOTensor<Matrix, SymmGroup> const & mpo,
+        //                            Boundary<OtherMatrix, SymmGroup> const & left,
+        //                            Boundary<OtherMatrix, SymmGroup> const & right,
+        //                            double alpha, double cutoff, std::size_t Mmax)
+        //{
+        //    return common::predict_new_state_r2l_sweep<Matrix, OtherMatrix, SymmGroup>
+        //           (mps, mpo, left, right, right_boundary_tensor_mpo, alpha, cutoff, Mmax);
+        //}
+
+        //static MPSTensor<Matrix, SymmGroup>
+        //predict_lanczos_r2l_sweep(MPSTensor<Matrix, SymmGroup> B,
+        //                          MPSTensor<Matrix, SymmGroup> const & psi,
+        //                          MPSTensor<Matrix, SymmGroup> const & A)
+        //{
+        //    return common::predict_lanczos_r2l_sweep<Matrix, OtherMatrix, SymmGroup>(B, psi, A);
+        //}
+
+        static truncation_results
+        grow_l2r_sweep(MPS<Matrix, SymmGroup> & mps,
+                       MPOTensor<Matrix, SymmGroup> const & mpo,
+                       Boundary<OtherMatrix, SymmGroup> const & left,
+                       Boundary<OtherMatrix, SymmGroup> const & right,
+                       std::size_t l, double alpha,
+                       double cutoff, std::size_t Mmax)
         {
-            return common::predict_new_state_l2r_sweep<Matrix, OtherMatrix, SymmGroup>
-                   (mps, mpo, left, right, left_boundary_tensor_mpo, alpha, cutoff, Mmax);
+            MPSTensor<Matrix, SymmGroup> new_mps;
+            truncation_results trunc;
+
+            boost::tie(new_mps, trunc) =
+            common::predict_new_state_l2r_sweep<Matrix, OtherMatrix, SymmGroup>
+                   (mps[l], mpo, left, right, left_boundary_tensor_mpo, alpha, cutoff, Mmax);
+
+            mps[l+1] = common::predict_lanczos_l2r_sweep<Matrix, OtherMatrix, SymmGroup>(mps[l+1], mps[l], new_mps);
+            mps[l] = new_mps;
+            return trunc;
         }
 
-        static MPSTensor<Matrix, SymmGroup>
-        predict_lanczos_l2r_sweep(MPSTensor<Matrix, SymmGroup> B,
-                                  MPSTensor<Matrix, SymmGroup> const & psi,
-                                  MPSTensor<Matrix, SymmGroup> const & A)
+        static truncation_results
+        grow_r2l_sweep(MPS<Matrix, SymmGroup> & mps,
+                       MPOTensor<Matrix, SymmGroup> const & mpo,
+                       Boundary<OtherMatrix, SymmGroup> const & left,
+                       Boundary<OtherMatrix, SymmGroup> const & right,
+                       std::size_t l, double alpha,
+                       double cutoff, std::size_t Mmax)
         {
-            return common::predict_lanczos_l2r_sweep<Matrix, OtherMatrix, SymmGroup>(B, psi, A);
-        }
+            MPSTensor<Matrix, SymmGroup> new_mps;
+            truncation_results trunc;
 
-        static std::pair<MPSTensor<Matrix, SymmGroup>, truncation_results>
-        predict_new_state_r2l_sweep(MPSTensor<Matrix, SymmGroup> const & mps,
-                                    MPOTensor<Matrix, SymmGroup> const & mpo,
-                                    Boundary<OtherMatrix, SymmGroup> const & left,
-                                    Boundary<OtherMatrix, SymmGroup> const & right,
-                                    double alpha, double cutoff, std::size_t Mmax)
-        {
-            return common::predict_new_state_r2l_sweep<Matrix, OtherMatrix, SymmGroup>
-                   (mps, mpo, left, right, right_boundary_tensor_mpo, alpha, cutoff, Mmax);
-        }
+            boost::tie(new_mps, trunc) =
+            common::predict_new_state_r2l_sweep<Matrix, OtherMatrix, SymmGroup>
+                   (mps[l], mpo, left, right, right_boundary_tensor_mpo, alpha, cutoff, Mmax);
 
-        static MPSTensor<Matrix, SymmGroup>
-        predict_lanczos_r2l_sweep(MPSTensor<Matrix, SymmGroup> B,
-                                  MPSTensor<Matrix, SymmGroup> const & psi,
-                                  MPSTensor<Matrix, SymmGroup> const & A)
-        {
-            return common::predict_lanczos_r2l_sweep<Matrix, OtherMatrix, SymmGroup>(B, psi, A);
+            mps[l-1] = common::predict_lanczos_r2l_sweep<Matrix, OtherMatrix, SymmGroup>(mps[l-1], mps[l], new_mps);
+            mps[l] = new_mps;
+            return trunc;
         }
 
         static MPSTensor<Matrix, SymmGroup>

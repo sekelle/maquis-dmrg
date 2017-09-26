@@ -37,6 +37,8 @@ class ss_optimize : public optimizer_base<Matrix, SymmGroup, Storage>
 public:
 
     typedef optimizer_base<Matrix, SymmGroup, Storage> base;
+    typedef typename base::BoundaryMatrix BoundaryMatrix;
+    typedef typename base::contr contr;
     using base::mpo;
     using base::mps;
     using base::left_;
@@ -168,8 +170,9 @@ public:
             if (lr == +1) {
                 if (site < L-1) {
                     maquis::cout << "Growing, alpha = " << alpha << std::endl;
-                    trunc = mps.grow_l2r_sweep(mpo[site], left_[site], right_[site+1],
-                                               site, alpha, cutoff, Mmax);
+                    //trunc = mps.grow_l2r_sweep(mpo[site], left_[site], right_[site+1],
+                    //                           site, alpha, cutoff, Mmax);
+                    trunc = contr::grow_l2r_sweep(mps, mpo[site], left_[site], right_[site+1], site, alpha, cutoff, Mmax);
                 } else {
                     block_matrix<Matrix, SymmGroup> t = mps[site].normalize_left(DefaultSolver());
                     if (site < L-1)
@@ -185,8 +188,9 @@ public:
                 if (site > 0) {
                     maquis::cout << "Growing, alpha = " << alpha << std::endl;
                     // Invalid read occurs after this!\n
-                    trunc = mps.grow_r2l_sweep(mpo[site], left_[site], right_[site+1],
-                                               site, alpha, cutoff, Mmax);
+                    //trunc = mps.grow_r2l_sweep(mpo[site], left_[site], right_[site+1],
+                    //                           site, alpha, cutoff, Mmax);
+                    trunc = contr::grow_r2l_sweep(mps, mpo[site], left_[site], right_[site+1], site, alpha, cutoff, Mmax);
                 } else {
                     block_matrix<Matrix, SymmGroup> t = mps[site].normalize_right(DefaultSolver());
                     if (site > 0)
