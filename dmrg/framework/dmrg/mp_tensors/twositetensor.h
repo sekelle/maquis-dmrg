@@ -28,16 +28,22 @@
 #ifndef TWOSITETENSOR_H
 #define TWOSITETENSOR_H
 
+#include <iostream>
+#include <algorithm>
+#include <utility>
+
+#include <alps/numeric/real.hpp>
+
+#include "dmrg/utils/random.hpp"
+
+#include "dmrg/block_matrix/block_matrix_algorithms.h"
+#include "dmrg/block_matrix/multi_index.h"
 #include "dmrg/mp_tensors/mpstensor.h"
 #include "dmrg/mp_tensors/mpotensor.h"
 #include "dmrg/mp_tensors/boundary.h"
-#include "dmrg/block_matrix/indexing.h"
-#include "dmrg/block_matrix/multi_index.h"
-#include "dmrg/block_matrix/block_matrix.h"
-#include "dmrg/block_matrix/block_matrix_algorithms.h"
 
-#include <iostream>
-#include <algorithm>
+#include "ts_reshape.h"
+#include "ts_reduction.h"
 
 enum TwoSiteStorageLayout {TSRightPaired, TSLeftPaired, TSBothPaired};
 
@@ -122,7 +128,6 @@ private:
 };
 
 #include "twositetensor.hpp"
-
 #include "ts_ops.h"
 
 #endif

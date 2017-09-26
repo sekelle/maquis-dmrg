@@ -24,13 +24,6 @@
  *
  *****************************************************************************/
 
-#include "dmrg/mp_tensors/mps.h"
-//#include "contractions.h"
-
-#include "dmrg/utils/archive.h"
-
-#include <limits>
-
 template<class Matrix, class SymmGroup>
 std::string MPS<Matrix, SymmGroup>::description() const
 {

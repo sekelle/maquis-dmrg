@@ -25,21 +25,6 @@
  *
  *****************************************************************************/
 
-#include "dmrg/mp_tensors/twositetensor.h"
-#include "dmrg/mp_tensors/mpstensor.h"
-
-#include "dmrg/mp_tensors/reshapes.h"
-#include "dmrg/block_matrix/block_matrix_algorithms.h"
-
-#include "dmrg/utils/random.hpp"
-#include <alps/numeric/real.hpp>
-
-#include <vector>
-#include <utility>
-
-#include "ts_reshape.h"
-#include "ts_reduction.h"
-
 template<class Matrix, class SymmGroup>
 TwoSiteTensor<Matrix, SymmGroup>::TwoSiteTensor(MPSTensor<Matrix, SymmGroup> const & mps1,
                                                 MPSTensor<Matrix, SymmGroup> const & mps2)
