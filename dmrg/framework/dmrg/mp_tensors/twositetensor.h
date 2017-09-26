@@ -37,13 +37,13 @@
 #include "dmrg/utils/random.hpp"
 
 #include "dmrg/block_matrix/block_matrix_algorithms.h"
-#include "dmrg/block_matrix/multi_index.h"
 #include "dmrg/mp_tensors/mpstensor.h"
 #include "dmrg/mp_tensors/mpotensor.h"
 #include "dmrg/mp_tensors/boundary.h"
 
 #include "ts_reshape.h"
 #include "ts_reduction.h"
+#include "ts_ops.hpp"
 
 enum TwoSiteStorageLayout {TSRightPaired, TSLeftPaired, TSBothPaired};
 
@@ -116,7 +116,6 @@ private:
 
     TwoSiteTensor<Matrix, SymmGroup> & operator_shift(MPSTensor<Matrix, SymmGroup> const & rhs, type_helper<true>);
 
-    MultiIndex<SymmGroup> midx;
     set_id left_paired;
     set_id right_paired;
     set_id both_paired;
@@ -128,6 +127,5 @@ private:
 };
 
 #include "twositetensor.hpp"
-#include "ts_ops.h"
 
 #endif

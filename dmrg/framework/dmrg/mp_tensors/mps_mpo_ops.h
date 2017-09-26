@@ -27,15 +27,14 @@
 #ifndef MPS_MPO_OPS_H
 #define MPS_MPO_OPS_H
 
+#include "dmrg/utils/utils.hpp"
+#include "utils/traits.hpp"
 #include "dmrg/mp_tensors/mps.h"
 #include "dmrg/mp_tensors/mpo.h"
 #include "dmrg/mp_tensors/contractions.h"
-#include "dmrg/mp_tensors/twositetensor.h"
 
 #include "dmrg/mp_tensors/special_mpos.h"
 
-#include "dmrg/utils/utils.hpp"
-#include "utils/traits.hpp"
 
 namespace mps_mpo_detail {
 
