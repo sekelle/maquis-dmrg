@@ -25,7 +25,7 @@
  *****************************************************************************/
 
 #include "dmrg/mp_tensors/mps.h"
-#include "contractions.h"
+//#include "contractions.h"
 
 #include "dmrg/utils/archive.h"
 
