@@ -27,10 +27,6 @@
 #ifndef SS_OPTIMIZE_H
 #define SS_OPTIMIZE_H
 
-#include "dmrg/mp_tensors/mpo_ops.h"
-#include "dmrg/optimize/optimize.h"
-
-
 template<class Matrix, class SymmGroup, class Storage>
 class ss_optimize : public optimizer_base<Matrix, SymmGroup, Storage>
 {

@@ -35,6 +35,7 @@
 #endif
 
 #include <boost/algorithm/string.hpp>
+#include <boost/archive/binary_oarchive.hpp>
 
 #include "utils/sizeof.h"
 
