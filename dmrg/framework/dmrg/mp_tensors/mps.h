@@ -34,7 +34,7 @@
 #include "dmrg/mp_tensors/mpstensor.h"
 #include "dmrg/mp_tensors/mpotensor.h"
 #include "dmrg/mp_tensors/boundary.h"
-#include "dmrg/mp_tensors/contractions/abelian/special.hpp"
+#include "dmrg/mp_tensors/contractions/special.hpp"
 
 template<class Matrix, class SymmGroup>
 struct mps_initializer;

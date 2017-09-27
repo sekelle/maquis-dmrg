@@ -28,7 +28,6 @@
 #ifndef CONTRACTION_ENGINE
 #define CONTRACTION_ENGINE
 
-//#include "dmrg/mp_tensors/contractions/non-abelian/engine.hpp"
-#include "dmrg/mp_tensors/contractions/abelian/engine.hpp"
+#include "dmrg/mp_tensors/contractions/engine.hpp"
 
 #endif
