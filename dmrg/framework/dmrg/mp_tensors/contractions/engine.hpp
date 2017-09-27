@@ -37,6 +37,7 @@
 #include "dmrg/mp_tensors/contractions/create_schedule/site_hamil_tasks.hpp"
 #include "dmrg/mp_tensors/contractions/create_schedule/right_tasks.hpp"
 #include "dmrg/mp_tensors/contractions/create_schedule/left_tasks.hpp"
+#include "dmrg/mp_tensors/contractions/create_schedule/site_hamil_schedule.hpp"
 #include "dmrg/mp_tensors/contractions/create_schedule/h_diag.hpp"
 #include "dmrg/mp_tensors/contractions/boundary_ops/move_boundary.hpp"
 #include "dmrg/mp_tensors/contractions/boundary_ops/prediction.hpp"
@@ -109,10 +110,10 @@ namespace contraction {
         }
 
         static schedule_t
-        right_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & mps,
-                                   Boundary<OtherMatrix, SymmGroup> const & left,
-                                   Boundary<OtherMatrix, SymmGroup> const & right,
-                                   MPOTensor<Matrix, SymmGroup> const & mpo)
+        contraction_schedule(MPSTensor<Matrix, SymmGroup> const & mps,
+                             Boundary<OtherMatrix, SymmGroup> const & left,
+                             Boundary<OtherMatrix, SymmGroup> const & right,
+                             MPOTensor<Matrix, SymmGroup> const & mpo)
         {
             return common::create_contraction_schedule(mps, left, right, mpo, common::shtm_tasks<Matrix, OtherMatrix, SymmGroup>);
         }
@@ -163,7 +164,7 @@ namespace contraction {
                     Boundary<OtherMatrix, SymmGroup> const & right,
                     MPOTensor<Matrix, SymmGroup> const & mpo)
         {
-            schedule_t tasks = right_contraction_schedule(ket_tensor, left, right, mpo);
+            schedule_t tasks = contraction_schedule(ket_tensor, left, right, mpo);
             return site_hamil2(ket_tensor, left, right, mpo, tasks);
         }
 
