@@ -33,14 +33,14 @@
 #include "dmrg/mp_tensors/mpstensor.h"
 #include "dmrg/mp_tensors/mpotensor.h"
 
-#include "dmrg/mp_tensors/contractions/common/tasks.hpp"
+#include "dmrg/mp_tensors/contractions/task/tasks.hpp"
 #include "dmrg/mp_tensors/contractions/create_schedule/site_hamil_tasks.hpp"
 #include "dmrg/mp_tensors/contractions/create_schedule/right_tasks.hpp"
 #include "dmrg/mp_tensors/contractions/create_schedule/left_tasks.hpp"
 #include "dmrg/mp_tensors/contractions/create_schedule/h_diag.hpp"
-#include "dmrg/mp_tensors/contractions/common/move_boundary.hpp"
-#include "dmrg/mp_tensors/contractions/common/prediction.hpp"
-#include "dmrg/mp_tensors/contractions/common/site_hamil.hpp"
+#include "dmrg/mp_tensors/contractions/boundary_ops/move_boundary.hpp"
+#include "dmrg/mp_tensors/contractions/boundary_ops/prediction.hpp"
+#include "dmrg/mp_tensors/contractions/boundary_ops/site_hamil.hpp"
 
 namespace contraction {
 
