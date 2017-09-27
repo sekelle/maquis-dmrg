@@ -30,7 +30,7 @@
 #include "dmrg/block_matrix/symmetry/gsl_coupling.h"
 #include "dmrg/mp_tensors/mpstensor.h"
 #include "dmrg/mp_tensors/mpotensor.h"
-#include "dmrg/mp_tensors/contractions/non-abelian/op_iterate.hpp"
+#include "dmrg/mp_tensors/contractions/create_schedule/op_iterate.hpp"
 
 namespace contraction {
 namespace common {
