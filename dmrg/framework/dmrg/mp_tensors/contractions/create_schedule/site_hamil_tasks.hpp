@@ -40,8 +40,8 @@ namespace common {
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
     void shtm_tasks(MPOTensor<Matrix, SymmGroup> const & mpo,
-                    BoundaryIndex<Matrix, SymmGroup> const & left,
-                    BoundaryIndex<Matrix, SymmGroup> const & right,
+                    BoundaryIndex<OtherMatrix, SymmGroup> const & left,
+                    BoundaryIndex<OtherMatrix, SymmGroup> const & right,
                     Index<SymmGroup> const & left_i,
                     Index<SymmGroup> const & right_i,
                     Index<SymmGroup> const & phys_i,

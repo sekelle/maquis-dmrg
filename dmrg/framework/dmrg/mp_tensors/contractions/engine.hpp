@@ -115,7 +115,7 @@ namespace contraction {
                              Boundary<OtherMatrix, SymmGroup> const & right,
                              MPOTensor<Matrix, SymmGroup> const & mpo)
         {
-            return common::create_contraction_schedule(mps, left, right, mpo, common::shtm_tasks<Matrix, OtherMatrix, SymmGroup>);
+            return common::create_contraction_schedule(mps, left, right, mpo);
         }
 
         static truncation_results

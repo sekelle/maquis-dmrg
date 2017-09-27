@@ -33,13 +33,12 @@
 namespace contraction {
 namespace common {
 
-template<class Matrix, class OtherMatrix, class SymmGroup, class TaskCalc>
+template<class Matrix, class OtherMatrix, class SymmGroup>
 typename Schedule<Matrix, SymmGroup>::schedule_t
 create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
                             Boundary<OtherMatrix, SymmGroup> const & left,
                             Boundary<OtherMatrix, SymmGroup> const & right,
-                            MPOTensor<Matrix, SymmGroup> const & mpo,
-                            TaskCalc task_calc)
+                            MPOTensor<Matrix, SymmGroup> const & mpo)
 {
     typedef typename SymmGroup::charge charge;
     typedef typename Matrix::value_type value_type;
@@ -62,7 +61,7 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
     unsigned loop_max = left_i.size();
     omp_for(index_type mb, parallel::range<index_type>(0,loop_max), {
         contraction_schedule.load_balance[mb] = mb;
-        task_calc(mpo, left.index(), right.index(), left_i,
+        shtm_tasks(mpo, left.index(), right.index(), left_i,
                   right_i, physical_i, out_right_pb, mb, contraction_schedule[mb]);
     });
 
