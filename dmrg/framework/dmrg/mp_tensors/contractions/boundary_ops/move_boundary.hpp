@@ -77,12 +77,11 @@ namespace contraction {
             return t1;
         }
 
-        template<class Matrix, class OtherMatrix, class SymmGroup, class TaskCalc>
+        template<class Matrix, class OtherMatrix, class SymmGroup>
         static Boundary<OtherMatrix, SymmGroup>
         left_boundary_tensor_mpo(MPSTensor<Matrix, SymmGroup> const & ket_tensor,
                                  Boundary<OtherMatrix, SymmGroup> const & left,
-                                 MPOTensor<Matrix, SymmGroup> const & mpo,
-                                 TaskCalc task_calc)
+                                 MPOTensor<Matrix, SymmGroup> const & mpo)
         {
             typedef typename SymmGroup::charge charge;
             typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
@@ -111,7 +110,7 @@ namespace contraction {
             unsigned loop_max = right_i.size();
             schedule_t tasks(loop_max);
             omp_for(unsigned mb, parallel::range<unsigned>(0,loop_max), {
-                task_calc(mpo, ket_tensor, ket_tensor, left.index(), right_pb, right_pb, mb, tasks[mb], false);
+                lshtm_tasks(mpo, ket_tensor, ket_tensor, left.index(), right_pb, right_pb, mb, tasks[mb], false);
             });
 
             BoundaryIndex<Matrix, SymmGroup> b_index(out_left_i, right_i);
@@ -167,12 +166,11 @@ namespace contraction {
             return ret;
         }
 
-        template<class Matrix, class OtherMatrix, class SymmGroup, class TaskCalc>
+        template<class Matrix, class OtherMatrix, class SymmGroup>
         static Boundary<OtherMatrix, SymmGroup>
         right_boundary_tensor_mpo(MPSTensor<Matrix, SymmGroup> const & ket_tensor,
                                   Boundary<OtherMatrix, SymmGroup> const & right,
-                                  MPOTensor<Matrix, SymmGroup> const & mpo,
-                                  TaskCalc task_calc)
+                                  MPOTensor<Matrix, SymmGroup> const & mpo)
         {
             typedef typename SymmGroup::charge charge;
             typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
@@ -200,8 +198,7 @@ namespace contraction {
             unsigned loop_max = left_i.size();
             schedule_t tasks(loop_max);
             omp_for(unsigned lb_bra, parallel::range<unsigned>(0,loop_max), {
-                task_calc(mpo, right.index(), left_i,
-                          right_i, physical_i, right_pb, lb_bra, tasks[lb_bra], false);
+                rshtm_tasks(mpo, right.index(), left_i, right_i, physical_i, right_pb, lb_bra, tasks[lb_bra], false);
             });
 
             BoundaryIndex<Matrix, SymmGroup> b_index(left_i, out_right_i);
@@ -235,13 +232,12 @@ namespace contraction {
             return ret;
         }
 
-        template<class Matrix, class OtherMatrix, class SymmGroup, class TaskCalc>
+        template<class Matrix, class OtherMatrix, class SymmGroup>
         static Boundary<OtherMatrix, SymmGroup>
         overlap_mpo_left_step(MPSTensor<Matrix, SymmGroup> const & bra_tensor_in,
                               MPSTensor<Matrix, SymmGroup> const & ket_tensor,
                               Boundary<OtherMatrix, SymmGroup> const & left,
-                              MPOTensor<Matrix, SymmGroup> const & mpo,
-                              TaskCalc task_calc)
+                              MPOTensor<Matrix, SymmGroup> const & mpo)
         {
             typedef typename SymmGroup::charge charge;
             typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
@@ -276,7 +272,7 @@ namespace contraction {
             unsigned loop_max = bra_right_i.size();
             schedule_t tasks(loop_max);
             omp_for(unsigned rb_bra, parallel::range<unsigned>(0,loop_max), {
-                task_calc(mpo, bra_tensor, ket_tensor, left.index(), bra_right_pb, ket_right_pb, rb_bra, tasks[rb_bra], true);
+                lshtm_tasks(mpo, bra_tensor, ket_tensor, left.index(), bra_right_pb, ket_right_pb, rb_bra, tasks[rb_bra], true);
             });
 
             BoundaryIndex<Matrix, SymmGroup> b_index(bra_right_i, ket_right_i);
@@ -313,13 +309,12 @@ namespace contraction {
             return ret;
         }
 
-        template<class Matrix, class OtherMatrix, class SymmGroup, class TaskCalc>
+        template<class Matrix, class OtherMatrix, class SymmGroup>
         static Boundary<OtherMatrix, SymmGroup>
         overlap_mpo_right_step(MPSTensor<Matrix, SymmGroup> const & bra_tensor_in,
                                MPSTensor<Matrix, SymmGroup> const & ket_tensor,
                                Boundary<OtherMatrix, SymmGroup> const & right,
-                               MPOTensor<Matrix, SymmGroup> const & mpo,
-                               TaskCalc task_calc)
+                               MPOTensor<Matrix, SymmGroup> const & mpo)
         {
             typedef typename SymmGroup::charge charge;
             typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
@@ -351,7 +346,7 @@ namespace contraction {
             unsigned loop_max = bra_left_i.size();
             schedule_t tasks(loop_max);
             omp_for(unsigned lb_bra, parallel::range<unsigned>(0,loop_max), {
-                task_calc(mpo, right.index(), bra_left_i, bra_right_i, physical_i, bra_right_pb, lb_bra, tasks[lb_bra], true);
+                rshtm_tasks(mpo, right.index(), bra_left_i, bra_right_i, physical_i, bra_right_pb, lb_bra, tasks[lb_bra], true);
             });
 
             BoundaryIndex<Matrix, SymmGroup> b_index(ket_left_i, bra_left_i);

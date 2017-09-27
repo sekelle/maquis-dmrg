@@ -39,7 +39,7 @@ namespace common {
     void lshtm_tasks(MPOTensor<Matrix, SymmGroup> const & mpo,
                      MPSTensor<Matrix, SymmGroup> const & bra,
                      MPSTensor<Matrix, SymmGroup> const & ket,
-                     BoundaryIndex<Matrix, SymmGroup> const & left,
+                     BoundaryIndex<OtherMatrix, SymmGroup> const & left,
                      ProductBasis<SymmGroup> const & bra_right_pb,
                      ProductBasis<SymmGroup> const & ket_right_pb,
                      unsigned rb_bra,

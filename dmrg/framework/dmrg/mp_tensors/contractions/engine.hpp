@@ -75,8 +75,7 @@ namespace contraction {
                                  MPOTensor<Matrix, SymmGroup> const & mpo,
                                  Index<SymmGroup> const * in_low = NULL)
         {
-            return common::left_boundary_tensor_mpo<Matrix, OtherMatrix, SymmGroup>
-                   (mps, left, mpo, common::lshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
+            return common::left_boundary_tensor_mpo(mps, left, mpo);
         }
 
         static Boundary<Matrix, SymmGroup>
@@ -85,8 +84,7 @@ namespace contraction {
                                   MPOTensor<Matrix, SymmGroup> const & mpo,
                                   Index<SymmGroup> const * in_low = NULL)
         {
-            return common::right_boundary_tensor_mpo<Matrix, OtherMatrix, SymmGroup>
-                   (mps, right, mpo, common::rshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
+            return common::right_boundary_tensor_mpo(mps, right, mpo);
         }
 
         static Boundary<OtherMatrix, SymmGroup>
@@ -95,8 +93,7 @@ namespace contraction {
                               Boundary<OtherMatrix, SymmGroup> const & left,
                               MPOTensor<Matrix, SymmGroup> const & mpo)
         {
-            return common::overlap_mpo_left_step<Matrix, OtherMatrix, SymmGroup>
-                   (bra_tensor, ket_tensor, left, mpo, common::lshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
+            return common::overlap_mpo_left_step(bra_tensor, ket_tensor, left, mpo);
         }
 
         static Boundary<OtherMatrix, SymmGroup>
@@ -105,8 +102,7 @@ namespace contraction {
                                Boundary<OtherMatrix, SymmGroup> const & right,
                                MPOTensor<Matrix, SymmGroup> const & mpo)
         {
-            return common::overlap_mpo_right_step<Matrix, OtherMatrix, SymmGroup>
-                   (bra_tensor, ket_tensor, right, mpo, common::rshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
+            return common::overlap_mpo_right_step(bra_tensor, ket_tensor, right, mpo);
         }
 
         static schedule_t
