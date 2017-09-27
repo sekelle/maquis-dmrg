@@ -33,7 +33,7 @@
 #include "dmrg/mp_tensors/contractions/non-abelian/micro_kernels.hpp"
 
 namespace contraction {
-namespace SU2 {
+namespace common {
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
     void lshtm_tasks(MPOTensor<Matrix, SymmGroup> const & mpo,
@@ -158,7 +158,7 @@ namespace SU2 {
         } // rb_ket
     }
 
-} // namespace SU2
+} // namespace common
 } // namespace contraction
 
 #endif

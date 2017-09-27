@@ -32,7 +32,7 @@
 #include "dmrg/mp_tensors/contractions/common/tasks.hpp"
 
 namespace contraction {
-namespace SU2 {
+namespace common {
 namespace detail {
 
     using ::contraction::common::MPSBlock;
@@ -74,7 +74,7 @@ namespace detail {
     }
 
 } // namespace detail
-} // namespace SU2
+} // namespace common
 } // namespace contraction
 
 #endif

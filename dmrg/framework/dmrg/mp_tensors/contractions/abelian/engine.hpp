@@ -75,7 +75,7 @@ namespace contraction {
                                  Index<SymmGroup> const * in_low = NULL)
         {
             return common::left_boundary_tensor_mpo<Matrix, OtherMatrix, SymmGroup>
-                   (mps, left, mpo, SU2::lshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
+                   (mps, left, mpo, common::lshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
         }
 
         static Boundary<Matrix, SymmGroup>
@@ -85,7 +85,7 @@ namespace contraction {
                                   Index<SymmGroup> const * in_low = NULL)
         {
             return common::right_boundary_tensor_mpo<Matrix, OtherMatrix, SymmGroup>
-                   (mps, right, mpo, SU2::rshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
+                   (mps, right, mpo, common::rshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
         }
 
         static Boundary<OtherMatrix, SymmGroup>
@@ -95,7 +95,7 @@ namespace contraction {
                               MPOTensor<Matrix, SymmGroup> const & mpo)
         {
             return common::overlap_mpo_left_step<Matrix, OtherMatrix, SymmGroup>
-                   (bra_tensor, ket_tensor, left, mpo, SU2::lshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
+                   (bra_tensor, ket_tensor, left, mpo, common::lshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
         }
 
         static Boundary<OtherMatrix, SymmGroup>
@@ -105,7 +105,7 @@ namespace contraction {
                                MPOTensor<Matrix, SymmGroup> const & mpo)
         {
             return common::overlap_mpo_right_step<Matrix, OtherMatrix, SymmGroup>
-                   (bra_tensor, ket_tensor, right, mpo, SU2::rshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
+                   (bra_tensor, ket_tensor, right, mpo, common::rshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
         }
 
         static schedule_t
@@ -114,7 +114,7 @@ namespace contraction {
                                    Boundary<OtherMatrix, SymmGroup> const & right,
                                    MPOTensor<Matrix, SymmGroup> const & mpo)
         {
-            return common::create_contraction_schedule(mps, left, right, mpo, SU2::shtm_tasks<Matrix, OtherMatrix, SymmGroup>);
+            return common::create_contraction_schedule(mps, left, right, mpo, common::shtm_tasks<Matrix, OtherMatrix, SymmGroup>);
         }
 
         static truncation_results
