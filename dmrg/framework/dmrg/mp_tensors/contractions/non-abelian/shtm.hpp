@@ -33,7 +33,7 @@
 #include "dmrg/block_matrix/symmetry/gsl_coupling.h"
 #include "dmrg/mp_tensors/mpstensor.h"
 #include "dmrg/mp_tensors/mpotensor.h"
-#include "dmrg/mp_tensors/contractions/non-abelian/micro_kernels.hpp"
+#include "dmrg/mp_tensors/contractions/non-abelian/op_iterate.hpp"
 
 namespace contraction {
 namespace common {
@@ -123,7 +123,7 @@ namespace common {
                                 unsigned ci_right_eff = (right_transpose) ? right.cohort_index(rc_out, rc_in) : ci_right;
                                 typename cgroup::t_key tq = bit_twiddling::pack(ci_right_eff, right_offset, 0, in_offset, right_transpose);
                                 
-                                detail::op_iterate_shtm<Matrix, typename common::Schedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
+                                detail::op_iterate<Matrix, typename common::Schedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
                                     (W, w_block, couplings, cg, tq, rs_in, t_index);
                             } // w_block
                         } //op_index

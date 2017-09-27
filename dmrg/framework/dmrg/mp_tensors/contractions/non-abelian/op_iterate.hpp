@@ -25,8 +25,8 @@
  *
  *****************************************************************************/
 
-#ifndef CONTRACTIONS_SU2_MICRO_KERNELS_HPP
-#define CONTRACTIONS_SU2_MICRO_KERNELS_HPP
+#ifndef CONTRACTIONS_OP_ITERATE_HPP
+#define CONTRACTIONS_OP_ITERATE_HPP
 
 #include "dmrg/block_matrix/block_matrix.h"
 #include "dmrg/mp_tensors/contractions/common/tasks.hpp"
@@ -35,18 +35,15 @@ namespace contraction {
 namespace common {
 namespace detail {
 
-    using ::contraction::common::MPSBlock;
-    using ::contraction::common::MatrixGroup;
-
     template <class Matrix, class AlignedMatrix, class SymmGroup, class Map>
-    void op_iterate_shtm(typename operator_selector<Matrix, SymmGroup>::type const & W, std::size_t w_block,
-                         typename Matrix::value_type couplings[],
-                         typename MPSBlock<AlignedMatrix, SymmGroup>::mapped_value_type & cg,
-                         typename MPSBlock<AlignedMatrix, SymmGroup>::mapped_value_type::t_key tq,
-                         unsigned m2_size,
-                         Map & t_map)
+    void op_iterate(typename operator_selector<Matrix, SymmGroup>::type const & W, std::size_t w_block,
+                    typename Matrix::value_type couplings[],
+                    ContractionGroup<AlignedMatrix, SymmGroup> & cg,
+                    typename ContractionGroup<AlignedMatrix, SymmGroup>::t_key tq,
+                    unsigned m2_size,
+                    Map & t_map)
     {
-        typedef typename MPSBlock<Matrix, SymmGroup>::mapped_value_type cgroup;
+        typedef ContractionGroup<AlignedMatrix, SymmGroup> cgroup;
         typedef typename SparseOperator<Matrix, SymmGroup>::const_iterator block_iterator;
 
         std::pair<block_iterator, block_iterator> blocks = W.get_sparse().block(w_block);

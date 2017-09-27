@@ -33,11 +33,11 @@
 #include "dmrg/mp_tensors/mpstensor.h"
 #include "dmrg/mp_tensors/mpotensor.h"
 
+#include "dmrg/mp_tensors/contractions/common/tasks.hpp"
 #include "dmrg/mp_tensors/contractions/non-abelian/shtm.hpp"
 #include "dmrg/mp_tensors/contractions/non-abelian/rshtm.hpp"
 #include "dmrg/mp_tensors/contractions/non-abelian/lshtm.hpp"
 #include "dmrg/mp_tensors/contractions/non-abelian/h_diag.hpp"
-#include "dmrg/mp_tensors/contractions/common/tasks.hpp"
 #include "dmrg/mp_tensors/contractions/common/move_boundary.hpp"
 #include "dmrg/mp_tensors/contractions/common/prediction.hpp"
 #include "dmrg/mp_tensors/contractions/common/site_hamil.hpp"

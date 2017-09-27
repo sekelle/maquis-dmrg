@@ -102,11 +102,11 @@ namespace contraction {
         template<class Matrix, class OtherMatrix, class SymmGroup, class RBTM>
         static std::pair<MPSTensor<Matrix, SymmGroup>, truncation_results>
         predict_new_state_r2l_sweep(MPSTensor<Matrix, SymmGroup> const & mps,
-                                        MPOTensor<Matrix, SymmGroup> const & mpo,
-                                        Boundary<OtherMatrix, SymmGroup> const & left,
-                                        Boundary<OtherMatrix, SymmGroup> const & right,
-                                        RBTM rbtm,
-                                        double alpha, double cutoff, std::size_t Mmax)
+                                    MPOTensor<Matrix, SymmGroup> const & mpo,
+                                    Boundary<OtherMatrix, SymmGroup> const & left,
+                                    Boundary<OtherMatrix, SymmGroup> const & right,
+                                    RBTM rbtm,
+                                    double alpha, double cutoff, std::size_t Mmax)
         {
             typedef typename SymmGroup::charge charge;
             mps.make_right_paired();
@@ -175,6 +175,74 @@ namespace contraction {
             
             return B;
         }
+
+        //template<class Matrix, class SymmGroup>
+        //boost::tuple<MPSTensor<Matrix, SymmGroup>, MPSTensor<Matrix, SymmGroup>, truncation_results>
+        //predict_split_l2r(TwoSiteTensor<Matrix, SymmGroup> & tst,
+        //                  std::size_t Mmax, double cutoff, double alpha,
+        //                  Boundary<Matrix, SymmGroup> const& left,
+        //                  MPOTensor<Matrix, SymmGroup> const& mpo)
+        //{
+        //    tst.make_both_paired();
+
+        //    /// build reduced density matrix (with left index open)
+        //    block_matrix<Matrix, SymmGroup> dm;
+        //    gemm(tst.data(), transpose(conjugate(tst.data())), dm);
+
+        //    /// state prediction
+        //    if (alpha != 0.) {
+        //        maquis::cout << "Growing, alpha = " << alpha << std::endl;
+        //        Index<SymmGroup> right_phys_i = adjoin(tst.local_site_dim(1)) * tst.col_dim();
+        //        MPSTensor<Matrix, SymmGroup> tmp(tst.local_site_dim(0), tst.row_dim(), right_phys_i, tst.data(), LeftPaired);
+
+        //        Boundary<Matrix, SymmGroup> half_dm
+        //            = contraction::Engine<Matrix, Matrix, SymmGroup>::left_boundary_tensor_mpo(tmp, left, mpo);
+        //        tmp = MPSTensor<Matrix, SymmGroup>();
+
+        //        omp_for(std::size_t b, parallel::range<std::size_t>(0,half_dm.aux_dim()), {
+        //            block_matrix<Matrix, SymmGroup> tdm;
+        //            gemm(half_dm[b], transpose(conjugate(half_dm[b])), tdm);
+        //            tdm *= alpha;
+        //            swap(tdm, half_dm[b]);
+        //        });
+
+        //        for (std::size_t b = 0; b < half_dm.aux_dim(); ++b) {
+        //            block_matrix<Matrix, SymmGroup> const& tdm = half_dm[b];
+        //            for (std::size_t k = 0; k < tdm.n_blocks(); ++k) {
+        //                if (data_.basis().has(tdm.basis().left_charge(k), tdm.basis().right_charge(k)))
+        //                    dm.reserve(tdm.basis().left_charge(k), tdm.basis().right_charge(k),
+        //                               num_rows(tdm[k]), num_cols(tdm[k]));
+        //            }
+        //        }
+        //        dm.allocate_blocks();
+
+        //        omp_for(std::size_t k, parallel::range<std::size_t>(0,dm.n_blocks()), {
+        //            for (std::size_t b = 0; b < half_dm.aux_dim(); ++b) {
+        //                std::size_t match = half_dm[b].find_block(dm.basis().left_charge(k), dm.basis().right_charge(k));
+        //                if (match < half_dm[b].n_blocks())
+        //                    dm[k] += (half_dm[b][match]);
+        //            }
+        //        });
+        //    }
+        //    assert( weak_equal(dm.left_basis(), data_.left_basis()) );
+
+        //    /// truncation
+        //    block_matrix<Matrix, SymmGroup> U;
+        //    block_matrix<typename alps::numeric::associated_real_diagonal_matrix<Matrix>::type, SymmGroup> S;
+        //    truncation_results trunc = heev_truncate(dm, U, S, cutoff, Mmax);
+        //    dm = block_matrix<Matrix, SymmGroup>();
+
+        //    MPSTensor<Matrix, SymmGroup> mps_tensor1(tst.local_site_dim(0), tst.row_dim(), U.right_basis(), U, LeftPaired);
+        //    assert( mps_tensor1.reasonable() );
+
+        //    block_matrix<Matrix, SymmGroup> V;
+        //    gemm(transpose(conjugate(U)), tst.data(), V);
+        //    MPSTensor<Matrix, SymmGroup> mps_tensor2(tst.local_site_dim(1), V.left_basis(), tst.col_dim(), V, RightPaired);
+        //    assert( mps_tensor2.reasonable() );
+
+        //    return boost::make_tuple(mps_tensor1, mps_tensor2, trunc);
+        //}
+
     } // namespace common
 } // namespace contraction
 
