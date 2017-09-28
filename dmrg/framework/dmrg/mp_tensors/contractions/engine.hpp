@@ -69,24 +69,6 @@ namespace contraction {
             return common::overlap_right_step<Matrix, OtherMatrix, SymmGroup>(bra_tensor, ket_tensor, right);
         }
 
-        static Boundary<Matrix, SymmGroup>
-        left_boundary_tensor_mpo(MPSTensor<Matrix, SymmGroup> mps,
-                                 Boundary<OtherMatrix, SymmGroup> const & left,
-                                 MPOTensor<Matrix, SymmGroup> const & mpo,
-                                 Index<SymmGroup> const * in_low = NULL)
-        {
-            return common::left_boundary_tensor_mpo(mps, left, mpo);
-        }
-
-        static Boundary<Matrix, SymmGroup>
-        right_boundary_tensor_mpo(MPSTensor<Matrix, SymmGroup> mps,
-                                  Boundary<OtherMatrix, SymmGroup> const & right,
-                                  MPOTensor<Matrix, SymmGroup> const & mpo,
-                                  Index<SymmGroup> const * in_low = NULL)
-        {
-            return common::right_boundary_tensor_mpo(mps, right, mpo);
-        }
-
         static Boundary<OtherMatrix, SymmGroup>
         overlap_mpo_left_step(MPSTensor<Matrix, SymmGroup> const & bra_tensor,
                               MPSTensor<Matrix, SymmGroup> const & ket_tensor,
@@ -127,7 +109,7 @@ namespace contraction {
 
             boost::tie(new_mps, trunc) =
             common::predict_new_state_l2r_sweep<Matrix, OtherMatrix, SymmGroup>
-                   (mps[l], mpo, left, right, left_boundary_tensor_mpo, alpha, cutoff, Mmax);
+                   (mps[l], mpo, left, right, alpha, cutoff, Mmax);
 
             mps[l+1] = common::predict_lanczos_l2r_sweep<Matrix, OtherMatrix, SymmGroup>(mps[l+1], mps[l], new_mps);
             mps[l] = new_mps;
@@ -147,7 +129,7 @@ namespace contraction {
 
             boost::tie(new_mps, trunc) =
             common::predict_new_state_r2l_sweep<Matrix, OtherMatrix, SymmGroup>
-                   (mps[l], mpo, left, right, right_boundary_tensor_mpo, alpha, cutoff, Mmax);
+                   (mps[l], mpo, left, right, alpha, cutoff, Mmax);
 
             mps[l-1] = common::predict_lanczos_r2l_sweep<Matrix, OtherMatrix, SymmGroup>(mps[l-1], mps[l], new_mps);
             mps[l] = new_mps;

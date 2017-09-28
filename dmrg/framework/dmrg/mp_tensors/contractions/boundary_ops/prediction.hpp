@@ -36,27 +36,26 @@
 namespace contraction {
     namespace common {
 
-        template<class Matrix, class OtherMatrix, class SymmGroup, class LBTM>
+        template<class Matrix, class OtherMatrix, class SymmGroup>
         static std::pair<MPSTensor<Matrix, SymmGroup>, truncation_results>
         predict_new_state_l2r_sweep(MPSTensor<Matrix, SymmGroup> const & mps,
                                     MPOTensor<Matrix, SymmGroup> const & mpo,
                                     Boundary<OtherMatrix, SymmGroup> const & left,
                                     Boundary<OtherMatrix, SymmGroup> const & right,
-                                    LBTM lbtm,
                                     double alpha, double cutoff, std::size_t Mmax)
         {
             typedef typename SymmGroup::charge charge;
             mps.make_left_paired();
-            block_matrix<Matrix, SymmGroup> dm;
+            block_matrix<OtherMatrix, SymmGroup> dm;
             gemm(mps.data(), transpose(conjugate(mps.data())), dm);
             
-            Boundary<Matrix, SymmGroup> half_dm = lbtm(mps, left, mpo, NULL);
+            Boundary<OtherMatrix, SymmGroup> half_dm = left_boundary_tensor_mpo(mps, left, mpo);
 
             omp_for(unsigned lb, parallel::range<unsigned>(0,mps.data().basis().size()),
             {
                 charge lc = mps.data().basis().left_charge(lb);
                 size_t ls = mps.data().basis().left_size(lb);
-                Matrix tdm(ls, ls);
+                OtherMatrix tdm(ls, ls);
 
                 for (auto lcci : half_dm.index()(lc))
                 {
@@ -74,8 +73,8 @@ namespace contraction {
             
             assert( weak_equal(dm.left_basis(), mps.data().left_basis()) );
             
-            block_matrix<Matrix, SymmGroup> U;
-            block_matrix<typename alps::numeric::associated_real_diagonal_matrix<Matrix>::type, SymmGroup> S;
+            block_matrix<OtherMatrix, SymmGroup> U;
+            block_matrix<typename alps::numeric::associated_real_diagonal_matrix<OtherMatrix>::type, SymmGroup> S;
             truncation_results trunc = heev_truncate(dm, U, S, cutoff, Mmax);
           
             MPSTensor<Matrix, SymmGroup> ret = mps;
@@ -99,21 +98,20 @@ namespace contraction {
             return B;
         }
         
-        template<class Matrix, class OtherMatrix, class SymmGroup, class RBTM>
+        template<class Matrix, class OtherMatrix, class SymmGroup>
         static std::pair<MPSTensor<Matrix, SymmGroup>, truncation_results>
         predict_new_state_r2l_sweep(MPSTensor<Matrix, SymmGroup> const & mps,
                                     MPOTensor<Matrix, SymmGroup> const & mpo,
                                     Boundary<OtherMatrix, SymmGroup> const & left,
                                     Boundary<OtherMatrix, SymmGroup> const & right,
-                                    RBTM rbtm,
                                     double alpha, double cutoff, std::size_t Mmax)
         {
             typedef typename SymmGroup::charge charge;
             mps.make_right_paired();
-            block_matrix<Matrix, SymmGroup> dm;
+            block_matrix<OtherMatrix, SymmGroup> dm;
             gemm(transpose(conjugate(mps.data())), mps.data(), dm);
 
-            Boundary<Matrix, SymmGroup> half_dm = rbtm(mps, right, mpo, NULL);
+            Boundary<OtherMatrix, SymmGroup> half_dm = right_boundary_tensor_mpo(mps, right, mpo);
             
             omp_for(unsigned lb, parallel::range<unsigned>(0,mps.data().basis().size()),
             {
@@ -126,7 +124,7 @@ namespace contraction {
                     unsigned ls = half_dm.index().left_size(ci);
                     unsigned rs = half_dm.index().right_size(ci);
 
-                    Matrix tdm(rs, rs);
+                    OtherMatrix tdm(rs, rs);
                     assert (half_dm.data()[ci].size() % rs == 0);
 
                     typename Matrix::value_type one(1);
@@ -150,8 +148,8 @@ namespace contraction {
             
             assert( weak_equal(dm.right_basis(), mps.data().right_basis()) );
             
-            block_matrix<Matrix, SymmGroup> U;
-            block_matrix<typename alps::numeric::associated_real_diagonal_matrix<Matrix>::type, SymmGroup> S;
+            block_matrix<OtherMatrix, SymmGroup> U;
+            block_matrix<typename alps::numeric::associated_real_diagonal_matrix<OtherMatrix>::type, SymmGroup> S;
             truncation_results trunc = heev_truncate(dm, U, S, cutoff, Mmax);
             
             MPSTensor<Matrix, SymmGroup> ret = mps;

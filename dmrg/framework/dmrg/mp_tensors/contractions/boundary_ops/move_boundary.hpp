@@ -79,7 +79,7 @@ namespace contraction {
 
         template<class Matrix, class OtherMatrix, class SymmGroup>
         static Boundary<OtherMatrix, SymmGroup>
-        left_boundary_tensor_mpo(MPSTensor<Matrix, SymmGroup> const & ket_tensor,
+        left_boundary_tensor_mpo(MPSTensor<Matrix, SymmGroup> ket_tensor,
                                  Boundary<OtherMatrix, SymmGroup> const & left,
                                  MPOTensor<Matrix, SymmGroup> const & mpo)
         {
@@ -168,7 +168,7 @@ namespace contraction {
 
         template<class Matrix, class OtherMatrix, class SymmGroup>
         static Boundary<OtherMatrix, SymmGroup>
-        right_boundary_tensor_mpo(MPSTensor<Matrix, SymmGroup> const & ket_tensor,
+        right_boundary_tensor_mpo(MPSTensor<Matrix, SymmGroup> ket_tensor,
                                   Boundary<OtherMatrix, SymmGroup> const & right,
                                   MPOTensor<Matrix, SymmGroup> const & mpo)
         {

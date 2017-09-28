@@ -215,7 +215,7 @@ TwoSiteTensor<Matrix, SymmGroup>::predict_split_l2r(std::size_t Mmax, double cut
         Index<SymmGroup> right_phys_i = adjoin(phys_i_right) * right_i;
         MPSTensor<Matrix, SymmGroup> tmp(phys_i_left, left_i, right_phys_i, data_, LeftPaired);
         
-        Boundary<Matrix, SymmGroup> half_dm = contraction::Engine<Matrix, Matrix, SymmGroup>::left_boundary_tensor_mpo(tmp, left, mpo);
+        Boundary<Matrix, SymmGroup> half_dm;// = contraction::Engine<Matrix, Matrix, SymmGroup>::left_boundary_tensor_mpo(tmp, left, mpo);
         tmp = MPSTensor<Matrix, SymmGroup>();
         
         omp_for(std::size_t b, parallel::range<std::size_t>(0,half_dm.aux_dim()), {
@@ -254,10 +254,6 @@ TwoSiteTensor<Matrix, SymmGroup>::predict_split_l2r(std::size_t Mmax, double cut
     MPSTensor<Matrix, SymmGroup> mps_tensor1(phys_i_left, left_i, U.right_basis(), U, LeftPaired);
     assert( mps_tensor1.reasonable() );
     
-//    block_matrix<Matrix, SymmGroup> t;
-//    gemm(U, S, t);
-//    maquis::cout << "t = " << t << std::endl;
-
     block_matrix<Matrix, SymmGroup> V;
     gemm(transpose(conjugate(U)), data_, V);
     MPSTensor<Matrix, SymmGroup> mps_tensor2(phys_i_right, V.left_basis(), right_i, V, RightPaired);
@@ -283,7 +279,7 @@ TwoSiteTensor<Matrix, SymmGroup>::predict_split_r2l(std::size_t Mmax, double cut
         Index<SymmGroup> left_phys_i = phys_i_left * left_i;
         MPSTensor<Matrix, SymmGroup> tmp(phys_i_right, left_phys_i, right_i, data_, RightPaired);
         
-        Boundary<Matrix, SymmGroup> half_dm = contraction::Engine<Matrix, Matrix, SymmGroup>::right_boundary_tensor_mpo(tmp, right, mpo);
+        Boundary<Matrix, SymmGroup> half_dm;// = contraction::Engine<Matrix, Matrix, SymmGroup>::right_boundary_tensor_mpo(tmp, right, mpo);
         tmp = MPSTensor<Matrix, SymmGroup>();
         
         omp_for(std::size_t b, parallel::range<std::size_t>(0,half_dm.aux_dim()), {
@@ -322,9 +318,6 @@ TwoSiteTensor<Matrix, SymmGroup>::predict_split_r2l(std::size_t Mmax, double cut
     MPSTensor<Matrix, SymmGroup> mps_tensor2(phys_i_right, U.left_basis(), right_i, transpose(conjugate(U)), RightPaired);
     assert( mps_tensor2.reasonable() );
 
-//    block_matrix<Matrix, SymmGroup> t = U;
-//    gemm(U, S, t);
-    
     block_matrix<Matrix, SymmGroup> V;
     gemm(data_, U, V);
 
