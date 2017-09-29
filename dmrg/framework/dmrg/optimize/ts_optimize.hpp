@@ -275,7 +275,9 @@ public:
                 if (parms["twosite_truncation"] == "svd")
                     boost::tie(mps[site1], mps[site2], trunc) = tst.split_mps_l2r(Mmax, cutoff);
                 else
-                    boost::tie(mps[site1], mps[site2], trunc) = tst.predict_split_l2r(Mmax, cutoff, alpha, left_[site1], mpo[site1]);
+                    //boost::tie(mps[site1], mps[site2], trunc) = tst.predict_split_l2r(Mmax, cutoff, alpha, left_[site1], mpo[site1]);
+                    boost::tie(mps[site1], mps[site2], trunc) = contraction::Engine<Matrix, BoundaryMatrix, SymmGroup>::
+                        predict_split_l2r(tst, Mmax, cutoff, alpha, left_[site1], mpo[site1]);
                 END_TIMING("TRUNC")
                 tst.clear();
 
@@ -309,7 +311,8 @@ public:
                 if (parms["twosite_truncation"] == "svd")
                     boost::tie(mps[site1], mps[site2], trunc) = tst.split_mps_r2l(Mmax, cutoff);
                 else
-                    boost::tie(mps[site1], mps[site2], trunc) = tst.predict_split_r2l(Mmax, cutoff, alpha, right_[site2+1], mpo[site2]);
+                    //boost::tie(mps[site1], mps[site2], trunc) = tst.predict_split_r2l(Mmax, cutoff, alpha, right_[site2+1], mpo[site2]);
+                    boost::tie(mps[site1], mps[site2], trunc) = tst.split_mps_r2l(Mmax, cutoff);
                 END_TIMING("TRUNC")
                 tst.clear();
 

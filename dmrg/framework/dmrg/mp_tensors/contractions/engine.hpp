@@ -109,7 +109,7 @@ namespace contraction {
 
             boost::tie(new_mps, trunc) =
             common::predict_new_state_l2r_sweep<Matrix, OtherMatrix, SymmGroup>
-                   (mps[l], mpo, left, right, alpha, cutoff, Mmax);
+                   (mps[l], mpo, left, alpha, cutoff, Mmax);
 
             mps[l+1] = common::predict_lanczos_l2r_sweep<Matrix, OtherMatrix, SymmGroup>(mps[l+1], mps[l], new_mps);
             mps[l] = new_mps;
@@ -129,11 +129,20 @@ namespace contraction {
 
             boost::tie(new_mps, trunc) =
             common::predict_new_state_r2l_sweep<Matrix, OtherMatrix, SymmGroup>
-                   (mps[l], mpo, left, right, alpha, cutoff, Mmax);
+                   (mps[l], mpo, right, alpha, cutoff, Mmax);
 
             mps[l-1] = common::predict_lanczos_r2l_sweep<Matrix, OtherMatrix, SymmGroup>(mps[l-1], mps[l], new_mps);
             mps[l] = new_mps;
             return trunc;
+        }
+
+        static boost::tuple<MPSTensor<Matrix, SymmGroup>, MPSTensor<Matrix, SymmGroup>, truncation_results>
+        predict_split_l2r(TwoSiteTensor<Matrix, SymmGroup> & tst,
+                          std::size_t Mmax, double cutoff, double alpha,
+                          Boundary<OtherMatrix, SymmGroup> const& left,
+                          MPOTensor<Matrix, SymmGroup> const& mpo)
+        {
+            return common::predict_split_l2r(tst, Mmax, cutoff, alpha, left, mpo);
         }
 
         static MPSTensor<Matrix, SymmGroup>

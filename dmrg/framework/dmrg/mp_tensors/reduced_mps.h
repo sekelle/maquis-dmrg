@@ -30,6 +30,7 @@
 
 #include "dmrg/mp_tensors/mps.h"
 #include "dmrg/mp_tensors/mpotensor.h"
+#include "dmrg/mp_tensors/twositetensor.h"
 #include "dmrg/mp_tensors/contractions.h"
 
 template <class Matrix, class SymmGroup>
