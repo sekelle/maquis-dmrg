@@ -147,6 +147,7 @@ namespace ts_reshape {
                     {
                         charge out_l_charge = SymmGroup::fuse(physical_i_left[s1].first, left_i[l].first);
                         charge out_r_charge = SymmGroup::fuse(-physical_i_right[s2].first, right_i[r].first);
+                        if (!SymmGroup::physical(out_l_charge) || !SymmGroup::physical(out_r_charge)) continue;
                         //charge in_l_charge = SymmGroup::fuse(s_charge, left_i[l].first);
                         //charge in_r_charge = right_i[r].first;
                         
@@ -207,6 +208,7 @@ namespace ts_reshape {
                     {
                         charge out_l_charge = SymmGroup::fuse(physical_i_left[s1].first, left_i[l].first);
                         charge out_r_charge = SymmGroup::fuse(-physical_i_right[s2].first, right_i[r].first);
+                        if (!SymmGroup::physical(out_l_charge) || !SymmGroup::physical(out_r_charge)) continue;
                         //charge in_l_charge = left_i[l].first;
                         //charge in_r_charge = SymmGroup::fuse(-s_charge, right_i[r].first);
                         
@@ -232,7 +234,8 @@ namespace ts_reshape {
                                 size_t ss_out = in_phys_offset + ss1*physical_i_right[s2].second + ss2;
                                 for (size_t rr = 0; rr < right_i[r].second; ++rr)
                                     for (size_t ll = 0; ll < left_i[l].second; ++ll)
-                                        out_block(out_left_offset + ss1*left_i[l].second + ll, out_right_offset + ss2*right_i[r].second + rr) = in_block(ll, in_right_offset + ss_out*right_i[r].second + rr);
+                                        out_block(out_left_offset + ss1*left_i[l].second + ll, out_right_offset + ss2*right_i[r].second + rr)
+                                            = in_block(ll, in_right_offset + ss_out*right_i[r].second + rr);
                             }
                         
                     }

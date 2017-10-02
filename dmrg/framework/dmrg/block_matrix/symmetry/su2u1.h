@@ -50,6 +50,8 @@ public:
     static subcharge & spin(charge & rhs) { return rhs[1]; }
     static subcharge const & spin(charge const & rhs) { return rhs[1]; }
 
+    static bool physical(charge const & rhs) { return rhs[1] >= 0; }
+
     static charge fuse(charge a, charge b)
     {
         return a+b;
@@ -91,6 +93,8 @@ public:
 
     static subcharge & irrep(charge & rhs) { return rhs[2]; }
     static subcharge const & irrep(charge const & rhs) { return rhs[2]; }
+
+    static bool physical(charge const & rhs) { return rhs[1] >= 0; }
 
     static charge fuse(charge a, charge b)
     {

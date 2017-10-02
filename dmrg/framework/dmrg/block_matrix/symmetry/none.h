@@ -47,6 +47,8 @@ public:
     static subcharge particleNumber(charge a) {
         return 0;
     }
+
+    static bool physical(charge const & rhs) { return true; }
     
 	static inline charge fuse(charge a, charge b) { return Plus; }
 	template<int R> static charge fuse(boost::array<charge, R>) { return Plus; }

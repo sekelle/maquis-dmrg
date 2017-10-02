@@ -276,6 +276,8 @@ public:
 
     static subcharge particleNumber(charge rhs) { return std::accumulate(rhs.begin(), rhs.end(), 0); }
 
+    static bool physical(charge const & rhs) { return true; }
+
     static charge fuse(charge a, charge b)
     {
         return a+b;

@@ -296,6 +296,8 @@ public:
     static subcharge & irrep(charge & rhs) { return rhs[N]; }
     static subcharge const & irrep(charge const & rhs) { return rhs[N]; }
 
+    static bool physical(charge const & rhs) { return true; }
+
     static charge fuse(charge a, charge b)
     {
         return a+b;

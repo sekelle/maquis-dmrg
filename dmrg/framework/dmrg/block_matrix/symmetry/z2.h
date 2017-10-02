@@ -53,6 +53,8 @@ class Ztwo {
 		}
 
         static subcharge particleNumber(charge a) { return 1; }
+
+        static bool physical(charge const & rhs) { return true; }
 		
 		template<int R>
 		static charge fuse(boost::array<charge, R> v)
