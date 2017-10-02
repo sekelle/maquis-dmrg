@@ -407,7 +407,14 @@ truncation_results heev_truncate(block_matrix<Matrix, SymmGroup> const & M,
     size_t* keeps = new size_t[evals.n_blocks()];
     double truncated_fraction, truncated_weight, smallest_ev;
 
-    estimate_truncation(evals, Mmax, cutoff, keeps, truncated_fraction, truncated_weight, smallest_ev);
+    block_matrix<DiagMatrix, SymmGroup> evals_sqrt = evals;
+
+    for (size_t b = 0; b < evals.n_blocks(); ++b)
+    for (size_t i = 0; i < num_rows(evals[b]); ++i)
+        if (evals[b](i,i) > 0.0)
+            evals_sqrt[b](i,i) = sqrt(evals[b](i,i));
+
+    estimate_truncation(evals_sqrt, Mmax, cutoff, keeps, truncated_fraction, truncated_weight, smallest_ev);
 
     for ( int k = evals.n_blocks() - 1; k >= 0; --k) // C - we reverse faster and safer ! we avoid bug if keeps[k] = 0
     {
