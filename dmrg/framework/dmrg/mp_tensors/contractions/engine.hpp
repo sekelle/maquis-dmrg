@@ -145,6 +145,15 @@ namespace contraction {
             return common::predict_split_l2r(tst, Mmax, cutoff, alpha, left, mpo);
         }
 
+        static boost::tuple<MPSTensor<Matrix, SymmGroup>, MPSTensor<Matrix, SymmGroup>, truncation_results>
+        predict_split_r2l(TwoSiteTensor<Matrix, SymmGroup> & tst,
+                          std::size_t Mmax, double cutoff, double alpha,
+                          Boundary<OtherMatrix, SymmGroup> const& right,
+                          MPOTensor<Matrix, SymmGroup> const& mpo)
+        {
+            return common::predict_split_r2l(tst, Mmax, cutoff, alpha, right, mpo);
+        }
+
         static MPSTensor<Matrix, SymmGroup>
         site_hamil2(MPSTensor<Matrix, SymmGroup> const & ket_tensor,
                     Boundary<OtherMatrix, SymmGroup> const & left,
