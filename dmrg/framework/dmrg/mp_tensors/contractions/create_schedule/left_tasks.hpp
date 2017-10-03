@@ -30,20 +30,19 @@
 #include "dmrg/block_matrix/symmetry/gsl_coupling.h"
 #include "dmrg/mp_tensors/mpstensor.h"
 #include "dmrg/mp_tensors/mpotensor.h"
-#include "dmrg/mp_tensors/contractions/non-abelian/micro_kernels.hpp"
-#include "dmrg/mp_tensors/contractions/non-abelian/gemm.hpp"
+#include "dmrg/mp_tensors/contractions/create_schedule/op_iterate.hpp"
 
 namespace contraction {
-namespace SU2 {
+namespace common {
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
     void lshtm_tasks(MPOTensor<Matrix, SymmGroup> const & mpo,
                      MPSTensor<Matrix, SymmGroup> const & bra,
                      MPSTensor<Matrix, SymmGroup> const & ket,
-                     common::LeftIndices<Matrix, OtherMatrix, SymmGroup> const & left,
+                     BoundaryIndex<OtherMatrix, SymmGroup> const & left,
                      ProductBasis<SymmGroup> const & bra_right_pb,
                      ProductBasis<SymmGroup> const & ket_right_pb,
-                     unsigned rb_ket,
+                     unsigned rb_bra,
                      typename common::BoundarySchedule<Matrix, SymmGroup>::block_type & mpsb,
                      bool skip = true)
     {
@@ -52,8 +51,7 @@ namespace SU2 {
         typedef typename MPOTensor<Matrix, SymmGroup>::col_proxy col_proxy;
         typedef MPOTensor_detail::index_type index_type;
         typedef typename common::BoundarySchedule<Matrix, SymmGroup>::block_type block_type;
-        typedef typename block_type::mapped_value_type::t_key t_key;
-        typedef std::map<t_key, unsigned> t_map_t;
+        typedef std::map<typename block_type::mapped_value_type::t_key, unsigned> t_map_t;
 
         Index<SymmGroup> const & ket_left_i = ket.row_dim();
         Index<SymmGroup> const & ket_right_i = ket.col_dim();
@@ -61,16 +59,16 @@ namespace SU2 {
         Index<SymmGroup> const & bra_right_i = bra.col_dim();
         Index<SymmGroup> const & phys_i = ket.site_dim();
 
-        charge rc_ket = ket_right_i[rb_ket].first;
-        unsigned rs_ket = ket_right_i[rb_ket].second;
+        charge rc_bra = bra_right_i[rb_bra].first;
+        unsigned rs_bra = bra_right_i[rb_bra].second;
 
         const int site_basis_max_diff = 2;
 
-        for (unsigned rb_bra = 0; rb_bra < bra_right_i.size(); ++rb_bra)
+        for (unsigned rb_ket = 0; rb_ket < ket_right_i.size(); ++rb_ket)
         {
-            charge rc_bra = bra_right_i[rb_bra].first;
+            charge rc_ket = ket_right_i[rb_ket].first;
             if (std::abs(SymmGroup::particleNumber(rc_bra) - SymmGroup::particleNumber(rc_ket)) > site_basis_max_diff) continue;
-            unsigned rs_bra = bra_right_i[rb_bra].second;
+            unsigned rs_ket = ket_right_i[rb_ket].second;
 
             for (unsigned s = 0; s < phys_i.size(); ++s)
             {
@@ -84,12 +82,10 @@ namespace SU2 {
                 typename block_type::mapped_value_type cg(lb_bra, phys_i[s].second, rs_bra, ls_bra, rs_ket,
                                                           bra_offset, true);
 
-                //::SU2::Wigner9jCache<value_type, SymmGroup> w9j(rc_bra, rc_ket, lc_bra);
-
                 t_map_t t_index;
                 for (index_type b2 = 0; b2 < mpo.col_dim(); ++b2)
                 {
-                    if (mpo.herm_right.skip(b2) && skip) continue;
+                    if (mpo.herm_right.skip(b2, rc_bra, rc_ket) && skip) continue;
                     int Ap = mpo.right_spin(b2).get(); if (!::SU2::triangle<SymmGroup>(rc_ket, Ap, rc_bra)) continue;
 
                     for (typename col_proxy::const_iterator col_it = mpo.column(b2).begin(); col_it != mpo.column(b2).end(); ++col_it) {
@@ -108,53 +104,61 @@ namespace SU2 {
 
                                 charge lc_ket = SymmGroup::fuse(rc_ket, -phys_in);
                                 unsigned lb_ket = ket_left_i.position(lc_ket); if (lb_ket == ket_left_i.size()) continue;
-                                unsigned b_left = left.position(b1, lc_bra, lc_ket); if (b_left == left[b1].size()) continue;
-
+                                unsigned ci = left.cohort_index(lc_bra, lc_ket); if (!left.has_block(ci, b1)) continue;
                                 unsigned ls_ket = ket_left_i[lb_ket].second;
                                 unsigned ket_offset = ket_right_pb(phys_in, rc_ket);
 
                                 value_type couplings[4];
-                                value_type scale = left.conj_scales[b1][b_left] * access.scale(op_index);
+                                value_type scale = left.conjugate_scale(ci, b1) * access.scale(op_index);
                                 ::SU2::set_coupling<SymmGroup>(lc_ket, SymmGroup::fuse(rc_ket, -lc_ket), rc_ket,
                                                                  A,      K,    Ap,
                                                                lc_bra, SymmGroup::fuse(rc_bra, -lc_bra), rc_bra,
                                                                scale, couplings);
 
-                                //value_type scale = left.conj_scales[b1][b_left] * access.scale(op_index)
-                                //                 * sqrt( (SymmGroup::spin(lc_ket)+1.) * (Ap+1.) * (SymmGroup::spin(rc_bra)+1.)
-                                //                        / ((SymmGroup::spin(rc_ket)+1.) * (A+1.) * (SymmGroup::spin(lc_bra)+1.))
-                                //                       );
-                                //int TwoS = std::abs(SymmGroup::spin(lc_ket) - SymmGroup::spin(rc_ket));
-                                //int TwoSp = std::abs(SymmGroup::spin(lc_bra) - SymmGroup::spin(rc_bra));
-                                //int sum = SymmGroup::spin(lc_ket) + TwoS + SymmGroup::spin(rc_ket) 
-                                //        + Ap + K + A
-                                //        + SymmGroup::spin(lc_bra) + TwoSp + SymmGroup::spin(rc_bra);
-                                //scale = ( (sum/2)%2 == 0) ? scale : -scale;
-                                //w9j.set_scale(Ap, K, A, SymmGroup::spin(lc_ket), scale, couplings);
+                                char left_transpose = left.trans(ci, b1);
+                                unsigned ci_eff = (left_transpose) ? left.cohort_index(lc_ket, lc_bra) : ci;
+                                size_t left_offset = left.offset(ci, b1);
 
-                                char left_transpose = mpo.herm_left.skip(b1);
-                                unsigned b1_eff = (left_transpose) ? mpo.herm_left.conj(b1) : b1;
-                                typename block_type::mapped_value_type::t_key tq
-                                    = bit_twiddling::pack(b1_eff, b_left, lb_ket, ket_offset, left_transpose);
+                                auto tq = bit_twiddling::pack(ci_eff, left_offset, lb_ket, ket_offset, left_transpose);
                                 
-                                detail::op_iterate_shtm<Matrix, typename common::BoundarySchedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
+                                detail::op_iterate<Matrix, typename common::BoundarySchedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
                                     (W, w_block, couplings, cg, tq, rs_ket, t_index);
                             } // w_block
                         } //op_index
                     } // b1
-                    for (unsigned i = 0 ; i < cg.size(); ++i) cg[i].add_line(b2, 0, !mpo.herm_right.skip(b2));
+                    for (auto& mg : cg) mg.add_line(b2, 0, !mpo.herm_right.skip(b2, rc_bra, rc_ket));
                 } // b2
 
-                cg.t_key_vec.resize(t_index.size());
-                for (typename t_map_t::const_iterator kit = t_index.begin(); kit != t_index.end(); ++kit)
-                    cg.t_key_vec[kit->second] = kit->first;
-                if (cg.n_tasks()) mpsb[rc_bra].push_back(cg);
+                if (cg.n_tasks())
+                {
+                    cg.t_key_vec.resize(t_index.size());
+                    for (auto const& kit : t_index) cg.t_key_vec[kit.second] = kit.first;
 
+                    mpsb[rc_ket].push_back(cg);
+
+                    auto& b2o = mpsb[rc_ket].get_offsets(); // mark each used b2 with 1
+                    b2o.resize(mpo.col_dim());
+                    for (auto& mg : cg) for (index_type b : mg.get_bs()) b2o[b] = 1;
+                }
             } // phys_out
-        } // rb_bra
+
+            if (mpsb.count(rc_ket) > 0)
+            {
+                auto& b2o = mpsb[rc_ket].get_offsets();
+                std::size_t block_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(rs_bra * rs_ket);
+
+                index_type cnt = 0;
+                for(auto& b : b2o) if (b) b = block_size * cnt++; else b = -1;
+
+                for (auto& cg : mpsb[rc_ket])
+                    for (auto& mg : cg)
+                        for (index_type b = 0; b < mg.get_bs().size(); ++b)
+                            mg.get_ks()[b] = b2o[mg.get_bs()[b]];
+            }
+        } // rb_ket
     }
 
-} // namespace SU2
+} // namespace common
 } // namespace contraction
 
 #endif

@@ -140,7 +140,7 @@ int main(int argc, char ** argv)
         if (lr == +1) {
             if (site < L-1) {
                 maquis::cout << "Growing, alpha = " << alpha << std::endl;
-                mps.grow_l2r_sweep(mpo[site], left, right, site, alpha, cutoff, Mmax);
+                contraction::Engine<matrix, matrix, grp>::grow_l2r_sweep(mps, mpo[site], left, right, site, alpha, cutoff, Mmax);
             } else {
                 block_matrix<matrix, grp> t = mps[site].normalize_left(DefaultSolver());
                 if (site < L-1)
@@ -149,7 +149,7 @@ int main(int argc, char ** argv)
         } else if (lr == -1) {
             if (site > 0) {
                 maquis::cout << "Growing, alpha = " << alpha << std::endl;
-                mps.grow_r2l_sweep(mpo[site], left, right, site, alpha, cutoff, Mmax);
+                contraction::Engine<matrix, matrix, grp>::grow_r2l_sweep(mps, mpo[site], left, right, site, alpha, cutoff, Mmax);
             } else {
                 block_matrix<matrix, grp> t = mps[site].normalize_right(DefaultSolver());
                 if (site > 0)

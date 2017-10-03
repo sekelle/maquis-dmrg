@@ -24,13 +24,6 @@
  *
  *****************************************************************************/
 
-#include "dmrg/mp_tensors/mps.h"
-#include "contractions.h"
-
-#include "dmrg/utils/archive.h"
-
-#include <limits>
-
 template<class Matrix, class SymmGroup>
 std::string MPS<Matrix, SymmGroup>::description() const
 {
@@ -237,58 +230,12 @@ void MPS<Matrix, SymmGroup>::move_normalization_r2l(size_t p1, size_t p2, Decomp
 }
 
 template<class Matrix, class SymmGroup>
-template<class OtherMatrix>
-truncation_results
-MPS<Matrix, SymmGroup>::grow_l2r_sweep(MPOTensor<Matrix, SymmGroup> const & mpo,
-                                       Boundary<OtherMatrix, SymmGroup> const & left,
-                                       Boundary<OtherMatrix, SymmGroup> const & right,
-                                       std::size_t l, double alpha,
-                                       double cutoff, std::size_t Mmax)
-{ // canonized_i invalided through (*this)[]
-    MPSTensor<Matrix, SymmGroup> new_mps;
-    truncation_results trunc;
-    
-    boost::tie(new_mps, trunc) =
-    contraction::Engine<Matrix, OtherMatrix, SymmGroup>::predict_new_state_l2r_sweep((*this)[l], mpo, left, right, alpha, cutoff, Mmax);
-    
-    (*this)[l+1] = contraction::Engine<Matrix, OtherMatrix, SymmGroup>::predict_lanczos_l2r_sweep((*this)[l+1],
-                                                    (*this)[l], new_mps);
-    (*this)[l] = new_mps;
-    return trunc;
-}
-
-template<class Matrix, class SymmGroup>
-template<class OtherMatrix>
-truncation_results
-MPS<Matrix, SymmGroup>::grow_r2l_sweep(MPOTensor<Matrix, SymmGroup> const & mpo,
-                                       Boundary<OtherMatrix, SymmGroup> const & left,
-                                       Boundary<OtherMatrix, SymmGroup> const & right,
-                                       std::size_t l, double alpha,
-                                       double cutoff, std::size_t Mmax)
-{ // canonized_i invalided through (*this)[]
-    MPSTensor<Matrix, SymmGroup> new_mps;
-    truncation_results trunc;
-    
-    boost::tie(new_mps, trunc) =
-    contraction::Engine<Matrix, OtherMatrix, SymmGroup>::predict_new_state_r2l_sweep((*this)[l], mpo, left, right, alpha, cutoff, Mmax);
-    
-    (*this)[l-1] = contraction::Engine<Matrix, OtherMatrix, SymmGroup>::predict_lanczos_r2l_sweep((*this)[l-1],
-                                                          (*this)[l], new_mps);
-    (*this)[l] = new_mps;
-    return trunc;
-}
-
-template<class Matrix, class SymmGroup>
 Boundary<Matrix, SymmGroup>
 MPS<Matrix, SymmGroup>::left_boundary() const
 {
     Index<SymmGroup> i = (*this)[0].row_dim();
     Boundary<Matrix, SymmGroup> ret(i, i, 1);
 
-    for(std::size_t k(0); k < ret[0].n_blocks(); ++k)
-       maquis::dmrg::detail::left_right_boundary_init(ret[0][k]);
-
-    ret[0].index_sizes();
     return ret;
 }
 
@@ -299,10 +246,32 @@ MPS<Matrix, SymmGroup>::right_boundary() const
     Index<SymmGroup> i = (*this)[length()-1].col_dim();
     Boundary<Matrix, SymmGroup> ret(i, i, 1);
 
-    for(std::size_t k(0); k < ret[0].n_blocks(); ++k)
-        maquis::dmrg::detail::left_right_boundary_init(ret[0][k]);
+    return ret;
+}
 
-    ret[0].index_sizes();
+template<class Matrix, class SymmGroup>
+block_matrix<Matrix, SymmGroup>
+MPS<Matrix, SymmGroup>::left_boundary_bm() const
+{
+    Index<SymmGroup> i = (*this)[0].row_dim();
+    block_matrix<Matrix, SymmGroup> ret(i, i);
+
+    for(std::size_t k(0); k < ret.n_blocks(); ++k)
+       maquis::dmrg::detail::left_right_boundary_init(ret[k]);
+
+    return ret;
+}
+
+template<class Matrix, class SymmGroup>
+block_matrix<Matrix, SymmGroup>
+MPS<Matrix, SymmGroup>::right_boundary_bm() const
+{
+    Index<SymmGroup> i = (*this)[length()-1].col_dim();
+    block_matrix<Matrix, SymmGroup> ret(i, i);
+
+    for(std::size_t k(0); k < ret.n_blocks(); ++k)
+        maquis::dmrg::detail::left_right_boundary_init(ret[k]);
+
     return ret;
 }
 

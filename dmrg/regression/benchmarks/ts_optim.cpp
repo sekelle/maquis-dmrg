@@ -212,7 +212,8 @@ int main(int argc, char ** argv)
             if(parms["twosite_truncation"] == "svd")
                 boost::tie(mps[site], mps[site+1], trunc) = tst.split_mps_l2r(Mmax, cutoff);
             else
-                boost::tie(mps[site], mps[site+1], trunc) = tst.predict_split_l2r(Mmax, cutoff, alpha, left, mpo[site]);
+                boost::tie(mps[site], mps[site+1], trunc) = contraction::Engine<matrix, matrix, grp>::
+                    predict_split_l2r(tst, Mmax, cutoff, alpha, left, mpo[site]);
             tst.clear();
             
             block_matrix<matrix, grp> t;
@@ -223,7 +224,8 @@ int main(int argc, char ** argv)
             if(parms["twosite_truncation"] == "svd")
                 boost::tie(mps[site], mps[site+1], trunc) = tst.split_mps_r2l(Mmax, cutoff);
             else
-                boost::tie(mps[site], mps[site+1], trunc) = tst.predict_split_r2l(Mmax, cutoff, alpha, right, mpo[site+1]);
+                boost::tie(mps[site], mps[site+1], trunc) = contraction::Engine<matrix, matrix, grp>::
+                    predict_split_r2l(tst, Mmax, cutoff, alpha, right, mpo[site+1]);
             tst.clear();
             
             block_matrix<matrix, grp> t;

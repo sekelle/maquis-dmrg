@@ -35,50 +35,42 @@
 
 template <class T>
 inline typename boost::enable_if<boost::is_same<T, double> >::type
-blas_gemm(const char* transa, const char* transb,
-          const int* m, const int* n,
-          const int* k, const T* alpha, const T* a,
-          const int* lda, const T* b, const int* ldb,
-          const T* beta, T* c, const int* ldc
+blas_gemm(char transa, char transb, int m, int n, int k,
+          T alpha, const T* a, int lda, const T* b, int ldb,
+          T beta, T* c, int ldc
          )
 {
-    BLAS_DGEMM(transa, transb, m,n,k, alpha, a,lda, b,ldb, beta, c,ldc);
+    BLAS_DGEMM(&transa, &transb, &m,&n,&k, &alpha, a,&lda, b,&ldb, &beta, c,&ldc);
 }
 
 template <class T>
 inline typename boost::enable_if<boost::is_same<T, float> >::type
-blas_gemm(const char* transa, const char* transb,
-          const int* m, const int* n,
-          const int* k, const T* alpha, const T* a,
-          const int* lda, const T* b, const int* ldb,
-          const T* beta, T* c, const int* ldc
+blas_gemm(char transa, char transb, int m, int n, int k,
+          T alpha, const T* a, int lda, const T* b, int ldb,
+          T beta, T* c, int ldc
          )
 {
-    BLAS_SGEMM(transa, transb, m,n,k, alpha, a,lda, b,ldb, beta, c,ldc);
+    BLAS_SGEMM(&transa, &transb, &m,&n,&k, &alpha, a,&lda, b,&ldb, &beta, c,&ldc);
 }
 
 template <class T>
 inline typename boost::enable_if<boost::is_same<T, std::complex<double> > >::type
-blas_gemm(const char* transa, const char* transb,
-          const int* m, const int* n,
-          const int* k, const T* alpha, const T* a,
-          const int* lda, const T* b, const int* ldb,
-          const T* beta, T* c, const int* ldc
+blas_gemm(char transa, char transb, int m, int n, int k,
+          T alpha, const T* a, int lda, const T* b, int ldb,
+          T beta, T* c, int ldc
          )
 {
-    BLAS_ZGEMM(transa, transb, m,n,k, alpha, a,lda, b,ldb, beta, c,ldc);
+    BLAS_ZGEMM(&transa, &transb, &m,&n,&k, &alpha, a,&lda, b,&ldb, &beta, c,&ldc);
 }
 
 template <class T>
 inline typename boost::enable_if<boost::is_same<T, std::complex<float> > >::type
-blas_gemm(const char* transa, const char* transb,
-          const int* m, const int* n,
-          const int* k, const T* alpha, const T* a,
-          const int* lda, const T* b, const int* ldb,
-          const T* beta, T* c, const int* ldc
+blas_gemm(char transa, char transb, int m, int n, int k,
+          T alpha, const T* a, int lda, const T* b, int ldb,
+          T beta, T* c, int ldc
          )
 {
-    BLAS_SGEMM(transa, transb, m,n,k, alpha, a,lda, b,ldb, beta, c,ldc);
+    BLAS_CGEMM(&transa, &transb, &m,&n,&k, &alpha, a,&lda, b,&ldb, &beta, c,&ldc);
 }
 
 #endif

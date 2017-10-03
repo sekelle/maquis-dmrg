@@ -46,7 +46,7 @@ struct SiteProblem
     , right(right_)
     , mpo(mpo_)
     , contraction_schedule(contraction::Engine<Matrix, OtherMatrix, SymmGroup>::
-                           right_contraction_schedule(initial, left, right, mpo))
+                           contraction_schedule(initial, left, right, mpo))
     { }
     
     Boundary<OtherMatrix, SymmGroup> const & left;

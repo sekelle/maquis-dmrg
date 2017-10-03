@@ -28,16 +28,22 @@
 #ifndef TWOSITETENSOR_H
 #define TWOSITETENSOR_H
 
+#include <iostream>
+#include <algorithm>
+#include <utility>
+
+#include <alps/numeric/real.hpp>
+
+#include "dmrg/utils/random.hpp"
+
+#include "dmrg/block_matrix/block_matrix_algorithms.h"
 #include "dmrg/mp_tensors/mpstensor.h"
 #include "dmrg/mp_tensors/mpotensor.h"
 #include "dmrg/mp_tensors/boundary.h"
-#include "dmrg/block_matrix/indexing.h"
-#include "dmrg/block_matrix/multi_index.h"
-#include "dmrg/block_matrix/block_matrix.h"
-#include "dmrg/block_matrix/block_matrix_algorithms.h"
 
-#include <iostream>
-#include <algorithm>
+#include "ts_reshape.h"
+#include "ts_reduction.h"
+#include "ts_ops.hpp"
 
 enum TwoSiteStorageLayout {TSRightPaired, TSLeftPaired, TSBothPaired};
 
@@ -79,13 +85,6 @@ public:
     boost::tuple<MPSTensor<Matrix, SymmGroup>, MPSTensor<Matrix, SymmGroup>, truncation_results>
     split_mps_r2l(std::size_t Mmax, double cutoff) const;
     
-    boost::tuple<MPSTensor<Matrix, SymmGroup>, MPSTensor<Matrix, SymmGroup>, truncation_results>
-    predict_split_l2r(std::size_t Mmax, double cutoff, double alpha, Boundary<Matrix, SymmGroup> const& left,
-                      MPOTensor<Matrix, SymmGroup> const& mpo);
-    boost::tuple<MPSTensor<Matrix, SymmGroup>, MPSTensor<Matrix, SymmGroup>, truncation_results>
-    predict_split_r2l(std::size_t Mmax, double cutoff, double alpha, Boundary<Matrix, SymmGroup> const& right,
-                      MPOTensor<Matrix, SymmGroup> const& mpo);
-    
     void clear();
     void swap_with(TwoSiteTensor & b);
 
@@ -110,7 +109,6 @@ private:
 
     TwoSiteTensor<Matrix, SymmGroup> & operator_shift(MPSTensor<Matrix, SymmGroup> const & rhs, type_helper<true>);
 
-    MultiIndex<SymmGroup> midx;
     set_id left_paired;
     set_id right_paired;
     set_id both_paired;
@@ -122,7 +120,5 @@ private:
 };
 
 #include "twositetensor.hpp"
-
-#include "ts_ops.h"
 
 #endif

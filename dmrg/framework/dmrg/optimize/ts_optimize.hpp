@@ -28,13 +28,7 @@
 #ifndef TS_OPTIMIZE_H
 #define TS_OPTIMIZE_H
 
-#include <boost/archive/binary_oarchive.hpp>
-#include <boost/tuple/tuple.hpp>
-
-#include "dmrg/optimize/optimize.h"
 #include "dmrg/mp_tensors/twositetensor.h"
-#include "dmrg/mp_tensors/mpo_ops.h"
-
 
 template<class Matrix, class SymmGroup, class Storage>
 class ts_optimize : public optimizer_base<Matrix, SymmGroup, Storage>
@@ -43,6 +37,7 @@ public:
     typedef typename Matrix::value_type value_type;
 
     typedef optimizer_base<Matrix, SymmGroup, Storage> base;
+    typedef typename base::BoundaryMatrix BoundaryMatrix;
     using base::mpo;
     using base::mps;
     using base::left_;
@@ -190,7 +185,7 @@ public:
     	    TwoSiteTensor<Matrix, SymmGroup> tst(mps[site1], mps[site2]);
     	    MPSTensor<Matrix, SymmGroup> twin_mps = tst.make_mps();
             tst.clear();
-            SiteProblem<Matrix, typename base::BoundaryMatrix, SymmGroup>
+            SiteProblem<Matrix, BoundaryMatrix, SymmGroup>
                 sp(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1]);
 
             //if (twosweep == 5)
@@ -280,7 +275,8 @@ public:
                 if (parms["twosite_truncation"] == "svd")
                     boost::tie(mps[site1], mps[site2], trunc) = tst.split_mps_l2r(Mmax, cutoff);
                 else
-                    boost::tie(mps[site1], mps[site2], trunc) = tst.predict_split_l2r(Mmax, cutoff, alpha, left_[site1], mpo[site1]);
+                    boost::tie(mps[site1], mps[site2], trunc) = contraction::Engine<Matrix, BoundaryMatrix, SymmGroup>::
+                        predict_split_l2r(tst, Mmax, cutoff, alpha, left_[site1], mpo[site1]);
                 END_TIMING("TRUNC")
                 tst.clear();
 
@@ -302,17 +298,6 @@ public:
                 this->boundary_left_step(mpo, site1); // creating left_[site2]
 
                 if (site1 != L-2){ 
-                    if(site1 != 0){
-                        #ifdef USE_AMBIENT
-                        std::vector<int> placement_l = parallel::get_left_placement(ts_cache_mpo[site1], mpo[site1].placement_l, mpo[site2].placement_r);
-                        parallel::scheduler_permute scheduler(placement_l, parallel::groups_granularity);
-                        for(size_t b = 0; b < left_[site1].aux_dim(); ++b){
-                            parallel::guard group(scheduler(b), parallel::groups_granularity);
-                            storage::migrate(left_[site1][b], parallel::scheduler_size_indexed(left_[site1][b]));
-                        }
-                        parallel::sync();
-                        #endif
-                    }
                     Storage::evict(mps[site1]);
                     Storage::evict(left_[site1]);
                 }
@@ -325,7 +310,8 @@ public:
                 if (parms["twosite_truncation"] == "svd")
                     boost::tie(mps[site1], mps[site2], trunc) = tst.split_mps_r2l(Mmax, cutoff);
                 else
-                    boost::tie(mps[site1], mps[site2], trunc) = tst.predict_split_r2l(Mmax, cutoff, alpha, right_[site2+1], mpo[site2]);
+                    boost::tie(mps[site1], mps[site2], trunc) = contraction::Engine<Matrix, BoundaryMatrix, SymmGroup>::
+                        predict_split_r2l(tst, Mmax, cutoff, alpha, right_[site2+1], mpo[site2]);
                 END_TIMING("TRUNC")
                 tst.clear();
 
@@ -346,22 +332,9 @@ public:
                 this->boundary_right_step(mpo, site2); // creating right_[site2]
 
                 if(site1 != 0){
-                    if(site1 != L-2){
-                        #ifdef USE_AMBIENT
-                        std::vector<int> placement_r = parallel::get_right_placement(ts_cache_mpo[site1], mpo[site1].placement_l, mpo[site2].placement_r);
-                        parallel::scheduler_permute scheduler(placement_r, parallel::groups_granularity);
-                        for(size_t b = 0; b < right_[site2+1].aux_dim(); ++b){
-                            parallel::guard group(scheduler(b), parallel::groups_granularity);
-                            storage::migrate(right_[site2+1][b], parallel::scheduler_size_indexed(right_[site2+1][b]));
-                        }
-                        parallel::sync();
-                        #endif
-                    }
                     Storage::evict(mps[site2]);
                     Storage::evict(right_[site2+1]); 
                 }
-                { parallel::guard proc(scheduler_mps(site1)); storage::migrate(mps[site1]); }
-                { parallel::guard proc(scheduler_mps(site2)); storage::migrate(mps[site2]); }
     	    }
             
             iteration_results_["BondDimension"]     << trunc.bond_dimension;

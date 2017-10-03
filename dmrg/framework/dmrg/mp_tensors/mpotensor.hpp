@@ -25,8 +25,6 @@
  *
  *****************************************************************************/
 
-#include "dmrg/mp_tensors/reshapes.h"
-
 template<class Matrix, class SymmGroup>
 MPOTensor<Matrix, SymmGroup>::MPOTensor(index_type ld
                                        ,index_type rd

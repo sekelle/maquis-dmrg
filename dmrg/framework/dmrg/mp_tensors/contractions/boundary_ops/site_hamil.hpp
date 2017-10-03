@@ -58,15 +58,31 @@ namespace common {
         index_type loop_max = tasks.size();
         index_type inner_loop_max = physical_i.size();
 
-        #ifdef MAQUIS_OPENMP
-        #pragma omp parallel for collapse(2) schedule (dynamic,1)
-        #endif
+        std::vector<boost::tuple<index_type, index_type, index_type>> task_enumeration;
         for (index_type task_block = 0; task_block < loop_max; ++task_block)
-            for (index_type s = 0; s < inner_loop_max; ++s) {
-                index_type mps_block = tasks.load_balance[task_block];
-                for (index_type cgi = 0; cgi < tasks[mps_block][s].size(); ++cgi)
-                    tasks[mps_block][s][cgi].contract(ket_tensor, left, right, &collector[mps_block](0,0));
-            }
+        {
+            index_type mps_block = tasks.load_balance[task_block];
+
+            std::vector<index_type> cg_sizes(inner_loop_max);
+            for (index_type s = 0; s < inner_loop_max; ++s)
+                cg_sizes[s] = tasks[mps_block][s].size();
+
+            index_type max_cgi = *std::max_element(cg_sizes.begin(), cg_sizes.end());
+
+            for (index_type cgi = 0; cgi < max_cgi; ++cgi)
+                for (index_type s = 0; s < inner_loop_max; ++s)
+                    if (cgi < tasks[mps_block][s].size())
+                        task_enumeration.push_back(boost::make_tuple(mps_block, s, cgi));
+        }
+
+        #ifdef MAQUIS_OPENMP
+        #pragma omp parallel for schedule (dynamic,1)
+        #endif
+        for (index_type tn = 0; tn < task_enumeration.size(); ++tn)
+            tasks[ boost::get<0>(task_enumeration[tn]) ]
+                 [ boost::get<1>(task_enumeration[tn]) ]
+                 [ boost::get<2>(task_enumeration[tn]) ]
+                 .contract(ket_tensor, left, right, &collector[boost::get<0>(task_enumeration[tn])](0,0));
 
         reshape_right_to_left_new(physical_i, left_i, right_i, collector, ret.data());
 

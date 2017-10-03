@@ -27,11 +27,14 @@
 #ifndef MPS_H
 #define MPS_H
 
+#include <limits>
+
+#include "dmrg/utils/archive.h"
+
 #include "dmrg/mp_tensors/mpstensor.h"
 #include "dmrg/mp_tensors/mpotensor.h"
 #include "dmrg/mp_tensors/boundary.h"
-
-#include <limits>
+#include "dmrg/mp_tensors/contractions/special.hpp"
 
 template<class Matrix, class SymmGroup>
 struct mps_initializer;
@@ -86,21 +89,10 @@ public:
     
     std::string description() const;
    
-    template<class OtherMatrix>
-    truncation_results grow_l2r_sweep(MPOTensor<Matrix, SymmGroup> const & mpo,
-                                      Boundary<OtherMatrix, SymmGroup> const & left,
-                                      Boundary<OtherMatrix, SymmGroup> const & right,
-                                      std::size_t l, double alpha,
-                                      double cutoff, std::size_t Mmax);
-    template<class OtherMatrix>
-    truncation_results grow_r2l_sweep(MPOTensor<Matrix, SymmGroup> const & mpo,
-                                      Boundary<OtherMatrix, SymmGroup> const & left,
-                                      Boundary<OtherMatrix, SymmGroup> const & right,
-                                      std::size_t l, double alpha,
-                                      double cutoff, std::size_t Mmax);
-    
     Boundary<Matrix, SymmGroup> left_boundary() const;
     Boundary<Matrix, SymmGroup> right_boundary() const;
+    block_matrix<Matrix, SymmGroup> left_boundary_bm() const;
+    block_matrix<Matrix, SymmGroup> right_boundary_bm() const;
     
     void apply(typename operator_selector<Matrix, SymmGroup>::type const&, size_type);
     void apply(typename operator_selector<Matrix, SymmGroup>::type const&,
@@ -162,10 +154,6 @@ make_left_boundary(MPS<Matrix, SymmGroup> const & bra, MPS<Matrix, SymmGroup> co
     Index<SymmGroup> j = bra[0].row_dim();
     Boundary<Matrix, SymmGroup> ret(i, j, 1);
     
-    for(typename Index<SymmGroup>::basis_iterator it1 = i.basis_begin(); !it1.end(); ++it1)
-        for(typename Index<SymmGroup>::basis_iterator it2 = j.basis_begin(); !it2.end(); ++it2)
-            ret[0](*it1, *it2) = 1;
-    
     return ret;
 }
 
@@ -178,10 +166,6 @@ make_right_boundary(MPS<Matrix, SymmGroup> const & bra, MPS<Matrix, SymmGroup> c
     Index<SymmGroup> i = ket[L-1].col_dim();
     Index<SymmGroup> j = bra[L-1].col_dim();
     Boundary<Matrix, SymmGroup> ret(j, i, 1);
-    
-    for(typename Index<SymmGroup>::basis_iterator it1 = i.basis_begin(); !it1.end(); ++it1)
-        for(typename Index<SymmGroup>::basis_iterator it2 = j.basis_begin(); !it2.end(); ++it2)
-            ret[0](*it2, *it1) = 1;
     
     return ret;
 }

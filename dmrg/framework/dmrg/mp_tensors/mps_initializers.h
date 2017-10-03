@@ -40,7 +40,6 @@
 #include "dmrg/mp_tensors/state_mps.h"
 
 #include "dmrg/mp_tensors/mps.h"
-#include "dmrg/mp_tensors/mps_mpo_ops.h"
 
 template<class Matrix, class SymmGroup>
 struct default_mps_init : public mps_initializer<Matrix, SymmGroup>
@@ -76,7 +75,6 @@ struct default_mps_init : public mps_initializer<Matrix, SymmGroup>
         });
         
 #ifndef NDEBUG
-        maquis::cout << "init norm: " << norm(mps) << std::endl;
         maquis::cout << mps.description() << std::endl;
 #endif
     }

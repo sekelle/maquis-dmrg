@@ -595,6 +595,7 @@ namespace measurements {
                         typename MPS<Matrix, SymmGroup>::scalar_type value = expval(bra_mps, ket_mps, mpo);
 
                         dct.push_back(value);
+                        // reorder positions p -> order[p]
                         std::transform(positions.begin(), positions.end(), positions.begin(),
                                        boost::bind(static_cast<pos_t(Lattice::*)(std::string, pos_t) const>(&Lattice::get_prop),
                                                    &lattice, std::string("nlabel"), boost::lambda::_1));

@@ -30,6 +30,8 @@
 #include <boost/utility.hpp>
 #include <boost/type_traits.hpp>
 
+#include "dmrg/models/op_handler.h"
+
 template<class Matrix, class SymmGroup>
 class MPOTensor;
 
@@ -139,24 +141,32 @@ namespace MPOTensor_detail
     class Hermitian
     {
     public:
-        Hermitian(index_type d)
+        Hermitian(index_type d) : Herm(d, std::numeric_limits<index_type>::max()), Phase(d,1) {}
+
+        template <class Charge>
+        bool skip(index_type b, Charge l, Charge r) const
         {
-            Herm.resize(d);
-            Phase = std::vector<int>(d, 1);
-
-            index_type z=0;
-            std::generate(Herm.begin(), Herm.end(), boost::lambda::var(z)++);
+            if (Herm[b] < b) return true;
+            else if (Herm[b] == b) return l < r;
+            else return false;
         }
-
-        Hermitian(std::vector<index_type> const & h, std::vector<int> const & p)
-        : Herm(h), Phase(p)
-        {}
-
-        bool       skip(index_type b) const { return Herm[b] < b; }
         index_type conj(index_type b) const { return Herm[b]; }
 
         std::size_t size()       const { return Herm.size(); }
         int phase(std::size_t i) const { return Phase[i]; }
+
+        void register_hermitian_pair(index_type a, index_type b, int phase_a, int phase_b)
+        {
+            Herm[a] = b;
+            Herm[b] = a;
+            Phase[a] = phase_a;
+            Phase[b] = phase_b;
+        }
+
+        void register_self_adjoint(index_type a)
+        {
+            Herm[a] = a;
+        }
 
     private:
         std::vector<index_type> Herm;

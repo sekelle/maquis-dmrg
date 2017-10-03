@@ -1,5 +1,4 @@
-/*****************************************************************************
- *
+/***************************************************************************** *
  * ALPS MPS DMRG Project
  *
  * Copyright (C) 2014 Institute for Theoretical Physics, ETH Zurich
@@ -26,8 +25,6 @@
 
 #ifndef MULTI_INDEX_H
 #define MULTI_INDEX_H
-
-//#include "dmrg/block_matrix/indexing.h"
 
 #include <vector>
 #include <algorithm>

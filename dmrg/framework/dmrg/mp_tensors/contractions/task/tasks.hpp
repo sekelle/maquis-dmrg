@@ -32,16 +32,12 @@
 #include <map>
 #include <utility>
 #include <malloc.h>
-#include <boost/lambda/construct.hpp>
 
 #include "utils/sizeof.h"
 #include "dmrg/utils/aligned_allocator.hpp"
-#include "dmrg/mp_tensors/contractions/common/gemm_binding.hpp"
 
 #include "dmrg/mp_tensors/contractions/numeric/numeric.h"
 #include "dmrg/mp_tensors/contractions/numeric/gemm_template.h"
-
-#define ALIGNMENT 32
 
 namespace contraction {
 namespace common {
@@ -158,9 +154,6 @@ public:
     typename boost::disable_if<boost::is_same<typename OtherMatrix::value_type, double>, Matrix>::type
     contract(Boundary<OtherMatrix, SymmGroup> const & left, const value_type* t_pointer) const
     {
-        value_type one=1;
-        char tr = 'T';
-        char notr = 'N';
         int M = l_size, N = r_size, K = m_size;
         uint t_size = m_size * r_size;
         uint t_size_padded = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(t_size);
@@ -179,9 +172,9 @@ public:
                                                     t_pointer + tidx_i[j] * t_size_padded + t_size,
                                                     &S(0,0), alpha_i[j]);
             if (trans[i])
-                blas_gemm(&tr, &notr, &M, &N, &K, &one, &left[b1][ks[i]](0,0), &K, &S(0,0), &K, &one, &ret(0,0), &M);
+                blas_gemm('T', 'N', M, N, K, value_type(1), &left.data()[b1][ks[i]], K, &S(0,0), K, value_type(1), &ret(0,0), M);
             else
-                blas_gemm(&notr, &notr, &M, &N, &K, &one, &left[b1][ks[i]](0,0), &M, &S(0,0), &K, &one, &ret(0,0), &M);
+                blas_gemm('N', 'N', M, N, K, value_type(1), &left.data()[b1][ks[i]], M, &S(0,0), K, value_type(1), &ret(0,0), M);
         }
 
         return ret;
@@ -194,7 +187,7 @@ public:
         const value_type** left_mat = new const value_type*[b2sz.size()];
 
         for (index_type i = 0; i < b2sz.size(); ++i)
-            left_mat[i] = &left[bs[i]][ks[i]](0,0);
+            left_mat[i] = &left.data()[bs[i]][ks[i]];
 
         Matrix ret(l_size, r_size);
         dgemm_ddot(l_size, m_size, r_size, b2sz.size(), b2sz.data(), &trans[0], tidx.data(), alpha.data(), left_mat, t_pointer, &ret(0,0));
@@ -205,12 +198,8 @@ public:
     }       
 
     template <class DefaultMatrix, class OtherMatrix>
-    void prop(DefaultMatrix const & bra, const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret,
-              std::vector<unsigned> const & b_to_o) const
+    void prop(DefaultMatrix const & bra, const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret, unsigned ci) const
     {
-        value_type one=1;
-        char tr = 'T';
-        char notr = 'N';
         int M = m_size, N = l_size, K = r_size;
         uint t_size = m_size * r_size;
         uint t_size_padded = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(t_size);
@@ -228,17 +217,14 @@ public:
                                                     t_pointer + tidx_i[j] * t_size_padded + t_size,
                                                     &S(0,0), alpha_i[j]);
 
-            blas_gemm(&notr, &tr, &M, &N, &K, &one, &S(0,0), &M, &bra(0, offset), &N, &one, &ret[b1][b_to_o[b1]](0,0), &M);
+            blas_gemm('N', 'T', M, N, K, value_type(1), &S(0,0), M, &bra(0, offset), N, value_type(1), &ret.data()[ci][ks[i]], M);
         }
     }
 
     template <class DefaultMatrix, class OtherMatrix>
     void prop_l(DefaultMatrix const & bra, const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret,
-                std::vector<unsigned> const & b_to_o) const
+                unsigned ci) const
     {
-        value_type one=1;
-        char tr = 'T';
-        char notr = 'N';
         int M = l_size, N = r_size, K = m_size;
         uint t_size = m_size * r_size;
         uint t_size_padded = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(t_size);
@@ -246,7 +232,7 @@ public:
         Matrix S(m_size, r_size);
         for (index_type i = 0; i < b2sz.size(); ++i)
         {
-            index_type b2 = bs[i];
+            //index_type b2 = bs[i];
             memset(&S(0,0), 0, m_size * r_size * sizeof(typename Matrix::value_type));
 
             for (index_type j = 0; j < b2sz[i]; ++j)
@@ -254,12 +240,12 @@ public:
                                                     t_pointer + tidx[i][j] * t_size_padded + t_size,
                                                     &S(0,0), alpha[i][j]);
 
-            blas_gemm(&tr, &notr, &M, &N, &K, &one, &bra(0,offset), &K, &S(0,0), &K, &one, &ret[b2][b_to_o[b2]](0,0), &M);
+            blas_gemm('T', 'N', M, N, K, value_type(1), &bra(0,offset), K, &S(0,0), K, value_type(1), &ret.data()[ci][ks[i]], M);
         }
     }
 
     template <class OtherMatrix>
-    void lbtm(const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret, std::vector<unsigned> const & b_to_o) const
+    void lbtm(const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret, unsigned ci) const
     {
         uint t_size = m_size * r_size;
         uint t_size_padded = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(t_size);
@@ -267,7 +253,6 @@ public:
         Matrix S(m_size, r_size);
         for (index_type i = 0; i < b2sz.size(); ++i)
         {
-            index_type b2 = bs[i];
             memset(&S(0,0), 0, m_size * r_size * sizeof(typename Matrix::value_type));
 
             for (index_type j = 0; j < b2sz[i]; ++j)
@@ -275,24 +260,38 @@ public:
                                                     t_pointer + tidx[i][j] * t_size_padded + t_size,
                                                     &S(0,0), alpha[i][j]);
             for (unsigned c = 0; c < r_size; ++c)
-                maquis::dmrg::detail::iterator_axpy(&S(0,c), &S(0,c) + m_size, &ret[b2][b_to_o[b2]](offset,c), 1.0);
+                maquis::dmrg::detail::iterator_axpy(&S(0,c), &S(0,c) + m_size, &ret.data()[ci][ks[i]] + c * l_size, 1.0);
         }
     }
 
     template <class OtherMatrix>
-    void rbtm(const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret,
-         std::vector<unsigned> const & b_to_o) const
+    void rbtm(const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret, unsigned ci) const
     {
         uint t_size = m_size * r_size;
         uint t_size_padded = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(t_size);
 
+        Matrix S(m_size, r_size);
         for (index_type i = 0; i < b2sz.size(); ++i)
         {
+            memset(&S(0,0), 0, m_size * r_size * sizeof(typename Matrix::value_type));
+
             index_type b1 = bs[i];
+            // original rbtm structure
+            //for (index_type j = 0; j < b2sz[i]; ++j)
+            //    maquis::dmrg::detail::iterator_axpy(t_pointer + tidx[i][j] * t_size_padded,
+            //                                        t_pointer + tidx[i][j] * t_size_padded + t_size,
+            //                                        &ret.data()[ci][ret.index().offset(ci, b1) + m_size * offset], alpha[i][j]);
+
             for (index_type j = 0; j < b2sz[i]; ++j)
                 maquis::dmrg::detail::iterator_axpy(t_pointer + tidx[i][j] * t_size_padded,
                                                     t_pointer + tidx[i][j] * t_size_padded + t_size,
-                                                    &ret[b1][b_to_o[b1]](0, offset), alpha[i][j]);
+                                                    &S(0,0), alpha[i][j]);
+
+            size_t sz2 = ret.data()[ci].size() / (ret.index().left_size(ci) * ret.index().right_size(ci));
+            size_t lda = m_size * sz2;
+            size_t real_i = ret.index().offset(ci, b1) / (ret.index().left_size(ci) * ret.index().right_size(ci));
+            for (unsigned c = 0; c < r_size; ++c)
+                maquis::dmrg::detail::iterator_axpy(&S(0,c), &S(0,c) + m_size, &ret.data()[ci][0] + (offset + c) * lda + real_i * m_size, 1.0);
         }
     }
 
@@ -303,9 +302,12 @@ public:
 
     unsigned get_m_size() const { return m_size; }
     unsigned get_r_size() const { return r_size; }
+    void     set_l_size(unsigned l) { l_size = l; }
 
+    std::vector<index_type>       & get_bs()       { return bs; }
     std::vector<index_type> const & get_bs() const { return bs; }
-    std::vector<index_type> const & get_ks() const { return ks; }
+    std::vector<std::size_t>       & get_ks()       { return ks; }
+    std::vector<std::size_t> const & get_ks() const { return ks; }
 
     mutable unsigned offset;
 
@@ -317,7 +319,8 @@ private:
     std::vector<value_type*> alpha;
     std::vector<unsigned*> tidx;
 
-    std::vector<index_type> bs, ks;
+    std::vector<index_type> bs;
+    std::vector<std::size_t> ks;
     std::vector<unsigned> b2sz;
     std::vector<char> trans;
 };
@@ -357,6 +360,7 @@ public:
         {
             if (!(*this)[ss1].n_tasks()) continue;
             Matrix C = (*this)[ss1].contract(left, t_pointer);
+            parallel_critical
             maquis::dmrg::detail::iterator_axpy(&C(0,0), &C(0,0) + num_rows(C) * num_cols(C),
                                                 output + l_size * (*this)[ss1].offset, value_type(1.0));
         }        
@@ -366,7 +370,7 @@ public:
     template <class DefaultMatrix, class OtherMatrix>
     void prop(MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
               DefaultMatrix const & bra_matrix,
-              std::vector<unsigned> const & b_to_o,
+              unsigned ci,
               Boundary<OtherMatrix, SymmGroup> const & right,
               Boundary<OtherMatrix, SymmGroup> & new_right) const
     {
@@ -374,7 +378,7 @@ public:
         for (int ss1 = 0; ss1 < this->size(); ++ss1)
         {
             if (!(*this)[ss1].n_tasks()) continue;
-            (*this)[ss1].prop(bra_matrix, t_pointer, new_right, b_to_o);
+            (*this)[ss1].prop(bra_matrix, t_pointer, new_right, ci);
         }
         free(t_pointer);
     }
@@ -382,7 +386,7 @@ public:
     template <class DefaultMatrix, class OtherMatrix>
     void prop_l(MPSTensor<DefaultMatrix, SymmGroup> const & bra_mps,
                 MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
-                std::vector<unsigned> const & b_to_o,
+                unsigned ci,
                 Boundary<OtherMatrix, SymmGroup> const & left,
                 Boundary<OtherMatrix, SymmGroup> & new_left) const
     {
@@ -390,14 +394,14 @@ public:
         for (int ss1 = 0; ss1 < this->size(); ++ss1)
         {
             if (!(*this)[ss1].n_tasks()) continue;
-            (*this)[ss1].prop_l(bra_mps.data()[mps_block], t_pointer, new_left, b_to_o);
+            (*this)[ss1].prop_l(bra_mps.data()[mps_block], t_pointer, new_left, ci);
         }
         free(t_pointer);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
     void lbtm(MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
-              std::vector<unsigned> const & b_to_o,
+              unsigned ci,
               Boundary<OtherMatrix, SymmGroup> const & left,
               Boundary<OtherMatrix, SymmGroup> & new_left) const
     {
@@ -405,14 +409,14 @@ public:
         for (int ss1 = 0; ss1 < this->size(); ++ss1)
         {
             if (!(*this)[ss1].n_tasks()) continue;
-            (*this)[ss1].lbtm(t_pointer, new_left, b_to_o);
+            (*this)[ss1].lbtm(t_pointer, new_left, ci);
         }
         free(t_pointer);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
     void rbtm(MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
-              std::vector<unsigned> const & b_to_o,
+              unsigned ci,
               Boundary<OtherMatrix, SymmGroup> const & right,
               Boundary<OtherMatrix, SymmGroup> & new_right) const
     {
@@ -420,14 +424,14 @@ public:
         for (int ss1 = 0; ss1 < this->size(); ++ss1)
         {
             if (!(*this)[ss1].n_tasks()) continue;
-            (*this)[ss1].rbtm(t_pointer, new_right, b_to_o);
+            (*this)[ss1].rbtm(t_pointer, new_right, ci);
         }
         free(t_pointer);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
     boost::tuple<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t>
-    data_stats(MPSTensor<DefaultMatrix, SymmGroup> const & mps, RightIndices<DefaultMatrix, OtherMatrix, SymmGroup> const & right) const
+    data_stats(MPSTensor<DefaultMatrix, SymmGroup> const & mps, BoundaryIndex<OtherMatrix, SymmGroup> const & right) const
     {
         std::size_t t_move = 0, l_load = 0, lgemm_flops = 0, tgemm_flops = 0, collect=0;
         for (int i = 0; i < this->size(); ++i)
@@ -441,12 +445,12 @@ public:
         unsigned m1_size = mps.row_dim()[mps_block].second;
         for (typename std::vector<t_key>::const_iterator it = t_key_vec.begin(); it != t_key_vec.end(); ++it)
         {
-            unsigned long b2, r_block, offset;
+            unsigned long ci, offset, dummy, mps_off;
             char trans;
-            bit_twiddling::unpack(*it, b2, r_block, offset, trans);
+            bit_twiddling::unpack(*it, ci, offset, dummy, mps_off, trans);
 
-            unsigned m2_size = right[b2].left_size(r_block);
-            unsigned r_size = right[b2].right_size(r_block);
+            unsigned m2_size = right.left_size(ci);
+            unsigned r_size = right.right_size(ci);
 
             tgemm_flops += 2 * m1_size * m2_size * r_size;
         }
@@ -469,8 +473,6 @@ private:
         if (!this->size()) return;
 
         char gemmtrans[2] = {'N', 'T'};
-        value_type one(1);
-        value_type zero(0);
         int M = (*this)[0].get_m_size(), N = r_size;
 
         std::size_t t_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>((size_t)(M * N));
@@ -480,15 +482,15 @@ private:
 
         for (unsigned pos = 0; pos < t_key_vec.size(); ++pos)
         {
-            unsigned long b, b_block, lb_ket, in_offset;
+            unsigned long ci, offset, lb_ket, in_offset;
             char trans;
-            bit_twiddling::unpack(t_key_vec[pos], b, b_block, lb_ket, in_offset, trans);
+            bit_twiddling::unpack(t_key_vec[pos], ci, offset, lb_ket, in_offset, trans);
 
-            int K = num_rows(mps.data()[lb_ket]);
-            int LDA = (trans) ? K : M;
+            int K = (trans) ? left.index().left_size(ci) : left.index().right_size(ci);
+            int LDA = left.index().left_size(ci);
 
-            blas_gemm(&gemmtrans[trans], &gemmtrans[0], &M, &N, &K, &one, &left[b][b_block](0,0), &LDA,
-                      &mps.data()[lb_ket](0, in_offset), &K, &zero, t_pointer + pos * t_size, &M);
+            blas_gemm(gemmtrans[trans], gemmtrans[0], M, N, K, value_type(1), &left.data()[ci][offset], LDA,
+                      &mps.data()[lb_ket](0, in_offset), K, value_type(0), t_pointer + pos * t_size, M);
         }
     }
 
@@ -497,7 +499,7 @@ private:
     {
         if (!this->size()) return;
 
-        int M = mps.row_dim()[mps_block].second; 
+        int M = mps.row_dim()[mps_block].second; // == m_size
         int N = r_size;
 
         std::size_t t_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>((size_t)(M * N));
@@ -506,29 +508,26 @@ private:
             throw std::bad_alloc();
 
         char gemmtrans[2] = {'N', 'T'};
-        value_type one(1);
-        value_type zero(0);
-
         const value_type* mpsdata = &mps.data()[mps_block](0,0);
 
         for (unsigned pos = 0; pos < t_key_vec.size(); ++pos)
         {
-            unsigned long b2, r_block, in_offset;
+            unsigned long ci, offset, dummy, in_offset;
             char trans;
-            bit_twiddling::unpack(t_key_vec[pos], b2, r_block, in_offset, trans);
+            bit_twiddling::unpack(t_key_vec[pos], ci, offset, dummy, in_offset, trans);
 
-            int K = (trans) ? right[b2].basis().right_size(r_block) : right[b2].basis().left_size(r_block); 
-            int LDB = right[b2].basis().left_size(r_block);
+            int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
+            int LDB = right.index().left_size(ci);
 
-            blas_gemm(&gemmtrans[0], &gemmtrans[trans], &M, &N, &K, &one, mpsdata + in_offset * M, &M,
-                      &right[b2][r_block](0,0), &LDB, &zero, t_pointer + pos * t_size, &M);
+            blas_gemm(gemmtrans[0], gemmtrans[trans], M, N, K, value_type(1), mpsdata + in_offset * M, M,
+                      &right.data()[ci][offset], LDB, value_type(0), t_pointer + pos * t_size, M);
         }
     }
 };
 
                                                              // size == phys_i.size()
 template <class Matrix, class SymmGroup>                     // invariant: mc, m_size
-class ContractionGroupVector : public std::vector<ContractionGroup<Matrix, SymmGroup> > 
+class Cohort : public std::vector<ContractionGroup<Matrix, SymmGroup> > 
 {
     typedef typename SymmGroup::charge charge;
     typedef std::vector<ContractionGroup<Matrix, SymmGroup> > base;
@@ -536,63 +535,19 @@ class ContractionGroupVector : public std::vector<ContractionGroup<Matrix, SymmG
 public:
     typedef typename base::value_type value_type;
 
-    template <class OtherMatrix>
-    void allocate(charge mc, charge lc, Boundary<OtherMatrix, SymmGroup> & new_right) const
-    {
-        b_to_o.resize(new_right.aux_dim());    
-
-        for (size_t s = 0; s < this->size(); ++s)
-        {
-            value_type const & cg = (*this)[s];
-
-            // allocate space in the output
-            for (size_t ssi = 0; ssi < cg.size(); ++ssi)
-            {
-                std::vector<unsigned> const & bs = cg[ssi].get_bs();
-                for (size_t bsi = 0; bsi < bs.size(); ++bsi)
-                {
-                    block_matrix<OtherMatrix, SymmGroup> & bm = new_right[bs[bsi]];
-                    size_t o = bm.find_block(mc, lc);
-                    b_to_o[bs[bsi]] = o;
-                    if (num_rows(bm[o]) != bm.basis().left_size(o) || num_cols(bm[o]) != bm.basis().right_size(o))
-                        bm[o] = OtherMatrix(bm.basis().left_size(o), bm.basis().right_size(o));
-                }
-            }
-        }
-    }
-
-    template <class OtherMatrix>
-    void reserve(charge mc, charge lc, size_t m_size, size_t l_size, Boundary<OtherMatrix, SymmGroup> & new_right) const
-    {
-        for (size_t s = 0; s < this->size(); ++s)
-        {
-            value_type const & cg = (*this)[s];
-            for (size_t ssi = 0; ssi < cg.size(); ++ssi)
-            {
-                std::vector<unsigned> const & bs = cg[ssi].get_bs();
-                for (size_t bsi = 0; bsi < bs.size(); ++bsi)
-                {
-                    size_t o = new_right[bs[bsi]].find_block(mc, lc);
-                    if (o == new_right[bs[bsi]].n_blocks())
-                        new_right[bs[bsi]].reserve(mc, lc, m_size, l_size);
-                }
-            }
-        }
-    }
-
-    std::vector<unsigned> const & get_b_to_o() const { return b_to_o; }
+    std::vector<long int>      & get_offsets()       { return mpo_offsets; }
+    std::vector<long int> const& get_offsets() const { return mpo_offsets; }
 
 private:
-    // b_to_o[b] = position o of sector (mc,lc) in boundary index b
-    mutable std::vector<unsigned> b_to_o;
+    std::vector<long int> mpo_offsets;
 };
 
 
 template <class Matrix, class SymmGroup>
-class MPSBlock : public std::map<typename SymmGroup::charge, ContractionGroupVector<Matrix, SymmGroup> >
+class MPSBlock : public std::map<typename SymmGroup::charge, Cohort<Matrix, SymmGroup> >
 {
 public:
-    typedef std::map<typename SymmGroup::charge, ContractionGroupVector<Matrix, SymmGroup> > base;
+    typedef std::map<typename SymmGroup::charge, Cohort<Matrix, SymmGroup> > base;
     typedef typename base::mapped_type mapped_type;
     typedef typename mapped_type::value_type mapped_value_type;
 };
@@ -639,7 +594,7 @@ struct Schedule_ : public std::vector<std::vector<std::vector<ContractionGroup<M
     template <class DefaultMatrix, class OtherMatrix>
     stats_t data_stats(std::size_t p,
                        MPSTensor<DefaultMatrix, SymmGroup> const & mps,
-                       RightIndices<DefaultMatrix, OtherMatrix, SymmGroup> const & right) const
+                       BoundaryIndex<OtherMatrix, SymmGroup> const & right) const
     {
         stats_t ret = boost::make_tuple(0,0,0,0,0);
         for (const_iterator it = (*this)[p].begin(); it != (*this)[p].end(); ++it)
@@ -669,99 +624,7 @@ struct Schedule
     typedef typename schedule_t::value_type block_type;
 }; 
 
-template<class Matrix, class OtherMatrix, class SymmGroup, class TaskCalc>
-typename Schedule<Matrix, SymmGroup>::schedule_t
-create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
-                            Boundary<OtherMatrix, SymmGroup> const & left,
-                            Boundary<OtherMatrix, SymmGroup> const & right,
-                            MPOTensor<Matrix, SymmGroup> const & mpo,
-                            TaskCalc task_calc)
-{
-    typedef typename SymmGroup::charge charge;
-    typedef typename Matrix::value_type value_type;
-    typedef MPOTensor_detail::index_type index_type;
-
-    boost::chrono::high_resolution_clock::time_point now = boost::chrono::high_resolution_clock::now();
-
-    LeftIndices<Matrix, OtherMatrix, SymmGroup> left_indices(left, mpo);
-    RightIndices<Matrix, OtherMatrix, SymmGroup> right_indices(right, mpo);
-
-    // MPS indices
-    Index<SymmGroup> const & physical_i = initial.site_dim(),
-                             right_i = initial.col_dim(),
-                             left_i = initial.row_dim();
-
-    ProductBasis<SymmGroup> out_right_pb(physical_i, right_i,
-                                         boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
-                                                             -boost::lambda::_1, boost::lambda::_2));
-
-    initial.make_right_paired();
-    typename Schedule<Matrix, SymmGroup>::schedule_t contraction_schedule(left_i.size());
-
-    unsigned loop_max = left_i.size();
-    omp_for(index_type mb, parallel::range<index_type>(0,loop_max), {
-        contraction_schedule.load_balance[mb] = mb;
-        task_calc(mpo, left_indices, right_indices, left_i,
-                  right_i, physical_i, out_right_pb, mb, contraction_schedule[mb]);
-    });
-
-    if (std::max(mpo.row_dim(), mpo.col_dim()) > 10)
-    {
-        std::vector<size_t> flops_per_block(loop_max);
-
-        size_t sz = 0, a = 0, b = 0, c = 0, d = 0, e = 0;
-        for (size_t block = 0; block < loop_max; ++block)
-        {
-            sz += contraction_schedule.n_tasks(block);
-            boost::tuple<size_t, size_t, size_t, size_t, size_t> flops
-                = contraction_schedule.data_stats(block, initial, right_indices);
-            a += get<0>(flops);
-            b += get<1>(flops);
-            c += get<2>(flops);
-            d += get<3>(flops);
-            e += get<4>(flops);
-
-            flops_per_block[block] = get<2>(flops) + get<3>(flops) + get<0>(flops)/4 + get<4>(flops)/4;
-        }
-
-        std::vector<std::pair<size_t, size_t> > fb(loop_max);
-        std::vector<size_t> idx(loop_max);
-        size_t i = 0;
-        std::for_each(idx.begin(), idx.end(), boost::lambda::_1 = boost::lambda::var(i)++);
-        std::transform(flops_per_block.begin(), flops_per_block.end(), idx.begin(), fb.begin(),
-                       boost::lambda::constructor<std::pair<size_t, size_t> >());
-        std::sort(fb.begin(), fb.end(), greater_first<std::pair<size_t, size_t> >());
-        std::transform(fb.begin(), fb.end(), idx.begin(), boost::bind(&std::pair<size_t, size_t>::second, boost::lambda::_1));
-        contraction_schedule.load_balance = idx;
-
-        size_t total_flops = c + d + a/4 + e/4;
-        size_t total_mem   = 2*a + b + e + size_of(right);
-        contraction_schedule.total_flops = total_flops;
-        contraction_schedule.total_mem = total_mem;
-
-        maquis::cout << "Schedule size: " << sz << " tasks, "
-                     << " t_move " << a / 1024 / 1024 << "GB, "
-                     << " l_load " << b / 1024 / 1024 << "GB, "
-                     << " lgemmf " << c / 1024 / 1024 << "GF, "
-                     << " tgemmf " << d / 1024 / 1024 << "GF, "
-                     << " R " << size_of(right) << "B, "
-                     << " L " << size_of(left) << "B "
-                     << " M " << e / 1024 / 1024 << "GB, "
-                     << " F " << total_flops / 1024 / 1024 << "GF, "
-                     << " B " << total_mem / 1024 / 1024 << "GB, "
-                     << std::endl;
-
-        boost::chrono::high_resolution_clock::time_point then = boost::chrono::high_resolution_clock::now();
-        maquis::cout << "Time elapsed in SCHEDULE: " << boost::chrono::duration<double>(then - now).count() << std::endl;
-    }
-
-    return contraction_schedule;
-}
-
-
 } // namespace common
 } // namespace contraction
-
-#undef ALIGNMENT
 
 #endif

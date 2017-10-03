@@ -43,7 +43,7 @@ using std::endl;
 #include "dmrg/sim/matrix_types.h"
 #include "dmrg/mp_tensors/mpo.h"
 #include "dmrg/mp_tensors/mps.h"
-#include "dmrg/mp_tensors/ts_ops.h"
+#include "dmrg/mp_tensors/ts_ops.hpp"
 #include "dmrg/models/model.h"
 #include "dmrg/models/generate_mpo.hpp"
 

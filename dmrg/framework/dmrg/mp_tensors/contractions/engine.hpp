@@ -32,8 +32,17 @@
 
 #include "dmrg/mp_tensors/mpstensor.h"
 #include "dmrg/mp_tensors/mpotensor.h"
+#include "dmrg/mp_tensors/twositetensor.h"
 
-#include "dmrg/mp_tensors/contractions/common/common.h"
+#include "dmrg/mp_tensors/contractions/task/tasks.hpp"
+#include "dmrg/mp_tensors/contractions/create_schedule/site_hamil_tasks.hpp"
+#include "dmrg/mp_tensors/contractions/create_schedule/right_tasks.hpp"
+#include "dmrg/mp_tensors/contractions/create_schedule/left_tasks.hpp"
+#include "dmrg/mp_tensors/contractions/create_schedule/site_hamil_schedule.hpp"
+#include "dmrg/mp_tensors/contractions/create_schedule/h_diag.hpp"
+#include "dmrg/mp_tensors/contractions/boundary_ops/move_boundary.hpp"
+#include "dmrg/mp_tensors/contractions/boundary_ops/prediction.hpp"
+#include "dmrg/mp_tensors/contractions/boundary_ops/site_hamil.hpp"
 
 namespace contraction {
 
@@ -61,34 +70,13 @@ namespace contraction {
             return common::overlap_right_step<Matrix, OtherMatrix, SymmGroup>(bra_tensor, ket_tensor, right);
         }
 
-        static Boundary<Matrix, SymmGroup>
-        left_boundary_tensor_mpo(MPSTensor<Matrix, SymmGroup> mps,
-                                 Boundary<OtherMatrix, SymmGroup> const & left,
-                                 MPOTensor<Matrix, SymmGroup> const & mpo,
-                                 Index<SymmGroup> const * in_low = NULL)
-        {
-            return common::left_boundary_tensor_mpo<Matrix, OtherMatrix, SymmGroup>
-                   (mps, left, mpo, SU2::lshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
-        }
-
-        static Boundary<Matrix, SymmGroup>
-        right_boundary_tensor_mpo(MPSTensor<Matrix, SymmGroup> mps,
-                                  Boundary<OtherMatrix, SymmGroup> const & right,
-                                  MPOTensor<Matrix, SymmGroup> const & mpo,
-                                  Index<SymmGroup> const * in_low = NULL)
-        {
-            return common::right_boundary_tensor_mpo<Matrix, OtherMatrix, SymmGroup>
-                   (mps, right, mpo, SU2::rshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
-        }
-
         static Boundary<OtherMatrix, SymmGroup>
         overlap_mpo_left_step(MPSTensor<Matrix, SymmGroup> const & bra_tensor,
                               MPSTensor<Matrix, SymmGroup> const & ket_tensor,
                               Boundary<OtherMatrix, SymmGroup> const & left,
                               MPOTensor<Matrix, SymmGroup> const & mpo)
         {
-            return common::overlap_mpo_left_step<Matrix, OtherMatrix, SymmGroup>
-                   (bra_tensor, ket_tensor, left, mpo, SU2::lshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
+            return common::overlap_mpo_left_step(bra_tensor, ket_tensor, left, mpo);
         }
 
         static Boundary<OtherMatrix, SymmGroup>
@@ -97,58 +85,75 @@ namespace contraction {
                                Boundary<OtherMatrix, SymmGroup> const & right,
                                MPOTensor<Matrix, SymmGroup> const & mpo)
         {
-            return common::overlap_mpo_right_step<Matrix, OtherMatrix, SymmGroup>
-                   (bra_tensor, ket_tensor, right, mpo, SU2::rshtm_tasks<Matrix, OtherMatrix, SymmGroup>);
+            return common::overlap_mpo_right_step(bra_tensor, ket_tensor, right, mpo);
         }
 
         static schedule_t
-        right_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & mps,
-                                   Boundary<OtherMatrix, SymmGroup> const & left,
-                                   Boundary<OtherMatrix, SymmGroup> const & right,
-                                   MPOTensor<Matrix, SymmGroup> const & mpo)
+        contraction_schedule(MPSTensor<Matrix, SymmGroup> const & mps,
+                             Boundary<OtherMatrix, SymmGroup> const & left,
+                             Boundary<OtherMatrix, SymmGroup> const & right,
+                             MPOTensor<Matrix, SymmGroup> const & mpo)
         {
-            return common::create_contraction_schedule(mps, left, right, mpo, SU2::shtm_tasks<Matrix, OtherMatrix, SymmGroup>);
+            return common::create_contraction_schedule(mps, left, right, mpo);
         }
 
-        static std::pair<MPSTensor<Matrix, SymmGroup>, truncation_results>
-        predict_new_state_l2r_sweep(MPSTensor<Matrix, SymmGroup> const & mps,
-                                    MPOTensor<Matrix, SymmGroup> const & mpo,
-                                    Boundary<OtherMatrix, SymmGroup> const & left,
-                                    Boundary<OtherMatrix, SymmGroup> const & right,
-                                    double alpha, double cutoff, std::size_t Mmax)
+        static truncation_results
+        grow_l2r_sweep(MPS<Matrix, SymmGroup> & mps,
+                       MPOTensor<Matrix, SymmGroup> const & mpo,
+                       Boundary<OtherMatrix, SymmGroup> const & left,
+                       Boundary<OtherMatrix, SymmGroup> const & right,
+                       std::size_t l, double alpha,
+                       double cutoff, std::size_t Mmax)
         {
-            return common::predict_new_state_l2r_sweep<Matrix, OtherMatrix, SymmGroup>
-                   (mps, mpo, left, right, left_boundary_tensor_mpo, alpha, cutoff, Mmax);
+            MPSTensor<Matrix, SymmGroup> new_mps;
+            truncation_results trunc;
+
+            boost::tie(new_mps, trunc) =
+            common::predict_new_state_l2r_sweep<Matrix, OtherMatrix, SymmGroup>
+                   (mps[l], mpo, left, alpha, cutoff, Mmax);
+
+            mps[l+1] = common::predict_lanczos_l2r_sweep<Matrix, OtherMatrix, SymmGroup>(mps[l+1], mps[l], new_mps);
+            mps[l] = new_mps;
+            return trunc;
         }
 
-        static MPSTensor<Matrix, SymmGroup>
-        predict_lanczos_l2r_sweep(MPSTensor<Matrix, SymmGroup> B,
-                                  MPSTensor<Matrix, SymmGroup> const & psi,
-                                  MPSTensor<Matrix, SymmGroup> const & A)
+        static truncation_results
+        grow_r2l_sweep(MPS<Matrix, SymmGroup> & mps,
+                       MPOTensor<Matrix, SymmGroup> const & mpo,
+                       Boundary<OtherMatrix, SymmGroup> const & left,
+                       Boundary<OtherMatrix, SymmGroup> const & right,
+                       std::size_t l, double alpha,
+                       double cutoff, std::size_t Mmax)
         {
-            return common::predict_lanczos_l2r_sweep<Matrix, OtherMatrix, SymmGroup>(B, psi, A);
+            MPSTensor<Matrix, SymmGroup> new_mps;
+            truncation_results trunc;
+
+            boost::tie(new_mps, trunc) =
+            common::predict_new_state_r2l_sweep<Matrix, OtherMatrix, SymmGroup>
+                   (mps[l], mpo, right, alpha, cutoff, Mmax);
+
+            mps[l-1] = common::predict_lanczos_r2l_sweep<Matrix, OtherMatrix, SymmGroup>(mps[l-1], mps[l], new_mps);
+            mps[l] = new_mps;
+            return trunc;
         }
 
-        static std::pair<MPSTensor<Matrix, SymmGroup>, truncation_results>
-        predict_new_state_r2l_sweep(MPSTensor<Matrix, SymmGroup> const & mps,
-                                    MPOTensor<Matrix, SymmGroup> const & mpo,
-                                    Boundary<OtherMatrix, SymmGroup> const & left,
-                                    Boundary<OtherMatrix, SymmGroup> const & right,
-                                    double alpha, double cutoff, std::size_t Mmax)
+        static boost::tuple<MPSTensor<Matrix, SymmGroup>, MPSTensor<Matrix, SymmGroup>, truncation_results>
+        predict_split_l2r(TwoSiteTensor<Matrix, SymmGroup> & tst,
+                          std::size_t Mmax, double cutoff, double alpha,
+                          Boundary<OtherMatrix, SymmGroup> const& left,
+                          MPOTensor<Matrix, SymmGroup> const& mpo)
         {
-            return common::predict_new_state_r2l_sweep<Matrix, OtherMatrix, SymmGroup>
-                   (mps, mpo, left, right, right_boundary_tensor_mpo, alpha, cutoff, Mmax);
+            return common::predict_split_l2r(tst, Mmax, cutoff, alpha, left, mpo);
         }
 
-        static MPSTensor<Matrix, SymmGroup>
-        predict_lanczos_r2l_sweep(MPSTensor<Matrix, SymmGroup> B,
-                                  MPSTensor<Matrix, SymmGroup> const & psi,
-                                  MPSTensor<Matrix, SymmGroup> const & A)
+        static boost::tuple<MPSTensor<Matrix, SymmGroup>, MPSTensor<Matrix, SymmGroup>, truncation_results>
+        predict_split_r2l(TwoSiteTensor<Matrix, SymmGroup> & tst,
+                          std::size_t Mmax, double cutoff, double alpha,
+                          Boundary<OtherMatrix, SymmGroup> const& right,
+                          MPOTensor<Matrix, SymmGroup> const& mpo)
         {
-            return common::predict_lanczos_r2l_sweep<Matrix, OtherMatrix, SymmGroup>(B, psi, A);
+            return common::predict_split_r2l(tst, Mmax, cutoff, alpha, right, mpo);
         }
-
-        // non-generic method
 
         static MPSTensor<Matrix, SymmGroup>
         site_hamil2(MPSTensor<Matrix, SymmGroup> const & ket_tensor,
@@ -156,7 +161,7 @@ namespace contraction {
                     Boundary<OtherMatrix, SymmGroup> const & right,
                     MPOTensor<Matrix, SymmGroup> const & mpo)
         {
-            schedule_t tasks = right_contraction_schedule(ket_tensor, left, right, mpo);
+            schedule_t tasks = contraction_schedule(ket_tensor, left, right, mpo);
             return site_hamil2(ket_tensor, left, right, mpo, tasks);
         }
 

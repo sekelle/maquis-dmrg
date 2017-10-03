@@ -35,6 +35,7 @@
 #endif
 
 #include <boost/algorithm/string.hpp>
+#include <boost/archive/binary_oarchive.hpp>
 
 #include "utils/sizeof.h"
 
@@ -77,7 +78,7 @@ class optimizer_base
 public:
     typedef typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, 32>::type AlignedMatrix;
     typedef typename storage::constrained<AlignedMatrix>::type BoundaryMatrix;
-private:
+protected:
     typedef contraction::Engine<Matrix, BoundaryMatrix, SymmGroup> contr;
 public:
 
@@ -161,11 +162,10 @@ protected:
             ortho_left_[n].resize(L+1);
             ortho_right_[n].resize(L+1);
             
-            ortho_left_[n][0] = mps.left_boundary()[0];
-            ortho_right_[n][L] = mps.right_boundary()[0];
+            ortho_left_[n][0] = mps.left_boundary_bm();
+            ortho_right_[n][L] = mps.right_boundary_bm();
         }
         
-        //Timer tlb("Init left boundaries"); tlb.begin();
         Storage::drop(left_[0]);
         left_[0] = mps.left_boundary();
         Storage::pin(left_[0]);
@@ -173,15 +173,13 @@ protected:
         for (int i = 0; i < site; ++i) {
             Storage::drop(left_[i+1]);
             boundary_left_step(mpo, i);
+            Storage::sync(); // avoid overstressing the disk
             Storage::evict(left_[i]);
-            parallel::sync(); // to scale down memory
         }
         Storage::evict(left_[site]);
-        //tlb.end();
 
         maquis::cout << "Boundaries are partially initialized...\n";
         
-        //Timer trb("Init right boundaries"); trb.begin();
         Storage::drop(right_[L]);
         right_[L] = mps.right_boundary();
         Storage::pin(right_[L]);
@@ -189,11 +187,10 @@ protected:
         for (int i = L-1; i >= site; --i) {
             Storage::drop(right_[i]);
             boundary_right_step(mpo, i);
+            Storage::sync(); // avoid overstressing the disk
             Storage::evict(right_[i+1]);
-            parallel::sync(); // to scale down memory
         }
         Storage::evict(right_[site]);
-        //trb.end();
 
         maquis::cout << "Boundaries are fully initialized...\n";
     }

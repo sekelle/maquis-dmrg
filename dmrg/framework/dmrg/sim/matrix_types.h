@@ -35,6 +35,7 @@
 typedef ambient::tiles<ambient::matrix<double> > matrix;
 typedef ambient::tiles<ambient::matrix< std::complex<double> > > cmatrix;
 #else
+#define ALIGNMENT 32
 #include "dmrg/block_matrix/detail/alps.hpp"
 #include "matrix.fwd.h"
 #endif

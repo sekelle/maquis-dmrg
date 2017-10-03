@@ -6,9 +6,9 @@ add_executable(observables.test observables.cpp)
 target_link_libraries(observables.test ${DMRG_APP_LIBRARIES})
 add_test(observables observables.test)
 
-add_executable(mpotensor.test mpotensor.cpp)
-target_link_libraries(mpotensor.test ${DMRG_APP_LIBRARIES})
-add_test(mpotensor mpotensor.test)
+#add_executable(mpotensor.test mpotensor.cpp)
+#target_link_libraries(mpotensor.test ${DMRG_APP_LIBRARIES})
+#add_test(mpotensor mpotensor.test)
 
 add_executable(mpsjoin.test mpsjoin.cpp)
 target_link_libraries(mpsjoin.test ${DMRG_APP_LIBRARIES})
