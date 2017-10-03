@@ -32,6 +32,7 @@
 
 #include "dmrg/mp_tensors/mpstensor.h"
 #include "dmrg/mp_tensors/mpotensor.h"
+#include "dmrg/mp_tensors/twositetensor.h"
 
 #include "dmrg/mp_tensors/contractions/task/tasks.hpp"
 #include "dmrg/mp_tensors/contractions/create_schedule/site_hamil_tasks.hpp"

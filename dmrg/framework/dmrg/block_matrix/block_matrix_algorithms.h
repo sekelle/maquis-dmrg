@@ -409,6 +409,7 @@ truncation_results heev_truncate(block_matrix<Matrix, SymmGroup> const & M,
 
     block_matrix<DiagMatrix, SymmGroup> evals_sqrt = evals;
 
+    // truncate according to singular values = sqrt(eigvals) of MM^T or M^TM
     for (size_t b = 0; b < evals.n_blocks(); ++b)
     for (size_t i = 0; i < num_rows(evals[b]); ++i)
         if (evals[b](i,i) > 0.0)
