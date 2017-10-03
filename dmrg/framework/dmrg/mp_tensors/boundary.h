@@ -397,8 +397,8 @@ public:
         ar["/data"] << data_;
     }
 
-    block_matrix<Matrix, SymmGroup> & operator[](std::size_t k) { return data_[k]; }
-    block_matrix<Matrix, SymmGroup> const & operator[](std::size_t k) const { return data_[k]; }
+    //block_matrix<Matrix, SymmGroup> & operator[](std::size_t k) { return data_[k]; }
+    //block_matrix<Matrix, SymmGroup> const & operator[](std::size_t k) const { return data_[k]; }
 
     data_t const& data() const { return data2; }
     data_t      & data()       { return data2; }
