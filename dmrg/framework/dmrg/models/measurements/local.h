@@ -88,10 +88,7 @@ namespace measurements {
                 this->vector_results.reserve(this->vector_results.size() + L);
                 this->labels.reserve(this->labels.size() + L);
                 
-                parallel::scheduler_balanced scheduler(L);
-                
                 for (typename Lattice::pos_t p = 0; p < L; ++p) {
-                    parallel::guard proc(scheduler(p)); /// scheduling kernels
                     
                     subcharge type = lattice.get_prop<subcharge>("type", p);
                     if (site_term[type].n_blocks() > 0) {

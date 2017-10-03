@@ -65,8 +65,6 @@ template<class Matrix, class SymmGroup>
 block_matrix<Matrix, SymmGroup>::block_matrix(block_matrix const& rhs)
 : basis_(rhs.basis())
 , data_(rhs.data_)
-, size_index(rhs.size_index)
-, iter_index(rhs.iter_index)
 {
 }
 
@@ -74,8 +72,6 @@ template<class Matrix, class SymmGroup>
 template <class OtherMatrix>
 block_matrix<Matrix, SymmGroup>::block_matrix(block_matrix<OtherMatrix, SymmGroup> const& rhs)
 : basis_(rhs.basis())
-, size_index(rhs.size_index)
-, iter_index(rhs.iter_index)
 {
     data_.reserve(rhs.n_blocks());
     for (size_type k = 0; k < rhs.n_blocks(); ++k)
@@ -94,8 +90,6 @@ template<class OtherMatrix>
 block_matrix<Matrix, SymmGroup> & block_matrix<Matrix, SymmGroup>::operator=(const block_matrix<OtherMatrix, SymmGroup> & rhs)
 {
     basis_ = rhs.basis();
-    size_index = rhs.size_index;
-    iter_index = rhs.iter_index;
     data_.resize(rhs.n_blocks());
     for(int k = 0; k < data_.size(); k++){
         Matrix tmp(rhs[k]);
@@ -141,7 +135,6 @@ typename block_matrix<Matrix, SymmGroup>::size_type block_matrix<Matrix, SymmGro
     size_type i1 = basis_.insert(typename DualIndex<SymmGroup>::value_type(c1, c2, num_rows(mtx), num_cols(mtx)));
     Matrix* block = new Matrix(mtx);
     data_.insert(data_.begin() + i1, block);
-    size_index.insert(i1, (data_.size()-1));
     
     return i1;
 }
@@ -152,7 +145,6 @@ typename block_matrix<Matrix, SymmGroup>::size_type block_matrix<Matrix, SymmGro
     assert( !has_block(c1, c2) );
     size_type i1 = basis_.insert(typename DualIndex<SymmGroup>::value_type(c1, c2, num_rows(*mtx), num_cols(*mtx)));
     data_.insert(data_.begin() + i1, mtx);
-    size_index.insert(i1, (data_.size()-1));
     
     return i1;
 }
@@ -253,38 +245,19 @@ typename Matrix::value_type const & block_matrix<Matrix, SymmGroup>::operator()(
 //}
 
 template<class Matrix, class SymmGroup>
-void block_matrix<Matrix, SymmGroup>::index_iter(int i, int max) const
-{
-    iter_index.set(i, max);
-}
-
-template<class Matrix, class SymmGroup>
-void block_matrix<Matrix, SymmGroup>::index_sizes() const
-{
-    size_index.set(*this);
-}
-
-template<class Matrix, class SymmGroup>
 block_matrix<Matrix, SymmGroup> const & block_matrix<Matrix, SymmGroup>::operator*=(const scalar_type& v)
 {
-    parallel::scheduler_balanced_iterative scheduler(*this);
-    // todo: check if "omp for" used in nested regions
-    for(size_t k = 0; k < n_blocks(); ++k){
-        parallel::guard proc(scheduler(k));
+    for(size_t k = 0; k < n_blocks(); ++k)
         data_[k] *= v;
-    }
+
     return *this;
 }
 
 template<class Matrix, class SymmGroup>
 block_matrix<Matrix, SymmGroup> const & block_matrix<Matrix, SymmGroup>::operator/=(const scalar_type& v)
 {
-    parallel::scheduler_balanced_iterative scheduler(*this);
-    // todo: check if "omp for" used in nested regions
-    for(size_t k = 0; k < n_blocks(); ++k){
-        parallel::guard proc(scheduler(k));
+    for(size_t k = 0; k < n_blocks(); ++k)
         data_[k] /= v;
-    }
     return *this;
 }
 
@@ -300,10 +273,8 @@ typename block_matrix<Matrix, SymmGroup>::scalar_type block_matrix<Matrix, SymmG
 template<class Matrix, class SymmGroup>
 typename block_matrix<Matrix, SymmGroup>::real_type block_matrix<Matrix, SymmGroup>::norm() const
 {
-    parallel::scheduler_balanced_iterative scheduler(*this);
     std::vector<real_type> vt; vt.reserve(data_.size());
     for(size_t k = 0; k < n_blocks(); ++k){
-        parallel::guard proc(scheduler(k));
         vt.push_back(norm_square(data_[k]));
     }
     return maquis::sqrt(maquis::accumulate(vt.begin(), vt.end(), real_type(0.)));
@@ -312,12 +283,6 @@ typename block_matrix<Matrix, SymmGroup>::real_type block_matrix<Matrix, SymmGro
 template<class Matrix, class SymmGroup>
 void block_matrix<Matrix, SymmGroup>::transpose_inplace()
 {
-    //std::for_each(data_.begin(), data_.end(), utils::functor_transpose_inplace());
-    //for (size_type i=0; i < basis_.size(); ++i) {
-    //    std::swap(basis_[i].lc, basis_[i].rc);
-    //    std::swap(basis_[i].ls, basis_[i].rs);
-    //}
-
     block_matrix<Matrix, SymmGroup> new_bm;
     for (size_type i=0; i < basis_.size(); ++i) {
         new_bm.insert_block(utils::functor_transpose()(data_[i]), basis_[i].rc, basis_[i].lc);

@@ -118,11 +118,6 @@ public:
     index_type num_one_rows() const;
     index_type num_one_cols() const;
 
-    mutable std::vector<int> placement_l;
-    mutable std::vector<int> placement_r;
-    mutable std::vector<int> exceptions_l;
-    mutable std::vector<int> exceptions_r;
-
     MPOTensor_detail::Hermitian herm_left;
     MPOTensor_detail::Hermitian herm_right;
 

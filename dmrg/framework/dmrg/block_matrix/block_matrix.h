@@ -110,12 +110,6 @@ public:
     void remove_block(charge r, charge c);
     void remove_block(size_type which);
 
-    mutable typename parallel::scheduler_balanced_iterative::index iter_index;
-    mutable typename parallel::scheduler_size_indexed::index size_index;
-
-    void index_iter(int i, int max) const;
-    void index_sizes() const;
-    
     scalar_type trace() const;
     real_type norm() const;
     void transpose_inplace();
@@ -143,8 +137,6 @@ public:
     {
         swap(x.data_, y.data_);
         swap(x.basis_, y.basis_);
-        swap(x.size_index, y.size_index);
-        swap(x.iter_index, y.iter_index);
     }
 
     Matrix const & operator()(charge r, charge c) const

@@ -47,7 +47,6 @@
 #include "dmrg/utils/results_collector.h"
 #include "dmrg/utils/storage.h"
 #include "dmrg/utils/time_limit_exception.h"
-#include "dmrg/utils/parallel/placement.hpp"
 #include "dmrg/utils/checks.h"
 #include "dmrg/utils/aligned_allocator.hpp"
 
@@ -150,7 +149,6 @@ protected:
 
     void init_left_right(MPO<Matrix, SymmGroup> const & mpo, int site)
     {
-        parallel::construct_placements(mpo);
         std::size_t L = mps.length();
         
         left_.resize(mpo.length()+1);

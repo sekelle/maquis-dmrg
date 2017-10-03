@@ -385,9 +385,7 @@ public:
     void load(Archive & ar){
         std::vector<std::string> children = ar.list_children("/data");
         data_.resize(children.size());
-        parallel::scheduler_balanced scheduler(children.size());
         for(size_t i = 0; i < children.size(); ++i){
-             parallel::guard proc(scheduler(i));
              ar["/data/"+children[i]] >> data_[alps::cast<std::size_t>(children[i])];
         }
     }

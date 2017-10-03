@@ -54,7 +54,6 @@ public:
     : base(mps_, mpo_, parms_, stop_callback_, to_site(mps_.length(), initial_site_))
     , initial_site((initial_site_ < 0) ? 0 : initial_site_)
     {
-        parallel::guard::serial guard;
         make_ts_cache_mpo(mpo, ts_cache_mpo, mps);
 
         // temporarily deactivated until SparseOperator has been separated from SiteOperator
@@ -117,7 +116,6 @@ public:
         iteration_results_.clear();
         
         std::size_t L = mps.length();
-        parallel::scheduler_balanced scheduler_mps(L);
 
         int _site = 0, site = 0;
         if (initial_site != -1) {
@@ -146,15 +144,11 @@ public:
                 lr = 1;
         		site1 = site;
         		site2 = site+1;
-                ts_cache_mpo[site1].placement_l = mpo[site1].placement_l;
-                ts_cache_mpo[site1].placement_r = parallel::get_right_placement(ts_cache_mpo[site1], mpo[site1].placement_l, mpo[site2].placement_r);
             } else {
                 site = to_site(L, _site);
                 lr = -1;
         		site1 = site-1;
         		site2 = site;
-                ts_cache_mpo[site1].placement_l = parallel::get_left_placement(ts_cache_mpo[site1], mpo[site1].placement_l, mpo[site2].placement_r);
-                ts_cache_mpo[site1].placement_r = mpo[site2].placement_r;
             }
 
     	    maquis::cout << std::endl;
@@ -301,8 +295,6 @@ public:
                     Storage::evict(mps[site1]);
                     Storage::evict(left_[site1]);
                 }
-                { parallel::guard proc(scheduler_mps(site1)); storage::migrate(mps[site1]); }
-                { parallel::guard proc(scheduler_mps(site2)); storage::migrate(mps[site2]); }
     	    }
     	    if (lr == -1){
         		// Write back result from optimization

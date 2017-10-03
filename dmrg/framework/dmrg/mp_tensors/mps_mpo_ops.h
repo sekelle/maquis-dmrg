@@ -57,14 +57,12 @@ typename Matrix::value_type expval(MPS<Matrix, SymmGroup> const & bra,
               MPO<Matrix, SymmGroup> const & mpo,
               bool verbose = false)
 {
-    parallel::scheduler_balanced scheduler(bra.length());
     assert(mpo.length() == bra.length() && bra.length() == ket.length());
     std::size_t L = bra.length();
 
     Boundary<Matrix, SymmGroup> left = mps_mpo_detail::mixed_left_boundary(bra, ket);
 
     for (int i = 0; i < L; ++i) {
-        parallel::guard proc(scheduler(i));
         if (verbose)
             std::cout << "expval site " << i << std::endl;
         left = contraction::Engine<Matrix, Matrix, SymmGroup>::overlap_mpo_left_step(bra[i], ket[i], left, mpo[i]);
@@ -109,14 +107,12 @@ std::vector<typename MPS<Matrix, SymmGroup>::scalar_type> multi_expval(MPS<Matri
 template<class Matrix, class SymmGroup>
 typename MPS<Matrix, SymmGroup>::scalar_type norm(MPS<Matrix, SymmGroup> const & mps)
 {
-    parallel::scheduler_balanced scheduler(mps.length());
     std::size_t L = mps.length();
     
     block_matrix<Matrix, SymmGroup> left;
     left.insert_block(Matrix(1, 1, 1), SymmGroup::IdentityCharge, SymmGroup::IdentityCharge);
     
     for(size_t i = 0; i < L; ++i) {
-        parallel::guard proc(scheduler(i));
         MPSTensor<Matrix, SymmGroup> cpy = mps[i];
         left = contraction::Engine<Matrix, Matrix, SymmGroup>::overlap_left_step(mps[i], cpy, left);
     }
@@ -128,7 +124,6 @@ template<class Matrix, class SymmGroup>
 typename MPS<Matrix, SymmGroup>::scalar_type overlap(MPS<Matrix, SymmGroup> const & mps1,
                                                      MPS<Matrix, SymmGroup> const & mps2)
 {
-    parallel::scheduler_balanced scheduler(mps1.length());
     assert(mps1.length() == mps2.length());
     
     std::size_t L = mps1.length();
@@ -137,7 +132,6 @@ typename MPS<Matrix, SymmGroup>::scalar_type overlap(MPS<Matrix, SymmGroup> cons
     left.insert_block(Matrix(1, 1, 1), SymmGroup::IdentityCharge, SymmGroup::IdentityCharge);
     
     for(size_t i = 0; i < L; ++i) {
-        parallel::guard proc(scheduler(i));
         left = contraction::Engine<Matrix, Matrix, SymmGroup>::overlap_left_step(mps1[i], mps2[i], left);
     }
     
