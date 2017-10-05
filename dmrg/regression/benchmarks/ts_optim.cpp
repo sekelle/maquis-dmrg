@@ -51,7 +51,6 @@
 
 #include "dmrg/utils/DmrgOptions.h"
 #include "dmrg/utils/DmrgParameters.h"
-#include "dmrg/utils/parallel/placement.hpp"
 
 #include "utils/timings.h"
 
@@ -118,7 +117,6 @@ int main(int argc, char ** argv)
         
 
         std::string boundary_name;
-        parallel::construct_placements(mpo);
         
         /// Create TwoSite objects
         time_ts_obj.begin();
@@ -126,13 +124,6 @@ int main(int argc, char ** argv)
         MPSTensor<matrix, grp> twin_mps = tst.make_mps();
         tst.clear();
         MPOTensor<matrix, grp> ts_mpo = make_twosite_mpo<matrix,matrix>(mpo[site], mpo[site+1], mps[site].site_dim(), mps[site+1].site_dim());
-        if(lr == +1){
-            ts_mpo.placement_l = mpo[site].placement_l;
-            ts_mpo.placement_r = parallel::get_right_placement(ts_mpo, mpo[site].placement_l, mpo[site+1].placement_r);
-        }else{
-            ts_mpo.placement_l = parallel::get_left_placement(ts_mpo, mpo[site].placement_l, mpo[site+1].placement_r);
-            ts_mpo.placement_r = mpo[site+1].placement_r;
-        }
         time_ts_obj.end();
         maquis::cout << "Two site obj done!\n";
         

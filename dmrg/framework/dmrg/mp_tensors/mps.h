@@ -170,6 +170,114 @@ make_right_boundary(MPS<Matrix, SymmGroup> const & bra, MPS<Matrix, SymmGroup> c
     return ret;
 }
 
+namespace mps_detail {
+
+    template<class Matrix, class OtherMatrix, class SymmGroup>
+    static block_matrix<OtherMatrix, SymmGroup>
+    overlap_left_step(MPSTensor<Matrix, SymmGroup> const & bra_tensor,
+                      MPSTensor<Matrix, SymmGroup> const & ket_tensor,
+                      block_matrix<OtherMatrix, SymmGroup> const & left)
+    {
+        assert(ket_tensor.phys_i == bra_tensor.phys_i);
+
+        bra_tensor.make_left_paired();
+
+        block_matrix<OtherMatrix, SymmGroup> t1;
+        block_matrix<Matrix, SymmGroup> t3;
+        ket_tensor.make_right_paired();
+        gemm(left, ket_tensor.data(), t1);
+
+        reshape_right_to_left_new(ket_tensor.site_dim(), bra_tensor.row_dim(), ket_tensor.col_dim(),
+                                  t1, t3);
+        gemm(transpose(conjugate(bra_tensor.data())), t3, t1);
+        return t1;
+    }
+
+    template<class Matrix, class OtherMatrix, class SymmGroup>
+    static block_matrix<OtherMatrix, SymmGroup>
+    overlap_right_step(MPSTensor<Matrix, SymmGroup> const & bra_tensor,
+                       MPSTensor<Matrix, SymmGroup> const & ket_tensor,
+                       block_matrix<OtherMatrix, SymmGroup> const & right)
+    {
+        assert(ket_tensor.phys_i == bra_tensor.phys_i);
+
+        bra_tensor.make_right_paired();
+        ket_tensor.make_left_paired();
+
+        block_matrix<OtherMatrix, SymmGroup> t1;
+        block_matrix<Matrix, SymmGroup> t3;
+        gemm(ket_tensor.data(), transpose(right), t1);
+        reshape_left_to_right_new(ket_tensor.site_dim(), ket_tensor.row_dim(), bra_tensor.col_dim(), t1, t3);
+        gemm(conjugate(bra_tensor.data()), transpose(t3), t1);
+
+        return t1;
+    }
+
+} // namespace mps_detail
+
+template<class Matrix, class SymmGroup>
+typename MPS<Matrix, SymmGroup>::scalar_type norm(MPS<Matrix, SymmGroup> const & mps)
+{
+    std::size_t L = mps.length();
+
+    block_matrix<Matrix, SymmGroup> left;
+    left.insert_block(Matrix(1, 1, 1), SymmGroup::IdentityCharge, SymmGroup::IdentityCharge);
+
+    for(size_t i = 0; i < L; ++i) {
+        MPSTensor<Matrix, SymmGroup> cpy = mps[i];
+        left = mps_detail::overlap_left_step(mps[i], cpy, left);
+    }
+
+    return trace(left);
+}
+
+template<class Matrix, class SymmGroup>
+typename MPS<Matrix, SymmGroup>::scalar_type overlap(MPS<Matrix, SymmGroup> const & mps1,
+                                                     MPS<Matrix, SymmGroup> const & mps2)
+{
+    assert(mps1.length() == mps2.length());
+
+    std::size_t L = mps1.length();
+
+    block_matrix<Matrix, SymmGroup> left;
+    left.insert_block(Matrix(1, 1, 1), SymmGroup::IdentityCharge, SymmGroup::IdentityCharge);
+
+    for(size_t i = 0; i < L; ++i) {
+        left = mps_detail::overlap_left_step(mps1[i], mps2[i], left);
+    }
+
+    return trace(left);
+}
+
+template<class Matrix, class SymmGroup>
+std::vector<typename MPS<Matrix, SymmGroup>::scalar_type> multi_overlap(MPS<Matrix, SymmGroup> const & mps1,
+                                                                        MPS<Matrix, SymmGroup> const & mps2)
+{
+    // assuming mps2 to have `correct` shape, i.e. left size=1, right size=1
+    //          mps1 more generic, i.e. left size=1, right size arbitrary
+
+    assert(mps1.length() == mps2.length());
+
+    std::size_t L = mps1.length();
+
+    block_matrix<Matrix, SymmGroup> left;
+    left.insert_block(Matrix(1, 1, 1), SymmGroup::IdentityCharge, SymmGroup::IdentityCharge);
+
+    for (int i = 0; i < L; ++i) {
+        left = mps_detail::overlap_left_step(mps1[i], mps2[i], left);
+    }
+
+    assert(left.right_basis().sum_of_sizes() == 1);
+    std::vector<typename MPS<Matrix, SymmGroup>::scalar_type> vals;
+    vals.reserve(left.basis().sum_of_left_sizes());
+    for (int n=0; n<left.n_blocks(); ++n)
+        for (int i=0; i<left.basis().left_size(n); ++i)
+            vals.push_back( left[n](i,0) );
+
+    return vals;
+}
+
+
 #include "dmrg/mp_tensors/mps.hpp"
 
 #endif

@@ -35,7 +35,7 @@
 #include "dmrg/mp_tensors/mpo.h"
 #include "dmrg/mp_tensors/mps.h"
 #include "dmrg/optimize/site_problem.h"
-#include "dmrg/mp_tensors/contractions/non-abelian/engine.hpp"
+#include "dmrg/mp_tensors/contractions.h"
 
 using namespace contraction;
 using namespace contraction::common;

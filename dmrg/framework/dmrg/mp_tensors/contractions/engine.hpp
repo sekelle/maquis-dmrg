@@ -52,24 +52,6 @@ namespace contraction {
     public:
         typedef typename common::Schedule<Matrix, SymmGroup>::schedule_t schedule_t;
 
-        static block_matrix<OtherMatrix, SymmGroup>
-        overlap_left_step(MPSTensor<Matrix, SymmGroup> const & bra_tensor,
-                          MPSTensor<Matrix, SymmGroup> const & ket_tensor,
-                          block_matrix<OtherMatrix, SymmGroup> const & left,
-                          block_matrix<OtherMatrix, SymmGroup> * localop = NULL)
-        {
-            return common::overlap_left_step<Matrix, OtherMatrix, SymmGroup>(bra_tensor, ket_tensor, left);
-        }
-
-        static block_matrix<OtherMatrix, SymmGroup>
-        overlap_right_step(MPSTensor<Matrix, SymmGroup> const & bra_tensor,
-                           MPSTensor<Matrix, SymmGroup> const & ket_tensor,
-                           block_matrix<OtherMatrix, SymmGroup> const & right,
-                           block_matrix<OtherMatrix, SymmGroup> * localop = NULL)
-        {
-            return common::overlap_right_step<Matrix, OtherMatrix, SymmGroup>(bra_tensor, ket_tensor, right);
-        }
-
         static Boundary<OtherMatrix, SymmGroup>
         overlap_mpo_left_step(MPSTensor<Matrix, SymmGroup> const & bra_tensor,
                               MPSTensor<Matrix, SymmGroup> const & ket_tensor,

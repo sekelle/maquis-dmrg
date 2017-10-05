@@ -104,68 +104,6 @@ std::vector<typename MPS<Matrix, SymmGroup>::scalar_type> multi_expval(MPS<Matri
     return multi_expval(mps, mps, mpo);
 }
 
-template<class Matrix, class SymmGroup>
-typename MPS<Matrix, SymmGroup>::scalar_type norm(MPS<Matrix, SymmGroup> const & mps)
-{
-    std::size_t L = mps.length();
-    
-    block_matrix<Matrix, SymmGroup> left;
-    left.insert_block(Matrix(1, 1, 1), SymmGroup::IdentityCharge, SymmGroup::IdentityCharge);
-    
-    for(size_t i = 0; i < L; ++i) {
-        MPSTensor<Matrix, SymmGroup> cpy = mps[i];
-        left = contraction::Engine<Matrix, Matrix, SymmGroup>::overlap_left_step(mps[i], cpy, left);
-    }
-    
-    return trace(left);
-}
-
-template<class Matrix, class SymmGroup>
-typename MPS<Matrix, SymmGroup>::scalar_type overlap(MPS<Matrix, SymmGroup> const & mps1,
-                                                     MPS<Matrix, SymmGroup> const & mps2)
-{
-    assert(mps1.length() == mps2.length());
-    
-    std::size_t L = mps1.length();
-    
-    block_matrix<Matrix, SymmGroup> left;
-    left.insert_block(Matrix(1, 1, 1), SymmGroup::IdentityCharge, SymmGroup::IdentityCharge);
-    
-    for(size_t i = 0; i < L; ++i) {
-        left = contraction::Engine<Matrix, Matrix, SymmGroup>::overlap_left_step(mps1[i], mps2[i], left);
-    }
-    
-    return trace(left);
-}
-
-template<class Matrix, class SymmGroup>
-std::vector<typename MPS<Matrix, SymmGroup>::scalar_type> multi_overlap(MPS<Matrix, SymmGroup> const & mps1,
-                                                                        MPS<Matrix, SymmGroup> const & mps2)
-{
-    // assuming mps2 to have `correct` shape, i.e. left size=1, right size=1
-    //          mps1 more generic, i.e. left size=1, right size arbitrary
-    
-    assert(mps1.length() == mps2.length());
-    
-    std::size_t L = mps1.length();
-    
-    block_matrix<Matrix, SymmGroup> left;
-    left.insert_block(Matrix(1, 1, 1), SymmGroup::IdentityCharge, SymmGroup::IdentityCharge);
-    
-    for (int i = 0; i < L; ++i) {
-        left = contraction::Engine<Matrix, Matrix, SymmGroup>::overlap_left_step(mps1[i], mps2[i], left);
-    }
-    
-    assert(left.right_basis().sum_of_sizes() == 1);
-    std::vector<typename MPS<Matrix, SymmGroup>::scalar_type> vals;
-    vals.reserve(left.basis().sum_of_left_sizes());
-    for (int n=0; n<left.n_blocks(); ++n)
-        for (int i=0; i<left.basis().left_size(n); ++i)
-            vals.push_back( left[n](i,0) );
-        
-    return vals;
-}
-
 //typedef std::vector< std::vector< std::pair<std::string, double> > > entanglement_spectrum_type;
 typedef std::vector< std::pair<std::vector<std::string>, std::vector<double> > > entanglement_spectrum_type;
 template<class Matrix, class SymmGroup>

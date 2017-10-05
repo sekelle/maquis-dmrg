@@ -35,48 +35,6 @@
 namespace contraction {
     namespace common {
 
-        // output/input: left_i for bra_tensor, right_i for ket_tensor
-        template<class Matrix, class OtherMatrix, class SymmGroup>
-        static block_matrix<OtherMatrix, SymmGroup>
-        overlap_left_step(MPSTensor<Matrix, SymmGroup> const & bra_tensor,
-                          MPSTensor<Matrix, SymmGroup> const & ket_tensor,
-                          block_matrix<OtherMatrix, SymmGroup> const & left)
-        {
-            assert(ket_tensor.phys_i == bra_tensor.phys_i);
-
-            bra_tensor.make_left_paired();
-
-            block_matrix<OtherMatrix, SymmGroup> t1;
-            block_matrix<Matrix, SymmGroup> t3;
-            ket_tensor.make_right_paired();
-            gemm(left, ket_tensor.data(), t1);
-
-            reshape_right_to_left_new(ket_tensor.site_dim(), bra_tensor.row_dim(), ket_tensor.col_dim(),
-                                      t1, t3);
-            gemm(transpose(conjugate(bra_tensor.data())), t3, t1);
-            return t1;
-        }
-
-        template<class Matrix, class OtherMatrix, class SymmGroup>
-        static block_matrix<OtherMatrix, SymmGroup>
-        overlap_right_step(MPSTensor<Matrix, SymmGroup> const & bra_tensor,
-                           MPSTensor<Matrix, SymmGroup> const & ket_tensor,
-                           block_matrix<OtherMatrix, SymmGroup> const & right)
-        {
-            assert(ket_tensor.phys_i == bra_tensor.phys_i);
-
-            bra_tensor.make_right_paired();
-            ket_tensor.make_left_paired();
-
-            block_matrix<OtherMatrix, SymmGroup> t1;
-            block_matrix<Matrix, SymmGroup> t3;
-            gemm(ket_tensor.data(), transpose(right), t1);
-            reshape_left_to_right_new(ket_tensor.site_dim(), ket_tensor.row_dim(), bra_tensor.col_dim(), t1, t3);
-            gemm(conjugate(bra_tensor.data()), transpose(t3), t1);
-
-            return t1;
-        }
-
         template<class Matrix, class OtherMatrix, class SymmGroup>
         static Boundary<OtherMatrix, SymmGroup>
         left_boundary_tensor_mpo(MPSTensor<Matrix, SymmGroup> ket_tensor,
