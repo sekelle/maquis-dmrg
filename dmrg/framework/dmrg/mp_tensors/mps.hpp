@@ -333,7 +333,6 @@ void save(std::string const& dirname, MPS<Matrix, SymmGroup> const& mps)
 
     for(size_t k = 0; k < loop_max; ++k){
         mps[k].make_left_paired();
-        storage::migrate(mps[k]);
     }
     parallel::sync();
 

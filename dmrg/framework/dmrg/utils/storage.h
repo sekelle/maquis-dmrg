@@ -35,6 +35,8 @@
 #include <iostream>
 #include <fstream>
 
+#include <cuda_runtime.h>
+
 #include "utils.hpp"
 #include "utils/timings.h"
 
@@ -239,11 +241,11 @@ namespace storage {
                 if(instance().queue[i]) instance().queue[i]->join();
             instance().queue.clear();
         }
-        template<class T> static void fetch(serializable<T>& t)   { if(enabled()) t.fetch();    }
-        template<class T> static void prefetch(serializable<T>& t){ if(enabled()) t.prefetch(); }
-        template<class T> static void evict(serializable<T>& t)   { if(enabled()) t.evict();    }
-        template<class T> static void drop(serializable<T>& t)    { if(enabled()) t.drop();     }
-        template<class T> static void pin(serializable<T>& t)     { }
+        //template<class T> static void fetch(serializable<T>& t)   { if(enabled()) t.fetch();    }
+        //template<class T> static void prefetch(serializable<T>& t){ if(enabled()) t.prefetch(); }
+        //template<class T> static void evict(serializable<T>& t)   { if(enabled()) t.evict();    }
+        //template<class T> static void drop(serializable<T>& t)    { if(enabled()) t.drop();     }
+        //template<class T> static void pin(serializable<T>& t)     { }
 
         template<class Matrix, class SymmGroup> 
         static void evict(MPSTensor<Matrix, SymmGroup>& t){ }
@@ -255,14 +257,133 @@ namespace storage {
         size_t sid;
     };
 
-    template<typename T, class Scheduler>
-    static void migrate(T& t, const Scheduler& scheduler){ }
+    class gpu {
+    public:
 
-    template<typename T>
-    static void migrate(T& t)
-    {
-        migrate(t, parallel::scheduler_nop());
-    }
+        class deviceMemory {
+        public:
+            deviceMemory() : dev_state(host), worker(NULL) {}
+            ~deviceMemory() {
+                this->join();
+                //for (size_t k = 0; k < device_ptr.size(); ++k)
+                //    cudaFree(device_ptr[k]);
+            }
+            void thread(boost::thread* t){
+                this->worker = t;
+            }
+            void join(){
+                if(this->worker){
+                    this->worker->join();
+                    delete this->worker;
+                    this->worker = NULL;
+                }
+            }
+
+            enum { device, downloading, host, uploading } dev_state;
+
+            boost::thread* worker;
+            std::vector<void*> device_ptr;
+        };
+
+        template<class T> class serializable : public deviceMemory {
+        public: 
+            ~serializable(){
+            }
+            serializable& operator = (const serializable& rhs){
+                this->join();
+                deviceMemory::operator=(rhs);
+                return *this;
+            }
+            //void fetch(){
+            //    if(this->state == core) return;
+            //    else if(this->state == prefetching) this->join();
+            //    assert(this->state != storing); // isn't prefetched prior load
+            //    assert(this->state != uncore);  // isn't prefetched prior load
+            //    this->state = core;
+            //}
+            void upload(){
+                //if(this->state == core) return;
+                //else if(this->state == prefetching) return;
+                //else if(this->state == storing) this->join();
+
+                dev_state = uploading;
+                //this->thread(new boost::thread(fetch_request<T>(disk::fp(sid), (T*)this)));
+            }
+            //void evict(){
+            //    if(state == core){
+            //        state = storing;
+            //        dumped = true;
+            //        parallel::sync();
+            //        this->thread(new boost::thread(evict_request<T>(disk::fp(sid), (T*)this)));
+            //    }
+            //    assert(this->state != prefetching); // evict of prefetched
+            //}
+            //void drop(){
+            //    if(dumped) std::remove(disk::fp(sid).c_str());
+            //    if(state == core) drop_request<T>(disk::fp(sid), (T*)this)();
+            //    assert(this->state != storing);     // drop of already stored data
+            //    assert(this->state != uncore);      // drop of already stored data
+            //    assert(this->state != prefetching); // drop of prefetched data
+            //}
+        };
+
+        template<class B> static void upload(B& t)
+        {
+            disk::serializable<B>& t_disk = t;
+            //if(disk::enabled()) t.prefetch();
+            maquis::cout << "disk::state " << t_disk.state << "\n";
+            //if (t->state == 
+        }
+
+        static gpu& instance(){
+            static gpu singleton;
+            return singleton;
+        }
+        static void init(size_t n){
+            maquis::cout << n << " GPUs enabled\n";
+            instance().active = true;
+        }
+        static bool enabled(){
+            return instance().active;
+        }
+
+        gpu() : active(false), nGpu(0) {}
+        //std::vector<descriptor*> queue;
+        bool active; 
+        size_t nGpu;
+    };
+
+    class Controller {
+    public:
+    
+        template<class T> static void fetch(T& t) 
+        {
+            if(disk::enabled()) t.fetch();
+        }
+
+        template<class T> static void prefetch(T& t)
+        {
+            if(disk::enabled()) t.prefetch();
+        }
+
+        template<class T> static void evict(T& t)
+        {
+            if(disk::enabled()) t.evict();
+        }
+
+        template<class T> static void drop(T& t)
+        {
+            if(disk::enabled()) t.drop();
+        }
+
+        template<class T> static void pin(T& t)     { }
+
+        template<class Matrix, class SymmGroup> 
+        static void evict(MPSTensor<Matrix, SymmGroup>& t){ }
+
+        static void sync() { if (disk::enabled()) disk::sync(); }
+
+    };
 
     inline static void setup(BaseParameters& parms){
         if(!parms["storagedir"].empty()){
@@ -275,8 +396,7 @@ namespace storage {
             }
             storage::disk::init(dp.string());
         }else{
-            maquis::cout << "Temporary storage is disabled\n";
-        }
+            maquis::cout << "Temporary storage is disabled\n"; }
     }
 }
 

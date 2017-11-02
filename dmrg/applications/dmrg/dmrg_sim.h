@@ -44,7 +44,7 @@ template <class Matrix, class SymmGroup>
 class dmrg_sim : public sim<Matrix, SymmGroup> {
     
     typedef sim<Matrix, SymmGroup> base;
-    typedef optimizer_base<Matrix, SymmGroup, storage::disk> opt_base_t;
+    typedef optimizer_base<Matrix, SymmGroup, storage::Controller> opt_base_t;
     typedef typename base::status_type status_type;
     typedef typename base::measurements_type measurements_type;
     

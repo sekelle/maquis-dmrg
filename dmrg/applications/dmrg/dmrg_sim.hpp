@@ -51,12 +51,12 @@ void dmrg_sim<Matrix, SymmGroup>::run()
     boost::shared_ptr<opt_base_t> optimizer;
     if (parms["optimization"] == "singlesite")
     {
-        optimizer.reset( new ss_optimize<Matrix, SymmGroup, storage::disk>
+        optimizer.reset( new ss_optimize<Matrix, SymmGroup, storage::Controller>
                         (mps, mpoc, parms, stop_callback, init_site) );
     }
     else if(parms["optimization"] == "twosite")
     {
-        optimizer.reset( new ts_optimize<Matrix, SymmGroup, storage::disk>
+        optimizer.reset( new ts_optimize<Matrix, SymmGroup, storage::Controller>
                         (mps, mpoc, parms, stop_callback, init_site) );
     }
     else {
@@ -70,7 +70,7 @@ void dmrg_sim<Matrix, SymmGroup>::run()
             // TODO: introduce some timings
             
             optimizer->sweep(sweep, Both);
-            storage::disk::sync();
+            storage::Controller::sync();
 
             bool converged = false;
             
@@ -129,7 +129,7 @@ void dmrg_sim<Matrix, SymmGroup>::run()
 template <class Matrix, class SymmGroup>
 dmrg_sim<Matrix, SymmGroup>::~dmrg_sim()
 {
-    storage::disk::sync();
+    storage::Controller::sync();
 }
 
 template <class Matrix, class SymmGroup>

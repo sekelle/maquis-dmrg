@@ -50,6 +50,7 @@ private:
     {
         using parameters::value;
         
+        add_option("GPU", "use GPU", value(false));
         add_option("COMPLEX", "use complex numbers", value(false));
 
         add_option("truncation_initial", "Initial value for the truncation error", value(1e-16));

@@ -42,7 +42,6 @@ namespace tag_detail {
     {
         {
             parallel::guard::serial guard;
-            storage::migrate(op);
         }
 
         for (typename BlockMatrix::size_type b=0; b < op.n_blocks(); ++b)
@@ -82,8 +81,6 @@ namespace tag_detail {
  
         {
             parallel::guard::serial guard;
-            storage::migrate(reference);
-            storage::migrate(sample);
         }
         if (!shape_equal(reference, sample))
             return std::make_pair(false, 0.);

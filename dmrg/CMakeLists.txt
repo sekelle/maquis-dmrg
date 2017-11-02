@@ -259,6 +259,8 @@ else(USE_AMBIENT)
   endmacro(compile_with_ambient)
 endif(USE_AMBIENT)
 
+find_package(CUDA)
+
 ######################################################################
 # Version information
 ######################################################################
@@ -360,7 +362,7 @@ endif(ENABLE_OMP)
 # Include / link directories
 ######################################################################
 
-list(APPEND DMRG_INCLUDE_DIRS ${MATRICES_DIR} ${HDF5_INCLUDE_DIR} ${ALPS_INCLUDE_DIRS})
+list(APPEND DMRG_INCLUDE_DIRS ${MATRICES_DIR} ${HDF5_INCLUDE_DIR} ${ALPS_INCLUDE_DIRS} ${CUDA_INCLUDE_DIRS})
 list(APPEND DMRG_LIBRARY_DIRS ${ALPS_LIBRARY_DIRS})
 if(NOT USE_AMBIENT)
   list(APPEND DMRG_LIBRARY_DIRS ${MAQUISLapack_LIB_DIRS})
