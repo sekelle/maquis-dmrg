@@ -140,41 +140,68 @@ namespace storage {
         Boundary<Matrix, SymmGroup>* ptr;
     };
 
-    class disk : public nop {
+    class controller
+    {
     public:
-        class descriptor {
+
+        class transfer {
         public:
-            descriptor() : state(core), dumped(false), sid(disk::index()), worker(NULL) {}
-           ~descriptor(){
+            transfer() : state(core), worker(NULL) {}
+           ~transfer(){
                 this->join();
             }
             void thread(boost::thread* t){
                 this->worker = t;
-                disk::track(this);
             }
             void join(){
                 if(this->worker){
                     this->worker->join();
                     delete this->worker;
                     this->worker = NULL;
-                    disk::untrack(this);
                 }
             }
             enum { core, storing, uncore, prefetching } state;
+            boost::thread* worker;
+        };
+
+    };
+
+    class disk : public nop {
+    public:
+
+        class descriptor : public controller::transfer {
+            typedef controller::transfer base;
+        public:
+            descriptor() : dumped(false), sid(disk::index()) {}
+           ~descriptor(){
+                this->join();
+            }
+            void thread(boost::thread* t){
+                ((base*)this)->thread(t);
+                disk::track(this);
+            }
+            void join(){
+                if(this->worker){
+                    ((base*)this)->join();
+                    disk::untrack(this);
+                }
+            }
+            void cleanup() {
+                if (dumped) std::remove(disk::fp(sid).c_str()); // only delete existing file, too slow otherwise on NFS or similar
+            }
             bool dumped;
             size_t sid;
-            boost::thread* worker;
             size_t record;
         };
 
         template<class T> class serializable : public descriptor {
         public: 
             ~serializable(){
-                if (dumped) std::remove(disk::fp(sid).c_str()); // only delete existing file, too slow otherwise on NFS or similar
+                this->cleanup();
             }
             serializable& operator = (const serializable& rhs){
                 this->join();
-                if(dumped) std::remove(disk::fp(sid).c_str());
+                this->cleanup();
                 descriptor::operator=(rhs);
                 return *this;
             }
@@ -203,7 +230,7 @@ namespace storage {
                 assert(this->state != prefetching); // evict of prefetched
             }
             void drop(){
-                if(dumped) std::remove(disk::fp(sid).c_str());
+                this->cleanup();
                 if(state == core) drop_request<T>(disk::fp(sid), (T*)this)();
                 assert(this->state != storing);     // drop of already stored data
                 assert(this->state != uncore);      // drop of already stored data
