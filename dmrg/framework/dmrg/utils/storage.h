@@ -164,6 +164,54 @@ namespace storage {
             boost::thread* worker;
         };
 
+        // static polymorphism for class serializable through CRTP
+        // static_cast<D*>(this) : call derived method from base
+        template<class D> class serializable {
+        public: 
+            ~serializable(){
+                static_cast<D*>(this)->cleanup();
+            }
+            //serializable& operator = (const serializable& rhs){
+            //    static_cast<D*>(this)->join();
+            //    static_cast<D*>(this)->cleanup();
+            //    D::operator=(static_cast<D>(rhs));
+            //    return *this;
+            //}
+            void fetch(){
+                if(static_cast<D*>(this)->state == D::core) return;
+                else if(static_cast<D*>(this)->state == D::prefetching) static_cast<D*>(this)->join();
+                assert(static_cast<D*>(this)->state != D::storing); // isn't prefetched prior load
+                assert(static_cast<D*>(this)->state != D::uncore);  // isn't prefetched prior load
+                static_cast<D*>(this)->state = D::core;
+            }
+            template <class Obj>
+            void prefetch(Obj o){
+                if(static_cast<D*>(this)->state == D::core) return;
+                else if(static_cast<D*>(this)->state == D::prefetching) return;
+                else if(static_cast<D*>(this)->state == D::storing) static_cast<D*>(this)->join();
+
+                static_cast<D*>(this)->state = D::prefetching;
+                static_cast<D*>(this)->thread(new boost::thread(o));
+            }
+            template <class Obj>
+            void evict(Obj o){
+                if(static_cast<D*>(this)->state == D::core){
+                    static_cast<D*>(this)->state = D::storing;
+                    static_cast<D*>(this)->touch();
+                    static_cast<D*>(this)->thread(new boost::thread(o));
+                }
+                assert(static_cast<D*>(this)->state != D::prefetching); // evict of prefetched
+            }
+            template <class Obj>
+            void drop(Obj o){
+                static_cast<D*>(this)->cleanup();
+                if(static_cast<D*>(this)->state == D::core) o();
+                assert(static_cast<D*>(this)->state != D::storing);     // drop of already stored data
+                assert(static_cast<D*>(this)->state != D::uncore);      // drop of already stored data
+                assert(static_cast<D*>(this)->state != D::prefetching); // drop of prefetched data
+            }
+        };
+
     };
 
     class disk : public nop {
@@ -189,53 +237,28 @@ namespace storage {
             void cleanup() {
                 if (dumped) std::remove(disk::fp(sid).c_str()); // only delete existing file, too slow otherwise on NFS or similar
             }
+            void touch() { dumped = true; }
             bool dumped;
             size_t sid;
             size_t record;
         };
 
-        template<class T> class serializable : public descriptor {
+        template<class T> class serializable : public descriptor, public controller::serializable<serializable<T>>
+        {
+            typedef controller::serializable<serializable<T>> base;
         public: 
-            ~serializable(){
-                this->cleanup();
-            }
+
             serializable& operator = (const serializable& rhs){
                 this->join();
                 this->cleanup();
                 descriptor::operator=(rhs);
                 return *this;
             }
-            void fetch(){
-                if(this->state == core) return;
-                else if(this->state == prefetching) this->join();
-                assert(this->state != storing); // isn't prefetched prior load
-                assert(this->state != uncore);  // isn't prefetched prior load
-                this->state = core;
-            }
-            void prefetch(){
-                if(this->state == core) return;
-                else if(this->state == prefetching) return;
-                else if(this->state == storing) this->join();
+            void prefetch() { ((base*)this)->prefetch(fetch_request<T>(disk::fp(sid), (T*)this)); }
 
-                state = prefetching;
-                this->thread(new boost::thread(fetch_request<T>(disk::fp(sid), (T*)this)));
-            }
-            void evict(){
-                if(state == core){
-                    state = storing;
-                    dumped = true;
-                    parallel::sync();
-                    this->thread(new boost::thread(evict_request<T>(disk::fp(sid), (T*)this)));
-                }
-                assert(this->state != prefetching); // evict of prefetched
-            }
-            void drop(){
-                this->cleanup();
-                if(state == core) drop_request<T>(disk::fp(sid), (T*)this)();
-                assert(this->state != storing);     // drop of already stored data
-                assert(this->state != uncore);      // drop of already stored data
-                assert(this->state != prefetching); // drop of prefetched data
-            }
+            void evict()    { ((base*)this)->evict(evict_request<T>(disk::fp(sid), (T*)this)); }
+
+            void drop()     { ((base*)this)->drop(drop_request<T>(disk::fp(sid), (T*)this)); }
         };
 
         static disk& instance(){
@@ -401,7 +424,8 @@ namespace storage {
     
         template<class T> static void fetch(T& t) 
         {
-            if(disk::enabled()) t.fetch();
+            disk::serializable<T>& as_disk = t;
+            if(disk::enabled()) as_disk.fetch();
         }
 
         template<class T> static void prefetch(T& t)
@@ -415,12 +439,14 @@ namespace storage {
 
         template<class T> static void evict(T& t)
         {
-            if(disk::enabled()) t.evict();
+            disk::serializable<T>& as_disk = t;
+            if(disk::enabled()) as_disk.evict();
         }
 
         template<class T> static void drop(T& t)
         {
-            if(disk::enabled()) t.drop();
+            disk::serializable<T>& as_disk = t;
+            if(disk::enabled()) as_disk.drop();
         }
 
         template<class T> static void pin(T& t)     { }
