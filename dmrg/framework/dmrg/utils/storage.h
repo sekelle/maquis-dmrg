@@ -327,14 +327,6 @@ namespace storage {
             //}
         };
 
-        template<class B> static void upload(B& t)
-        {
-            disk::serializable<B>& t_disk = t;
-            //if(disk::enabled()) t.prefetch();
-            maquis::cout << "disk::state " << t_disk.state << "\n";
-            //if (t->state == 
-        }
-
         static gpu& instance(){
             static gpu singleton;
             return singleton;
@@ -353,6 +345,30 @@ namespace storage {
         size_t nGpu;
     };
 
+    template<class T>
+    class upload_request {
+    public:
+        upload_request(T* ptr) : ptr(ptr) { }
+        void operator()(){
+            //T& o = *ptr;
+            disk::serializable<T>* as_disk = ptr;
+            as_disk->fetch();
+            maquis::cout << "fetched\n";
+
+            gpu::serializable<T>* as_gpu = ptr;
+            as_gpu->upload();
+
+            ////for (size_t ci = 0; ci < o.index().n_cohorts(); ++ci)
+            //{
+            //    size_t cohort_size = o.index().n_blocks(ci) * o.index().block_size(ci);
+            //    o.data()[ci].resize(cohort_size);
+            //}
+        }
+    private:
+        //Boundary<Matrix, SymmGroup>* ptr;
+        T* ptr;
+    };
+
     class Controller {
     public:
     
@@ -363,7 +379,11 @@ namespace storage {
 
         template<class T> static void prefetch(T& t)
         {
-            if(disk::enabled()) t.prefetch();
+            disk::serializable<T>& as_disk = t;
+            if(disk::enabled()) as_disk.prefetch();
+
+            gpu::serializable<T>& as_gpu = t;
+            as_gpu.thread( new boost::thread(upload_request<T>(&t)) );
         }
 
         template<class T> static void evict(T& t)
