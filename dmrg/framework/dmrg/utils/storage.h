@@ -140,6 +140,7 @@ namespace storage {
         Boundary<Matrix, SymmGroup>* ptr;
     };
 
+    template <class Resource>
     class controller
     {
     public:
@@ -152,16 +153,21 @@ namespace storage {
             }
             void thread(boost::thread* t){
                 this->worker = t;
+                controller<Resource>::track(this);
             }
             void join(){
                 if(this->worker){
                     this->worker->join();
                     delete this->worker;
                     this->worker = NULL;
+                    controller<Resource>::untrack(this);
                 }
             }
+
             enum { core, storing, uncore, prefetching } state;
             boost::thread* worker;
+
+            size_t record;
         };
 
         // static polymorphism for class serializable through CRTP
@@ -169,83 +175,97 @@ namespace storage {
         template<class D> class serializable {
         public: 
             ~serializable(){
-                static_cast<D*>(this)->cleanup();
+                impl()->cleanup();
             }
-            //serializable& operator = (const serializable& rhs){
-            //    static_cast<D*>(this)->join();
-            //    static_cast<D*>(this)->cleanup();
-            //    D::operator=(static_cast<D>(rhs));
-            //    return *this;
-            //}
             void fetch(){
-                if(static_cast<D*>(this)->state == D::core) return;
-                else if(static_cast<D*>(this)->state == D::prefetching) static_cast<D*>(this)->join();
-                assert(static_cast<D*>(this)->state != D::storing); // isn't prefetched prior load
-                assert(static_cast<D*>(this)->state != D::uncore);  // isn't prefetched prior load
-                static_cast<D*>(this)->state = D::core;
+                if(impl()->state == D::core) return;
+                else if(impl()->state == D::prefetching) impl()->join();
+                assert(impl()->state != D::storing); // isn't prefetched prior load
+                assert(impl()->state != D::uncore);  // isn't prefetched prior load
+                impl()->state = D::core;
             }
             template <class Obj>
             void prefetch(Obj o){
-                if(static_cast<D*>(this)->state == D::core) return;
-                else if(static_cast<D*>(this)->state == D::prefetching) return;
-                else if(static_cast<D*>(this)->state == D::storing) static_cast<D*>(this)->join();
+                if(impl()->state == D::core) return;
+                else if(impl()->state == D::prefetching) return;
+                else if(impl()->state == D::storing) impl()->join();
 
-                static_cast<D*>(this)->state = D::prefetching;
-                static_cast<D*>(this)->thread(new boost::thread(o));
+                impl()->state = D::prefetching;
+                impl()->thread(new boost::thread(o));
             }
             template <class Obj>
             void evict(Obj o){
-                if(static_cast<D*>(this)->state == D::core){
-                    static_cast<D*>(this)->state = D::storing;
-                    static_cast<D*>(this)->touch();
-                    static_cast<D*>(this)->thread(new boost::thread(o));
+                if(impl()->state == D::core){
+                    impl()->state = D::storing;
+                    impl()->touch();
+                    impl()->thread(new boost::thread(o));
                 }
-                assert(static_cast<D*>(this)->state != D::prefetching); // evict of prefetched
+                assert(impl()->state != D::prefetching); // evict of prefetched
             }
             template <class Obj>
             void drop(Obj o){
-                static_cast<D*>(this)->cleanup();
-                if(static_cast<D*>(this)->state == D::core) o();
-                assert(static_cast<D*>(this)->state != D::storing);     // drop of already stored data
-                assert(static_cast<D*>(this)->state != D::uncore);      // drop of already stored data
-                assert(static_cast<D*>(this)->state != D::prefetching); // drop of prefetched data
+                impl()->cleanup();
+                if(impl()->state == D::core) o();
+                assert(impl()->state != D::storing);     // drop of already stored data
+                assert(impl()->state != D::uncore);      // drop of already stored data
+                assert(impl()->state != D::prefetching); // drop of prefetched data
             }
+        private:
+            D* impl() { return static_cast<D*>(this); }
         };
 
+        static Resource& instance(){
+            static Resource singleton;
+            return singleton;
+        }
+        static bool enabled(){
+            return instance().active;
+        }
+
+        static void track(transfer* d){
+            d->record = instance().queue.size();
+            instance().queue.push_back(d);
+        }
+        static void untrack(transfer* d){
+            instance().queue[d->record] = NULL;
+        }
+        static void sync(){
+            for(int i = 0; i < instance().queue.size(); ++i)
+                if(instance().queue[i]) instance().queue[i]->join();
+            instance().queue.clear();
+        }
+
+        controller() : active(false) {}
+
+        std::vector<transfer*> queue;
+        bool active;
     };
 
-    class disk : public nop {
+    class disk : public controller<disk> {
+
+        typedef controller<disk> cbase;
+
     public:
 
-        class descriptor : public controller::transfer {
-            typedef controller::transfer base;
+        class descriptor : public cbase::transfer {
+            typedef cbase::transfer base;
         public:
             descriptor() : dumped(false), sid(disk::index()) {}
            ~descriptor(){
                 this->join();
             }
-            void thread(boost::thread* t){
-                ((base*)this)->thread(t);
-                disk::track(this);
-            }
-            void join(){
-                if(this->worker){
-                    ((base*)this)->join();
-                    disk::untrack(this);
-                }
-            }
             void cleanup() {
-                if (dumped) std::remove(disk::fp(sid).c_str()); // only delete existing file, too slow otherwise on NFS or similar
+                // only delete existing file, too slow otherwise on NFS or similar
+                if (dumped) std::remove(disk::fp(sid).c_str());
             }
             void touch() { dumped = true; }
             bool dumped;
             size_t sid;
-            size_t record;
         };
 
-        template<class T> class serializable : public descriptor, public controller::serializable<serializable<T>>
+        template<class T> class serializable : public descriptor, public cbase::serializable<serializable<T>>
         {
-            typedef controller::serializable<serializable<T>> base;
+            typedef cbase::serializable<serializable<T>> base;
         public: 
 
             serializable& operator = (const serializable& rhs){
@@ -254,42 +274,22 @@ namespace storage {
                 descriptor::operator=(rhs);
                 return *this;
             }
+
             void prefetch() { ((base*)this)->prefetch(fetch_request<T>(disk::fp(sid), (T*)this)); }
-
             void evict()    { ((base*)this)->evict(evict_request<T>(disk::fp(sid), (T*)this)); }
-
             void drop()     { ((base*)this)->drop(drop_request<T>(disk::fp(sid), (T*)this)); }
         };
 
-        static disk& instance(){
-            static disk singleton;
-            return singleton;
-        }
         static void init(const std::string& path){
             maquis::cout << "Temporary storage enabled in " << path << "\n";
             instance().active = true;
             instance().path = path;
-        }
-        static bool enabled(){
-            return instance().active;
         }
         static std::string fp(size_t sid){
             return (instance().path + boost::lexical_cast<std::string>(sid));
         }
         static size_t index(){
             return instance().sid++;
-        }
-        static void track(descriptor* d){ 
-            d->record = instance().queue.size();
-            instance().queue.push_back(d);
-        }
-        static void untrack(descriptor* d){ 
-            instance().queue[d->record] = NULL;
-        }
-        static void sync(){
-            for(int i = 0; i < instance().queue.size(); ++i)
-                if(instance().queue[i]) instance().queue[i]->join();
-            instance().queue.clear();
         }
         //template<class T> static void fetch(serializable<T>& t)   { if(enabled()) t.fetch();    }
         //template<class T> static void prefetch(serializable<T>& t){ if(enabled()) t.prefetch(); }
@@ -300,42 +300,35 @@ namespace storage {
         template<class Matrix, class SymmGroup> 
         static void evict(MPSTensor<Matrix, SymmGroup>& t){ }
 
-        disk() : active(false), sid(0) {}
-        std::vector<descriptor*> queue;
+        disk() : sid(0) {}
         std::string path;
-        bool active; 
         size_t sid;
     };
 
-    class gpu {
+    class gpu : public controller<gpu>
+    {
+        typedef controller<gpu> cbase;
+
     public:
 
-        class deviceMemory {
+        class deviceMemory : public cbase::transfer {
         public:
-            deviceMemory() : dev_state(host), worker(NULL) {}
+            deviceMemory() {}
             ~deviceMemory() {
                 this->join();
                 //for (size_t k = 0; k < device_ptr.size(); ++k)
                 //    cudaFree(device_ptr[k]);
             }
-            void thread(boost::thread* t){
-                this->worker = t;
-            }
-            void join(){
-                if(this->worker){
-                    this->worker->join();
-                    delete this->worker;
-                    this->worker = NULL;
-                }
-            }
 
-            enum { device, downloading, host, uploading } dev_state;
+            void touch() {};
+            void cleanup() {};
 
-            boost::thread* worker;
             std::vector<void*> device_ptr;
         };
 
-        template<class T> class serializable : public deviceMemory {
+        template<class T> class serializable : public deviceMemory, public cbase::serializable<serializable<T>>
+        {
+            typedef cbase::serializable<serializable<T>> base;
         public: 
             ~serializable(){
             }
@@ -344,79 +337,19 @@ namespace storage {
                 deviceMemory::operator=(rhs);
                 return *this;
             }
-            //void fetch(){
-            //    if(this->state == core) return;
-            //    else if(this->state == prefetching) this->join();
-            //    assert(this->state != storing); // isn't prefetched prior load
-            //    assert(this->state != uncore);  // isn't prefetched prior load
-            //    this->state = core;
-            //}
-            void upload(){
-                //if(this->state == core) return;
-                //else if(this->state == prefetching) return;
-                //else if(this->state == storing) this->join();
 
-                dev_state = uploading;
-                //this->thread(new boost::thread(fetch_request<T>(disk::fp(sid), (T*)this)));
-            }
-            //void evict(){
-            //    if(state == core){
-            //        state = storing;
-            //        dumped = true;
-            //        parallel::sync();
-            //        this->thread(new boost::thread(evict_request<T>(disk::fp(sid), (T*)this)));
-            //    }
-            //    assert(this->state != prefetching); // evict of prefetched
-            //}
-            //void drop(){
-            //    if(dumped) std::remove(disk::fp(sid).c_str());
-            //    if(state == core) drop_request<T>(disk::fp(sid), (T*)this)();
-            //    assert(this->state != storing);     // drop of already stored data
-            //    assert(this->state != uncore);      // drop of already stored data
-            //    assert(this->state != prefetching); // drop of prefetched data
-            //}
+            //void prefetch() { ((base*)this)->prefetch(fetch_request<T>(disk::fp(sid), (T*)this)); }
+            //void evict()    { ((base*)this)->evict(evict_request<T>(disk::fp(sid), (T*)this)); }
+            //void drop()     { ((base*)this)->drop(drop_request<T>(disk::fp(sid), (T*)this)); }
         };
 
-        static gpu& instance(){
-            static gpu singleton;
-            return singleton;
-        }
         static void init(size_t n){
             maquis::cout << n << " GPUs enabled\n";
             instance().active = true;
         }
-        static bool enabled(){
-            return instance().active;
-        }
 
-        gpu() : active(false), nGpu(0) {}
-        //std::vector<descriptor*> queue;
-        bool active; 
+        gpu() : nGpu(0) {}
         size_t nGpu;
-    };
-
-    template<class T>
-    class upload_request {
-    public:
-        upload_request(T* ptr) : ptr(ptr) { }
-        void operator()(){
-            //T& o = *ptr;
-            disk::serializable<T>* as_disk = ptr;
-            as_disk->fetch();
-            maquis::cout << "fetched\n";
-
-            gpu::serializable<T>* as_gpu = ptr;
-            as_gpu->upload();
-
-            ////for (size_t ci = 0; ci < o.index().n_cohorts(); ++ci)
-            //{
-            //    size_t cohort_size = o.index().n_blocks(ci) * o.index().block_size(ci);
-            //    o.data()[ci].resize(cohort_size);
-            //}
-        }
-    private:
-        //Boundary<Matrix, SymmGroup>* ptr;
-        T* ptr;
     };
 
     class Controller {
@@ -433,8 +366,8 @@ namespace storage {
             disk::serializable<T>& as_disk = t;
             if(disk::enabled()) as_disk.prefetch();
 
-            gpu::serializable<T>& as_gpu = t;
-            as_gpu.thread( new boost::thread(upload_request<T>(&t)) );
+            //gpu::serializable<T>& as_gpu = t;
+            //as_gpu.thread( new boost::thread(upload_request<T>(&t)) );
         }
 
         template<class T> static void evict(T& t)
