@@ -345,12 +345,14 @@ namespace storage {
 
         static void init(size_t n){
             maquis::cout << n << " GPUs enabled\n";
+            instance().nGPU = n;
             instance().active = true;
         }
 
-        gpu() : nGpu(0) {}
-        size_t nGpu;
+        gpu() : nGPU(0) {}
+        size_t nGPU;
     };
+
 
     class Controller {
     public:
@@ -388,12 +390,12 @@ namespace storage {
         static void evict(MPSTensor<Matrix, SymmGroup>& t){ }
 
         static void sync() { if (disk::enabled()) disk::sync(); }
-
     };
 
     inline static void setup(BaseParameters& parms){
         if(!parms["storagedir"].empty()){
-            boost::filesystem::path dp = boost::filesystem::unique_path(parms["storagedir"].as<std::string>() + std::string("/storage_temp_%%%%%%%%%%%%/"));
+            boost::filesystem::path dp = boost::filesystem::unique_path(
+                parms["storagedir"].as<std::string>() + std::string("/storage_temp_%%%%%%%%%%%%/"));
             try {
                 boost::filesystem::create_directories(dp);
             } catch (...) {
@@ -404,6 +406,7 @@ namespace storage {
         }else{
             maquis::cout << "Temporary storage is disabled\n"; }
     }
-}
+
+} // namespace storage
 
 #endif
