@@ -207,7 +207,7 @@ namespace storage {
                 impl()->cleanup();
                 if(impl()->state == D::core) o();
                 assert(impl()->state != D::storing);     // drop of already stored data
-                assert(impl()->state != D::uncore);      // drop of already stored data
+                //assert(impl()->state != D::uncore);      // drop of already stored data
                 assert(impl()->state != D::prefetching); // drop of prefetched data
             }
         private:
@@ -305,6 +305,72 @@ namespace storage {
         size_t sid;
     };
 
+    template<class T> class gpu_prefetch_request {};
+    template<class T> class gpu_evict_request {};
+    template<class T> class gpu_drop_request {};
+
+    template<class Matrix, class SymmGroup>
+    class gpu_prefetch_request< Boundary<Matrix, SymmGroup> > {
+    public:
+        gpu_prefetch_request(Boundary<Matrix, SymmGroup>* ptr) : ptr(ptr) { }
+        void operator()(){
+            Boundary<Matrix, SymmGroup>& o = *ptr;
+
+            o.device_ptr.resize(o.index().n_cohorts());
+
+            for (size_t ci = 0; ci < o.index().n_cohorts(); ++ci)
+            {
+                size_t cohort_size = o.index().n_blocks(ci) * o.index().block_size(ci);
+                cudaMalloc( (void**)(&(o.device_ptr[ci])), cohort_size * sizeof(typename Matrix::value_type) );
+                cudaMemcpy( o.device_ptr[ci], &o.data()[ci][0], cohort_size * sizeof(typename Matrix::value_type), cudaMemcpyHostToDevice );
+            }
+        }
+    private:
+        Boundary<Matrix, SymmGroup>* ptr;
+    };
+
+    template<class Matrix, class SymmGroup>
+    class gpu_evict_request< Boundary<Matrix, SymmGroup> > {
+    public:
+        gpu_evict_request(Boundary<Matrix, SymmGroup>* ptr) : ptr(ptr) { }
+        void operator()(){
+            Boundary<Matrix, SymmGroup>& o = *ptr;
+
+            assert (o.device_ptr.size() == o.index().n_cohorts());
+            for (size_t ci = 0; ci < o.index().n_cohorts(); ++ci)
+            {
+                if (o.device_ptr[ci] != NULL)
+                {
+                    size_t cohort_size = o.index().n_blocks(ci) * o.index().block_size(ci);
+                    cudaMemcpy( &(o.data()[ci][0]), o.device_ptr[ci], cohort_size * sizeof(typename Matrix::value_type), cudaMemcpyDeviceToHost );
+                    cudaFree(o.device_ptr[ci]);
+                }
+            }
+            o.device_ptr.clear();
+        }
+    private:
+        Boundary<Matrix, SymmGroup>* ptr;
+    };
+
+    template<class Matrix, class SymmGroup>
+    class gpu_drop_request< Boundary<Matrix, SymmGroup> > {
+    public:
+        gpu_drop_request(Boundary<Matrix, SymmGroup>* ptr) : ptr(ptr) { }
+        void operator()(){
+            Boundary<Matrix, SymmGroup>& o = *ptr;
+            assert (o.device_ptr.size() == o.index().n_cohorts());
+            for (size_t ci = 0; ci < o.index().n_cohorts(); ++ci)
+            {
+                if (o.device_ptr[ci] != NULL)
+                    cudaFree(o.device_ptr[ci]);
+            }
+            o.device_ptr.clear();
+        }
+
+    private:
+        Boundary<Matrix, SymmGroup>* ptr;
+    };
+
     class gpu : public controller<gpu>
     {
         typedef controller<gpu> cbase;
@@ -313,11 +379,14 @@ namespace storage {
 
         class deviceMemory : public cbase::transfer {
         public:
-            deviceMemory() {}
+            deviceMemory() { state = uncore; }
             ~deviceMemory() {
                 this->join();
-                //for (size_t k = 0; k < device_ptr.size(); ++k)
-                //    cudaFree(device_ptr[k]);
+                for (size_t k = 0; k < device_ptr.size(); ++k)
+                {
+                    if (device_ptr[k] != NULL)
+                        cudaFree(device_ptr[k]);
+                }
             }
 
             void touch() {};
@@ -338,9 +407,9 @@ namespace storage {
                 return *this;
             }
 
-            //void prefetch() { ((base*)this)->prefetch(fetch_request<T>(disk::fp(sid), (T*)this)); }
-            //void evict()    { ((base*)this)->evict(evict_request<T>(disk::fp(sid), (T*)this)); }
-            //void drop()     { ((base*)this)->drop(drop_request<T>(disk::fp(sid), (T*)this)); }
+            void prefetch() { ((base*)this)->prefetch(gpu_prefetch_request<T>((T*)this)); }
+            void evict()    { ((base*)this)->evict(gpu_evict_request<T>((T*)this)); }
+            void drop()     { ((base*)this)->drop(gpu_drop_request<T>((T*)this)); }
         };
 
         static void init(size_t n){
@@ -353,35 +422,36 @@ namespace storage {
         size_t nGPU;
     };
 
+    namespace detail {
+        template <class T> disk::serializable<T>& as_disk(T& t) { return t; }
+        template <class T> gpu::serializable<T>& as_gpu(T& t) { return t; }
+    }
 
     class Controller {
     public:
     
         template<class T> static void fetch(T& t) 
         {
-            disk::serializable<T>& as_disk = t;
-            if(disk::enabled()) as_disk.fetch();
+            if(disk::enabled()) detail::as_disk(t).fetch();
+            else if (gpu::enabled()) detail::as_gpu(t).fetch();
         }
 
         template<class T> static void prefetch(T& t)
         {
-            disk::serializable<T>& as_disk = t;
-            if(disk::enabled()) as_disk.prefetch();
-
-            //gpu::serializable<T>& as_gpu = t;
-            //as_gpu.thread( new boost::thread(upload_request<T>(&t)) );
+            if(disk::enabled())      detail::as_disk(t).prefetch();
+            else if (gpu::enabled()) detail::as_gpu(t).prefetch();
         }
 
         template<class T> static void evict(T& t)
         {
-            disk::serializable<T>& as_disk = t;
-            if(disk::enabled()) as_disk.evict();
+            if(disk::enabled()) detail::as_disk(t).evict();
+            else if (gpu::enabled()) detail::as_gpu(t).evict();
         }
 
         template<class T> static void drop(T& t)
         {
-            disk::serializable<T>& as_disk = t;
-            if(disk::enabled()) as_disk.drop();
+            if(disk::enabled()) detail::as_disk(t).drop();
+            else if (gpu::enabled()) detail::as_gpu(t).drop();
         }
 
         template<class T> static void pin(T& t)     { }
@@ -389,7 +459,11 @@ namespace storage {
         template<class Matrix, class SymmGroup> 
         static void evict(MPSTensor<Matrix, SymmGroup>& t){ }
 
-        static void sync() { if (disk::enabled()) disk::sync(); }
+        static void sync()
+        {
+            if (disk::enabled()) disk::sync();
+            else if (gpu::enabled()) gpu::sync();
+        }
     };
 
     inline static void setup(BaseParameters& parms){
@@ -405,6 +479,9 @@ namespace storage {
             storage::disk::init(dp.string());
         }else{
             maquis::cout << "Temporary storage is disabled\n"; }
+
+        if(parms["GPU"])
+            gpu::init(parms["GPU"]);
     }
 
 } // namespace storage

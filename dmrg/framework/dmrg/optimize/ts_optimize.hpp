@@ -290,6 +290,7 @@ public:
                     Storage::drop(right_[site2+1]);
 
                 this->boundary_left_step(mpo, site1); // creating left_[site2]
+                Storage::prefetch(left_[site2]);
 
                 if (site1 != L-2){ 
                     Storage::evict(mps[site1]);
@@ -322,6 +323,7 @@ public:
                     Storage::drop(left_[site1]);
 
                 this->boundary_right_step(mpo, site2); // creating right_[site2]
+                Storage::prefetch(right_[site2]);
 
                 if(site1 != 0){
                     Storage::evict(mps[site2]);
