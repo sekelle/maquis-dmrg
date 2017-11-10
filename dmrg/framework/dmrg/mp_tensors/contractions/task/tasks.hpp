@@ -326,7 +326,8 @@ private:
 };
 
 template <class Matrix, class SymmGroup>
-class ContractionGroup : public std::vector<MatrixGroup<Matrix, SymmGroup> >
+class ContractionGroup : public ContractionGroupGpuExtension<Matrix, SymmGroup>
+                       , public std::vector<MatrixGroup<Matrix, SymmGroup> >
 {
 public:
     typedef std::vector<MatrixGroup<Matrix, SymmGroup> > base;    
@@ -458,6 +459,9 @@ public:
         return boost::make_tuple(t_move, l_load, lgemm_flops, tgemm_flops, collect);
     }
 
+    template <class OtherMatrix>
+    void initialize_batches(Boundary<OtherMatrix, SymmGroup> const & right) { this->init(t_key_vec, right); }
+
     unsigned get_mps_block() const { return mps_block; }
 
     std::vector<t_key> t_key_vec;
@@ -571,13 +575,15 @@ struct BoundarySchedule : public std::vector<MPSBlock<
 
 template <class Matrix, class SymmGroup>
 struct Schedule_ : public std::vector<std::vector<std::vector<ContractionGroup<Matrix, SymmGroup> > > >
+                 , public ScheduleGpuExtension<Matrix, SymmGroup>
 {
     typedef std::vector<std::vector<std::vector<ContractionGroup<Matrix, SymmGroup> > > > base;
+    typedef ScheduleGpuExtension<Matrix, SymmGroup> base2;
     typedef typename base::value_type::const_iterator const_iterator;
     typedef boost::tuple<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t> stats_t;
 
     Schedule_() {}
-    Schedule_(std::size_t dim) : base(dim), load_balance(dim) {}
+    Schedule_(std::size_t dim) : base(dim), base2(dim), load_balance(dim) {}
 
     double mflops(double time) const { return total_flops*niter / time / 1e6; }
     double bandwidth(double time) const { return total_mem*niter / time / 1e6; }
@@ -608,6 +614,11 @@ struct Schedule_ : public std::vector<std::vector<std::vector<ContractionGroup<M
                 get<4>(ret) += get<4>(cg);
             }
         return ret;
+    }
+
+    template <class OtherMatrix>
+    void allocate(size_t mb, Boundary<OtherMatrix, SymmGroup> const & right) {
+        ((base2*)this)->allocate(mb, (*this)[mb], right);
     }
 
     size_t total_flops, total_mem;

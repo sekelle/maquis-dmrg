@@ -34,6 +34,7 @@
 #include "dmrg/mp_tensors/mpotensor.h"
 #include "dmrg/mp_tensors/twositetensor.h"
 
+#include "dmrg/mp_tensors/contractions/task/tasks_gpu.hpp"
 #include "dmrg/mp_tensors/contractions/task/tasks.hpp"
 #include "dmrg/mp_tensors/contractions/create_schedule/site_hamil_tasks.hpp"
 #include "dmrg/mp_tensors/contractions/create_schedule/right_tasks.hpp"
