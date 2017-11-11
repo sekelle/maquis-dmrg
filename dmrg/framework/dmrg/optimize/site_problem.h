@@ -38,7 +38,7 @@
 template<class Matrix, class OtherMatrix, class SymmGroup>
 struct SiteProblem
 {
-    SiteProblem(MPSTensor<Matrix, SymmGroup> const & initial,
+    SiteProblem(MPSTensor<Matrix, SymmGroup> & initial,
                 Boundary<OtherMatrix, SymmGroup> const & left_,
                 Boundary<OtherMatrix, SymmGroup> const & right_,
                 MPOTensor<Matrix, SymmGroup> const & mpo_)

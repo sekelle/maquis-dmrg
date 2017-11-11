@@ -72,7 +72,7 @@ namespace contraction {
         }
 
         static schedule_t
-        contraction_schedule(MPSTensor<Matrix, SymmGroup> const & mps,
+        contraction_schedule(MPSTensor<Matrix, SymmGroup> & mps,
                              Boundary<OtherMatrix, SymmGroup> const & left,
                              Boundary<OtherMatrix, SymmGroup> const & right,
                              MPOTensor<Matrix, SymmGroup> const & mpo)
@@ -149,7 +149,7 @@ namespace contraction {
         }
 
         static MPSTensor<Matrix, SymmGroup>
-        site_hamil2(MPSTensor<Matrix, SymmGroup> const & ket_tensor,
+        site_hamil2(MPSTensor<Matrix, SymmGroup> & ket_tensor,
                     Boundary<OtherMatrix, SymmGroup> const & left,
                     Boundary<OtherMatrix, SymmGroup> const & right,
                     MPOTensor<Matrix, SymmGroup> const & mpo,

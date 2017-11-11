@@ -35,7 +35,7 @@ namespace common {
 
 template<class Matrix, class OtherMatrix, class SymmGroup>
 typename Schedule<Matrix, SymmGroup>::schedule_t
-create_contraction_schedule(MPSTensor<Matrix, SymmGroup> const & initial,
+create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
                             Boundary<OtherMatrix, SymmGroup> const & left,
                             Boundary<OtherMatrix, SymmGroup> const & right,
                             MPOTensor<Matrix, SymmGroup> const & mpo)

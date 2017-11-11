@@ -106,7 +106,7 @@ namespace ietl
 {
     template<class Matrix, class OtherMatrix, class SymmGroup>
     void mult(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & H,
-              MPSTensor<Matrix, SymmGroup> const & x,
+              MPSTensor<Matrix, SymmGroup> & x,
               MPSTensor<Matrix, SymmGroup> & y)
     {  
         y = contraction::Engine<Matrix, OtherMatrix, SymmGroup>::site_hamil2(x, H.left, H.right, H.mpo, H.contraction_schedule);
