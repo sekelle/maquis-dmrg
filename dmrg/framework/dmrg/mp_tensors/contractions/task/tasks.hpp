@@ -326,7 +326,7 @@ private:
 };
 
 template <class Matrix, class SymmGroup>
-class ContractionGroup : public ContractionGroupGpuExtension<Matrix, SymmGroup>
+class ContractionGroup : public ContractionGroupGpuExtension<Matrix, SymmGroup, ContractionGroup<Matrix, SymmGroup>>
                        , public std::vector<MatrixGroup<Matrix, SymmGroup> >
 {
 public:
@@ -460,9 +460,10 @@ public:
     }
 
     template <class OtherMatrix>
-    void initialize_batches(Boundary<OtherMatrix, SymmGroup> const & right) { this->init(t_key_vec, right); }
+    void initialize_batches(Boundary<OtherMatrix, SymmGroup> const & right) { this->init(right); }
 
     unsigned get_mps_block() const { return mps_block; }
+    unsigned get_r_size() const { return r_size; }
 
     std::vector<t_key> t_key_vec;
 
@@ -503,6 +504,8 @@ private:
     {
         if (!this->size()) return;
 
+        create_T_gpu(mps, right);
+
         int M = mps.row_dim()[mps_block].second; // == m_size
         int N = r_size;
 
@@ -526,6 +529,12 @@ private:
             blas_gemm(gemmtrans[0], gemmtrans[trans], M, N, K, value_type(1), mpsdata + in_offset * M, M,
                       &right.data()[ci][offset], LDB, value_type(0), t_pointer + pos * t_size, M);
         }
+    }
+
+    template <class DefaultMatrix, class OtherMatrix>
+    void create_T_gpu(MPSTensor<DefaultMatrix, SymmGroup> const & mps, Boundary<OtherMatrix, SymmGroup> const & right) const
+    {
+        this->create_T_gpu_impl(mps, right);
     }
 };
 

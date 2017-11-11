@@ -44,7 +44,7 @@
 namespace contraction {
 namespace common {
 
-template <class Matrix, class SymmGroup>
+template <class Matrix, class SymmGroup, class Derived>
 class ContractionGroupGpuExtension
 {
     typedef typename Matrix::value_type value_type;
@@ -62,22 +62,22 @@ public:
         }
     }
 
-    template <class Key, class OtherMatrix>
-    void init(std::vector<Key> const & t_vec, Boundary<OtherMatrix, SymmGroup> const & right)
+    template <class OtherMatrix>
+    void init(Boundary<OtherMatrix, SymmGroup> const & right)
     {
         active = true;
 
-        size_t nt = t_vec.size();
+        size_t nt = impl()->t_key_vec.size();
 
         a_batch.resize(nt);
         b_batch.resize(nt);
         c_batch.resize(nt);
 
-        for (unsigned pos = 0; pos < t_vec.size(); ++pos)
+        for (unsigned pos = 0; pos < impl()->t_key_vec.size(); ++pos)
         {
             unsigned long ci, offset, lb_ket, in_offset;
             char trans;
-            bit_twiddling::unpack(t_vec[pos], ci, offset, lb_ket, in_offset, trans);
+            bit_twiddling::unpack(impl()->t_key_vec[pos], ci, offset, lb_ket, in_offset, trans);
 
             int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
             int LDB = right.index().left_size(ci);
@@ -92,6 +92,36 @@ public:
         cudaMemcpy(dev_t_pointer + b_batch_position * nt, &b_batch[0], nt * sizeof(value_type*), cudaMemcpyHostToDevice);
     }
 
+    template <class DefaultMatrix, class OtherMatrix>
+    void create_T_gpu_impl(MPSTensor<DefaultMatrix, SymmGroup> const & mps,
+                           Boundary<OtherMatrix, SymmGroup> const & right) const
+    {
+        int M = mps.row_dim()[impl()->get_mps_block()].second; // == m_size
+        int N = impl()->get_r_size();
+
+        std::size_t t_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>((size_t)(M * N));
+        std::size_t buffer_size = t_size * impl()->t_key_vec.size();
+        //if (posix_memalign(reinterpret_cast<void**>(&t_pointer), ALIGNMENT, buffer_size * sizeof(value_type)))
+        //    throw std::bad_alloc();
+
+        char gemmtrans[2] = {'N', 'T'};
+        const value_type* mpsdata = &mps.data()[impl()->get_mps_block()](0,0);
+
+        for (unsigned pos = 0; pos < impl()->t_key_vec.size(); ++pos)
+        {
+            unsigned long ci, offset, dummy, in_offset;
+            char trans;
+            bit_twiddling::unpack(impl()->t_key_vec[pos], ci, offset, dummy, in_offset, trans);
+
+            int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
+            int LDB = right.index().left_size(ci);
+
+            //blas_gemm(gemmtrans[0], gemmtrans[trans], M, N, K, value_type(1), mpsdata + in_offset * M, M,
+            //          &right.data()[ci][offset], LDB, value_type(0), t_pointer + pos * t_size, M);
+        }
+    }
+
+
     void download_t(value_type* host, size_t t_size)
     {
         cudaMemcpy(host, dev_t_pointer, t_size * sizeof(value_type), cudaMemcpyDeviceToHost);
@@ -104,6 +134,9 @@ public:
     value_type** dev_batch_ptr;
     //value_type **dev_a_batch, **dev_b_batch, **dev_c_batch;
     value_type* dev_t_pointer;
+
+    private:
+        const Derived* impl() const { return static_cast<const Derived*>(this); }
 };
 
 template <class Matrix, class SymmGroup>
