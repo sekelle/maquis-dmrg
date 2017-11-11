@@ -43,7 +43,7 @@ enum DecompMethod {QR, SVD};
 static DecompMethod DefaultSolver() {return QR;} // QR or SVD
 
 template<class Matrix, class SymmGroup>
-class MPSTensor
+class MPSTensor : public storage::gpu::serializable<MPSTensor<Matrix, SymmGroup>>
 {
 public:
     typedef typename maquis::traits::scalar_type<Matrix>::type scalar_type;

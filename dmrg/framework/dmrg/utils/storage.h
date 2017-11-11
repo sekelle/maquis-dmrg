@@ -342,7 +342,8 @@ namespace storage {
                 if (o.device_ptr[ci] != NULL)
                 {
                     size_t cohort_size = o.index().n_blocks(ci) * o.index().block_size(ci);
-                    cudaMemcpy( &(o.data()[ci][0]), o.device_ptr[ci], cohort_size * sizeof(typename Matrix::value_type), cudaMemcpyDeviceToHost );
+                    cudaMemcpy( &(o.data()[ci][0]), o.device_ptr[ci], cohort_size
+                                                                      * sizeof(typename Matrix::value_type), cudaMemcpyDeviceToHost );
                     cudaFree(o.device_ptr[ci]);
                 }
             }
@@ -369,6 +370,70 @@ namespace storage {
 
     private:
         Boundary<Matrix, SymmGroup>* ptr;
+    };
+
+    template<class Matrix, class SymmGroup>
+    class gpu_prefetch_request< MPSTensor<Matrix, SymmGroup> > {
+    public:
+        gpu_prefetch_request(MPSTensor<Matrix, SymmGroup>* ptr) : ptr(ptr) { }
+        void operator()(){
+            MPSTensor<Matrix, SymmGroup>& o = *ptr;
+
+            //o.device_ptr.resize(1);
+            //cudaMalloc( (void**)(&(o.device_ptr[0])), o.data().num_elements() * sizeof(typename Matrix::value_type) );
+
+            o.device_ptr.resize(o.data().n_blocks());
+            for (size_t b = 0; b < o.data().n_blocks(); ++b)
+            {
+                size_t block_size = num_rows(o.data()[b]) * num_cols(o.data()[b]);
+                cudaMalloc( (void**)(&(o.device_ptr[b])), block_size * sizeof(typename Matrix::value_type) );
+                cudaMemcpy( o.device_ptr[b], &o.data()[b](0,0), block_size * sizeof(typename Matrix::value_type), cudaMemcpyHostToDevice );
+            }
+        }
+    private:
+        MPSTensor<Matrix, SymmGroup>* ptr;
+    };
+
+    template<class Matrix, class SymmGroup>
+    class gpu_evict_request< MPSTensor<Matrix, SymmGroup> > {
+    public:
+        gpu_evict_request(MPSTensor<Matrix, SymmGroup>* ptr) : ptr(ptr) { }
+        void operator()(){
+            MPSTensor<Matrix, SymmGroup>& o = *ptr;
+
+            for (size_t b = 0; b < o.data().n_blocks(); ++b)
+            {
+                if (o.device_ptr[b] != NULL)
+                {
+                    size_t block_size = num_rows(o.data()[b]) * num_cols(o.data()[b]);
+                    cudaMemcpy( &o.data()[b](0,0), o.device_ptr[b], block_size * sizeof(typename Matrix::value_type), cudaMemcpyDeviceToHost );
+                    cudaFree(o.device_ptr[b]);
+                }
+            }
+            o.device_ptr.clear();
+        }
+
+    private:
+        MPSTensor<Matrix, SymmGroup>* ptr;
+    };
+
+    template<class Matrix, class SymmGroup>
+    class gpu_drop_request< MPSTensor<Matrix, SymmGroup> > {
+    public:
+        gpu_drop_request(MPSTensor<Matrix, SymmGroup>* ptr) : ptr(ptr) { }
+        void operator()(){
+            MPSTensor<Matrix, SymmGroup>& o = *ptr;
+
+            for (size_t b = 0; b < o.data().n_blocks(); ++b)
+            {
+                if (o.device_ptr[b] != NULL)
+                    cudaFree(o.device_ptr[b]);
+            }
+            o.device_ptr.clear();
+        }
+
+    private:
+        MPSTensor<Matrix, SymmGroup>* ptr;
     };
 
     class gpu : public controller<gpu>
@@ -411,6 +476,11 @@ namespace storage {
             void evict()    { ((base*)this)->evict(gpu_evict_request<T>((T*)this)); }
             void drop()     { ((base*)this)->drop(gpu_drop_request<T>((T*)this)); }
         };
+
+        template<class T> static void fetch(serializable<T>& t)   { if(enabled()) t.fetch();    }
+        template<class T> static void prefetch(serializable<T>& t){ if(enabled()) t.prefetch(); }
+        template<class T> static void evict(serializable<T>& t)   { if(enabled()) t.evict();    }
+        template<class T> static void drop(serializable<T>& t)    { if(enabled()) t.drop();     }
 
         static void init(size_t n){
             maquis::cout << n << " GPUs enabled\n";
