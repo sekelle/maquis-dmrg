@@ -46,6 +46,7 @@ namespace common {
         typedef typename common::Schedule<Matrix, SymmGroup>::block_type::const_iterator const_iterator;
 
         ket_tensor.make_right_paired();
+        storage::gpu::prefetch(ket_tensor);
 
         Index<SymmGroup> const & physical_i = ket_tensor.site_dim(), right_i = ket_tensor.col_dim(),
                                  left_i = ket_tensor.row_dim();
@@ -75,6 +76,7 @@ namespace common {
                         task_enumeration.push_back(boost::make_tuple(mps_block, s, cgi));
         }
 
+        storage::gpu::fetch(ket_tensor);
         #ifdef MAQUIS_OPENMP
         #pragma omp parallel for schedule (dynamic,1)
         #endif
@@ -84,6 +86,7 @@ namespace common {
                  [ boost::get<2>(task_enumeration[tn]) ]
                  .contract(ket_tensor, left, right, &collector[boost::get<0>(task_enumeration[tn])](0,0));
 
+        storage::gpu::drop(ket_tensor);
         reshape_right_to_left_new(physical_i, left_i, right_i, collector, ret.data());
 
         return ret;
