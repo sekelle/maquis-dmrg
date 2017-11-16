@@ -33,13 +33,14 @@
 #include <utility>
 #include <malloc.h>
 
+#include "dmrg/utils/accelerator.h"
+
 #include "utils/sizeof.h"
 #include "dmrg/utils/aligned_allocator.hpp"
 
 #include "dmrg/mp_tensors/contractions/numeric/numeric.h"
 #include "dmrg/mp_tensors/contractions/numeric/gemm_template.h"
 
-#include <cuda_runtime.h>
 
 namespace contraction {
 namespace common {
@@ -89,7 +90,7 @@ public:
         }
 
         size_t b_batch_position = 1;
-        cudaMemcpy(dev_t_pointer + b_batch_position * nt, &b_batch[0], nt * sizeof(value_type*), cudaMemcpyHostToDevice);
+        cudaMemcpy(dev_batch_ptr + b_batch_position * nt, &b_batch[0], nt * sizeof(value_type*), cudaMemcpyHostToDevice);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -99,13 +100,29 @@ public:
         int M = mps.row_dim()[impl()->get_mps_block()].second; // == m_size
         int N = impl()->get_r_size();
 
+        cublasOperation_t cublasops[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
+        value_type one = 1.0;
+        value_type zero = 0.0;
+
         std::size_t t_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>((size_t)(M * N));
         std::size_t buffer_size = t_size * impl()->t_key_vec.size();
         //if (posix_memalign(reinterpret_cast<void**>(&t_pointer), ALIGNMENT, buffer_size * sizeof(value_type)))
         //    throw std::bad_alloc();
 
-        char gemmtrans[2] = {'N', 'T'};
+        HANDLE_ERROR( cudaMalloc( (void**)&dev_t_pointer, buffer_size * sizeof(value_type)) );
+
         const value_type* mpsdata = &mps.data()[impl()->get_mps_block()](0,0);
+
+        //{ // MPS check
+        //    assert(mps.state == 0);
+        //    assert(mps.device_ptr.size() == mps.data().n_blocks());
+        //    size_t b = impl()->get_mps_block();
+        //    size_t sz = num_rows(mps.data()[b]) * num_cols(mps.data()[b]);
+        //    std::vector<value_type> buffer(sz);
+        //    cudaMemcpy( buffer.data(), (value_type*)mps.device_ptr[b], sz * sizeof(value_type), cudaMemcpyDeviceToHost );
+        //    if (!std::equal(buffer.data(), buffer.data() + buffer.size(), mpsdata) )
+        //        throw std::runtime_error("device mps wrong\n");
+        //}
 
         for (unsigned pos = 0; pos < impl()->t_key_vec.size(); ++pos)
         {
@@ -116,16 +133,30 @@ public:
             int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
             int LDB = right.index().left_size(ci);
 
+
+            //assert (right.device_ptr.size() > ci);
+            //assert (right.device_ptr.size() == right.data().size());
+            //{
+            //std::vector<value_type> buffer(right.data()[ci].size());
+            //cudaMemcpy( buffer.data(), (value_type*)right.device_ptr[ci], right.data()[ci].size() * sizeof(value_type),
+            //            cudaMemcpyDeviceToHost );
+            //if (!std::equal(buffer.data(), buffer.data() + buffer.size(), right.data()[ci].data()) )
+            //    throw std::runtime_error("device right wrong\n");
+            //}
+
+            cublasDgemm(accelerator::gpu::instance().handle, cublasops[0], cublasops[trans], M, N, K, &one,
+                        (value_type*)mps.device_ptr[impl()->get_mps_block()] + in_offset * M, M,
+                        (value_type*)right.device_ptr[ci] + offset, LDB, &zero, dev_t_pointer + pos * t_size, M);
             //blas_gemm(gemmtrans[0], gemmtrans[trans], M, N, K, value_type(1), mpsdata + in_offset * M, M,
             //          &right.data()[ci][offset], LDB, value_type(0), t_pointer + pos * t_size, M);
         }
     }
 
 
-    void download_t(value_type* host, size_t t_size)
+    void download_t(value_type* host, size_t t_size) const
     {
-        cudaMemcpy(host, dev_t_pointer, t_size * sizeof(value_type), cudaMemcpyDeviceToHost);
-        cudaFree(dev_t_pointer);
+        HANDLE_ERROR(cudaMemcpy(host, dev_t_pointer, t_size * sizeof(value_type), cudaMemcpyDeviceToHost));
+        HANDLE_ERROR(cudaFree(dev_t_pointer));
     }
 
     bool active;

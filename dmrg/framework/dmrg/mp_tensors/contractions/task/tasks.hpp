@@ -504,8 +504,6 @@ private:
     {
         if (!this->size()) return;
 
-        create_T_gpu(mps, right);
-
         int M = mps.row_dim()[mps_block].second; // == m_size
         int N = r_size;
 
@@ -513,6 +511,18 @@ private:
         std::size_t buffer_size = t_size * t_key_vec.size();
         if (posix_memalign(reinterpret_cast<void**>(&t_pointer), ALIGNMENT, buffer_size * sizeof(value_type)))
             throw std::bad_alloc();
+
+        if (mps.device_ptr.size())
+        {
+        create_T_gpu(mps, right);
+        //value_type* tp2;
+        //if (posix_memalign(reinterpret_cast<void**>(&tp2), ALIGNMENT, buffer_size * sizeof(value_type)))
+        //    throw std::bad_alloc();
+        //this->download_t(tp2, buffer_size);
+        this->download_t(t_pointer, buffer_size);
+        return;
+        //free(tp2);
+        }
 
         char gemmtrans[2] = {'N', 'T'};
         const value_type* mpsdata = &mps.data()[mps_block](0,0);
