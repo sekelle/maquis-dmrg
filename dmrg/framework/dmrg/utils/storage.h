@@ -209,6 +209,7 @@ namespace storage {
                 assert(impl()->state != D::storing);     // drop of already stored data
                 //assert(impl()->state != D::uncore);      // drop of already stored data
                 assert(impl()->state != D::prefetching); // drop of prefetched data
+                impl()->state = D::uncore;
             }
         private:
             D* impl() { return static_cast<D*>(this); }
