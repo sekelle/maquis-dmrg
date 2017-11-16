@@ -40,6 +40,8 @@ sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_, bool measure_on_mps)
     maquis::cout << DMRG_VERSION_STRING << std::endl;
     storage::setup(parms);
     dmrg_random::engine.seed(parms["seed"]);
+
+    accelerator::setup(parms);
     
     /// Model initialization
     lat = Lattice(parms);
