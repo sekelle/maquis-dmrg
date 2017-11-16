@@ -64,9 +64,6 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
         shtm_tasks(mpo, left.index(), right.index(), left_i,
                   right_i, physical_i, out_right_pb, mb, contraction_schedule[mb]);
 
-        //for (auto& cgv : contraction_schedule[mb])
-        //    for (auto& cg : cgv)
-        //        cg.initialize_batches(right);
         contraction_schedule.allocate(mb, right);
     });
 

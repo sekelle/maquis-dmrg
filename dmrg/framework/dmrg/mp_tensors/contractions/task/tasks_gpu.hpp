@@ -45,34 +45,40 @@
 namespace contraction {
 namespace common {
 
+template <class T>
+struct BatchGemmData
+{
+
+    void upload_a (T** dev_batch_ptr, size_t nt) {
+        HANDLE_ERROR(cudaMemcpy(dev_batch_ptr + offset, a.data(), a.size() * sizeof(T*), cudaMemcpyHostToDevice));
+    }
+    void upload_b (T** dev_batch_ptr, size_t nt) {
+        HANDLE_ERROR(cudaMemcpy(dev_batch_ptr + nt + offset, b.data(), b.size() * sizeof(T*), cudaMemcpyHostToDevice));
+    }
+    void upload_c (T** dev_batch_ptr, size_t nt) {
+        HANDLE_ERROR(cudaMemcpy(dev_batch_ptr + 2*nt + offset, c.data(), c.size() * sizeof(T*), cudaMemcpyHostToDevice));
+    }
+
+    int offset;
+    char trans;
+    int K;
+    int LDB;
+    unsigned long in_offset;
+    std::vector<T*> a, b, c;
+};
+
 template <class Matrix, class SymmGroup, class Derived>
 class ContractionGroupGpuExtension
 {
     typedef typename Matrix::value_type value_type;
 public:
 
-    ContractionGroupGpuExtension() : active(false) {}
-
-    ~ContractionGroupGpuExtension()
-    {
-        if (active)
-        {
-            //cudaFree(dev_a_batch);
-            //cudaFree(dev_b_batch);
-            //cudaFree(dev_c_batch);
-        }
-    }
+    ContractionGroupGpuExtension() {}
 
     template <class OtherMatrix>
     void init(Boundary<OtherMatrix, SymmGroup> const & right)
     {
-        active = true;
-
         size_t nt = impl()->t_key_vec.size();
-
-        a_batch.resize(nt);
-        b_batch.resize(nt);
-        c_batch.resize(nt);
 
         for (unsigned pos = 0; pos < impl()->t_key_vec.size(); ++pos)
         {
@@ -83,14 +89,35 @@ public:
             int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
             int LDB = right.index().left_size(ci);
 
-            assert (right.device_ptr.size() > ci);
-            b_batch[pos] = (value_type*)(right.device_ptr[ci]) + offset;
-            //blas_gemm(gemmtrans[0], gemmtrans[trans], M, N, K, value_type(1), mpsdata + in_offset * M, M,
-            //          &right.data()[ci][offset], LDB, value_type(0), t_pointer + pos * t_size, M);
+            int found = 0;
+            for (int batch = 0 ; batch < batches.size(); ++batch)
+                if (batches[batch].in_offset == in_offset && batches[batch].trans == trans)
+                {
+                    found++;
+                    batches[batch].b.push_back((value_type*)(right.device_ptr[ci]) + offset);
+                }
+
+            assert (found < 2);
+            if (!found)
+            {
+                BatchGemmData<value_type> batch;
+                batch.K = K;
+                batch.LDB = LDB;
+                batch.trans = trans;
+                batch.in_offset = in_offset;
+                batch.b.push_back((value_type*)(right.device_ptr[ci]) + offset);
+                batches.push_back(batch);
+            }
         }
 
-        size_t b_batch_position = 1;
-        cudaMemcpy(dev_batch_ptr + b_batch_position * nt, &b_batch[0], nt * sizeof(value_type*), cudaMemcpyHostToDevice);
+        int offset = 0;
+        for (int batch = 0; batch < batches.size(); ++batch) {
+            batches[batch].offset = offset;
+            offset += batches[batch].b.size();
+        }
+
+        for (auto& b : batches)
+            b.upload_b(dev_batch_ptr, nt);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -104,27 +131,23 @@ public:
         value_type one = 1.0;
         value_type zero = 0.0;
 
+        size_t nt = impl()->t_key_vec.size();
+
         std::size_t t_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>((size_t)(M * N));
-        std::size_t buffer_size = t_size * impl()->t_key_vec.size();
-        //if (posix_memalign(reinterpret_cast<void**>(&t_pointer), ALIGNMENT, buffer_size * sizeof(value_type)))
-        //    throw std::bad_alloc();
+        std::size_t buffer_size = t_size * nt;
 
         HANDLE_ERROR( cudaMalloc( (void**)&dev_t_pointer, buffer_size * sizeof(value_type)) );
 
         const value_type* mpsdata = &mps.data()[impl()->get_mps_block()](0,0);
 
-        //{ // MPS check
-        //    assert(mps.state == 0);
-        //    assert(mps.device_ptr.size() == mps.data().n_blocks());
-        //    size_t b = impl()->get_mps_block();
-        //    size_t sz = num_rows(mps.data()[b]) * num_cols(mps.data()[b]);
-        //    std::vector<value_type> buffer(sz);
-        //    cudaMemcpy( buffer.data(), (value_type*)mps.device_ptr[b], sz * sizeof(value_type), cudaMemcpyDeviceToHost );
-        //    if (!std::equal(buffer.data(), buffer.data() + buffer.size(), mpsdata) )
-        //        throw std::runtime_error("device mps wrong\n");
-        //}
+        // create batches
+        for (auto& B : batches)
+        {
+            B.a.clear();
+            B.c.clear();
+        }
 
-        for (unsigned pos = 0; pos < impl()->t_key_vec.size(); ++pos)
+        for (unsigned pos = 0; pos < nt; ++pos)
         {
             unsigned long ci, offset, dummy, in_offset;
             char trans;
@@ -133,22 +156,46 @@ public:
             int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
             int LDB = right.index().left_size(ci);
 
+            int found = 0;
+            for (int batch = 0; batch < batches.size(); ++batch)
+                if (batches[batch].in_offset == in_offset && batches[batch].trans == trans)
+                {
+                    found++;
+                    batches[batch].a.push_back((value_type*)mps.device_ptr[impl()->get_mps_block()] + in_offset * M);
+                    batches[batch].c.push_back(dev_t_pointer + pos * t_size);
+                }
 
-            //assert (right.device_ptr.size() > ci);
-            //assert (right.device_ptr.size() == right.data().size());
-            //{
-            //std::vector<value_type> buffer(right.data()[ci].size());
-            //cudaMemcpy( buffer.data(), (value_type*)right.device_ptr[ci], right.data()[ci].size() * sizeof(value_type),
-            //            cudaMemcpyDeviceToHost );
-            //if (!std::equal(buffer.data(), buffer.data() + buffer.size(), right.data()[ci].data()) )
-            //    throw std::runtime_error("device right wrong\n");
-            //}
+            assert(found == 1);
+        }
 
-            cublasDgemm(accelerator::gpu::instance().handle, cublasops[0], cublasops[trans], M, N, K, &one,
-                        (value_type*)mps.device_ptr[impl()->get_mps_block()] + in_offset * M, M,
-                        (value_type*)right.device_ptr[ci] + offset, LDB, &zero, dev_t_pointer + pos * t_size, M);
-            //blas_gemm(gemmtrans[0], gemmtrans[trans], M, N, K, value_type(1), mpsdata + in_offset * M, M,
-            //          &right.data()[ci][offset], LDB, value_type(0), t_pointer + pos * t_size, M);
+        //for (unsigned pos = 0; pos < nt; ++pos)
+        //{
+        //    unsigned long ci, offset, dummy, in_offset;
+        //    char trans;
+        //    bit_twiddling::unpack(impl()->t_key_vec[pos], ci, offset, dummy, in_offset, trans);
+
+        //    int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
+        //    int LDB = right.index().left_size(ci);
+
+        //    cublasDgemm(accelerator::gpu::instance().handle, cublasops[0], cublasops[trans], M, N, K, &one,
+        //                (value_type*)mps.device_ptr[impl()->get_mps_block()] + in_offset * M, M,
+        //                (value_type*)right.device_ptr[ci] + offset, LDB, &zero, dev_t_pointer + pos * t_size, M);
+
+        //    //blas_gemm(gemmtrans[0], gemmtrans[trans], M, N, K, value_type(1), mpsdata + in_offset * M, M,
+        //    //          &right.data()[ci][offset], LDB, value_type(0), t_pointer + pos * t_size, M);
+        //}
+
+        for (auto& B : batches) {
+            assert(B.a.size() == B.b.size() && B.b.size() == B.c.size());
+
+            B.upload_a(dev_batch_ptr, nt);
+            B.upload_c(dev_batch_ptr, nt);
+
+            cublasDgemmBatched(accelerator::gpu::instance().handle, cublasops[0], cublasops[B.trans], M, N, B.K, &one,
+                               (const value_type**)(dev_batch_ptr + B.offset), M,
+                               (const value_type**)(dev_batch_ptr + nt + B.offset), B.LDB, &zero,
+                               dev_batch_ptr + 2*nt + B.offset, M, B.a.size()
+                               );
         }
     }
 
@@ -159,12 +206,11 @@ public:
         HANDLE_ERROR(cudaFree(dev_t_pointer));
     }
 
-    bool active;
-    size_t batch_offset;
-    std::vector<value_type*> a_batch, b_batch, c_batch;
+    mutable std::vector<BatchGemmData<value_type>> batches;
     value_type** dev_batch_ptr;
-    //value_type **dev_a_batch, **dev_b_batch, **dev_c_batch;
     value_type* dev_t_pointer;
+
+    size_t batch_offset;
 
     private:
         const Derived* impl() const { return static_cast<const Derived*>(this); }
@@ -183,7 +229,8 @@ public:
     template <class MPSBlock, class OtherMatrix>
     void allocate(size_t mb, MPSBlock& mpsb, Boundary<OtherMatrix, SymmGroup> const & right)
     {
-        size_t bo = 0;
+        // set up array of batched gemm argument pointers
+        size_t bo = 0; // batch offset
 
         for (auto& cgv : mpsb)
             for (auto& cg : cgv) {
@@ -191,7 +238,7 @@ public:
                 bo += 3*cg.t_key_vec.size();
             }
 
-        cudaMalloc( (void**)&(dev_batch_ptr[mb]), bo * sizeof(v_type*) );
+        HANDLE_ERROR( cudaMalloc( (void**)&(dev_batch_ptr[mb]), bo * sizeof(v_type*) ) );
 
         for (auto& cgv : mpsb)
             for (auto& cg : cgv) {
