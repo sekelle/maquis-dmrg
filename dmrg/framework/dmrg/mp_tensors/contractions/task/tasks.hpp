@@ -369,6 +369,36 @@ public:
     }
 
     template <class DefaultMatrix, class OtherMatrix>
+    void contract_gpu(MPSTensor<DefaultMatrix, SymmGroup> const & mps,
+                      Boundary<OtherMatrix, SymmGroup> const & left,
+                      Boundary<OtherMatrix, SymmGroup> const & right,
+                      value_type* output) const
+    {
+        if (!this->size()) return;
+
+        int M = mps.row_dim()[mps_block].second; // == m_size
+        int N = r_size;
+
+        std::size_t t_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>((size_t)(M * N));
+        std::size_t buffer_size = t_size * t_key_vec.size();
+        if (posix_memalign(reinterpret_cast<void**>(&t_pointer), ALIGNMENT, buffer_size * sizeof(value_type)))
+            throw std::bad_alloc();
+
+        this->create_T_gpu(mps, right);
+        this->download_t(t_pointer, buffer_size);
+
+        for (int ss1 = 0; ss1 < this->size(); ++ss1)
+        {
+            if (!(*this)[ss1].n_tasks()) continue;
+            Matrix C = (*this)[ss1].contract(left, t_pointer);
+            parallel_critical
+            maquis::dmrg::detail::iterator_axpy(&C(0,0), &C(0,0) + num_rows(C) * num_cols(C),
+                                                output + l_size * (*this)[ss1].offset, value_type(1.0));
+        }
+        free(this->t_pointer);
+    }
+
+    template <class DefaultMatrix, class OtherMatrix>
     void prop(MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
               DefaultMatrix const & bra_matrix,
               unsigned ci,
@@ -512,13 +542,6 @@ private:
         if (posix_memalign(reinterpret_cast<void**>(&t_pointer), ALIGNMENT, buffer_size * sizeof(value_type)))
             throw std::bad_alloc();
 
-        if (accelerator::gpu::enabled() && mps.device_ptr.size())
-        {
-            create_T_gpu(mps, right);
-            this->download_t(t_pointer, buffer_size);
-            return;
-        }
-
         char gemmtrans[2] = {'N', 'T'};
         const value_type* mpsdata = &mps.data()[mps_block](0,0);
 
@@ -534,12 +557,6 @@ private:
             blas_gemm(gemmtrans[0], gemmtrans[trans], M, N, K, value_type(1), mpsdata + in_offset * M, M,
                       &right.data()[ci][offset], LDB, value_type(0), t_pointer + pos * t_size, M);
         }
-    }
-
-    template <class DefaultMatrix, class OtherMatrix>
-    void create_T_gpu(MPSTensor<DefaultMatrix, SymmGroup> const & mps, Boundary<OtherMatrix, SymmGroup> const & right) const
-    {
-        this->create_T_gpu_impl(mps, right);
     }
 };
 

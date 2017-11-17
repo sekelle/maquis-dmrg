@@ -115,13 +115,13 @@ public:
             offset += batches[batch].b.size();
         }
 
-        for (auto& b : batches)
-            b.upload_b(dev_batch_ptr, nt);
+        //for (auto& b : batches)
+        //    b.upload_b(dev_batch_ptr, nt);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
-    void create_T_gpu_impl(MPSTensor<DefaultMatrix, SymmGroup> const & mps,
-                           Boundary<OtherMatrix, SymmGroup> const & right) const
+    void create_T_gpu(MPSTensor<DefaultMatrix, SymmGroup> const & mps,
+                      Boundary<OtherMatrix, SymmGroup> const & right) const
     {
         int M = mps.row_dim()[impl()->get_mps_block()].second; // == m_size
         int N = impl()->get_r_size();
@@ -138,42 +138,10 @@ public:
         HANDLE_ERROR( cudaMalloc( (void**)&dev_t_pointer, buffer_size * sizeof(value_type)) );
 
         // create batches
-        for (auto& B : batches) {
-            B.a.clear();
-            B.c.clear();
-        }
-
-        for (unsigned pos = 0; pos < nt; ++pos)
-        {
-            unsigned long ci, offset, dummy, in_offset;
-            char trans;
-            bit_twiddling::unpack(impl()->t_key_vec[pos], ci, offset, dummy, in_offset, trans);
-
-            int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
-            int LDB = right.index().left_size(ci);
-
-            for (int batch = 0; batch < batches.size(); ++batch)
-                if (batches[batch].in_offset == in_offset && batches[batch].trans == trans)
-                {
-                    batches[batch].a.push_back((value_type*)mps.device_ptr[impl()->get_mps_block()] + in_offset * M);
-                    batches[batch].c.push_back(dev_t_pointer + pos * t_size);
-                }
-        }
-
-        for (auto& B : batches) {
-            assert(B.a.size() == B.b.size() && B.b.size() == B.c.size());
-
-            B.upload_a(dev_batch_ptr, nt);
-            B.upload_c(dev_batch_ptr, nt);
-
-            cublasDgemmBatched(accelerator::gpu::instance().handle, cublasops[0], cublasops[B.trans], M, N, B.K, &one,
-                               (const value_type**)(dev_batch_ptr + B.offset), M,
-                               (const value_type**)(dev_batch_ptr + nt + B.offset), B.LDB, &zero,
-                               dev_batch_ptr + 2*nt + B.offset, M, B.a.size()
-                               );
-        }
-
-        //const value_type* mpsdata = &mps.data()[impl()->get_mps_block()](0,0);
+        //for (auto& B : batches) {
+        //    B.a.clear();
+        //    B.c.clear();
+        //}
 
         //for (unsigned pos = 0; pos < nt; ++pos)
         //{
@@ -184,13 +152,45 @@ public:
         //    int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
         //    int LDB = right.index().left_size(ci);
 
-        //    cublasDgemm(accelerator::gpu::instance().handle, cublasops[0], cublasops[trans], M, N, K, &one,
-        //                (value_type*)mps.device_ptr[impl()->get_mps_block()] + in_offset * M, M,
-        //                (value_type*)right.device_ptr[ci] + offset, LDB, &zero, dev_t_pointer + pos * t_size, M);
-
-        //    //blas_gemm(gemmtrans[0], gemmtrans[trans], M, N, K, value_type(1), mpsdata + in_offset * M, M,
-        //    //          &right.data()[ci][offset], LDB, value_type(0), t_pointer + pos * t_size, M);
+        //    for (int batch = 0; batch < batches.size(); ++batch)
+        //        if (batches[batch].in_offset == in_offset && batches[batch].trans == trans)
+        //        {
+        //            batches[batch].a.push_back((value_type*)mps.device_ptr[impl()->get_mps_block()] + in_offset * M);
+        //            batches[batch].c.push_back(dev_t_pointer + pos * t_size);
+        //        }
         //}
+
+        //for (auto& B : batches) {
+        //    assert(B.a.size() == B.b.size() && B.b.size() == B.c.size());
+
+        //    B.upload_a(dev_batch_ptr, nt);
+        //    B.upload_c(dev_batch_ptr, nt);
+
+        //    cublasDgemmBatched(accelerator::gpu::instance().handle, cublasops[0], cublasops[B.trans], M, N, B.K, &one,
+        //                       (const value_type**)(dev_batch_ptr + B.offset), M,
+        //                       (const value_type**)(dev_batch_ptr + nt + B.offset), B.LDB, &zero,
+        //                       dev_batch_ptr + 2*nt + B.offset, M, B.a.size()
+        //                       );
+        //}
+
+        const value_type* mpsdata = &mps.data()[impl()->get_mps_block()](0,0);
+
+        for (unsigned pos = 0; pos < nt; ++pos)
+        {
+            unsigned long ci, offset, dummy, in_offset;
+            char trans;
+            bit_twiddling::unpack(impl()->t_key_vec[pos], ci, offset, dummy, in_offset, trans);
+
+            int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
+            int LDB = right.index().left_size(ci);
+
+            cublasDgemm(accelerator::gpu::instance().handle, cublasops[0], cublasops[trans], M, N, K, &one,
+                        (value_type*)mps.device_ptr[impl()->get_mps_block()] + in_offset * M, M,
+                        (value_type*)right.device_ptr[ci] + offset, LDB, &zero, dev_t_pointer + pos * t_size, M);
+
+            //blas_gemm(gemmtrans[0], gemmtrans[trans], M, N, K, value_type(1), mpsdata + in_offset * M, M,
+            //          &right.data()[ci][offset], LDB, value_type(0), t_pointer + pos * t_size, M);
+        }
     }
 
 

@@ -77,14 +77,30 @@ namespace common {
         }
 
         storage::gpu::fetch(ket_tensor);
-        #ifdef MAQUIS_OPENMP
-        #pragma omp parallel for schedule (dynamic,1)
-        #endif
-        for (index_type tn = 0; tn < task_enumeration.size(); ++tn)
-            tasks[ boost::get<0>(task_enumeration[tn]) ]
-                 [ boost::get<1>(task_enumeration[tn]) ]
-                 [ boost::get<2>(task_enumeration[tn]) ]
-                 .contract(ket_tensor, left, right, &collector[boost::get<0>(task_enumeration[tn])](0,0));
+        if (accelerator::gpu::enabled() && ket_tensor.device_ptr.size())
+        {
+            #ifdef MAQUIS_OPENMP
+            #pragma omp parallel for schedule (dynamic,1)
+            #endif
+            for (index_type tn = 0; tn < task_enumeration.size(); ++tn)
+                tasks[ boost::get<0>(task_enumeration[tn]) ]
+                     [ boost::get<1>(task_enumeration[tn]) ]
+                     [ boost::get<2>(task_enumeration[tn]) ]
+                     .contract_gpu(ket_tensor, left, right, &collector[boost::get<0>(task_enumeration[tn])](0,0));
+        }
+        else
+        {
+            #ifdef MAQUIS_OPENMP
+            #pragma omp parallel for schedule (dynamic,1)
+            #endif
+            for (index_type tn = 0; tn < task_enumeration.size(); ++tn)
+                tasks[ boost::get<0>(task_enumeration[tn]) ]
+                     [ boost::get<1>(task_enumeration[tn]) ]
+                     [ boost::get<2>(task_enumeration[tn]) ]
+                     .contract(ket_tensor, left, right, &collector[boost::get<0>(task_enumeration[tn])](0,0));
+        }
+
+
 
         storage::gpu::drop(ket_tensor);
         reshape_right_to_left_new(physical_i, left_i, right_i, collector, ret.data());
