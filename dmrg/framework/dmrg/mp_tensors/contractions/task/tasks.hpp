@@ -58,7 +58,7 @@ namespace detail {
 
 
 template <class Matrix, class SymmGroup>
-class MatrixGroup
+class MatrixGroup : public MatrixGroupGpuExtension<Matrix, SymmGroup, MatrixGroup<Matrix, SymmGroup>>
 {
     typedef MPOTensor_detail::index_type index_type;
     typedef typename Matrix::value_type value_type;
@@ -68,6 +68,8 @@ public:
 
     typedef typename detail::micro_task_shtm<value_type> micro_task;
     typedef typename SymmGroup::charge charge;
+
+    friend class MatrixGroupGpuExtension<Matrix, SymmGroup, MatrixGroup<Matrix, SymmGroup>>;
 
     MatrixGroup() {}
     MatrixGroup(unsigned ls, unsigned ms, unsigned rs) : l_size(ls), m_size(ms), r_size(rs) {}
@@ -335,6 +337,8 @@ public:
     typedef __uint128_t t_key;
     typedef typename SymmGroup::charge charge;
 
+    friend class ContractionGroupGpuExtension<Matrix, SymmGroup, ContractionGroup<Matrix, SymmGroup>>;
+
     ContractionGroup() {}
     ContractionGroup(unsigned b, unsigned s, unsigned ls, unsigned ms, unsigned rs, unsigned out_offset, bool left=false)
         : mps_block(b), l_size(ls), r_size(rs), base(s, typename base::value_type(ls, ms, rs))
@@ -368,35 +372,35 @@ public:
         free(t_pointer);
     }
 
-    template <class DefaultMatrix, class OtherMatrix>
-    void contract_gpu(MPSTensor<DefaultMatrix, SymmGroup> const & mps,
-                      Boundary<OtherMatrix, SymmGroup> const & left,
-                      Boundary<OtherMatrix, SymmGroup> const & right,
-                      value_type* output) const
-    {
-        if (!this->size()) return;
+    //template <class DefaultMatrix, class OtherMatrix>
+    //void contract_gpu(MPSTensor<DefaultMatrix, SymmGroup> const & mps,
+    //                  Boundary<OtherMatrix, SymmGroup> const & left,
+    //                  Boundary<OtherMatrix, SymmGroup> const & right,
+    //                  value_type* output) const
+    //{
+    //    if (!this->size()) return;
 
-        int M = mps.row_dim()[mps_block].second; // == m_size
-        int N = r_size;
+    //    int M = mps.row_dim()[mps_block].second; // == m_size
+    //    int N = r_size;
 
-        std::size_t t_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>((size_t)(M * N));
-        std::size_t buffer_size = t_size * t_key_vec.size();
-        if (posix_memalign(reinterpret_cast<void**>(&t_pointer), ALIGNMENT, buffer_size * sizeof(value_type)))
-            throw std::bad_alloc();
+    //    std::size_t t_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>((size_t)(M * N));
+    //    std::size_t buffer_size = t_size * t_key_vec.size();
+    //    if (posix_memalign(reinterpret_cast<void**>(&t_pointer), ALIGNMENT, buffer_size * sizeof(value_type)))
+    //        throw std::bad_alloc();
 
-        this->create_T_gpu(mps, right);
-        this->download_t(t_pointer, buffer_size);
+    //    this->create_T_gpu(mps, right);
+    //    this->download_t(t_pointer, buffer_size);
 
-        for (int ss1 = 0; ss1 < this->size(); ++ss1)
-        {
-            if (!(*this)[ss1].n_tasks()) continue;
-            Matrix C = (*this)[ss1].contract(left, t_pointer);
-            parallel_critical
-            maquis::dmrg::detail::iterator_axpy(&C(0,0), &C(0,0) + num_rows(C) * num_cols(C),
-                                                output + l_size * (*this)[ss1].offset, value_type(1.0));
-        }
-        free(this->t_pointer);
-    }
+    //    for (int ss1 = 0; ss1 < this->size(); ++ss1)
+    //    {
+    //        if (!(*this)[ss1].n_tasks()) continue;
+    //        Matrix C = (*this)[ss1].contract(left, this->t_pointer);
+    //        parallel_critical
+    //        maquis::dmrg::detail::iterator_axpy(&C(0,0), &C(0,0) + num_rows(C) * num_cols(C),
+    //                                            output + l_size * (*this)[ss1].offset, value_type(1.0));
+    //    }
+    //    free(t_pointer);
+    //}
 
     template <class DefaultMatrix, class OtherMatrix>
     void prop(MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,

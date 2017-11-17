@@ -68,6 +68,53 @@ struct BatchGemmData
 };
 
 template <class Matrix, class SymmGroup, class Derived>
+class MatrixGroupGpuExtension
+{
+    typedef typename Matrix::value_type value_type;
+    typedef MPOTensor_detail::index_type index_type;
+public:
+
+    template <class OtherMatrix>
+    typename boost::enable_if<boost::is_same<typename OtherMatrix::value_type, double>, Matrix>::type
+    contract_gpu(Boundary<OtherMatrix, SymmGroup> const & left, const value_type* t_pointer) const
+    {
+        const value_type** left_mat = new const value_type*[impl()->b2sz.size()];
+
+        for (index_type i = 0; i < impl()->b2sz.size(); ++i)
+            left_mat[i] = (value_type*)&(left.device_ptr[impl()->bs[i]]) + impl()->ks[i];
+
+        value_type* dev_ret;
+        maquis::cout << "alloc " << impl()->l_size * impl()->r_size * sizeof(value_type) << std::endl;
+        HANDLE_ERROR( cudaMalloc((void**)&dev_ret, impl()->l_size * impl()->r_size * sizeof(value_type)) );
+
+        dgemm_ddot_gpu(accelerator::gpu::instance().handle,
+                       impl()->l_size, impl()->m_size, impl()->r_size,
+                       impl()->b2sz.size(), impl()->b2sz.data(), &(impl()->trans[0]),
+                       impl()->tidx.data(), impl()->alpha.data(), left_mat, t_pointer, dev_ret);
+
+        Matrix ret(impl()->l_size, impl()->r_size);
+        //HANDLE_ERROR( cudaMemcpy( &ret(0,0), dev_ret, impl()->l_size * impl()->r_size * sizeof(value_type), cudaMemcpyDeviceToHost) );
+
+        cudaFree(dev_ret);
+        delete[] left_mat;
+
+        return ret;
+    }
+
+    template <class OtherMatrix>
+    typename boost::disable_if<boost::is_same<typename OtherMatrix::value_type, double>, Matrix>::type
+    contract_gpu(Boundary<OtherMatrix, SymmGroup> const & left, const value_type* t_pointer) const
+    {
+        throw std::runtime_error("not implemented\n");
+        Matrix ret(impl()->l_size, impl()->r_size);
+        return ret;
+    }
+
+    private:
+        const Derived* impl() const { return static_cast<const Derived*>(this); }
+};
+
+template <class Matrix, class SymmGroup, class Derived>
 class ContractionGroupGpuExtension
 {
     typedef typename Matrix::value_type value_type;
@@ -119,10 +166,45 @@ public:
         //    b.upload_b(dev_batch_ptr, nt);
     }
 
+
+    template <class DefaultMatrix, class OtherMatrix>
+    void contract_gpu(MPSTensor<DefaultMatrix, SymmGroup> const & mps,
+                      Boundary<OtherMatrix, SymmGroup> const & left,
+                      Boundary<OtherMatrix, SymmGroup> const & right,
+                      value_type* output) const
+    {
+        if (!impl()->size()) return;
+        int M = mps.row_dim()[impl()->get_mps_block()].second; // == m_size
+        int N = impl()->r_size;
+
+        std::size_t t_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>((size_t)(M * N));
+        std::size_t buffer_size = t_size * impl()->t_key_vec.size();
+        value_type* t_pointer;
+        if (posix_memalign(reinterpret_cast<void**>(&t_pointer), ALIGNMENT, buffer_size * sizeof(value_type)))
+            throw std::bad_alloc();
+
+        create_T_gpu(mps, right);
+        download_t(t_pointer, buffer_size);
+
+        for (int ss1 = 0; ss1 < impl()->size(); ++ss1)
+        {
+            if (!(*impl())[ss1].n_tasks()) continue;
+            //Matrix C = (*impl())[ss1].contract_gpu(left, dev_t_pointer);
+            Matrix C = (*impl())[ss1].contract(left, t_pointer);
+            parallel_critical
+            maquis::dmrg::detail::iterator_axpy(&C(0,0), &C(0,0) + num_rows(C) * num_cols(C),
+                                                output + impl()->l_size * (*impl())[ss1].offset, value_type(1.0));
+        }
+        free(t_pointer);
+        //cudaFree(dev_t_pointer);
+    }
+
     template <class DefaultMatrix, class OtherMatrix>
     void create_T_gpu(MPSTensor<DefaultMatrix, SymmGroup> const & mps,
                       Boundary<OtherMatrix, SymmGroup> const & right) const
     {
+        if (!impl()->size()) return;
+
         int M = mps.row_dim()[impl()->get_mps_block()].second; // == m_size
         int N = impl()->get_r_size();
 
