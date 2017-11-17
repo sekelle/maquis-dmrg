@@ -512,16 +512,11 @@ private:
         if (posix_memalign(reinterpret_cast<void**>(&t_pointer), ALIGNMENT, buffer_size * sizeof(value_type)))
             throw std::bad_alloc();
 
-        if (mps.device_ptr.size())
+        if (accelerator::gpu::enabled() && mps.device_ptr.size())
         {
-        create_T_gpu(mps, right);
-        //value_type* tp2;
-        //if (posix_memalign(reinterpret_cast<void**>(&tp2), ALIGNMENT, buffer_size * sizeof(value_type)))
-        //    throw std::bad_alloc();
-        //this->download_t(tp2, buffer_size);
-        this->download_t(t_pointer, buffer_size);
-        return;
-        //free(tp2);
+            create_T_gpu(mps, right);
+            this->download_t(t_pointer, buffer_size);
+            return;
         }
 
         char gemmtrans[2] = {'N', 'T'};

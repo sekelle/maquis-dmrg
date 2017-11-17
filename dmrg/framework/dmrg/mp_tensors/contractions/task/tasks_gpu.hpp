@@ -229,6 +229,8 @@ public:
     template <class MPSBlock, class OtherMatrix>
     void allocate(size_t mb, MPSBlock& mpsb, Boundary<OtherMatrix, SymmGroup> const & right)
     {
+        if (!accelerator::gpu::enabled()) return;
+
         // set up array of batched gemm argument pointers
         size_t bo = 0; // batch offset
 
