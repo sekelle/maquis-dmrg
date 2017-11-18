@@ -79,9 +79,9 @@ namespace common {
         storage::gpu::fetch(ket_tensor);
         if (accelerator::gpu::enabled() && ket_tensor.device_ptr.size())
         {
-            #ifdef MAQUIS_OPENMP
-            #pragma omp parallel for schedule (dynamic,1)
-            #endif
+            //#ifdef MAQUIS_OPENMP
+            //#pragma omp parallel for schedule (dynamic,1)
+            //#endif
             for (index_type tn = 0; tn < task_enumeration.size(); ++tn)
                 tasks[ boost::get<0>(task_enumeration[tn]) ]
                      [ boost::get<1>(task_enumeration[tn]) ]

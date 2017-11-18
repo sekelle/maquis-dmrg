@@ -81,11 +81,11 @@ public:
         const value_type** left_mat = new const value_type*[impl()->b2sz.size()];
 
         for (index_type i = 0; i < impl()->b2sz.size(); ++i)
-            left_mat[i] = (value_type*)&(left.device_ptr[impl()->bs[i]]) + impl()->ks[i];
+            left_mat[i] = (value_type*)left.device_ptr[impl()->bs[i]] + impl()->ks[i];
 
         value_type* dev_ret;
-        maquis::cout << "alloc " << impl()->l_size * impl()->r_size * sizeof(value_type) << std::endl;
         HANDLE_ERROR( cudaMalloc((void**)&dev_ret, impl()->l_size * impl()->r_size * sizeof(value_type)) );
+        HANDLE_ERROR( cudaMemset( dev_ret, 0, impl()->l_size * impl()->r_size * sizeof(value_type) ) );
 
         dgemm_ddot_gpu(accelerator::gpu::instance().handle,
                        impl()->l_size, impl()->m_size, impl()->r_size,
@@ -93,7 +93,7 @@ public:
                        impl()->tidx.data(), impl()->alpha.data(), left_mat, t_pointer, dev_ret);
 
         Matrix ret(impl()->l_size, impl()->r_size);
-        //HANDLE_ERROR( cudaMemcpy( &ret(0,0), dev_ret, impl()->l_size * impl()->r_size * sizeof(value_type), cudaMemcpyDeviceToHost) );
+        HANDLE_ERROR( cudaMemcpy( &ret(0,0), dev_ret, impl()->l_size * impl()->r_size * sizeof(value_type), cudaMemcpyDeviceToHost) );
 
         cudaFree(dev_ret);
         delete[] left_mat;
@@ -173,30 +173,17 @@ public:
                       Boundary<OtherMatrix, SymmGroup> const & right,
                       value_type* output) const
     {
-        if (!impl()->size()) return;
-        int M = mps.row_dim()[impl()->get_mps_block()].second; // == m_size
-        int N = impl()->r_size;
-
-        std::size_t t_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>((size_t)(M * N));
-        std::size_t buffer_size = t_size * impl()->t_key_vec.size();
-        value_type* t_pointer;
-        if (posix_memalign(reinterpret_cast<void**>(&t_pointer), ALIGNMENT, buffer_size * sizeof(value_type)))
-            throw std::bad_alloc();
-
         create_T_gpu(mps, right);
-        download_t(t_pointer, buffer_size);
 
         for (int ss1 = 0; ss1 < impl()->size(); ++ss1)
         {
             if (!(*impl())[ss1].n_tasks()) continue;
-            //Matrix C = (*impl())[ss1].contract_gpu(left, dev_t_pointer);
-            Matrix C = (*impl())[ss1].contract(left, t_pointer);
+            Matrix C = (*impl())[ss1].contract_gpu(left, dev_t_pointer);
             parallel_critical
             maquis::dmrg::detail::iterator_axpy(&C(0,0), &C(0,0) + num_rows(C) * num_cols(C),
                                                 output + impl()->l_size * (*impl())[ss1].offset, value_type(1.0));
         }
-        free(t_pointer);
-        //cudaFree(dev_t_pointer);
+        cudaFree(dev_t_pointer);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -218,6 +205,22 @@ public:
         std::size_t buffer_size = t_size * nt;
 
         HANDLE_ERROR( cudaMalloc( (void**)&dev_t_pointer, buffer_size * sizeof(value_type)) );
+
+        const value_type* mpsdata = &mps.data()[impl()->get_mps_block()](0,0);
+
+        for (unsigned pos = 0; pos < nt; ++pos)
+        {
+            unsigned long ci, offset, dummy, in_offset;
+            char trans;
+            bit_twiddling::unpack(impl()->t_key_vec[pos], ci, offset, dummy, in_offset, trans);
+
+            int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
+            int LDB = right.index().left_size(ci);
+
+            cublasDgemm(accelerator::gpu::instance().handle, cublasops[0], cublasops[trans], M, N, K, &one,
+                        (value_type*)mps.device_ptr[impl()->get_mps_block()] + in_offset * M, M,
+                        (value_type*)right.device_ptr[ci] + offset, LDB, &zero, dev_t_pointer + pos * t_size, M);
+        }
 
         // create batches
         //for (auto& B : batches) {
@@ -254,25 +257,6 @@ public:
         //                       dev_batch_ptr + 2*nt + B.offset, M, B.a.size()
         //                       );
         //}
-
-        const value_type* mpsdata = &mps.data()[impl()->get_mps_block()](0,0);
-
-        for (unsigned pos = 0; pos < nt; ++pos)
-        {
-            unsigned long ci, offset, dummy, in_offset;
-            char trans;
-            bit_twiddling::unpack(impl()->t_key_vec[pos], ci, offset, dummy, in_offset, trans);
-
-            int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
-            int LDB = right.index().left_size(ci);
-
-            cublasDgemm(accelerator::gpu::instance().handle, cublasops[0], cublasops[trans], M, N, K, &one,
-                        (value_type*)mps.device_ptr[impl()->get_mps_block()] + in_offset * M, M,
-                        (value_type*)right.device_ptr[ci] + offset, LDB, &zero, dev_t_pointer + pos * t_size, M);
-
-            //blas_gemm(gemmtrans[0], gemmtrans[trans], M, N, K, value_type(1), mpsdata + in_offset * M, M,
-            //          &right.data()[ci][offset], LDB, value_type(0), t_pointer + pos * t_size, M);
-        }
     }
 
 

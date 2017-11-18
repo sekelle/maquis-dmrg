@@ -153,7 +153,8 @@ void dgemm_ddot_gpu_tpl(cublasHandle_t handle,
 
     fortran_int_t one = 1;
     uint t_size = ms * rs;
-    uint t_size_padded = t_size;
+    //uint t_size_padded = t_size;
+    uint t_size_padded = round_up<ALIGNMENT/sizeof(T)>(t_size);
     fortran_int_t t_size_fortran = t_size;
 
     cublasOperation_t cublasops[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
@@ -195,7 +196,7 @@ void dgemm_ddot_gpu(cublasHandle_t handle,
                     const unsigned* b2sz, const char* transL, unsigned const* const* tidx,
                     double const* const* alpha, const double** left, const double* t, double* dev_out)
 {
-    return dgemm_ddot_gpu_tpl(handle,ms,ls,rs,b1size,b2sz,transL,tidx,alpha,left,t,dev_out);
+    return dgemm_ddot_gpu_tpl(handle,ls,ms,rs,b1size,b2sz,transL,tidx,alpha,left,t,dev_out);
 }
 
 #endif
