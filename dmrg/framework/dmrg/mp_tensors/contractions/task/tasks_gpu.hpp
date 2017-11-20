@@ -205,8 +205,6 @@ public:
 
         HANDLE_ERROR( cudaMalloc( (void**)&dev_t_pointer, buffer_size * sizeof(value_type)) );
 
-        const value_type* mpsdata = &mps.data()[impl()->get_mps_block()](0,0);
-
         for (unsigned pos = 0; pos < nt; ++pos)
         {
             unsigned long ci, offset, dummy, in_offset;
