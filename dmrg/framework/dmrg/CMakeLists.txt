@@ -60,11 +60,14 @@ add_library(dmrg_models STATIC ${DMRG_MODELS_SOURCES})
 add_library(numeric STATIC mp_tensors/contractions/numeric/numeric.cpp)
 target_link_libraries(dmrg_models numeric)
 
-set_property(TARGET dmrg_utils dmrg_models numeric PROPERTY POSITION_INDEPENDENT_CODE TRUE)
+add_library(numeric_gpu STATIC mp_tensors/contractions/numeric/numeric_gpu.cpp)
+target_link_libraries(dmrg_models numeric_gpu)
+
+set_property(TARGET dmrg_utils dmrg_models numeric numeric_gpu PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 
 # *** Install
 
-install(TARGETS dmrg_utils dmrg_models numeric
+install(TARGETS dmrg_utils dmrg_models numeric numeric_gpu
         EXPORT DMRGTargets COMPONENT libraries DESTINATION lib)
-export(TARGETS dmrg_utils dmrg_models numeric
+export(TARGETS dmrg_utils dmrg_models numeric numeric_gpu
        FILE "${PROJECT_BINARY_DIR}/DMRGTargets.cmake")

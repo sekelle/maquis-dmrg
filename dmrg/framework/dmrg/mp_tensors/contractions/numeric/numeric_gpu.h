@@ -26,10 +26,14 @@
  *****************************************************************************/
 
 
-#ifndef MAQUIS_TASKS_NUMERIC_H
-#define MAQUIS_TASKS_NUMERIC_H
+#ifndef MAQUIS_NUMERIC_GPU_H
+#define MAQUIS_NUMERIC_GPU_H
 
-void dgemm_ddot(unsigned ls, unsigned ms, unsigned rs, unsigned b1size,
-                const unsigned* b2sz, const char* transL, unsigned const* const* tidx,
-                double const* const* alpha, const double** left, const double* t, double* out);
+#include "cuda.h"
+
+void dgemm_ddot_gpu(cublasHandle_t handle,
+                    unsigned ls, unsigned ms, unsigned rs, unsigned b1size,
+                    const unsigned* b2sz, const char* transL, unsigned const* const* tidx,
+                    double const* const* alpha, const double** left, const double* t, double* out);
+
 #endif

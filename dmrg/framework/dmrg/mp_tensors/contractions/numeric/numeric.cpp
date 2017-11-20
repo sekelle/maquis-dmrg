@@ -44,32 +44,9 @@
 // BLAS declarations
 #include <boost/numeric/bindings/blas/detail/blas.h>
 
-#include <cuda_runtime.h>
-#include <cublas_v2.h>
 #include "numeric.h"
+#include "common.h"
 
-#define ALIGNMENT 32
-
-static void HandleError( cudaError_t err,
-                         const char *file,
-                         int line ) {
-    if (err != cudaSuccess) {
-        printf( "%s in %s at line %d\n", cudaGetErrorString( err ),
-                file, line );
-        exit( EXIT_FAILURE );
-    }
-}
-#define HANDLE_ERROR( err ) (HandleError( err, __FILE__, __LINE__ ))
-
-
-template <unsigned A, typename T>
-inline T round_up(T x)
-{
-    // round up x to nearest multiple of A
-    BOOST_STATIC_ASSERT((A & (A-1)) == 0); // check that A is a power of 2
-    BOOST_STATIC_ASSERT(!std::numeric_limits<T>::is_signed);
-    return (x+(A-1)) & (~(A-1));
-}
 
 //inline void mydaxpy(std::size_t n, double a, const double* x, double* y)
 //{
@@ -139,64 +116,6 @@ void dgemm_ddot(unsigned ls, unsigned ms, unsigned rs, unsigned b1size,
     }
 
     free(s_buffer);
-}
-
-template <class T>
-void dgemm_ddot_gpu_tpl(cublasHandle_t handle,
-                        //std::vector<cudaStream_t> const & row_streams,
-                        //std::vector<cudaStream_t> const & col_streams,
-                        unsigned ls, unsigned ms, unsigned rs, unsigned b1size,
-                        const unsigned* b2sz, const char* transL, unsigned const* const* tidx,
-                        T const* const* alpha, const T** left, const T* t, T* dev_out)
-{
-    typedef unsigned long uint;
-
-    fortran_int_t one = 1;
-    uint t_size = ms * rs;
-    //uint t_size_padded = t_size;
-    uint t_size_padded = round_up<ALIGNMENT/sizeof(T)>(t_size);
-    fortran_int_t t_size_fortran = t_size;
-
-    cublasOperation_t cublasops[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
-    T fone = 1.0;
-
-    T * dev_s_buffer;
-    HANDLE_ERROR( cudaMalloc( (void**)&dev_s_buffer, t_size * sizeof(T) ) );
-    HANDLE_ERROR( cudaMemset( dev_s_buffer, 0, t_size * sizeof(T) ) );
-
-    for (uint i = 0; i < b1size; ++i)
-    {
-        HANDLE_ERROR( cudaMemset( dev_s_buffer, 0, t_size * sizeof(T) ) );
-        const T * alpha_i = alpha[i];
-        const unsigned * tidx_i = tidx[i];
-
-        //cublasSetStream(handle, row_streams[i]);
-
-        for (uint j = 0; j < b2sz[i]; ++j)
-        {
-            unsigned tpos = tidx_i[j];
-            cublasDaxpy(handle, t_size_fortran, (alpha_i+j), t + tpos * t_size_padded, one, dev_s_buffer, one);
-        }
-
-        if (transL[i])
-            cublasDgemm(handle, cublasops[transL[i]], cublasops[0], ls, rs, ms, &fone, left[i], ms,
-                        dev_s_buffer, ms, &fone, dev_out, ls);
-        else
-            cublasDgemm(handle, cublasops[transL[i]], cublasops[0], ls, rs, ms, &fone, left[i], ls,
-                        dev_s_buffer, ms, &fone, dev_out, ls);
-    }
-
-    cudaFree(dev_s_buffer);
-}
-
-void dgemm_ddot_gpu(cublasHandle_t handle,
-                    //std::vector<cudaStream_t> const & row_streams,
-                    //std::vector<cudaStream_t> const & col_streams,
-                    unsigned ls, unsigned ms, unsigned rs, unsigned b1size,
-                    const unsigned* b2sz, const char* transL, unsigned const* const* tidx,
-                    double const* const* alpha, const double** left, const double* t, double* dev_out)
-{
-    return dgemm_ddot_gpu_tpl(handle,ls,ms,rs,b1size,b2sz,transL,tidx,alpha,left,t,dev_out);
 }
 
 #endif
