@@ -494,6 +494,7 @@ public:
 
     unsigned get_mps_block() const { return mps_block; }
     unsigned get_r_size() const { return r_size; }
+    unsigned get_m_size() const { return (*this)[0].get_m_size(); }
 
     std::vector<t_key> t_key_vec;
 

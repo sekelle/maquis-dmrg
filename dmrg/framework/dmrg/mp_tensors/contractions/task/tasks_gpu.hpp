@@ -48,22 +48,23 @@ template <class T>
 struct BatchGemmData
 {
 
-    void upload_a (T** dev_batch_ptr, size_t nt) {
-        HANDLE_ERROR(cudaMemcpy(dev_batch_ptr + offset, a.data(), a.size() * sizeof(T*), cudaMemcpyHostToDevice));
-    }
-    void upload_b (T** dev_batch_ptr, size_t nt) {
-        HANDLE_ERROR(cudaMemcpy(dev_batch_ptr + nt + offset, b.data(), b.size() * sizeof(T*), cudaMemcpyHostToDevice));
-    }
-    void upload_c (T** dev_batch_ptr, size_t nt) {
-        HANDLE_ERROR(cudaMemcpy(dev_batch_ptr + 2*nt + offset, c.data(), c.size() * sizeof(T*), cudaMemcpyHostToDevice));
-    }
+    //void upload_a (T** dev_batch_ptr, size_t nt) {
+    //    HANDLE_ERROR(cudaMemcpy(dev_batch_ptr + offset, a.data(), a.size() * sizeof(T*), cudaMemcpyHostToDevice));
+    //}
+    //void upload_b (T** dev_batch_ptr, size_t nt) {
+    //    HANDLE_ERROR(cudaMemcpy(dev_batch_ptr + nt + offset, b.data(), b.size() * sizeof(T*), cudaMemcpyHostToDevice));
+    //}
+    //void upload_c (T** dev_batch_ptr, size_t nt) {
+    //    HANDLE_ERROR(cudaMemcpy(dev_batch_ptr + 2*nt + offset, c.data(), c.size() * sizeof(T*), cudaMemcpyHostToDevice));
+    //}
 
     int offset;
     char trans;
     int K;
     int LDB;
     unsigned long in_offset;
-    std::vector<T*> a, b, c;
+    //std::vector<T*> a, b, c;
+    std::vector<T*> b;
 };
 
 template <class Matrix, class SymmGroup, class Derived>
@@ -155,11 +156,11 @@ public:
             }
         }
 
-        int offset = 0;
-        for (int batch = 0; batch < batches.size(); ++batch) {
-            batches[batch].offset = offset;
-            offset += batches[batch].b.size();
-        }
+        //int offset = 0;
+        //for (int batch = 0; batch < batches.size(); ++batch) {
+        //    batches[batch].offset = offset;
+        //    offset += batches[batch].b.size();
+        //}
 
         //for (auto& b : batches)
         //    b.upload_b(dev_batch_ptr, nt);
@@ -191,7 +192,8 @@ public:
     {
         if (!impl()->size()) return;
 
-        int M = mps.row_dim()[impl()->get_mps_block()].second; // == m_size
+        //int M = mps.row_dim()[impl()->get_mps_block()].second; // == m_size
+        int M = impl()->get_m_size(); // == m_size
         int N = impl()->get_r_size();
 
         cublasOperation_t cublasops[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
