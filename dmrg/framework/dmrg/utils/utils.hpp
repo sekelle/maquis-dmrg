@@ -122,16 +122,16 @@ namespace bit_twiddling
 
     struct bits
     {
-        static const unsigned w0 = 1;
-        static const unsigned w1 = 27;
-        static const unsigned w2 = 26;
-        static const unsigned w3 = 48;
-        static const unsigned w4 = 26;
-        //static const unsigned w0 = 26;
-        //static const unsigned w1 = 48;
+        //static const unsigned w0 = 1;
+        //static const unsigned w1 = 27;
         //static const unsigned w2 = 26;
-        //static const unsigned w3 = 1;
-        //static const unsigned w4 = 27;
+        //static const unsigned w3 = 48;
+        //static const unsigned w4 = 26;
+        static const unsigned w0 = 26;
+        static const unsigned w1 = 48;
+        static const unsigned w2 = 26;
+        static const unsigned w3 = 1;
+        static const unsigned w4 = 27;
 
         static const unsigned long max0 = (1ul<<w0)-1;
         static const unsigned long max1 = (1ul<<w1)-1;
@@ -144,7 +144,8 @@ namespace bit_twiddling
 
     inline __uint128_t add_last(__uint128_t tuple, unsigned long p1)
     {
-        return tuple += (p1<<1);
+        //return tuple += (p1<<1);
+        return tuple += ((__uint128_t)p1<<bits::s[4]);
     }
 
     inline __uint128_t pack(unsigned long a, unsigned long b, unsigned long c, unsigned long d, char e)
@@ -155,8 +156,8 @@ namespace bit_twiddling
         assert(d <= bits::max1);
         assert(e <= bits::max0);
 
-        return ((__uint128_t)a<<bits::s[4]) + ((__uint128_t)b<<bits::s[3]) + ((__uint128_t)c<<bits::s[2]) + ((__uint128_t)d<<bits::s[1]) + e;
-        //return ((__uint128_t)d<<bits::s4) + ((__uint128_t)e<<bits::s3) + ((__uint128_t)a<<bits::s2) + ((__uint128_t)b<<bits::s1) + c;
+        //return ((__uint128_t)a<<bits::s[4]) + ((__uint128_t)b<<bits::s[3]) + ((__uint128_t)c<<bits::s[2]) + ((__uint128_t)d<<bits::s[1]) + e;
+        return ((__uint128_t)d<<bits::s[4]) + ((__uint128_t)e<<bits::s[3]) + ((__uint128_t)a<<bits::s[2]) + ((__uint128_t)b<<bits::s[1]) + c;
     }
 
     inline void unpack(__uint128_t tuple, unsigned long& p1, unsigned long& p2, unsigned long& p3, unsigned long& p4, char& p5)
@@ -167,16 +168,16 @@ namespace bit_twiddling
         static const __uint128_t mask3 = (((__uint128_t)1 << bits::w3)-1) << bits::s[3];
         static const __uint128_t mask4 = (((__uint128_t)1 << bits::w4)-1) << bits::s[4];
 
-        p1 = (tuple & mask4) >> bits::s[4];
-        p2 = (tuple & mask3) >> bits::s[3];
-        p3 = (tuple & mask2) >> bits::s[2];
-        p4 = (tuple & mask1) >> bits::s[1];
-        p5 = tuple & bits::s[1];
-        //p4 = (tuple & mask4) >> bits::s4;
-        //p5 = (tuple & mask3) >> bits::s3;
-        //p1 = (tuple & mask2) >> bits::s2;
-        //p2 = (tuple & mask1) >> bits::s1;
-        //p3 = tuple & mask0;
+        //p1 = (tuple & mask4) >> bits::s[4];
+        //p2 = (tuple & mask3) >> bits::s[3];
+        //p3 = (tuple & mask2) >> bits::s[2];
+        //p4 = (tuple & mask1) >> bits::s[1];
+        //p5 = tuple & bits::s[1];
+        p4 = (tuple & mask4) >> bits::s[4];
+        p5 = (tuple & mask3) >> bits::s[3];
+        p1 = (tuple & mask2) >> bits::s[2];
+        p2 = (tuple & mask1) >> bits::s[1];
+        p3 = tuple & mask0;
     }
 
 } // namespace bit_twiddling
