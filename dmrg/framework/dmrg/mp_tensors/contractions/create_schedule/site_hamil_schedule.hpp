@@ -101,7 +101,22 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
         contraction_schedule.total_flops = total_flops;
         contraction_schedule.total_mem = total_mem;
 
-        maquis::cout << "Schedule size: " << sz << " tasks, "
+        //for (auto& mb : contraction_schedule)
+        //    for (auto& cgv : mb)
+        //        for (auto& cg : cgv)
+        //        {
+        //            maquis::cout << "cg " << std::setw(5) << cg.t_key_vec.size() << std::setw(5) << num_rows(initial.data()[cg.get_mps_block()])
+        //                         << std::setw(5) << cg.r_size << std::endl;
+        //            for (auto& mg  : cg)
+        //                maquis::cout << "mg " << std::setw(5) << mg.bs.size() << std::setw(5) << mg.l_size << std::setw(5) << mg.r_size << std::endl;
+        //        }
+
+        size_t ncg = 0;
+        for (auto& mb : contraction_schedule)
+            for (auto& cgv : mb)
+                ncg += cgv.size();
+
+        maquis::cout << "Schedule size: " << contraction_schedule.size() << " blocks, " << ncg << " cgs, "
                      << " t_move " << a / 1024 / 1024 << "GB, "
                      << " l_load " << b / 1024 / 1024 << "GB, "
                      << " lgemmf " << c / 1024 / 1024 << "GF, "
