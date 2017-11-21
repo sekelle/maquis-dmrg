@@ -295,6 +295,13 @@ public:
         }
     }
 
+    void reorder_t(std::vector<unsigned> const & ord)
+    {
+        for (index_type i = 0; i < b2sz.size(); ++i)
+            for (index_type j = 0; j < b2sz[i]; ++j)
+                tidx[i][j] = ord[tidx[i][j]];
+    }
+
     std::size_t t_move()      const { return n_tasks() * 8 * m_size * r_size; }
     std::size_t l_load()      const { return (n_tasks()) ? b2sz.size() * 8 * l_size * m_size : 0; }
     std::size_t lgemm_flops() const { return (n_tasks()) ? b2sz.size() * 2 * l_size * m_size * r_size : 0; }
@@ -427,6 +434,25 @@ public:
             (*this)[ss1].rbtm(t_pointer, new_right, ci);
         }
         free(t_pointer);
+    }
+
+    void resort_t_index(std::map<t_key, unsigned> & tmap)
+    {
+        std::vector<std::pair<unsigned,unsigned>> val_index(tmap.size());
+        unsigned cnt = 0;
+        for (auto it = tmap.begin(); it != tmap.end(); ++it) {
+            val_index[cnt] = std::make_pair(it->second, cnt);
+            cnt++;
+        }
+
+        std::sort(val_index.begin(), val_index.end(),
+                  [](std::pair<unsigned, unsigned> p1, std::pair<unsigned, unsigned> p2) { return p1.first < p2.first;} );
+
+        std::vector<unsigned> tmap_inv(tmap.size());
+        std::transform(val_index.begin(), val_index.end(), tmap_inv.begin(), [](std::pair<unsigned, unsigned> p) { return p.second; });
+
+        for (int i = 0; i < this->size(); ++i)
+            (*this)[i].reorder_t(tmap_inv);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
