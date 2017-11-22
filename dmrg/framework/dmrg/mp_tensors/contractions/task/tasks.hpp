@@ -304,10 +304,14 @@ public:
                 tidx[i][j] = ord[tidx[i][j]];
     }
 
-    std::size_t t_move()      const { return n_tasks() * 8 * m_size * r_size; }
-    std::size_t l_load()      const { return (n_tasks()) ? b2sz.size() * 8 * l_size * m_size : 0; }
+    std::size_t t_move()      const { return n_tasks() * sizeof(value_type) * m_size * r_size; }
+    std::size_t l_load()      const { return (n_tasks()) ? b2sz.size() * sizeof(value_type) * l_size * m_size : 0; }
     std::size_t lgemm_flops() const { return (n_tasks()) ? b2sz.size() * 2 * l_size * m_size * r_size : 0; }
-    std::size_t collect()     const { return (n_tasks()) ? 8 * l_size * r_size : 0; }
+    // adding to the destination
+    std::size_t collect()     const { return (n_tasks()) ? sizeof(value_type) * l_size * r_size : 0; }
+
+    std::size_t flops()       const { return lgemm_flops() + 2*t_move()/sizeof(value_type) + 2*collect()/sizeof(value_type); }
+    std::size_t memops()      const { return t_move() + l_load(); }
 
     unsigned get_m_size() const { return m_size; }
     unsigned get_r_size() const { return r_size; }
@@ -461,19 +465,18 @@ public:
     }
 
     template <class DefaultMatrix, class OtherMatrix>
-    boost::tuple<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t>
+    boost::tuple<std::size_t, std::size_t>
     data_stats(MPSTensor<DefaultMatrix, SymmGroup> const & mps, BoundaryIndex<OtherMatrix, SymmGroup> const & right) const
     {
-        std::size_t t_move = 0, l_load = 0, lgemm_flops = 0, tgemm_flops = 0, collect=0;
+        std::size_t flops=0, memops=0;
         for (int i = 0; i < this->size(); ++i)
         {
-            t_move += (*this)[i].t_move();
-            l_load += (*this)[i].l_load();
-            lgemm_flops += (*this)[i].lgemm_flops();
-            collect += (*this)[i].collect();
+            flops += (*this)[i].flops();
+            memops += (*this)[i].memops();
         }
 
         unsigned m1_size = mps.row_dim()[mps_block].second;
+        assert( m1_size == get_m_size() );
         for (typename std::vector<t_key>::const_iterator it = t_key_vec.begin(); it != t_key_vec.end(); ++it)
         {
             unsigned long ci, offset, dummy, mps_off;
@@ -483,10 +486,11 @@ public:
             unsigned m2_size = right.left_size(ci);
             unsigned r_size = right.right_size(ci);
 
-            tgemm_flops += 2 * m1_size * m2_size * r_size;
+            flops += 2 * m1_size * m2_size * r_size;
+            memops += sizeof(value_type) * (m1_size * m2_size + m2_size * r_size);
         }
 
-        return boost::make_tuple(t_move, l_load, lgemm_flops, tgemm_flops, collect);
+        return boost::make_tuple(flops, memops);
     }
 
     template <class OtherMatrix>
@@ -497,6 +501,8 @@ public:
     unsigned get_m_size() const { return (*this)[0].get_m_size(); }
 
     std::vector<t_key> t_key_vec;
+
+    bool on_gpu;
 
     // invariant: phys_out, phys_offset
 private:
@@ -629,32 +635,16 @@ struct Schedule_ : public std::vector<std::vector<std::vector<ContractionGroup<M
         return ret;
     }
 
-    template <class DefaultMatrix, class OtherMatrix>
-    stats_t data_stats(std::size_t p,
-                       MPSTensor<DefaultMatrix, SymmGroup> const & mps,
-                       BoundaryIndex<OtherMatrix, SymmGroup> const & right) const
-    {
-        stats_t ret = boost::make_tuple(0,0,0,0,0);
-        for (const_iterator it = (*this)[p].begin(); it != (*this)[p].end(); ++it)
-            for (std::size_t i = 0; i < it->size(); ++i)
-            {
-                stats_t cg = (*it)[i].data_stats(mps, right);
-                get<0>(ret) += get<0>(cg);
-                get<1>(ret) += get<1>(cg);
-                get<2>(ret) += get<2>(cg);
-                get<3>(ret) += get<3>(cg);
-                get<4>(ret) += get<4>(cg);
-            }
-        return ret;
-    }
-
     template <class OtherMatrix>
     void allocate(size_t mb, Boundary<OtherMatrix, SymmGroup> const & right) {
         ((base2*)this)->allocate(mb, (*this)[mb], right);
     }
 
-    size_t total_flops, total_mem;
     size_t niter;
+    size_t total_flops, total_mem;
+    size_t cpu_flops, gpu_flops;
+    double cpu_time, gpu_time;
+
     std::vector<size_t> load_balance;
 }; 
 

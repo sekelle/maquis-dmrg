@@ -69,21 +69,20 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
 
     if (std::max(mpo.row_dim(), mpo.col_dim()) > 10)
     {
-        std::vector<size_t> flops_per_block(loop_max);
+        std::vector<size_t> flops_per_block(loop_max, 0);
 
-        size_t sz = 0, a = 0, b = 0, c = 0, d = 0, e = 0;
+        size_t flops = 0, memops = 0, ncg = 0;
         for (size_t block = 0; block < loop_max; ++block)
         {
-            sz += contraction_schedule.n_tasks(block);
-            boost::tuple<size_t, size_t, size_t, size_t, size_t> flops
-                = contraction_schedule.data_stats(block, initial, right.index());
-            a += get<0>(flops);
-            b += get<1>(flops);
-            c += get<2>(flops);
-            d += get<3>(flops);
-            e += get<4>(flops);
-
-            flops_per_block[block] = get<2>(flops) + get<3>(flops) + get<0>(flops)/4 + get<4>(flops)/4;
+            for (auto& cgv : contraction_schedule[block])
+                for (auto& cg : cgv)
+                {
+                    boost::tuple<size_t, size_t> stats = cg.data_stats(initial, right.index());
+                    flops += get<0>(stats); 
+                    memops += get<1>(stats);
+                    flops_per_block[block] += flops;
+                    ncg++;
+                }
         }
 
         std::vector<std::pair<size_t, size_t> > fb(loop_max);
@@ -96,10 +95,8 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
         std::transform(fb.begin(), fb.end(), idx.begin(), boost::bind(&std::pair<size_t, size_t>::second, boost::lambda::_1));
         contraction_schedule.load_balance = idx;
 
-        size_t total_flops = c + d + a/4 + e/4;
-        size_t total_mem   = 2*a + b + e + size_of(right);
-        contraction_schedule.total_flops = total_flops;
-        contraction_schedule.total_mem = total_mem;
+        contraction_schedule.total_flops = flops;
+        contraction_schedule.total_mem = memops;
 
         //for (auto& mb : contraction_schedule)
         //    for (auto& cgv : mb)
@@ -111,21 +108,11 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
         //                maquis::cout << "mg " << std::setw(5) << mg.bs.size() << std::setw(5) << mg.l_size << std::setw(5) << mg.r_size << std::endl;
         //        }
 
-        size_t ncg = 0;
-        for (auto& mb : contraction_schedule)
-            for (auto& cgv : mb)
-                ncg += cgv.size();
-
         maquis::cout << "Schedule size: " << contraction_schedule.size() << " blocks, " << ncg << " cgs, "
-                     << " t_move " << a / 1024 / 1024 << "GB, "
-                     << " l_load " << b / 1024 / 1024 << "GB, "
-                     << " lgemmf " << c / 1024 / 1024 << "GF, "
-                     << " tgemmf " << d / 1024 / 1024 << "GF, "
                      << " R " << size_of(right) << "B, "
                      << " L " << size_of(left) << "B "
-                     << " M " << e / 1024 / 1024 << "GB, "
-                     << " F " << total_flops / 1024 / 1024 << "GF, "
-                     << " B " << total_mem / 1024 / 1024 << "GB, "
+                     << " F " << flops / 1024 / 1024 << "GF, "
+                     << " B " << memops / 1024 / 1024 << "GB, "
                      << std::endl;
 
         boost::chrono::high_resolution_clock::time_point then = boost::chrono::high_resolution_clock::now();
