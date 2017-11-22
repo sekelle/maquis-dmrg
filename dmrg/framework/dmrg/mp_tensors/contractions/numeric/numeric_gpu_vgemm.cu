@@ -25,18 +25,56 @@
  *
  *****************************************************************************/
 
+//#include <new>
+#include <cassert>
+//#include <complex>
+#include <cstddef>
+#include <cstdlib>
+#include <limits>
+#include <cstring>
+#include <malloc.h>
+#include <stdint.h>
+//#include <boost/static_assert.hpp>
+// BLAS declarations
+//#include <boost/numeric/bindings/blas/detail/blas.h>
 
-#ifndef MAQUIS_NUMERIC_GPU_H
-#define MAQUIS_NUMERIC_GPU_H
+#include "numeric_gpu.h"
+//#include "common.h"
 
-#include "cuda.h"
-#include "batch_gemm.h"
 
-void dgemm_ddot_gpu(cublasHandle_t handle,
-                    unsigned ls, unsigned ms, unsigned rs, unsigned b1size,
-                    const unsigned* b2sz, const char* transL, unsigned const* const* tidx,
-                    double const* const* alpha, const double** left, const double* t, double* out);
+static void HandleError( cudaError_t err,
+                         const char *file,
+                         int line ) {
+    if (err != cudaSuccess) {
+        printf( "%s in %s at line %d\n", cudaGetErrorString( err ),
+                file, line );
+        exit( EXIT_FAILURE );
+    }
+}
+#define HANDLE_ERROR( err ) (HandleError( err, __FILE__, __LINE__ ))
 
-void coalesced_gemm(cublasHandle_t handle, BatchGemmData<double> & batch);
 
-#endif
+__global__ void accumulate(float *in, float *out, size_t N, size_t chunks)
+{
+    size_t tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    float temp = 0;
+    while (tid < N) {
+        for (size_t i = 0; i < chunks; ++i)
+            temp += in[tid + N*i] ;
+
+        out[tid] = temp;
+        tid += blockDim.x * gridDim.x;
+    }
+}
+
+
+template <class T>
+void coalesced_gemm(cublasHandle_t handle, BatchGemmData<T> & batch)
+{
+}
+
+
+void coalesced_gemm(cublasHandle_t handle, BatchGemmData<double> & batch)
+{
+}

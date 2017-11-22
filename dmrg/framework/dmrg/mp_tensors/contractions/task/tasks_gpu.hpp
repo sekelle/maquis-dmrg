@@ -39,33 +39,11 @@
 #include "dmrg/utils/aligned_allocator.hpp"
 
 #include "dmrg/mp_tensors/contractions/numeric/numeric_gpu.h"
+#include "dmrg/mp_tensors/contractions/numeric/batch_gemm.h"
 
 
 namespace contraction {
 namespace common {
-
-template <class T>
-struct BatchGemmData
-{
-
-    //void upload_a (T** dev_batch_ptr, size_t nt) {
-    //    HANDLE_ERROR(cudaMemcpy(dev_batch_ptr + offset, a.data(), a.size() * sizeof(T*), cudaMemcpyHostToDevice));
-    //}
-    //void upload_b (T** dev_batch_ptr, size_t nt) {
-    //    HANDLE_ERROR(cudaMemcpy(dev_batch_ptr + nt + offset, b.data(), b.size() * sizeof(T*), cudaMemcpyHostToDevice));
-    //}
-    //void upload_c (T** dev_batch_ptr, size_t nt) {
-    //    HANDLE_ERROR(cudaMemcpy(dev_batch_ptr + 2*nt + offset, c.data(), c.size() * sizeof(T*), cudaMemcpyHostToDevice));
-    //}
-
-    int offset;
-    char trans;
-    int K;
-    int LDB;
-    unsigned long in_offset;
-    //std::vector<T*> a, b, c;
-    std::vector<T*> b;
-};
 
 template <class Matrix, class SymmGroup, class Derived>
 class MatrixGroupGpuExtension
@@ -142,15 +120,17 @@ public:
                 {
                     found++;
                     batches[batch].b.push_back((value_type*)(right.device_ptr[ci]) + offset);
+                    batches[batch].tend = pos;
                 }
 
             if (!found)
             {
                 BatchGemmData<value_type> batch;
+                batch.in_offset = in_offset;
                 batch.K = K;
                 batch.LDB = LDB;
+                batch.tstart = pos;
                 batch.trans = trans;
-                batch.in_offset = in_offset;
                 batch.b.push_back((value_type*)(right.device_ptr[ci]) + offset);
                 batches.push_back(batch);
             }
@@ -192,7 +172,6 @@ public:
     {
         if (!impl()->size()) return;
 
-        //int M = mps.row_dim()[impl()->get_mps_block()].second; // == m_size
         int M = impl()->get_m_size(); // == m_size
         int N = impl()->get_r_size();
 
@@ -200,12 +179,14 @@ public:
         value_type one = 1.0;
         value_type zero = 0.0;
 
-        size_t nt = impl()->t_key_vec.size();
+        std::size_t nt = impl()->t_key_vec.size();
 
         std::size_t t_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>((size_t)(M * N));
         std::size_t buffer_size = t_size * nt;
 
         HANDLE_ERROR( cudaMalloc( (void**)&dev_t_pointer, buffer_size * sizeof(value_type)) );
+
+        coalesced_gemm(accelerator::gpu::instance().handle, batches[0]);
 
         for (unsigned pos = 0; pos < nt; ++pos)
         {
@@ -256,13 +237,6 @@ public:
         //                       dev_batch_ptr + 2*nt + B.offset, M, B.a.size()
         //                       );
         //}
-    }
-
-
-    void download_t(value_type* host, size_t t_size) const
-    {
-        HANDLE_ERROR(cudaMemcpy(host, dev_t_pointer, t_size * sizeof(value_type), cudaMemcpyDeviceToHost));
-        HANDLE_ERROR(cudaFree(dev_t_pointer));
     }
 
     mutable std::vector<BatchGemmData<value_type>> batches;

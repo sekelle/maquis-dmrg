@@ -26,17 +26,36 @@
  *****************************************************************************/
 
 
-#ifndef MAQUIS_NUMERIC_GPU_H
-#define MAQUIS_NUMERIC_GPU_H
+#ifndef MAQUIS_NUMERIC_BATCH_GEMM_H
+#define MAQUIS_NUMERIC_BATCH_GEMM_H
 
-#include "cuda.h"
-#include "batch_gemm.h"
+#include <vector>
 
-void dgemm_ddot_gpu(cublasHandle_t handle,
-                    unsigned ls, unsigned ms, unsigned rs, unsigned b1size,
-                    const unsigned* b2sz, const char* transL, unsigned const* const* tidx,
-                    double const* const* alpha, const double** left, const double* t, double* out);
+template <class T>
+struct BatchGemmData
+{
 
-void coalesced_gemm(cublasHandle_t handle, BatchGemmData<double> & batch);
+    //void upload_a (T** dev_batch_ptr, size_t nt) {
+    //    HANDLE_ERROR(cudaMemcpy(dev_batch_ptr + offset, a.data(), a.size() * sizeof(T*), cudaMemcpyHostToDevice));
+    //}
+    //void upload_b (T** dev_batch_ptr, size_t nt) {
+    //    HANDLE_ERROR(cudaMemcpy(dev_batch_ptr + nt + offset, b.data(), b.size() * sizeof(T*), cudaMemcpyHostToDevice));
+    //}
+    //void upload_c (T** dev_batch_ptr, size_t nt) {
+    //    HANDLE_ERROR(cudaMemcpy(dev_batch_ptr + 2*nt + offset, c.data(), c.size() * sizeof(T*), cudaMemcpyHostToDevice));
+    //}
+
+    unsigned long in_offset;
+    int offset;
+    int K;
+    int LDB;
+    int tstart;
+    int tend;
+    char trans;
+    std::vector<T*> b;
+    //std::vector<T*> a, b, c;
+};
+
+
 
 #endif

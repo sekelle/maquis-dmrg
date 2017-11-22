@@ -25,10 +25,6 @@
  *
  *****************************************************************************/
 
-
-#ifndef MAQUIS_NUMERIC_GPU_CPP
-#define MAQUIS_NUMERIC_GPU_CPP
-
 #include <new>
 #include <cassert>
 #include <complex>
@@ -113,5 +109,3 @@ void dgemm_ddot_gpu(cublasHandle_t handle,
 {
     return dgemm_ddot_gpu_tpl(handle,ls,ms,rs,b1size,b2sz,transL,tidx,alpha,left,t,dev_out);
 }
-
-#endif
