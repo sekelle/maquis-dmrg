@@ -65,7 +65,8 @@ void dgemm_ddot_gpu_tpl(cublasHandle_t handle,
 
     int one = 1;
     uint t_size = ms * rs;
-    uint t_size_padded = round_up<ALIGNMENT/sizeof(T)>(t_size);
+    //uint t_size_padded = round_up<ALIGNMENT/sizeof(T)>(t_size);
+    uint t_size_padded = t_size;
     int t_size_fortran = t_size;
 
     cublasOperation_t cublasops[2] = {CUBLAS_OP_N, CUBLAS_OP_T};

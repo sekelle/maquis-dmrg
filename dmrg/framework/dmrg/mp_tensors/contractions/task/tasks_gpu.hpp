@@ -181,26 +181,29 @@ public:
 
         std::size_t nt = impl()->t_key_vec.size();
 
-        std::size_t t_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>((size_t)(M * N));
+        //std::size_t t_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>((size_t)(M * N));
+        std::size_t t_size = size_t(M) * size_t(N);
         std::size_t buffer_size = t_size * nt;
 
         HANDLE_ERROR( cudaMalloc( (void**)&dev_t_pointer, buffer_size * sizeof(value_type)) );
 
-        coalesced_gemm(accelerator::gpu::instance().handle, batches[0]);
+        for (auto& B : batches)
+            coalesced_gemm(accelerator::gpu::instance().handle, B, M, N, t_size,
+                           (value_type*)mps.device_ptr[impl()->get_mps_block()], dev_t_pointer);
 
-        for (unsigned pos = 0; pos < nt; ++pos)
-        {
-            unsigned long ci, offset, dummy, in_offset;
-            char trans;
-            bit_twiddling::unpack(impl()->t_key_vec[pos], ci, offset, dummy, in_offset, trans);
+        //for (unsigned pos = 0; pos < nt; ++pos)
+        //{
+        //    unsigned long ci, offset, dummy, in_offset;
+        //    char trans;
+        //    bit_twiddling::unpack(impl()->t_key_vec[pos], ci, offset, dummy, in_offset, trans);
 
-            int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
-            int LDB = right.index().left_size(ci);
+        //    int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
+        //    int LDB = right.index().left_size(ci);
 
-            cublasDgemm(accelerator::gpu::instance().handle, cublasops[0], cublasops[trans], M, N, K, &one,
-                        (value_type*)mps.device_ptr[impl()->get_mps_block()] + in_offset * M, M,
-                        (value_type*)right.device_ptr[ci] + offset, LDB, &zero, dev_t_pointer + pos * t_size, M);
-        }
+        //    cublasDgemm(accelerator::gpu::instance().handle, cublasops[0], cublasops[trans], M, N, K, &one,
+        //                (value_type*)mps.device_ptr[impl()->get_mps_block()] + in_offset * M, M,
+        //                (value_type*)right.device_ptr[ci] + offset, LDB, &zero, dev_t_pointer + pos * t_size, M);
+        //}
 
         // create batches
         //for (auto& B : batches) {
