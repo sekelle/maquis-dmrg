@@ -70,11 +70,37 @@ __global__ void accumulate(float *in, float *out, size_t N, size_t chunks)
 
 
 template <class T>
-void coalesced_gemm(cublasHandle_t handle, BatchGemmData<T> & batch)
+void coalesced_gemm_tpl(cublasHandle_t handle, BatchGemmData<T> & batch, int M, int N, size_t t_size, T* mpsdata, T* dev_t)
 {
+    cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
+    T one = 1.0;
+    T zero = 0.0;
+
+    T* buffer;
+    size_t b_size = batch.K * N;
+    cudaMalloc( (void**)&buffer, batch.b.size() * b_size * sizeof(T) );
+
+    if (batch.trans)
+        for (size_t k = 0; k < batch.b.size(); ++k)
+            cublasDgeam(handle, cuop[1], cuop[0], batch.K, N,
+                        &one, batch.b[k], batch.LDB,
+                        &zero, batch.b[k], batch.K,
+                        //&zero, NULL, 0,
+                        buffer + k*b_size, batch.K);
+    else
+        for (size_t k = 0; k < batch.b.size(); ++k)
+            cudaMemcpy( buffer + k * b_size, batch.b[k], b_size* sizeof(T), cudaMemcpyDeviceToDevice);
+
+
+    cublasDgemm(handle, cuop[0], cuop[0], M, N * batch.b.size(), batch.K, &one,
+                mpsdata + batch.in_offset * M, M,
+                buffer, batch.K, &zero, dev_t + batch.tstart * t_size, M);
+
+    cudaFree(buffer);
 }
 
 
-void coalesced_gemm(cublasHandle_t handle, BatchGemmData<double> & batch)
+void coalesced_gemm(cublasHandle_t handle, BatchGemmData<double> & batch, int M, int N, size_t t_size, double* mpsdata, double* dev_t)
 {
+   coalesced_gemm_tpl(handle, batch, M, N, t_size, mpsdata, dev_t); 
 }
