@@ -71,7 +71,7 @@ namespace measurements {
             this->cast_to_real = is_hermitian_meas(site_term);
         }
 
-        void evaluate(MPS<Matrix, SymmGroup> const& mps, boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none)
+        void evaluate(MPS<Matrix, SymmGroup> & mps, boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none)
         {
             this->vector_results.clear();
             this->labels.clear();
@@ -114,7 +114,7 @@ namespace measurements {
             return new local(*this);
         }
         
-        void evaluate_with_mpo(MPS<Matrix, SymmGroup> const& mps)
+        void evaluate_with_mpo(MPS<Matrix, SymmGroup> & mps)
         {
             typedef typename SymmGroup::subcharge subcharge;
             typedef std::map<std::string, typename Matrix::value_type> result_type;

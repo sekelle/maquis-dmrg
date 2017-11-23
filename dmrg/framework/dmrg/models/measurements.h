@@ -42,7 +42,7 @@ template <class Matrix, class SymmGroup>
 class measure_and_save {
 public:
     measure_and_save(std::string const& rfile_, std::string const& archive_path_,
-                     MPS<Matrix, SymmGroup> const& mps_, int eigenstate_=0)
+                     MPS<Matrix, SymmGroup> & mps_, int eigenstate_=0)
     : rfile(rfile_)
     , archive_path(archive_path_)
     , eigenstate(eigenstate_)
@@ -62,7 +62,7 @@ public:
 private:
     std::string rfile, archive_path;
     int eigenstate;
-    MPS<Matrix, SymmGroup> const& mps;
+    MPS<Matrix, SymmGroup> & mps;
     reduced_mps<Matrix, SymmGroup> rmps;
 };
 

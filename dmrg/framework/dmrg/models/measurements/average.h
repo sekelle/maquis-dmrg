@@ -94,7 +94,7 @@ namespace measurements {
             this->cast_to_real = all_true(ops.begin(), ops.end(), static_cast<bool (*)(bond_element const&)>(&is_hermitian_meas));
         }
 
-        void evaluate(MPS<Matrix, SymmGroup> const& mps, boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none)
+        void evaluate(MPS<Matrix, SymmGroup> & mps, boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none)
         {
             if (!this->is_super_meas){
                 this->result = (this->cast_to_real) ? maquis::real(expval(mps, mpo)) : expval(mps, mpo);

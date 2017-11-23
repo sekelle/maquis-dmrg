@@ -63,6 +63,7 @@ target_link_libraries(dmrg_models numeric)
 # cmake prior version 3.8 doesn't apply the fPIC of the set_property command below for cu files
 set(CUDA_NVCC_FLAGS "-Xcompiler -fPIC")
 CUDA_ADD_LIBRARY(numeric_gpu STATIC mp_tensors/contractions/numeric/numeric_gpu.cpp mp_tensors/contractions/numeric/numeric_gpu_vgemm.cu )
+target_link_libraries(numeric_gpu ${CUDA_CUBLAS_LIBRARIES} ${CUDA_LIBRARIES})
 target_link_libraries(dmrg_models numeric_gpu)
 
 set_property(TARGET dmrg_utils dmrg_models numeric numeric_gpu PROPERTY POSITION_INDEPENDENT_CODE TRUE)

@@ -43,7 +43,7 @@ namespace measurements {
         , bra_ckp(ckp_)
         { this->cast_to_real = false; }
         
-        void evaluate(MPS<Matrix, SymmGroup> const& mps, boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none)
+        void evaluate(MPS<Matrix, SymmGroup> & mps, boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none)
         {
             maquis::cout << "   overlap with " << bra_ckp << "." << std::endl;
             MPS<Matrix, SymmGroup> bra_mps;
