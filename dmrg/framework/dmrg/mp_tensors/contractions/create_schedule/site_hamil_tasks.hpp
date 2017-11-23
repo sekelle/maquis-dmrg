@@ -131,11 +131,16 @@ namespace common {
                     for (auto& mg : cg) mg.add_line(ci_eff, left.offset(ci, b1), left.trans(ci, b1));
                 } // b1
 
-                //cg.t_key_vec.resize(t_index.size());
-                //for (auto const& kit : t_index) cg.t_key_vec[kit.second] = kit.first;
-                cg.t_key_vec.reserve(t_index.size());
-                for (auto const& kit : t_index) cg.t_key_vec.push_back(kit.first);
-                cg.resort_t_index(t_index);
+                if (accelerator::gpu::enabled())
+                {
+                    cg.t_key_vec.reserve(t_index.size());
+                    for (auto const& kit : t_index) cg.t_key_vec.push_back(kit.first);
+                    cg.resort_t_index(t_index);
+                }
+                else {
+                    cg.t_key_vec.resize(t_index.size());
+                    for (auto const& kit : t_index) cg.t_key_vec[kit.second] = kit.first;
+                }
 
                 if (cg.n_tasks()) mpsb[s].push_back(cg);
 

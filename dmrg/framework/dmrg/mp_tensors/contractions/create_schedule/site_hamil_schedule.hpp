@@ -64,7 +64,8 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
         shtm_tasks(mpo, left.index(), right.index(), left_i,
                   right_i, physical_i, out_right_pb, mb, contraction_schedule[mb]);
 
-        contraction_schedule.allocate(mb, right);
+        if (accelerator::gpu::enabled())
+            contraction_schedule.allocate(mb, right);
     });
 
     if (std::max(mpo.row_dim(), mpo.col_dim()) > 10)
