@@ -56,50 +56,66 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
                                                              -boost::lambda::_1, boost::lambda::_2));
 
     initial.make_right_paired();
-    typename Schedule<Matrix, SymmGroup>::schedule_t contraction_schedule(left_i.size());
+    typename Schedule<Matrix, SymmGroup>::schedule_t tasks(left_i.size());
 
     unsigned loop_max = left_i.size();
     omp_for(index_type mb, parallel::range<index_type>(0,loop_max), {
-        contraction_schedule.load_balance[mb] = mb;
         shtm_tasks(mpo, left.index(), right.index(), left_i,
-                  right_i, physical_i, out_right_pb, mb, contraction_schedule[mb]);
+                  right_i, physical_i, out_right_pb, mb, tasks[mb]);
 
         if (accelerator::gpu::enabled())
-            contraction_schedule.allocate(mb, right);
+            tasks.allocate(mb, right);
     });
+
+    std::vector<size_t> flops_per_block(loop_max, 0);
+
+    size_t flops = 0, memops = 0, ncg = 0;
+    for (size_t block = 0; block < loop_max; ++block)
+    {
+        for (auto& cgv : tasks[block])
+            for (auto& cg : cgv)
+            {
+                boost::tuple<size_t, size_t> stats = cg.data_stats(initial, right.index());
+                flops += get<0>(stats); 
+                memops += get<1>(stats);
+                flops_per_block[block] += flops;
+                ncg++;
+            }
+    }
+
+    std::vector<std::pair<size_t, size_t> > fb(loop_max);
+    std::vector<size_t> idx(loop_max);
+    size_t i = 0;
+    std::for_each(idx.begin(), idx.end(), boost::lambda::_1 = boost::lambda::var(i)++);
+    std::transform(flops_per_block.begin(), flops_per_block.end(), idx.begin(), fb.begin(),
+                   boost::lambda::constructor<std::pair<size_t, size_t> >());
+    std::sort(fb.begin(), fb.end(), greater_first<std::pair<size_t, size_t> >());
+    std::transform(fb.begin(), fb.end(), idx.begin(), boost::bind(&std::pair<size_t, size_t>::second, boost::lambda::_1));
+
+    tasks.total_flops = flops;
+    tasks.total_mem = memops;
+
+    index_type inner_loop_max = physical_i.size();
+    for (index_type task_block = 0; task_block < loop_max; ++task_block)
+    {
+        index_type mps_block = idx[task_block];
+
+        std::vector<index_type> cg_sizes(inner_loop_max);
+        for (index_type s = 0; s < inner_loop_max; ++s)
+            cg_sizes[s] = tasks[mps_block][s].size();
+
+        index_type max_cgi = *std::max_element(cg_sizes.begin(), cg_sizes.end());
+
+        for (index_type cgi = 0; cgi < max_cgi; ++cgi)
+            for (index_type s = 0; s < inner_loop_max; ++s)
+                if (cgi < tasks[mps_block][s].size())
+                    tasks.enumeration.push_back(boost::make_tuple(mps_block, s, cgi));
+    }
 
     if (std::max(mpo.row_dim(), mpo.col_dim()) > 10)
     {
-        std::vector<size_t> flops_per_block(loop_max, 0);
 
-        size_t flops = 0, memops = 0, ncg = 0;
-        for (size_t block = 0; block < loop_max; ++block)
-        {
-            for (auto& cgv : contraction_schedule[block])
-                for (auto& cg : cgv)
-                {
-                    boost::tuple<size_t, size_t> stats = cg.data_stats(initial, right.index());
-                    flops += get<0>(stats); 
-                    memops += get<1>(stats);
-                    flops_per_block[block] += flops;
-                    ncg++;
-                }
-        }
-
-        std::vector<std::pair<size_t, size_t> > fb(loop_max);
-        std::vector<size_t> idx(loop_max);
-        size_t i = 0;
-        std::for_each(idx.begin(), idx.end(), boost::lambda::_1 = boost::lambda::var(i)++);
-        std::transform(flops_per_block.begin(), flops_per_block.end(), idx.begin(), fb.begin(),
-                       boost::lambda::constructor<std::pair<size_t, size_t> >());
-        std::sort(fb.begin(), fb.end(), greater_first<std::pair<size_t, size_t> >());
-        std::transform(fb.begin(), fb.end(), idx.begin(), boost::bind(&std::pair<size_t, size_t>::second, boost::lambda::_1));
-        contraction_schedule.load_balance = idx;
-
-        contraction_schedule.total_flops = flops;
-        contraction_schedule.total_mem = memops;
-
-        //for (auto& mb : contraction_schedule)
+        //for (auto& mb : tasks)
         //    for (auto& cgv : mb)
         //        for (auto& cg : cgv)
         //        {
@@ -109,7 +125,7 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
         //                maquis::cout << "mg " << std::setw(5) << mg.bs.size() << std::setw(5) << mg.l_size << std::setw(5) << mg.r_size << std::endl;
         //        }
 
-        maquis::cout << "Schedule size: " << contraction_schedule.size() << " blocks, " << ncg << " cgs, "
+        maquis::cout << "Schedule size: " << tasks.size() << " blocks, " << ncg << " cgs, "
                      << " R " << size_of(right) << "B, "
                      << " L " << size_of(left) << "B "
                      << " F " << flops / 1024 / 1024 << "GF, "
@@ -120,7 +136,7 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
         maquis::cout << "Time elapsed in SCHEDULE: " << boost::chrono::duration<double>(then - now).count() << std::endl;
     }
 
-    return contraction_schedule;
+    return tasks;
 }
 
 

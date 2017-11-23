@@ -621,7 +621,7 @@ struct Schedule_ : public std::vector<std::vector<std::vector<ContractionGroup<M
     typedef boost::tuple<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t> stats_t;
 
     Schedule_() {}
-    Schedule_(std::size_t dim) : base(dim), base2(dim), load_balance(dim) {}
+    Schedule_(std::size_t dim) : base(dim), base2(dim) {}
 
     double mflops(double time) const { return total_flops*niter / time / 1e6; }
     double bandwidth(double time) const { return total_mem*niter / time / 1e6; }
@@ -645,7 +645,7 @@ struct Schedule_ : public std::vector<std::vector<std::vector<ContractionGroup<M
     size_t cpu_flops, gpu_flops;
     double cpu_time, gpu_time;
 
-    std::vector<size_t> load_balance;
+    std::vector<boost::tuple<unsigned, unsigned, unsigned>> enumeration;
 }; 
 
 template <class Matrix, class SymmGroup>

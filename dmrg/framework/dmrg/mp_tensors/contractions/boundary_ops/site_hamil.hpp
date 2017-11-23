@@ -56,48 +56,28 @@ namespace common {
         ret.phys_i = ket_tensor.site_dim(); ret.left_i = ket_tensor.row_dim(); ret.right_i = ket_tensor.col_dim();
         block_matrix<Matrix, SymmGroup> collector(ket_basis);
 
-        index_type loop_max = tasks.size();
-        index_type inner_loop_max = physical_i.size();
-
-        std::vector<boost::tuple<index_type, index_type, index_type>> task_enumeration;
-        for (index_type task_block = 0; task_block < loop_max; ++task_block)
-        {
-            index_type mps_block = tasks.load_balance[task_block];
-
-            std::vector<index_type> cg_sizes(inner_loop_max);
-            for (index_type s = 0; s < inner_loop_max; ++s)
-                cg_sizes[s] = tasks[mps_block][s].size();
-
-            index_type max_cgi = *std::max_element(cg_sizes.begin(), cg_sizes.end());
-
-            for (index_type cgi = 0; cgi < max_cgi; ++cgi)
-                for (index_type s = 0; s < inner_loop_max; ++s)
-                    if (cgi < tasks[mps_block][s].size())
-                        task_enumeration.push_back(boost::make_tuple(mps_block, s, cgi));
-        }
-
         storage::gpu::fetch(ket_tensor);
         if (accelerator::gpu::enabled() && ket_tensor.device_ptr.size())
         {
             //#ifdef MAQUIS_OPENMP
             //#pragma omp parallel for schedule (dynamic,1)
             //#endif
-            for (index_type tn = 0; tn < task_enumeration.size(); ++tn)
-                tasks[ boost::get<0>(task_enumeration[tn]) ]
-                     [ boost::get<1>(task_enumeration[tn]) ]
-                     [ boost::get<2>(task_enumeration[tn]) ]
-                     .contract_gpu(ket_tensor, left, right, &collector[boost::get<0>(task_enumeration[tn])](0,0));
+            for (index_type tn = 0; tn < tasks.enumeration.size(); ++tn)
+                tasks[ boost::get<0>(tasks.enumeration[tn]) ]
+                     [ boost::get<1>(tasks.enumeration[tn]) ]
+                     [ boost::get<2>(tasks.enumeration[tn]) ]
+                     .contract_gpu(ket_tensor, left, right, &collector[boost::get<0>(tasks.enumeration[tn])](0,0));
         }
         else
         {
             #ifdef MAQUIS_OPENMP
             #pragma omp parallel for schedule (dynamic,1)
             #endif
-            for (index_type tn = 0; tn < task_enumeration.size(); ++tn)
-                tasks[ boost::get<0>(task_enumeration[tn]) ]
-                     [ boost::get<1>(task_enumeration[tn]) ]
-                     [ boost::get<2>(task_enumeration[tn]) ]
-                     .contract(ket_tensor, left, right, &collector[boost::get<0>(task_enumeration[tn])](0,0));
+            for (index_type tn = 0; tn < tasks.enumeration.size(); ++tn)
+                tasks[ boost::get<0>(tasks.enumeration[tn]) ]
+                     [ boost::get<1>(tasks.enumeration[tn]) ]
+                     [ boost::get<2>(tasks.enumeration[tn]) ]
+                     .contract(ket_tensor, left, right, &collector[boost::get<0>(tasks.enumeration[tn])](0,0));
         }
 
 
