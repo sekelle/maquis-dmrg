@@ -218,8 +218,7 @@ public:
                     res = solve_ietl_jcd(sp, twin_mps, parms, ortho_vecs);
             	    END_TIMING("JCD")
                     jcd_time = boost::chrono::duration<double>(then-now).count();
-                    maquis::cout << sp.contraction_schedule.mflops(jcd_time) << " MFLOPS "
-                                 << sp.contraction_schedule.bandwidth(jcd_time) << " MB/s " << std::endl;
+                    sp.contraction_schedule.print_stats(jcd_time);
                 } else if (parms["eigensolver"] == std::string("IETL_DAVIDSON")) {
             	    BEGIN_TIMING("DAVIDSON")
                     res = solve_ietl_davidson(sp, twin_mps, parms, ortho_vecs);

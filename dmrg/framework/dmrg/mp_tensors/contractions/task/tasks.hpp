@@ -352,7 +352,7 @@ public:
 
     ContractionGroup() {}
     ContractionGroup(unsigned b, unsigned s, unsigned ls, unsigned ms, unsigned rs, unsigned out_offset, bool left=false)
-        : mps_block(b), l_size(ls), r_size(rs), base(s, typename base::value_type(ls, ms, rs))
+        : mps_block(b), l_size(ls), r_size(rs), base(s, typename base::value_type(ls, ms, rs)), on_gpu(false)
     {
         unsigned pair_size = (left) ? ls : rs;
         for (unsigned i = 0 ; i < s; ++i)
@@ -620,11 +620,19 @@ struct Schedule_ : public std::vector<std::vector<std::vector<ContractionGroup<M
     typedef typename base::value_type::const_iterator const_iterator;
     typedef boost::tuple<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t> stats_t;
 
-    Schedule_() {}
-    Schedule_(std::size_t dim) : base(dim), base2(dim) {}
+    Schedule_() : cpu_time(0), gpu_time(0) {}
+    Schedule_(std::size_t dim) : base(dim), base2(dim), cpu_time(0), gpu_time(0) {}
 
     double mflops(double time) const { return total_flops*niter / time / 1e6; }
     double bandwidth(double time) const { return total_mem*niter / time / 1e6; }
+    void print_stats(double time) const {
+        maquis::cout << total_flops*niter / time / 1e6
+                     << " CPU: " << cpu_flops*niter / cpu_time / 1e6;
+        if (gpu_flops)
+        maquis::cout << " GPU: " << gpu_flops*niter / gpu_time / 1e6;
+
+        maquis::cout << "  (MFLOPS)" << std::endl;
+    }
 
     std::size_t n_tasks(std::size_t p) const
     {
@@ -643,9 +651,10 @@ struct Schedule_ : public std::vector<std::vector<std::vector<ContractionGroup<M
     size_t niter;
     size_t total_flops, total_mem;
     size_t cpu_flops, gpu_flops;
-    double cpu_time, gpu_time;
+    mutable double cpu_time, gpu_time;
 
     std::vector<boost::tuple<unsigned, unsigned, unsigned>> enumeration;
+    std::vector<boost::tuple<unsigned, unsigned, unsigned>> enumeration_gpu;
 }; 
 
 template <class Matrix, class SymmGroup>

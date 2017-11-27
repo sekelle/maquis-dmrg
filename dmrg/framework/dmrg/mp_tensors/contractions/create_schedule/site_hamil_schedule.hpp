@@ -58,18 +58,22 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
     initial.make_right_paired();
     typename Schedule<Matrix, SymmGroup>::schedule_t tasks(left_i.size());
 
+    bool use_gpu = accelerator::gpu::enabled();
+
     unsigned loop_max = left_i.size();
     omp_for(index_type mb, parallel::range<index_type>(0,loop_max), {
         shtm_tasks(mpo, left.index(), right.index(), left_i,
                   right_i, physical_i, out_right_pb, mb, tasks[mb]);
 
-        if (accelerator::gpu::enabled())
+        if (use_gpu)
             tasks.allocate(mb, right);
     });
 
     std::vector<size_t> flops_per_block(loop_max, 0);
 
     size_t flops = 0, memops = 0, ncg = 0;
+    size_t cpu_flops = 0, gpu_flops = 0;
+    size_t cpu_ncg = 0, gpu_ncg = 0;
     for (size_t block = 0; block < loop_max; ++block)
     {
         for (auto& cgv : tasks[block])
@@ -78,8 +82,20 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
                 boost::tuple<size_t, size_t> stats = cg.data_stats(initial, right.index());
                 flops += get<0>(stats); 
                 memops += get<1>(stats);
-                flops_per_block[block] += flops;
+                flops_per_block[block] += get<0>(stats);
                 ncg++;
+
+                if ( (get<0>(stats) > (1<<24)) && use_gpu ) // ~16 MF
+                {
+                  cg.on_gpu = true;
+                  gpu_flops += get<0>(stats);
+                  gpu_ncg++;
+                }
+                else
+                {
+                  cpu_flops += get<0>(stats);
+                  cpu_ncg++;
+                }
             }
     }
 
@@ -94,6 +110,8 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
 
     tasks.total_flops = flops;
     tasks.total_mem = memops;
+    tasks.cpu_flops = cpu_flops;
+    tasks.gpu_flops = gpu_flops;
 
     index_type inner_loop_max = physical_i.size();
     for (index_type task_block = 0; task_block < loop_max; ++task_block)
@@ -109,7 +127,10 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
         for (index_type cgi = 0; cgi < max_cgi; ++cgi)
             for (index_type s = 0; s < inner_loop_max; ++s)
                 if (cgi < tasks[mps_block][s].size())
-                    tasks.enumeration.push_back(boost::make_tuple(mps_block, s, cgi));
+                    if (tasks[mps_block][s][cgi].on_gpu)
+                        tasks.enumeration_gpu.push_back(boost::make_tuple(mps_block, s, cgi));
+                    else
+                        tasks.enumeration.push_back(boost::make_tuple(mps_block, s, cgi));
     }
 
     if (std::max(mpo.row_dim(), mpo.col_dim()) > 10)
@@ -125,10 +146,11 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
         //                maquis::cout << "mg " << std::setw(5) << mg.bs.size() << std::setw(5) << mg.l_size << std::setw(5) << mg.r_size << std::endl;
         //        }
 
-        maquis::cout << "Schedule size: " << tasks.size() << " blocks, " << ncg << " cgs, "
+        maquis::cout << "Schedule size: " << tasks.size() << " blocks, " << gpu_ncg << " cgs_gpu, " << cpu_ncg << " cgs_cpu, "
                      << " R " << size_of(right) << "B, "
                      << " L " << size_of(left) << "B "
-                     << " F " << flops / 1024 / 1024 << "GF, "
+                     << " GPU " << gpu_flops / 1024 / 1024 << "GF, "
+                     << " CPU " << cpu_flops / 1024 / 1024 << "GF, "
                      << " B " << memops / 1024 / 1024 << "GB, "
                      << std::endl;
 

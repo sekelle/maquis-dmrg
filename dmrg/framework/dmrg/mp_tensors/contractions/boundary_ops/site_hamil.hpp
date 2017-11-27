@@ -57,30 +57,39 @@ namespace common {
         block_matrix<Matrix, SymmGroup> collector(ket_basis);
 
         storage::gpu::fetch(ket_tensor);
-        if (accelerator::gpu::enabled() && ket_tensor.device_ptr.size())
+        if (tasks.enumeration_gpu.size() && ket_tensor.device_ptr.size())
         {
-            //#ifdef MAQUIS_OPENMP
-            //#pragma omp parallel for schedule (dynamic,1)
-            //#endif
-            for (index_type tn = 0; tn < tasks.enumeration.size(); ++tn)
-                tasks[ boost::get<0>(tasks.enumeration[tn]) ]
-                     [ boost::get<1>(tasks.enumeration[tn]) ]
-                     [ boost::get<2>(tasks.enumeration[tn]) ]
-                     .contract_gpu(ket_tensor, left, right, &collector[boost::get<0>(tasks.enumeration[tn])](0,0));
-        }
-        else
-        {
-            #ifdef MAQUIS_OPENMP
-            #pragma omp parallel for schedule (dynamic,1)
-            #endif
-            for (index_type tn = 0; tn < tasks.enumeration.size(); ++tn)
-                tasks[ boost::get<0>(tasks.enumeration[tn]) ]
-                     [ boost::get<1>(tasks.enumeration[tn]) ]
-                     [ boost::get<2>(tasks.enumeration[tn]) ]
-                     .contract(ket_tensor, left, right, &collector[boost::get<0>(tasks.enumeration[tn])](0,0));
+            cudaEvent_t start, stop;
+            HANDLE_ERROR( cudaEventCreate(&start) );
+            HANDLE_ERROR( cudaEventCreate(&stop) );
+            HANDLE_ERROR( cudaEventRecord(start,0) );
+
+            for (index_type tn = 0; tn < tasks.enumeration_gpu.size(); ++tn)
+                tasks[ boost::get<0>(tasks.enumeration_gpu[tn]) ]
+                     [ boost::get<1>(tasks.enumeration_gpu[tn]) ]
+                     [ boost::get<2>(tasks.enumeration_gpu[tn]) ]
+                     .contract_gpu(ket_tensor, left, right, &collector[boost::get<0>(tasks.enumeration_gpu[tn])](0,0));
+
+            HANDLE_ERROR( cudaEventRecord(stop,0) );
+            HANDLE_ERROR( cudaEventSynchronize(stop) );
+            float gpu_time;
+            HANDLE_ERROR( cudaEventElapsedTime( &gpu_time, start, stop ) );
+            tasks.gpu_time += gpu_time/1000;
         }
 
+        boost::chrono::high_resolution_clock::time_point now = boost::chrono::high_resolution_clock::now();
 
+        #ifdef MAQUIS_OPENMP
+        #pragma omp parallel for schedule (dynamic,1)
+        #endif
+        for (index_type tn = 0; tn < tasks.enumeration.size(); ++tn)
+            tasks[ boost::get<0>(tasks.enumeration[tn]) ]
+                 [ boost::get<1>(tasks.enumeration[tn]) ]
+                 [ boost::get<2>(tasks.enumeration[tn]) ]
+                 .contract(ket_tensor, left, right, &collector[boost::get<0>(tasks.enumeration[tn])](0,0));
+
+        boost::chrono::high_resolution_clock::time_point then = boost::chrono::high_resolution_clock::now();
+        tasks.cpu_time += boost::chrono::duration<double>(then - now).count();
 
         storage::gpu::drop(ket_tensor);
         reshape_right_to_left_new(physical_i, left_i, right_i, collector, ret.data());
