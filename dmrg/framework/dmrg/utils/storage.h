@@ -193,6 +193,13 @@ namespace storage {
                 impl()->state = D::prefetching;
                 impl()->thread(new boost::thread(o));
             }
+            void finish_evict(){
+                if(impl()->state == D::uncore) return;
+                else if(impl()->state == D::storing) impl()->join();
+                assert(impl()->state != D::prefetching); // isn't evicted prior evict finish
+                assert(impl()->state != D::core);  // isn't evicted prior evict finish
+                impl()->state = D::uncore;
+            }
             template <class Obj>
             void evict(Obj o){
                 if(impl()->state == D::core){
@@ -478,10 +485,11 @@ namespace storage {
             void drop()     { ((base*)this)->drop(gpu_drop_request<T>((T*)this)); }
         };
 
-        template<class T> static void fetch(serializable<T>& t)   { if(enabled()) t.fetch();    }
-        template<class T> static void prefetch(serializable<T>& t){ if(enabled()) t.prefetch(); }
-        template<class T> static void evict(serializable<T>& t)   { if(enabled()) t.evict();    }
-        template<class T> static void drop(serializable<T>& t)    { if(enabled()) t.drop();     }
+        template<class T> static void fetch(serializable<T>& t)          { if(enabled()) t.fetch();    }
+        template<class T> static void prefetch(serializable<T>& t)       { if(enabled()) t.prefetch(); }
+        template<class T> static void finish_evict(serializable<T>& t)   { if(enabled()) t.finish_evict();    }
+        template<class T> static void evict(serializable<T>& t)          { if(enabled()) t.evict();    }
+        template<class T> static void drop(serializable<T>& t)           { if(enabled()) t.drop();     }
 
         static void init(size_t n){
             maquis::cout << n << " GPUs enabled\n";
