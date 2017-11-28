@@ -110,6 +110,21 @@ MPSTensor<Matrix, SymmGroup>::MPSTensor(Index<SymmGroup> const& sd,
 }
 
 template<class Matrix, class SymmGroup>
+MPSTensor<Matrix, SymmGroup>::MPSTensor(Index<SymmGroup> const& sd,
+                                        Index<SymmGroup> const& ld,
+                                        Index<SymmGroup> const& rd,
+                                        DualIndex<SymmGroup> const& data_basis,
+                                        MPSStorageLayout layout)
+: phys_i(sd)
+, left_i(ld)
+, right_i(rd)
+, data_(data_basis)
+, cur_storage(layout)
+, cur_normalization(Unorm)
+{
+}
+
+template<class Matrix, class SymmGroup>
 void MPSTensor<Matrix, SymmGroup>::replace_left_paired(block_matrix<Matrix, SymmGroup> const & rhs, Indicator normalization)
 {
     make_left_paired();

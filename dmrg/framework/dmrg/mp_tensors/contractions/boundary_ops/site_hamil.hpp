@@ -52,9 +52,11 @@ namespace common {
                                  left_i = ket_tensor.row_dim();
         DualIndex<SymmGroup> const & ket_basis = ket_tensor.data().basis();
 
-        MPSTensor<Matrix, SymmGroup> ret;
-        ret.phys_i = ket_tensor.site_dim(); ret.left_i = ket_tensor.row_dim(); ret.right_i = ket_tensor.col_dim();
-        block_matrix<Matrix, SymmGroup> collector(ket_basis);
+        MPSTensor<Matrix, SymmGroup> ret(ket_tensor.site_dim(), ket_tensor.row_dim(), ket_tensor.col_dim(),
+                                         ket_basis, RightPaired);
+
+        //MPSTensor<Matrix, SymmGroup> ret_gpu = ret;
+        //ret_gpu.data() = collector;
 
         storage::gpu::fetch(ket_tensor);
         if (tasks.enumeration_gpu.size() && ket_tensor.device_ptr.size())
@@ -68,7 +70,7 @@ namespace common {
                 tasks[ boost::get<0>(tasks.enumeration_gpu[tn]) ]
                      [ boost::get<1>(tasks.enumeration_gpu[tn]) ]
                      [ boost::get<2>(tasks.enumeration_gpu[tn]) ]
-                     .contract_gpu(ket_tensor, left, right, &collector[boost::get<0>(tasks.enumeration_gpu[tn])](0,0));
+                     .contract_gpu(ket_tensor, left, right, &ret.data()[boost::get<0>(tasks.enumeration_gpu[tn])](0,0));
 
             HANDLE_ERROR( cudaEventRecord(stop,0) );
             HANDLE_ERROR( cudaEventSynchronize(stop) );
@@ -86,13 +88,13 @@ namespace common {
             tasks[ boost::get<0>(tasks.enumeration[tn]) ]
                  [ boost::get<1>(tasks.enumeration[tn]) ]
                  [ boost::get<2>(tasks.enumeration[tn]) ]
-                 .contract(ket_tensor, left, right, &collector[boost::get<0>(tasks.enumeration[tn])](0,0));
+                 .contract(ket_tensor, left, right, &ret.data()[boost::get<0>(tasks.enumeration[tn])](0,0));
 
         boost::chrono::high_resolution_clock::time_point then = boost::chrono::high_resolution_clock::now();
         tasks.cpu_time += boost::chrono::duration<double>(then - now).count();
 
         storage::gpu::drop(ket_tensor);
-        reshape_right_to_left_new(physical_i, left_i, right_i, collector, ret.data());
+        ret.make_left_paired();
 
         return ret;
     }

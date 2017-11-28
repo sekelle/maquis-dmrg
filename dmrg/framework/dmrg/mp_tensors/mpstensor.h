@@ -65,6 +65,12 @@ public:
               MPSStorageLayout layout,
               Indicator = Unorm);
 
+    MPSTensor(Index<SymmGroup> const& sd,
+              Index<SymmGroup> const& ld,
+              Index<SymmGroup> const& rd,
+              DualIndex<SymmGroup> const& data_basis,
+              MPSStorageLayout layout);
+
     Index<SymmGroup> const & site_dim() const;
     Index<SymmGroup> const & row_dim() const;
     Index<SymmGroup> const & col_dim() const;
