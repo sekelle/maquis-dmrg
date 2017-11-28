@@ -79,6 +79,23 @@ public:
     }
 
     template <class OtherMatrix>
+    typename boost::enable_if<boost::is_same<typename OtherMatrix::value_type, double>, void>::type
+    contract_gpu(Boundary<OtherMatrix, SymmGroup> const & left, const value_type* t_pointer, value_type* dev_ret) const
+    {
+        const value_type** left_mat = new const value_type*[impl()->b2sz.size()];
+
+        for (index_type i = 0; i < impl()->b2sz.size(); ++i)
+            left_mat[i] = (value_type*)left.device_ptr[impl()->bs[i]] + impl()->ks[i];
+
+        dgemm_ddot_gpu(accelerator::gpu::instance().handle,
+                       impl()->l_size, impl()->m_size, impl()->r_size,
+                       impl()->b2sz.size(), impl()->b2sz.data(), &(impl()->trans[0]),
+                       impl()->tidx.data(), impl()->alpha.data(), left_mat, t_pointer, dev_ret);
+
+        delete[] left_mat;
+    }
+
+    template <class OtherMatrix>
     typename boost::disable_if<boost::is_same<typename OtherMatrix::value_type, double>, Matrix>::type
     contract_gpu(Boundary<OtherMatrix, SymmGroup> const & left, const value_type* t_pointer) const
     {
@@ -157,10 +174,10 @@ public:
         for (int ss1 = 0; ss1 < impl()->size(); ++ss1)
         {
             if (!(*impl())[ss1].n_tasks()) continue;
-            Matrix C = (*impl())[ss1].contract_gpu(left, dev_t_pointer);
-            parallel_critical
-            maquis::dmrg::detail::iterator_axpy(&C(0,0), &C(0,0) + num_rows(C) * num_cols(C),
-                                                output + impl()->l_size * (*impl())[ss1].offset, value_type(1.0));
+            //Matrix C = (*impl())[ss1].contract_gpu(left, dev_t_pointer);
+            //maquis::dmrg::detail::iterator_axpy(&C(0,0), &C(0,0) + num_rows(C) * num_cols(C),
+            //                                    output + impl()->l_size * (*impl())[ss1].offset, value_type(1.0));
+            (*impl())[ss1].contract_gpu(left, dev_t_pointer, output + impl()->l_size * (*impl())[ss1].offset);
         }
         cudaFree(dev_t_pointer);
     }
