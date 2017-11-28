@@ -37,6 +37,6 @@ void dgemm_ddot_gpu(cublasHandle_t handle,
                     const unsigned* b2sz, const char* transL, unsigned const* const* tidx,
                     double const* const* alpha, const double** left, const double* t, double* out);
 
-void coalesced_gemm(cublasHandle_t handle, BatchGemmData<double> & batch, int, int, size_t, double*, double*);
+void vgemm(cublasHandle_t handle, BatchGemmData<double> & batch, int, int, size_t, double*, double*);
 
 #endif

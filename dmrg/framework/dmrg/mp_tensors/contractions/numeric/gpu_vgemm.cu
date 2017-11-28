@@ -38,7 +38,7 @@
 // BLAS declarations
 //#include <boost/numeric/bindings/blas/detail/blas.h>
 
-#include "numeric_gpu.h"
+#include "gpu.h"
 //#include "common.h"
 
 
@@ -100,7 +100,7 @@ void coalesced_gemm_tpl(cublasHandle_t handle, BatchGemmData<T> & batch, int M, 
 }
 
 
-void coalesced_gemm(cublasHandle_t handle, BatchGemmData<double> & batch, int M, int N, size_t t_size, double* mpsdata, double* dev_t)
+void vgemm(cublasHandle_t handle, BatchGemmData<double> & batch, int M, int N, size_t t_size, double* mpsdata, double* dev_t)
 {
    coalesced_gemm_tpl(handle, batch, M, N, t_size, mpsdata, dev_t); 
 }

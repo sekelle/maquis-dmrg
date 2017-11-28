@@ -38,8 +38,7 @@
 #include "utils/sizeof.h"
 #include "dmrg/utils/aligned_allocator.hpp"
 
-#include "dmrg/mp_tensors/contractions/numeric/numeric_gpu.h"
-#include "dmrg/mp_tensors/contractions/numeric/batch_gemm.h"
+#include "dmrg/mp_tensors/contractions/numeric/gpu.h"
 
 
 namespace contraction {
@@ -188,8 +187,8 @@ public:
         HANDLE_ERROR( cudaMalloc( (void**)&dev_t_pointer, buffer_size * sizeof(value_type)) );
 
         for (auto& B : batches)
-            coalesced_gemm(accelerator::gpu::instance().handle, B, M, N, t_size,
-                           (value_type*)mps.device_ptr[impl()->get_mps_block()], dev_t_pointer);
+            vgemm(accelerator::gpu::instance().handle, B, M, N, t_size,
+                 (value_type*)mps.device_ptr[impl()->get_mps_block()], dev_t_pointer);
 
         //for (unsigned pos = 0; pos < nt; ++pos)
         //{

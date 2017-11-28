@@ -37,7 +37,7 @@
 // BLAS declarations
 //#include <boost/numeric/bindings/blas/detail/blas.h>
 
-#include "numeric_gpu.h"
+#include "gpu.h"
 #include "common.h"
 
 
