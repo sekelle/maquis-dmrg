@@ -91,7 +91,7 @@ namespace common {
         boost::chrono::high_resolution_clock::time_point then = boost::chrono::high_resolution_clock::now();
         tasks.cpu_time += boost::chrono::duration<double>(then - now).count();
 
-        storage::gpu::finish_evict(ret_gpu);
+        storage::gpu::pin(ret_gpu);
 
         if (tasks.enumeration_gpu.size() && ket_tensor.device_ptr.size())
             ret.data() += ret_gpu.data();

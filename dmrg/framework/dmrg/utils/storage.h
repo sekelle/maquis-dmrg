@@ -193,7 +193,7 @@ namespace storage {
                 impl()->state = D::prefetching;
                 impl()->thread(new boost::thread(o));
             }
-            void finish_evict(){
+            void pin(){
                 if(impl()->state == D::uncore) return;
                 else if(impl()->state == D::storing) impl()->join();
                 assert(impl()->state != D::prefetching); // isn't evicted prior evict finish
@@ -514,7 +514,7 @@ namespace storage {
 
         template<class T> static void fetch(serializable<T>& t)          { if(enabled()) t.fetch();    }
         template<class T> static void prefetch(serializable<T>& t)       { if(enabled()) t.prefetch(); }
-        template<class T> static void finish_evict(serializable<T>& t)   { if(enabled()) t.finish_evict();    }
+        template<class T> static void pin(serializable<T>& t)            { if(enabled()) t.pin();      }
         template<class T> static void evict(serializable<T>& t)          { if(enabled()) t.evict();    }
         template<class T> static void drop(serializable<T>& t)           { if(enabled()) t.drop();     }
         template<class T> static void zero(serializable<T>& t)           { if(enabled()) t.zero();     }
