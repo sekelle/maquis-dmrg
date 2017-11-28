@@ -316,6 +316,7 @@ namespace storage {
     template<class T> class gpu_prefetch_request {};
     template<class T> class gpu_evict_request {};
     template<class T> class gpu_drop_request {};
+    template<class T> class gpu_zero_request {};
 
     template<class Matrix, class SymmGroup>
     class gpu_prefetch_request< Boundary<Matrix, SymmGroup> > {
@@ -444,6 +445,25 @@ namespace storage {
         MPSTensor<Matrix, SymmGroup>* ptr;
     };
 
+    template<class Matrix, class SymmGroup>
+    class gpu_zero_request< MPSTensor<Matrix, SymmGroup> > {
+    public:
+        gpu_zero_request(MPSTensor<Matrix, SymmGroup>* ptr) : ptr(ptr) { }
+        void operator()(){
+            MPSTensor<Matrix, SymmGroup>& o = *ptr;
+
+            o.device_ptr.resize(o.data().n_blocks());
+            for (size_t b = 0; b < o.data().n_blocks(); ++b)
+            {
+                size_t block_size = num_rows(o.data()[b]) * num_cols(o.data()[b]);
+                cudaMalloc( (void**)(&(o.device_ptr[b])), block_size * sizeof(typename Matrix::value_type) );
+                cudaMemset( o.device_ptr[b], 0, block_size * sizeof(typename Matrix::value_type));
+            }
+        }
+    private:
+        MPSTensor<Matrix, SymmGroup>* ptr;
+    };
+
     class gpu : public controller<gpu>
     {
         typedef controller<gpu> cbase;
@@ -483,6 +503,13 @@ namespace storage {
             void prefetch() { ((base*)this)->prefetch(gpu_prefetch_request<T>((T*)this)); }
             void evict()    { ((base*)this)->evict(gpu_evict_request<T>((T*)this)); }
             void drop()     { ((base*)this)->drop(gpu_drop_request<T>((T*)this)); }
+
+            void zero()
+            {
+                assert (this->state == uncore);
+                gpu_zero_request<T>((T*)this)();
+                this->state = core;
+            }
         };
 
         template<class T> static void fetch(serializable<T>& t)          { if(enabled()) t.fetch();    }
@@ -490,6 +517,7 @@ namespace storage {
         template<class T> static void finish_evict(serializable<T>& t)   { if(enabled()) t.finish_evict();    }
         template<class T> static void evict(serializable<T>& t)          { if(enabled()) t.evict();    }
         template<class T> static void drop(serializable<T>& t)           { if(enabled()) t.drop();     }
+        template<class T> static void zero(serializable<T>& t)           { if(enabled()) t.zero();     }
 
         static void init(size_t n){
             maquis::cout << n << " GPUs enabled\n";
