@@ -149,9 +149,9 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
         maquis::cout << "Schedule size: " << tasks.size() << " blocks, " << gpu_ncg << " cgs_gpu, " << cpu_ncg << " cgs_cpu, "
                      << " R " << size_of(right) << "B, "
                      << " L " << size_of(left) << "B "
-                     << " GPU " << gpu_flops / 1024 / 1024 << "GF, "
-                     << " CPU " << cpu_flops / 1024 / 1024 << "GF, "
-                     << " B " << memops / 1024 / 1024 << "GB, "
+                     << " GPU " << gpu_flops / 1024 / 1024 << "MF, "
+                     << " CPU " << cpu_flops / 1024 / 1024 << "MF, "
+                     << " B " << memops / 1024 / 1024 << "MB, "
                      << std::endl;
 
         boost::chrono::high_resolution_clock::time_point then = boost::chrono::high_resolution_clock::now();
