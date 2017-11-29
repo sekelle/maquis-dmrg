@@ -654,7 +654,6 @@ struct Schedule_ : public std::vector<std::vector<std::vector<ContractionGroup<M
     mutable double cpu_time, gpu_time;
 
     std::vector<boost::tuple<unsigned, unsigned, unsigned>> enumeration;
-    std::vector<boost::tuple<unsigned, unsigned, unsigned>> enumeration_gpu;
 }; 
 
 template <class Matrix, class SymmGroup>

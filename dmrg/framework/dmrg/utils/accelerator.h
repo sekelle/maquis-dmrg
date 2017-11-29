@@ -70,21 +70,34 @@ namespace accelerator {
 
         static void init(size_t ngpu) {
             instance().active = true;
+
             cublasStatus_t stat;
             stat = cublasCreate(&(instance().handle));
             if (stat != CUBLAS_STATUS_SUCCESS) {
                 printf ("CUBLAS initialization failed\n");
                 exit(EXIT_FAILURE);
             }
+
+            HANDLE_ERROR( cudaGetDeviceProperties( &instance().prop, 0 ) );
+
+            instance().buffer_size = instance().prop.totalGlobalMem/4;
+            cudaMalloc( &instance().buffer, instance().buffer_size );
         }
 
         gpu() : active(false) {}
 
+        ~gpu() { cudaFree(buffer); }
+
+
+        bool active;
 
         cublasHandle_t handle;
 
-        bool active;
         size_t id;
+        cudaDeviceProp  prop;
+
+        size_t buffer_size;
+        void* buffer;
     };
 
     inline static void setup(BaseParameters& parms){

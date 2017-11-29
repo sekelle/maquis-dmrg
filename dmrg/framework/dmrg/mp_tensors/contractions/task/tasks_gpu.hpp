@@ -179,7 +179,7 @@ public:
             //                                    output + impl()->l_size * (*impl())[ss1].offset, value_type(1.0));
             (*impl())[ss1].contract_gpu(left, dev_t_pointer, output + impl()->l_size * (*impl())[ss1].offset);
         }
-        cudaFree(dev_t_pointer);
+        //cudaFree(dev_t_pointer);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -201,7 +201,9 @@ public:
         std::size_t t_size = size_t(M) * size_t(N);
         std::size_t buffer_size = t_size * nt;
 
-        HANDLE_ERROR( cudaMalloc( (void**)&dev_t_pointer, buffer_size * sizeof(value_type)) );
+        //HANDLE_ERROR( cudaMalloc( (void**)&dev_t_pointer, buffer_size * sizeof(value_type)) );
+        dev_t_pointer = (value_type*)accelerator::gpu::instance().buffer;
+        cudaMemset( dev_t_pointer, 0, buffer_size * sizeof(value_type) );
 
         for (auto& B : batches)
             vgemm(accelerator::gpu::instance().handle, B, M, N, t_size,
@@ -260,7 +262,7 @@ public:
 
     mutable std::vector<BatchGemmData<value_type>> batches;
     value_type** dev_batch_ptr;
-    value_type* dev_t_pointer;
+    mutable value_type* dev_t_pointer;
 
     size_t batch_offset;
 
@@ -302,6 +304,7 @@ public:
     }
 
     std::vector<v_type**> dev_batch_ptr;
+    std::vector<boost::tuple<unsigned, unsigned, unsigned>> enumeration_gpu;
 };
 
 } // namespace common
