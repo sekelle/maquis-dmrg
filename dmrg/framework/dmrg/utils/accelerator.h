@@ -28,11 +28,13 @@
 #define ACCELERATOR_H
 
 #include <iostream>
+#include <atomic>
 
 #include <cuda_runtime.h>
 #include "cublas_v2.h"
 
 #include "dmrg/utils/BaseParameters.h"
+#include "dmrg/utils/utils.hpp"
 
 
 static void HandleError( cudaError_t err,
@@ -78,26 +80,57 @@ namespace accelerator {
                 exit(EXIT_FAILURE);
             }
 
-            HANDLE_ERROR( cudaGetDeviceProperties( &instance().prop, 0 ) );
+            HANDLE_ERROR( cudaGetDeviceProperties(&instance().prop, 0) );
 
-            instance().buffer_size = instance().prop.totalGlobalMem/4;
-            cudaMalloc( &instance().buffer, instance().buffer_size );
+            instance().pbuffer_size = instance().prop.totalGlobalMem/4;
+            cudaMalloc( &instance().pbuffer, instance().pbuffer_size );
+
+            instance().sbuffer_size = 50000000; // 50 MiB
+            cudaMalloc(&instance().sbuffer, instance().sbuffer_size);
         }
 
-        gpu() : active(false) {}
+        static void* get_pipeline_buffer()
+        {
+            //size_t sz_aligned = round_up<512>(sz);
+            //size_t new_position = position + sz_aligned;
+            //if (new_position > instance().buffer_size)
+            //    return nullptr;
 
-        ~gpu() { cudaFree(buffer); }
+            //return instance().buffer + new_position;
+            return instance().pbuffer;
+        }
+
+        static void* get_schedule_buffer(size_t sz)
+        {
+            assert(enabled());
+            //size_t sz_aligned = round_up<512>(sz);
+            size_t old_position = instance().sposition += sz; // read out current value and perform atomic update
+            if (instance().sposition > instance().sbuffer_size)
+                throw std::runtime_error("GPU schedule buffer exhausted\n");
+
+            return (char*)instance().sbuffer + old_position;
+        }
+
+        static void reset_schedule_buffer() { instance().sposition = 0; }
+
+        gpu() : active(false), sposition(0), pposition(0) {}
+
+        ~gpu() { cudaFree(pbuffer); cudaFree(sbuffer); }
 
 
         bool active;
-
         cublasHandle_t handle;
 
         size_t id;
         cudaDeviceProp  prop;
 
-        size_t buffer_size;
-        void* buffer;
+    private:
+        size_t sbuffer_size;
+        std::atomic<size_t> sposition;
+        size_t pbuffer_size;
+        std::atomic<size_t> pposition;
+
+        void *sbuffer, *pbuffer;
     };
 
     inline static void setup(BaseParameters& parms){

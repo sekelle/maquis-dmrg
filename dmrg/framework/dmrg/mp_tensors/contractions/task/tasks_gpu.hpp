@@ -202,7 +202,7 @@ public:
         std::size_t buffer_size = t_size * nt;
 
         //HANDLE_ERROR( cudaMalloc( (void**)&dev_t_pointer, buffer_size * sizeof(value_type)) );
-        dev_t_pointer = (value_type*)accelerator::gpu::instance().buffer;
+        dev_t_pointer = (value_type*)accelerator::gpu::get_pipeline_buffer();
         cudaMemset( dev_t_pointer, 0, buffer_size * sizeof(value_type) );
 
         for (auto& B : batches)
