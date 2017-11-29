@@ -493,9 +493,6 @@ public:
         return boost::make_tuple(flops, memops);
     }
 
-    template <class OtherMatrix>
-    void initialize_batches(Boundary<OtherMatrix, SymmGroup> const & right) { this->init(right); }
-
     unsigned get_mps_block() const { return mps_block; }
     unsigned get_l_size() const { return (*this)[0].get_l_size(); }
     unsigned get_r_size() const { return (*this)[0].get_r_size(); }
@@ -642,11 +639,6 @@ struct Schedule_ : public std::vector<std::vector<std::vector<ContractionGroup<M
             for (std::size_t i = 0; i < it->size(); ++i)
                 ret += (*it)[i].n_tasks();
         return ret;
-    }
-
-    template <class OtherMatrix>
-    void allocate(size_t mb, Boundary<OtherMatrix, SymmGroup> const & right) {
-        ((base2*)this)->allocate(mb, (*this)[mb], right);
     }
 
     size_t niter;

@@ -209,6 +209,20 @@ public:
             vgemm(accelerator::gpu::instance().handle, B, M, N, t_size,
                  (value_type*)mps.device_ptr[impl()->get_mps_block()], dev_t_pointer);
 
+        //for (unsigned pos = 0; pos < nt; ++pos)
+        //{
+        //    unsigned long ci, offset, dummy, in_offset;
+        //    char trans;
+        //    bit_twiddling::unpack(impl()->t_key_vec[pos], ci, offset, dummy, in_offset, trans);
+
+        //    int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
+        //    int LDB = right.index().left_size(ci);
+
+        //    cublasDgemm(accelerator::gpu::instance().handle, cublasops[0], cublasops[trans], M, N, K, &one,
+        //                (value_type*)mps.device_ptr[impl()->get_mps_block()] + in_offset * M, M,
+        //                (value_type*)right.device_ptr[ci] + offset, LDB, &zero, dev_t_pointer + pos * t_size, M);
+        //}
+
         // create batches
         //for (auto& B : batches) {
         //    B.a.clear();
@@ -251,6 +265,9 @@ public:
     mutable std::vector<BatchGemmData<value_type>> batches;
     mutable value_type* dev_t_pointer;
 
+    //value_type** dev_batch_ptr;
+    //size_t batch_offset;
+
     private:
         const Derived* impl() const { return static_cast<const Derived*>(this); }
 };
@@ -262,7 +279,34 @@ class ScheduleGpuExtension
 public:
 
     ScheduleGpuExtension(size_t n_mps_blocks) {}
+    //ScheduleGpuExtension(size_t n_mps_blocks) : dev_batch_ptr(n_mps_blocks) {}
 
+    //~ScheduleGpuExtension() { for (auto ptr : dev_batch_ptr) if(ptr) cudaFree(ptr); }
+
+    template <class MPSBlock, class OtherMatrix>
+    void allocate(size_t mb, MPSBlock& mpsb, Boundary<OtherMatrix, SymmGroup> const & right)
+    {
+        if (!accelerator::gpu::enabled()) return;
+
+        //// set up array of batched gemm argument pointers
+        //size_t bo = 0; // batch offset
+
+        //for (auto& cgv : mpsb)
+        //    for (auto& cg : cgv) {
+        //        cg.batch_offset = bo;
+        //        bo += 3*cg.t_key_vec.size();
+        //    }
+
+        //HANDLE_ERROR( cudaMalloc( (void**)&(dev_batch_ptr[mb]), bo * sizeof(v_type*) ) );
+
+        for (auto& cgv : mpsb)
+            for (auto& cg : cgv) {
+                //cg.dev_batch_ptr = dev_batch_ptr[mb] + cg.batch_offset;
+                cg.initialize_batches(right);
+            }
+    }
+
+    //std::vector<v_type**> dev_batch_ptr;
     std::vector<boost::tuple<unsigned, unsigned, unsigned>> enumeration_gpu;
 };
 

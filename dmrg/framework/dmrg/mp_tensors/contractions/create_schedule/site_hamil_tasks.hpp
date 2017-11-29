@@ -40,8 +40,10 @@ namespace common {
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
     void shtm_tasks(MPOTensor<Matrix, SymmGroup> const & mpo,
-                    BoundaryIndex<OtherMatrix, SymmGroup> const & left,
-                    BoundaryIndex<OtherMatrix, SymmGroup> const & right,
+                    //BoundaryIndex<OtherMatrix, SymmGroup> const & left,
+                    //BoundaryIndex<OtherMatrix, SymmGroup> const & right,
+                    Boundary<OtherMatrix, SymmGroup> const & left_boundary,
+                    Boundary<OtherMatrix, SymmGroup> const & right_boundary,
                     Index<SymmGroup> const & left_i,
                     Index<SymmGroup> const & right_i,
                     Index<SymmGroup> const & phys_i,
@@ -56,6 +58,9 @@ namespace common {
         typedef typename block_type::value_type::value_type cgroup;
         typedef typename cgroup::t_key t_key;
         typedef std::map<t_key, unsigned> t_map_t;
+
+        BoundaryIndex<OtherMatrix, SymmGroup> const & left = left_boundary.index();
+        BoundaryIndex<OtherMatrix, SymmGroup> const & right = right_boundary.index();
 
         mpsb.resize(phys_i.size());
 
@@ -136,6 +141,7 @@ namespace common {
                     cg.t_key_vec.reserve(t_index.size());
                     for (auto const& kit : t_index) cg.t_key_vec.push_back(kit.first);
                     cg.resort_t_index(t_index);
+                    cg.init(right_boundary);
                 }
                 else {
                     cg.t_key_vec.resize(t_index.size());
