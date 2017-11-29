@@ -313,6 +313,7 @@ public:
     std::size_t flops()       const { return lgemm_flops() + 2*t_move()/sizeof(value_type) + 2*collect()/sizeof(value_type); }
     std::size_t memops()      const { return t_move() + l_load(); }
 
+    unsigned get_l_size() const { return l_size; }
     unsigned get_m_size() const { return m_size; }
     unsigned get_r_size() const { return r_size; }
     void     set_l_size(unsigned l) { l_size = l; }
@@ -352,7 +353,7 @@ public:
 
     ContractionGroup() {}
     ContractionGroup(unsigned b, unsigned s, unsigned ls, unsigned ms, unsigned rs, unsigned out_offset, bool left=false)
-        : mps_block(b), l_size(ls), r_size(rs), base(s, typename base::value_type(ls, ms, rs)), on_gpu(false)
+        : mps_block(b), base(s, typename base::value_type(ls, ms, rs)) 
     {
         unsigned pair_size = (left) ? ls : rs;
         for (unsigned i = 0 ; i < s; ++i)
@@ -378,7 +379,7 @@ public:
             Matrix C = (*this)[ss1].contract(left, t_pointer);
             parallel_critical
             maquis::dmrg::detail::iterator_axpy(&C(0,0), &C(0,0) + num_rows(C) * num_cols(C),
-                                                output + l_size * (*this)[ss1].offset, value_type(1.0));
+                                                output + get_l_size() * (*this)[ss1].offset, value_type(1.0));
         }        
         free(t_pointer);
     }
@@ -475,16 +476,15 @@ public:
             memops += (*this)[i].memops();
         }
 
-        unsigned m1_size = mps.row_dim()[mps_block].second;
-        assert( m1_size == get_m_size() );
+        unsigned m1_size = get_m_size();
         for (typename std::vector<t_key>::const_iterator it = t_key_vec.begin(); it != t_key_vec.end(); ++it)
         {
             unsigned long ci, offset, dummy, mps_off;
             char trans;
             bit_twiddling::unpack(*it, ci, offset, dummy, mps_off, trans);
 
-            unsigned m2_size = right.left_size(ci);
-            unsigned r_size = right.right_size(ci);
+            unsigned m2_size = (trans) ? right.right_size(ci) : right.left_size(ci);
+            unsigned r_size = get_r_size();
 
             flops += 2 * m1_size * m2_size * r_size;
             memops += sizeof(value_type) * (m1_size * m2_size + m2_size * r_size);
@@ -497,16 +497,17 @@ public:
     void initialize_batches(Boundary<OtherMatrix, SymmGroup> const & right) { this->init(right); }
 
     unsigned get_mps_block() const { return mps_block; }
-    unsigned get_r_size() const { return r_size; }
+    unsigned get_l_size() const { return (*this)[0].get_l_size(); }
+    unsigned get_r_size() const { return (*this)[0].get_r_size(); }
     unsigned get_m_size() const { return (*this)[0].get_m_size(); }
 
     std::vector<t_key> t_key_vec;
 
-    bool on_gpu;
+    //bool on_gpu;
 
     // invariant: phys_out, phys_offset
 private:
-    unsigned mps_block, l_size, r_size;
+    unsigned mps_block;
     mutable value_type* t_pointer;
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -515,7 +516,7 @@ private:
         if (!this->size()) return;
 
         char gemmtrans[2] = {'N', 'T'};
-        int M = (*this)[0].get_m_size(), N = r_size;
+        int M = (*this)[0].get_m_size(), N = get_r_size();
 
         std::size_t t_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>((size_t)(M * N));
         std::size_t buffer_size = t_size * t_key_vec.size();
@@ -541,8 +542,8 @@ private:
     {
         if (!this->size()) return;
 
-        int M = mps.row_dim()[mps_block].second; // == m_size
-        int N = r_size;
+        int M = get_m_size();
+        int N = get_r_size();
 
         std::size_t t_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>((size_t)(M * N));
         std::size_t buffer_size = t_size * t_key_vec.size();

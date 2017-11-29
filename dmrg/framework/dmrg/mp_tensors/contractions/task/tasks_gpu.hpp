@@ -114,7 +114,7 @@ class ContractionGroupGpuExtension
     typedef typename Matrix::value_type value_type;
 public:
 
-    ContractionGroupGpuExtension() {}
+    ContractionGroupGpuExtension() : on_gpu(false) {}
 
     template <class OtherMatrix>
     void init(Boundary<OtherMatrix, SymmGroup> const & right)
@@ -177,7 +177,7 @@ public:
             //Matrix C = (*impl())[ss1].contract_gpu(left, dev_t_pointer);
             //maquis::dmrg::detail::iterator_axpy(&C(0,0), &C(0,0) + num_rows(C) * num_cols(C),
             //                                    output + impl()->l_size * (*impl())[ss1].offset, value_type(1.0));
-            (*impl())[ss1].contract_gpu(left, dev_t_pointer, output + impl()->l_size * (*impl())[ss1].offset);
+            (*impl())[ss1].contract_gpu(left, dev_t_pointer, output + impl()->get_l_size() * (*impl())[ss1].offset);
         }
         //cudaFree(dev_t_pointer);
     }
@@ -259,6 +259,8 @@ public:
         //                       );
         //}
     }
+
+    bool on_gpu;
 
     mutable std::vector<BatchGemmData<value_type>> batches;
     value_type** dev_batch_ptr;
