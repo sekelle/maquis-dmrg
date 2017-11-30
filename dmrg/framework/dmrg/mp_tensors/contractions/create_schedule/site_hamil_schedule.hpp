@@ -46,6 +46,8 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
 
     boost::chrono::high_resolution_clock::time_point now = boost::chrono::high_resolution_clock::now();
 
+    accelerator::gpu::reset_schedule_buffer();
+
     // MPS indices
     Index<SymmGroup> const & physical_i = initial.site_dim(),
                              right_i = initial.col_dim(),

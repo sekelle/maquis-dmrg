@@ -86,7 +86,10 @@ namespace accelerator {
             cudaMalloc( &instance().pbuffer, instance().pbuffer_size );
 
             instance().sbuffer_size = 50000000; // 50 MiB
-            cudaMalloc(&instance().sbuffer, instance().sbuffer_size);
+            //cudaMalloc(&instance().sbuffer, instance().sbuffer_size);
+            cudaMallocHost(&instance().sbuffer, instance().sbuffer_size);
+
+            cudaMalloc(&instance().dev_buffer, instance().sbuffer_size);
         }
 
         static void* get_pipeline_buffer()
@@ -111,11 +114,19 @@ namespace accelerator {
             return (char*)instance().sbuffer + old_position;
         }
 
+        static void update_schedule_buffer()
+        {
+            if (enabled() && instance().sposition)
+            HANDLE_ERROR( cudaMemcpyAsync(instance().dev_buffer, instance().sbuffer, instance().sposition, cudaMemcpyHostToDevice) );
+        }
+
+        static size_t get_schedule_position() { instance().sposition; }
+
         static void reset_schedule_buffer() { instance().sposition = 0; }
 
         gpu() : active(false), sposition(0), pposition(0) {}
 
-        ~gpu() { cudaFree(pbuffer); cudaFree(sbuffer); }
+        ~gpu() { cudaFree(pbuffer); cudaFree(sbuffer); free(dev_buffer); }
 
 
         bool active;
@@ -130,7 +141,7 @@ namespace accelerator {
         size_t pbuffer_size;
         std::atomic<size_t> pposition;
 
-        void *sbuffer, *pbuffer;
+        void *sbuffer, *pbuffer, *dev_buffer;
     };
 
     inline static void setup(BaseParameters& parms){
