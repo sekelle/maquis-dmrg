@@ -78,21 +78,20 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
         for (auto& cgv : tasks[block])
             for (auto& cg : cgv)
             {
-                boost::tuple<size_t, size_t> stats = cg.data_stats(initial, right.index());
-                flops += get<0>(stats); 
-                memops += get<1>(stats);
-                flops_per_block[block] += get<0>(stats);
+                flops += cg.flops;
+                memops += cg.memops;
+                flops_per_block[block] += cg.flops;
                 ncg++;
 
-                if ( (get<0>(stats) > (1<<24)) && use_gpu ) // ~16 MF
+                if ( (cg.flops > (1<<24)) && use_gpu ) // ~16 MF
                 {
                   cg.on_gpu = true;
-                  gpu_flops += get<0>(stats);
+                  gpu_flops += cg.flops;
                   gpu_ncg++;
                 }
                 else
                 {
-                  cpu_flops += get<0>(stats);
+                  cpu_flops += cg.flops;
                   cpu_ncg++;
                 }
             }

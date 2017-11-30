@@ -87,7 +87,7 @@ namespace accelerator {
 
             instance().sbuffer_size = 50000000; // 50 MiB
             //cudaMalloc(&instance().sbuffer, instance().sbuffer_size);
-            cudaMallocHost(&instance().sbuffer, instance().sbuffer_size);
+            //cudaMallocHost(&instance().sbuffer, instance().sbuffer_size);
 
             cudaMalloc(&instance().dev_buffer, instance().sbuffer_size);
         }
@@ -126,7 +126,8 @@ namespace accelerator {
 
         gpu() : active(false), sposition(0), pposition(0) {}
 
-        ~gpu() { cudaFree(pbuffer); cudaFree(sbuffer); free(dev_buffer); }
+        //~gpu() { cudaFree(pbuffer); cudaFree(sbuffer); free(dev_buffer); }
+        ~gpu() { cudaFree(pbuffer); }
 
 
         bool active;

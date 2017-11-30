@@ -136,6 +136,7 @@ namespace common {
                     for (auto& mg : cg) mg.add_line(ci_eff, left.offset(ci, b1), left.trans(ci, b1));
                 } // b1
 
+                cg.data_stats(right, t_index);
                 if (accelerator::gpu::enabled())
                 {
                     cg.t_key_vec.reserve(t_index.size());

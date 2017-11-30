@@ -465,11 +465,10 @@ public:
             (*this)[i].reorder_t(tmap_inv);
     }
 
-    template <class DefaultMatrix, class OtherMatrix>
-    boost::tuple<std::size_t, std::size_t>
-    data_stats(MPSTensor<DefaultMatrix, SymmGroup> const & mps, BoundaryIndex<OtherMatrix, SymmGroup> const & right) const
+    template <class OtherMatrix, class TMap>
+    void data_stats(BoundaryIndex<OtherMatrix, SymmGroup> const & right, TMap const & t_index)
     {
-        std::size_t flops=0, memops=0;
+        flops=0, memops=0;
         for (int i = 0; i < this->size(); ++i)
         {
             flops += (*this)[i].flops();
@@ -477,11 +476,11 @@ public:
         }
 
         unsigned m1_size = get_m_size();
-        for (typename std::vector<t_key>::const_iterator it = t_key_vec.begin(); it != t_key_vec.end(); ++it)
+        for (auto const & kit : t_index)
         {
             unsigned long ci, offset, dummy, mps_off;
             char trans;
-            bit_twiddling::unpack(*it, ci, offset, dummy, mps_off, trans);
+            bit_twiddling::unpack(kit.first, ci, offset, dummy, mps_off, trans);
 
             unsigned m2_size = (trans) ? right.right_size(ci) : right.left_size(ci);
             unsigned r_size = get_r_size();
@@ -490,7 +489,7 @@ public:
             memops += sizeof(value_type) * (m1_size * m2_size + m2_size * r_size);
         }
 
-        return boost::make_tuple(flops, memops);
+        //return boost::make_tuple(flops, memops);
     }
 
     unsigned get_mps_block() const { return mps_block; }
@@ -500,7 +499,7 @@ public:
 
     std::vector<t_key> t_key_vec;
 
-    //bool on_gpu;
+    size_t flops, memops;
 
     // invariant: phys_out, phys_offset
 private:
