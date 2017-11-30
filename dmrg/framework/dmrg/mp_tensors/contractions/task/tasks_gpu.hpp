@@ -152,14 +152,20 @@ public:
             }
         }
 
-        //int offset = 0;
         //for (int batch = 0; batch < batches.size(); ++batch) {
-        //    batches[batch].offset = offset;
-        //    offset += batches[batch].b.size();
+        //    batches[batch].size = batches[batch].b.size();
         //}
 
-        //for (auto& b : batches)
-        //    b.upload_b(dev_batch_ptr, nt);
+        //for (auto& B : batches)
+        //{
+        //    //B.size = B.b.size();
+        //    //B.dev_b = (value_type**)accelerator::gpu::get_schedule_buffer(3 * B.size * sizeof(value_type*));
+        //    // asychronous since < 64KB
+        //    //memcpy(B.dev_b + B.size, B.b.data(), B.size * sizeof(value_type*));
+        //    //cudaMemcpyAsync(B.dev_b + B.size, B.b.data(), B.size * sizeof(value_type*), cudaMemcpyHostToHost);
+        //    //cudaMemcpyAsync(B.dev_b + B.size, B.b.data(), B.size * sizeof(value_type*), cudaMemcpyHostToDevice);
+        //    //HANDLE_ERROR( cudaMemcpyAsync(B.dev_b + B.size, B.b.data(), B.size * sizeof(value_type*), cudaMemcpyHostToDevice) );
+        //}
     }
 
 

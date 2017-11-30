@@ -34,26 +34,15 @@
 template <class T>
 struct BatchGemmData
 {
-
-    //void upload_a (T** dev_batch_ptr, size_t nt) {
-    //    HANDLE_ERROR(cudaMemcpy(dev_batch_ptr + offset, a.data(), a.size() * sizeof(T*), cudaMemcpyHostToDevice));
-    //}
-    //void upload_b (T** dev_batch_ptr, size_t nt) {
-    //    HANDLE_ERROR(cudaMemcpy(dev_batch_ptr + nt + offset, b.data(), b.size() * sizeof(T*), cudaMemcpyHostToDevice));
-    //}
-    //void upload_c (T** dev_batch_ptr, size_t nt) {
-    //    HANDLE_ERROR(cudaMemcpy(dev_batch_ptr + 2*nt + offset, c.data(), c.size() * sizeof(T*), cudaMemcpyHostToDevice));
-    //}
-
     unsigned long in_offset;
-    int offset;
+    int size;
     int K;
     int LDB;
     int tstart;
     int tend;
     char trans;
     std::vector<T*> b;
-    //std::vector<T*> a, b, c;
+    T** dev_b;
 };
 
 
