@@ -489,7 +489,7 @@ public:
             memops += sizeof(value_type) * (m1_size * m2_size + m2_size * r_size);
         }
 
-        //return boost::make_tuple(flops, memops);
+        this->on_gpu = accelerator::gpu::use_gpu(flops);
     }
 
     unsigned get_mps_block() const { return mps_block; }

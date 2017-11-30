@@ -60,8 +60,6 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
     initial.make_right_paired();
     typename Schedule<Matrix, SymmGroup>::schedule_t tasks(left_i.size());
 
-    bool use_gpu = accelerator::gpu::enabled();
-
     unsigned loop_max = left_i.size();
     omp_for(index_type mb, parallel::range<index_type>(0,loop_max), {
         shtm_tasks(mpo, left, right, left_i,
@@ -83,9 +81,8 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
                 flops_per_block[block] += cg.flops;
                 ncg++;
 
-                if ( (cg.flops > (1<<24)) && use_gpu ) // ~16 MF
+                if (cg.on_gpu) // ~16 MF
                 {
-                  cg.on_gpu = true;
                   gpu_flops += cg.flops;
                   gpu_ncg++;
                 }

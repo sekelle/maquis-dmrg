@@ -137,7 +137,7 @@ namespace common {
                 } // b1
 
                 cg.data_stats(right, t_index);
-                if (accelerator::gpu::enabled())
+                if (cg.on_gpu)
                 {
                     cg.t_key_vec.reserve(t_index.size());
                     for (auto const& kit : t_index) cg.t_key_vec.push_back(kit.first);

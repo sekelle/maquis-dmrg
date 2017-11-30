@@ -92,6 +92,8 @@ namespace accelerator {
             cudaMalloc(&instance().dev_buffer, instance().sbuffer_size);
         }
 
+        static bool use_gpu(size_t flops) { return enabled() && (flops > (1<<24)); }
+
         static void* get_pipeline_buffer()
         {
             //size_t sz_aligned = round_up<512>(sz);
