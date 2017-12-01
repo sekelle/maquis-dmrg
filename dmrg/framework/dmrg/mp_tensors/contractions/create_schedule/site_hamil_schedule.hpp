@@ -71,29 +71,17 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
     std::vector<size_t> flops_per_block(loop_max, 0);
     size_t flops = 0, memops = 0, ncg = 0;
     size_t cpu_flops = 0, gpu_flops = 0;
-    size_t cpu_ncg = 0, gpu_ncg = 0;
     for (size_t block = 0; block < loop_max; ++block)
-    {
         for (auto& cgv : tasks[block])
             for (auto& cg : cgv)
             {
                 flops += cg.flops;
                 memops += cg.memops;
                 flops_per_block[block] += cg.flops;
-                ncg++;
 
-                if (cg.on_gpu) // ~16 MF
-                {
-                  gpu_flops += cg.flops;
-                  gpu_ncg++;
-                }
-                else
-                {
-                  cpu_flops += cg.flops;
-                  cpu_ncg++;
-                }
+                if (cg.on_gpu) gpu_flops += cg.flops;
+                else cpu_flops += cg.flops;
             }
-    }
 
     std::vector<std::pair<size_t, size_t> > fb(loop_max);
     std::vector<size_t> idx(loop_max);
@@ -142,7 +130,8 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
         //                maquis::cout << "mg " << std::setw(5) << mg.bs.size() << std::setw(5) << mg.l_size << std::setw(5) << mg.r_size << std::endl;
         //        }
 
-        maquis::cout << "Schedule size: " << tasks.size() << " blocks, " << gpu_ncg << " cgs_gpu, " << cpu_ncg << " cgs_cpu, "
+        maquis::cout << "Schedule size: " << tasks.size() << " blocks, " << tasks.enumeration_gpu.size()
+                         << " cgs_gpu, " << tasks.enumeration.size() << " cgs_cpu, "
                      << " R " << size_of(right) << "B, "
                      << " L " << size_of(left) << "B "
                      << " GPU " << gpu_flops / 1024 / 1024 << "MF, "
