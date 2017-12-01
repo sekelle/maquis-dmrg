@@ -66,8 +66,9 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
                   right_i, physical_i, out_right_pb, mb, tasks[mb]);
     });
 
-    std::vector<size_t> flops_per_block(loop_max, 0);
+    accelerator::gpu::update_schedule_buffer();
 
+    std::vector<size_t> flops_per_block(loop_max, 0);
     size_t flops = 0, memops = 0, ncg = 0;
     size_t cpu_flops = 0, gpu_flops = 0;
     size_t cpu_ncg = 0, gpu_ncg = 0;

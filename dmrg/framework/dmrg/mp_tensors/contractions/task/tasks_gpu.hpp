@@ -152,20 +152,15 @@ public:
             }
         }
 
-        //for (int batch = 0; batch < batches.size(); ++batch) {
-        //    batches[batch].size = batches[batch].b.size();
-        //}
+        for (auto& B : batches)
+        {
+            B.size = B.b.size();
 
-        //for (auto& B : batches)
-        //{
-        //    //B.size = B.b.size();
-        //    //B.dev_b = (value_type**)accelerator::gpu::get_schedule_buffer(3 * B.size * sizeof(value_type*));
-        //    // asychronous since < 64KB
-        //    //memcpy(B.dev_b + B.size, B.b.data(), B.size * sizeof(value_type*));
-        //    //cudaMemcpyAsync(B.dev_b + B.size, B.b.data(), B.size * sizeof(value_type*), cudaMemcpyHostToHost);
-        //    //cudaMemcpyAsync(B.dev_b + B.size, B.b.data(), B.size * sizeof(value_type*), cudaMemcpyHostToDevice);
-        //    //HANDLE_ERROR( cudaMemcpyAsync(B.dev_b + B.size, B.b.data(), B.size * sizeof(value_type*), cudaMemcpyHostToDevice) );
-        //}
+            std::pair<void*, void*> ret = accelerator::gpu::get_staging_buffer(3 * B.size * sizeof(value_type*));
+            value_type** staging = (value_type**)ret.first;
+            B.dev_b              = (value_type**)ret.second;
+            memcpy(staging + B.size, B.b.data(), B.size * sizeof(value_type*)); // copy to staging area
+        }
     }
 
 
@@ -209,47 +204,10 @@ public:
 
         //HANDLE_ERROR( cudaMalloc( (void**)&dev_t_pointer, buffer_size * sizeof(value_type)) );
         dev_t_pointer = (value_type*)accelerator::gpu::get_pipeline_buffer();
-        cudaMemset( dev_t_pointer, 0, buffer_size * sizeof(value_type) );
 
         for (auto& B : batches)
             vgemm(accelerator::gpu::instance().handle, B, M, N, t_size,
                  (value_type*)mps.device_ptr[impl()->get_mps_block()], dev_t_pointer);
-
-        // create batches
-        //for (auto& B : batches) {
-        //    B.a.clear();
-        //    B.c.clear();
-        //}
-
-        //for (unsigned pos = 0; pos < nt; ++pos)
-        //{
-        //    unsigned long ci, offset, dummy, in_offset;
-        //    char trans;
-        //    bit_twiddling::unpack(impl()->t_key_vec[pos], ci, offset, dummy, in_offset, trans);
-
-        //    int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
-        //    int LDB = right.index().left_size(ci);
-
-        //    for (int batch = 0; batch < batches.size(); ++batch)
-        //        if (batches[batch].in_offset == in_offset && batches[batch].trans == trans)
-        //        {
-        //            batches[batch].a.push_back((value_type*)mps.device_ptr[impl()->get_mps_block()] + in_offset * M);
-        //            batches[batch].c.push_back(dev_t_pointer + pos * t_size);
-        //        }
-        //}
-
-        //for (auto& B : batches) {
-        //    assert(B.a.size() == B.b.size() && B.b.size() == B.c.size());
-
-        //    B.upload_a(dev_batch_ptr, nt);
-        //    B.upload_c(dev_batch_ptr, nt);
-
-        //    cublasDgemmBatched(accelerator::gpu::instance().handle, cublasops[0], cublasops[B.trans], M, N, B.K, &one,
-        //                       (const value_type**)(dev_batch_ptr + B.offset), M,
-        //                       (const value_type**)(dev_batch_ptr + nt + B.offset), B.LDB, &zero,
-        //                       dev_batch_ptr + 2*nt + B.offset, M, B.a.size()
-        //                       );
-        //}
     }
 
     bool on_gpu;

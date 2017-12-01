@@ -34,6 +34,7 @@
 #include <cstring>
 #include <malloc.h>
 #include <stdint.h>
+#include <iostream>
 //#include <boost/static_assert.hpp>
 // BLAS declarations
 //#include <boost/numeric/bindings/blas/detail/blas.h>
@@ -68,6 +69,35 @@ __global__ void accumulate(float *in, float *out, size_t N, size_t chunks)
     }
 }
 
+template <class T>
+__global__ void set_batch(T** batch, T* a, T* dev_t, size_t t_size, size_t N)
+{
+    size_t tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    while (tid < N) {
+
+        batch[tid] = a;
+        batch[2*N + tid] = dev_t + tid * t_size;
+
+        tid += blockDim.x * gridDim.x;
+    }
+}
+
+template <class T>
+void batched_gemm_tpl(cublasHandle_t handle, BatchGemmData<T> & batch, int M, int N, size_t t_size, T* mpsdata, T* dev_t)
+{
+    cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
+    T one = 1.0;
+    T zero = 0.0;
+
+    set_batch<<<1, 64>>>(batch.dev_b, mpsdata + batch.in_offset * M, dev_t + batch.tstart * t_size, t_size, batch.size);
+
+    cublasDgemmBatched(handle, cuop[0], cuop[batch.trans], M, N, batch.K, &one,
+                       (const T**)(batch.dev_b), M,
+                       (const T**)(batch.dev_b + batch.size), batch.LDB, &zero,
+                       batch.dev_b + 2*batch.size, M, batch.size
+                       );
+}
 
 template <class T>
 void coalesced_gemm_tpl(cublasHandle_t handle, BatchGemmData<T> & batch, int M, int N, size_t t_size, T* mpsdata, T* dev_t)
@@ -78,14 +108,13 @@ void coalesced_gemm_tpl(cublasHandle_t handle, BatchGemmData<T> & batch, int M, 
 
     T* buffer;
     size_t b_size = batch.K * N;
-    cudaMalloc( (void**)&buffer, batch.b.size() * b_size * sizeof(T) );
+    HANDLE_ERROR( cudaMalloc((void**)&buffer, batch.b.size() * b_size * sizeof(T)) );
 
     if (batch.trans)
         for (size_t k = 0; k < batch.b.size(); ++k)
             cublasDgeam(handle, cuop[1], cuop[0], batch.K, N,
                         &one, batch.b[k], batch.LDB,
                         &zero, batch.b[k], batch.K,
-                        //&zero, NULL, 0,
                         buffer + k*b_size, batch.K);
     else
         for (size_t k = 0; k < batch.b.size(); ++k)
@@ -102,5 +131,6 @@ void coalesced_gemm_tpl(cublasHandle_t handle, BatchGemmData<T> & batch, int M, 
 
 void vgemm(cublasHandle_t handle, BatchGemmData<double> & batch, int M, int N, size_t t_size, double* mpsdata, double* dev_t)
 {
-   coalesced_gemm_tpl(handle, batch, M, N, t_size, mpsdata, dev_t); 
+   //coalesced_gemm_tpl(handle, batch, M, N, t_size, mpsdata, dev_t);
+   batched_gemm_tpl(handle, batch, M, N, t_size, mpsdata, dev_t);
 }

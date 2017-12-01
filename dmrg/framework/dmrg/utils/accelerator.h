@@ -86,9 +86,7 @@ namespace accelerator {
             cudaMalloc( &instance().pbuffer, instance().pbuffer_size );
 
             instance().sbuffer_size = 50000000; // 50 MiB
-            //cudaMalloc(&instance().sbuffer, instance().sbuffer_size);
-            //cudaMallocHost(&instance().sbuffer, instance().sbuffer_size);
-
+            cudaMallocHost(&instance().sbuffer, instance().sbuffer_size);
             cudaMalloc(&instance().dev_buffer, instance().sbuffer_size);
         }
 
@@ -105,15 +103,15 @@ namespace accelerator {
             return instance().pbuffer;
         }
 
-        static void* get_schedule_buffer(size_t sz)
+        static std::pair<void*,void*> get_staging_buffer(size_t sz)
         {
             assert(enabled());
             //size_t sz_aligned = round_up<512>(sz);
-            size_t old_position = instance().sposition += sz; // read out current value and perform atomic update
+            size_t updated = (instance().sposition += sz); // read out current value and perform atomic update
             if (instance().sposition > instance().sbuffer_size)
                 throw std::runtime_error("GPU schedule buffer exhausted\n");
 
-            return (char*)instance().sbuffer + old_position;
+            return std::make_pair((char*)instance().sbuffer + updated-sz, (char*)instance().dev_buffer + updated-sz);
         }
 
         static void update_schedule_buffer()
@@ -126,11 +124,9 @@ namespace accelerator {
 
         static void reset_schedule_buffer() { instance().sposition = 0; }
 
+
         gpu() : active(false), sposition(0), pposition(0) {}
-
-        //~gpu() { cudaFree(pbuffer); cudaFree(sbuffer); free(dev_buffer); }
-        ~gpu() { cudaFree(pbuffer); }
-
+        ~gpu() { cudaFree(pbuffer); cudaFree(sbuffer); cudaFree(dev_buffer); }
 
         bool active;
         cublasHandle_t handle;
