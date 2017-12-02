@@ -244,7 +244,7 @@ public:
 
     ScheduleGpuExtension(size_t n_mps_blocks) {}
 
-    std::vector<boost::tuple<unsigned, unsigned, unsigned>> enumeration_gpu;
+    std::vector<boost::tuple<unsigned, unsigned, unsigned, size_t>> enumeration_gpu;
 };
 
 } // namespace common
