@@ -35,7 +35,7 @@ template <class T>
 struct BatchGemmData
 {
     unsigned long in_offset;
-    int size;
+    long unsigned size;
     int K;
     int LDB;
     int tstart;

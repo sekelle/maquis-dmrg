@@ -152,6 +152,11 @@ public:
         return std::accumulate(b2sz.begin(), b2sz.end(), 0);
     }
 
+    std::size_t size() const
+    {
+        return b2sz.size();
+    }
+
     template <class OtherMatrix>
     typename boost::disable_if<boost::is_same<typename OtherMatrix::value_type, double>, Matrix>::type
     contract(Boundary<OtherMatrix, SymmGroup> const & left, const value_type* t_pointer) const

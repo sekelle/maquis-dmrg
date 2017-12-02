@@ -60,7 +60,6 @@ namespace accelerator {
     {
     public:
 
-
         static gpu& instance() {
             static gpu singleton;
             return singleton;
@@ -88,9 +87,16 @@ namespace accelerator {
             instance().sbuffer_size = 50000000; // 50 MiB
             cudaMallocHost(&instance().sbuffer, instance().sbuffer_size);
             cudaMalloc(&instance().dev_buffer, instance().sbuffer_size);
+
+            size_t nstreams = 32;
+            instance().streams.resize(nstreams);
+            for (size_t i=0; i < nstreams; ++i)
+                cudaStreamCreate(&instance().streams[i]);
         }
 
         static bool use_gpu(size_t flops) { return enabled() && (flops > (1<<24)); }
+
+
 
         static void* get_pipeline_buffer()
         {
@@ -122,11 +128,31 @@ namespace accelerator {
 
         static size_t get_schedule_position() { instance().sposition; }
 
-        static void reset_schedule_buffer() { instance().sposition = 0; }
+        static void reset_buffers() {
+            instance().sposition = 0;
+            instance().pposition = 0;
+        }
+
+
+        static cudaStream_t next_stream()
+        {
+            static size_t counter = 0;
+
+            size_t si = counter % instance().streams.size();
+            counter++;
+
+            return instance().streams[si];
+        }
 
 
         gpu() : active(false), sposition(0), pposition(0) {}
-        ~gpu() { cudaFree(pbuffer); cudaFree(sbuffer); cudaFree(dev_buffer); }
+
+        ~gpu()
+        {
+            cudaFree(pbuffer); cudaFreeHost(sbuffer); cudaFree(dev_buffer);
+            for (size_t i=0; i < streams.size(); ++i)
+                cudaStreamDestroy(streams[i]);
+        }
 
         bool active;
         cublasHandle_t handle;
@@ -135,12 +161,15 @@ namespace accelerator {
         cudaDeviceProp  prop;
 
     private:
+
         size_t sbuffer_size;
         std::atomic<size_t> sposition;
         size_t pbuffer_size;
         std::atomic<size_t> pposition;
 
         void *sbuffer, *pbuffer, *dev_buffer;
+
+        std::vector<cudaStream_t> streams;
     };
 
     inline static void setup(BaseParameters& parms){

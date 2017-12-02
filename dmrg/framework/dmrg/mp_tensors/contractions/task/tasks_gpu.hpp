@@ -114,7 +114,7 @@ class ContractionGroupGpuExtension
     typedef typename Matrix::value_type value_type;
 public:
 
-    ContractionGroupGpuExtension() : on_gpu(false) {}
+    ContractionGroupGpuExtension() : on_gpu(false), buffer_size(0) {}
 
     template <class OtherMatrix>
     void init(Boundary<OtherMatrix, SymmGroup> const & right)
@@ -152,15 +152,26 @@ public:
             }
         }
 
+        size_t r_buf = 0;
         for (auto& B : batches)
         {
             B.size = B.b.size();
+            r_buf = std::max(r_buf, B.size * B.K * impl()->get_r_size());
 
             std::pair<void*, void*> ret = accelerator::gpu::get_staging_buffer(3 * B.size * sizeof(value_type*));
             value_type** staging = (value_type**)ret.first;
             B.dev_b              = (value_type**)ret.second;
             memcpy(staging + B.size, B.b.data(), B.size * sizeof(value_type*)); // copy to staging area
         }
+
+        size_t max_size = 0;
+        for (int ss1 = 0; ss1 < impl()->size(); ++ss1)
+            max_size = std::max(max_size, (*impl())[ss1].size());
+
+        size_t ls_buf = max_size * impl()->get_l_size() * impl()->get_m_size();
+                      + max_size * impl()->get_m_size() * impl()->get_r_size();
+
+        buffer_size = nt * impl()->get_m_size() * impl()->get_r_size() + std::max(ls_buf, r_buf);
     }
 
 
@@ -211,12 +222,18 @@ public:
     }
 
     bool on_gpu;
+    size_t buffer_size;
 
     mutable std::vector<BatchGemmData<value_type>> batches;
     mutable value_type* dev_t_pointer;
 
     private:
         const Derived* impl() const { return static_cast<const Derived*>(this); }
+};
+
+class MaquisStream
+{
+
 };
 
 template <class Matrix, class SymmGroup>
