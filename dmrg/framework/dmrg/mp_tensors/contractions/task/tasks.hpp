@@ -614,11 +614,11 @@ struct BoundarySchedule : public std::vector<MPSBlock<
 }; 
 
 template <class Matrix, class SymmGroup>
-struct Schedule_ : public std::vector<std::vector<std::vector<ContractionGroup<Matrix, SymmGroup> > > >
-                 , public ScheduleGpuExtension<Matrix, SymmGroup>
+struct Schedule_ : public std::vector<std::vector<std::vector<ContractionGroup<Matrix, SymmGroup>>>>
+                 , public ScheduleGpuExtension<Matrix, SymmGroup, Schedule_<Matrix, SymmGroup>>
 {
-    typedef std::vector<std::vector<std::vector<ContractionGroup<Matrix, SymmGroup> > > > base;
-    typedef ScheduleGpuExtension<Matrix, SymmGroup> base2;
+    typedef std::vector<std::vector<std::vector<ContractionGroup<Matrix, SymmGroup>>>> base;
+    typedef ScheduleGpuExtension<Matrix, SymmGroup, Schedule_<Matrix, SymmGroup>> base2;
     typedef typename base::value_type::const_iterator const_iterator;
     typedef boost::tuple<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t> stats_t;
 

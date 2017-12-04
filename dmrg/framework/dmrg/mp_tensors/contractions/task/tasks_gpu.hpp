@@ -52,35 +52,8 @@ class MatrixGroupGpuExtension
 public:
 
     template <class OtherMatrix>
-    typename boost::enable_if<boost::is_same<typename OtherMatrix::value_type, double>, Matrix>::type
-    contract_gpu(Boundary<OtherMatrix, SymmGroup> const & left, const value_type* t_pointer) const
-    {
-        const value_type** left_mat = new const value_type*[impl()->b2sz.size()];
-
-        for (index_type i = 0; i < impl()->b2sz.size(); ++i)
-            left_mat[i] = (value_type*)left.device_ptr[impl()->bs[i]] + impl()->ks[i];
-
-        value_type* dev_ret;
-        HANDLE_ERROR( cudaMalloc((void**)&dev_ret, impl()->l_size * impl()->r_size * sizeof(value_type)) );
-        HANDLE_ERROR( cudaMemset( dev_ret, 0, impl()->l_size * impl()->r_size * sizeof(value_type) ) );
-
-        dgemm_ddot_gpu(accelerator::gpu::instance().handle,
-                       impl()->l_size, impl()->m_size, impl()->r_size,
-                       impl()->b2sz.size(), impl()->b2sz.data(), &(impl()->trans[0]),
-                       impl()->tidx.data(), impl()->alpha.data(), left_mat, t_pointer, dev_ret);
-
-        Matrix ret(impl()->l_size, impl()->r_size);
-        HANDLE_ERROR( cudaMemcpy( &ret(0,0), dev_ret, impl()->l_size * impl()->r_size * sizeof(value_type), cudaMemcpyDeviceToHost) );
-
-        cudaFree(dev_ret);
-        delete[] left_mat;
-
-        return ret;
-    }
-
-    template <class OtherMatrix>
     typename boost::enable_if<boost::is_same<typename OtherMatrix::value_type, double>, void>::type
-    contract_gpu(Boundary<OtherMatrix, SymmGroup> const & left, const value_type* t_pointer, value_type* dev_ret) const
+    contract_gpu(Boundary<OtherMatrix, SymmGroup> const & left, const value_type* t_pointer, value_type* ls_buffer, value_type* dev_ret) const
     {
         const value_type** left_mat = new const value_type*[impl()->b2sz.size()];
 
@@ -90,18 +63,16 @@ public:
         dgemm_ddot_gpu(accelerator::gpu::instance().handle,
                        impl()->l_size, impl()->m_size, impl()->r_size,
                        impl()->b2sz.size(), impl()->b2sz.data(), &(impl()->trans[0]),
-                       impl()->tidx.data(), impl()->alpha.data(), left_mat, t_pointer, dev_ret);
+                       impl()->tidx.data(), impl()->alpha.data(), left_mat, t_pointer, ls_buffer, dev_ret);
 
         delete[] left_mat;
     }
 
     template <class OtherMatrix>
-    typename boost::disable_if<boost::is_same<typename OtherMatrix::value_type, double>, Matrix>::type
-    contract_gpu(Boundary<OtherMatrix, SymmGroup> const & left, const value_type* t_pointer) const
+    typename boost::disable_if<boost::is_same<typename OtherMatrix::value_type, double>, void>::type
+    contract_gpu(Boundary<OtherMatrix, SymmGroup> const & left, const value_type* t_pointer, value_type* ls_buffer, value_type* dev_ret) const
     {
         throw std::runtime_error("not implemented\n");
-        Matrix ret(impl()->l_size, impl()->r_size);
-        return ret;
     }
 
     private:
@@ -171,7 +142,7 @@ public:
         size_t ls_buf = max_size * impl()->get_l_size() * impl()->get_m_size();
                       + max_size * impl()->get_m_size() * impl()->get_r_size();
 
-        buffer_size = nt * impl()->get_m_size() * impl()->get_r_size() + std::max(ls_buf, r_buf);
+        buffer_size = t_buffer_size() + std::max(ls_buf, r_buf);
     }
 
 
@@ -186,12 +157,8 @@ public:
         for (int ss1 = 0; ss1 < impl()->size(); ++ss1)
         {
             if (!(*impl())[ss1].n_tasks()) continue;
-            //Matrix C = (*impl())[ss1].contract_gpu(left, dev_t_pointer);
-            //maquis::dmrg::detail::iterator_axpy(&C(0,0), &C(0,0) + num_rows(C) * num_cols(C),
-            //                                    output + impl()->l_size * (*impl())[ss1].offset, value_type(1.0));
-            (*impl())[ss1].contract_gpu(left, dev_t_pointer, output + impl()->get_l_size() * (*impl())[ss1].offset);
+            (*impl())[ss1].contract_gpu(left, dev_t_pointer, dev_t_pointer + t_buffer_size(), output + impl()->get_l_size() * (*impl())[ss1].offset);
         }
-        //cudaFree(dev_t_pointer);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -211,15 +178,13 @@ public:
 
         //std::size_t t_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>((size_t)(M * N));
         std::size_t t_size = size_t(M) * size_t(N);
-        std::size_t buffer_size = t_size * nt;
-
-        //HANDLE_ERROR( cudaMalloc( (void**)&dev_t_pointer, buffer_size * sizeof(value_type)) );
-        dev_t_pointer = (value_type*)accelerator::gpu::get_pipeline_buffer();
 
         for (auto& B : batches)
             vgemm(accelerator::gpu::instance().handle, B, M, N, t_size,
                  (value_type*)mps.device_ptr[impl()->get_mps_block()], dev_t_pointer);
     }
+
+    size_t t_buffer_size() const { return impl()->get_m_size() * impl()->get_r_size() * impl()->t_key_vec.size(); }
 
     bool on_gpu;
     size_t buffer_size;
@@ -231,12 +196,18 @@ public:
         const Derived* impl() const { return static_cast<const Derived*>(this); }
 };
 
+template <class T>
 class MaquisStream
 {
+public:
 
+    MaquisStream(T* b_) : buffer(b_), stream(accelerator::gpu::next_stream()) {}
+
+    T* buffer;
+    cudaStream_t stream;
 };
 
-template <class Matrix, class SymmGroup>
+template <class Matrix, class SymmGroup, class Derived>
 class ScheduleGpuExtension
 {
     typedef typename Matrix::value_type v_type;
@@ -244,7 +215,45 @@ public:
 
     ScheduleGpuExtension(size_t n_mps_blocks) {}
 
+
+    void assign_streams()
+    {
+        std::sort(enumeration_gpu.begin(), enumeration_gpu.end(),
+                  [](
+                     boost::tuple<unsigned, unsigned, unsigned, size_t>& p1,
+                     boost::tuple<unsigned, unsigned, unsigned, size_t>& p2
+                    )
+                    { return boost::get<3>(p1) > boost::get<3>(p2); }
+                  );
+
+        for (size_t tn = 0; tn < enumeration_gpu.size(); ++tn)
+        {
+            size_t buffer_size = boost::get<3>(enumeration_gpu[tn]);
+            v_type* buffer = (v_type*)accelerator::gpu::get_pipeline_buffer(buffer_size * sizeof(v_type));
+            if (buffer)
+                pipeline.push_back(MaquisStream<v_type>(buffer));
+            else
+                break;
+        }
+
+        for (size_t tn = 0; tn < enumeration_gpu.size(); ++tn)
+        {
+            auto & cg = (*impl())[ boost::get<0>(enumeration_gpu[tn]) ]
+                                 [ boost::get<1>(enumeration_gpu[tn]) ]
+                                 [ boost::get<2>(enumeration_gpu[tn]) ];
+
+            unsigned pidx = tn % pipeline.size();
+            cg.dev_t_pointer = pipeline[pidx].buffer;
+        }
+    }
+
+
     std::vector<boost::tuple<unsigned, unsigned, unsigned, size_t>> enumeration_gpu;
+
+    std::vector<MaquisStream<v_type>> pipeline;
+
+    private:
+        const Derived* impl() const { return static_cast<const Derived*>(this); }
 };
 
 } // namespace common

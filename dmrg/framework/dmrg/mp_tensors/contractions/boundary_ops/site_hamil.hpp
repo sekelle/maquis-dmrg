@@ -63,11 +63,14 @@ namespace common {
             HANDLE_ERROR( cudaEventRecord(start,0) );
 
             for (index_type tn = 0; tn < tasks.enumeration_gpu.size(); ++tn)
+            { 
                 tasks[ boost::get<0>(tasks.enumeration_gpu[tn]) ]
                      [ boost::get<1>(tasks.enumeration_gpu[tn]) ]
                      [ boost::get<2>(tasks.enumeration_gpu[tn]) ]
-                     //.contract_gpu(ket_tensor, left, right, &ret.data()[boost::get<0>(tasks.enumeration_gpu[tn])](0,0));
                      .contract_gpu(ket_tensor, left, right, (value_type*)ret_gpu.device_ptr[boost::get<0>(tasks.enumeration_gpu[tn])]);
+                maquis::cout << boost::get<3>(tasks.enumeration_gpu[tn]) * sizeof(value_type) / 1024 / 1024 << " ";
+            }
+            maquis::cout << std::endl;
 
             HANDLE_ERROR( cudaEventRecord(stop,0) );
             HANDLE_ERROR( cudaEventSynchronize(stop) );

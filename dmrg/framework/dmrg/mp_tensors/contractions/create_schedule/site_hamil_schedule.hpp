@@ -117,15 +117,7 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
                         tasks.enumeration.push_back(boost::make_tuple(mps_block, s, cgi));
     }
 
-    std::sort(tasks.enumeration_gpu.begin(), tasks.enumeration_gpu.end(),
-              [](
-                 boost::tuple<unsigned, unsigned, unsigned, size_t>& p1,
-                 boost::tuple<unsigned, unsigned, unsigned, size_t>& p2
-                )
-                {
-                    return boost::get<3>(p1) > boost::get<3>(p2);
-                }
-              );
+    tasks.assign_streams();
 
     if (std::max(mpo.row_dim(), mpo.col_dim()) > 10)
     {

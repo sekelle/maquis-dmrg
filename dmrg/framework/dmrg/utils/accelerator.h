@@ -98,15 +98,14 @@ namespace accelerator {
 
 
 
-        static void* get_pipeline_buffer()
+        static void* get_pipeline_buffer(size_t sz)
         {
-            //size_t sz_aligned = round_up<512>(sz);
-            //size_t new_position = position + sz_aligned;
-            //if (new_position > instance().buffer_size)
-            //    return nullptr;
+            size_t sz_aligned = bit_twiddling::round_up<512>(sz);
+            size_t new_position = instance().pposition += sz_aligned;
+            if (new_position > instance().pbuffer_size)
+                return nullptr;
 
-            //return instance().buffer + new_position;
-            return instance().pbuffer;
+            return (char*)instance().pbuffer + new_position - sz_aligned;
         }
 
         static std::pair<void*,void*> get_staging_buffer(size_t sz)

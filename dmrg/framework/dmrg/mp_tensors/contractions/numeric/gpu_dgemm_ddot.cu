@@ -59,7 +59,7 @@ void dgemm_ddot_gpu_tpl(cublasHandle_t handle,
                         //std::vector<cudaStream_t> const & col_streams,
                         unsigned ls, unsigned ms, unsigned rs, unsigned b1size,
                         const unsigned* b2sz, const char* transL, unsigned const* const* tidx,
-                        T const* const* alpha, const T** left, const T* t, T* dev_out)
+                        T const* const* alpha, const T** left, const T* t, T* ls_buffer, T* dev_out)
 {
     typedef unsigned long uint;
 
@@ -72,13 +72,10 @@ void dgemm_ddot_gpu_tpl(cublasHandle_t handle,
     cublasOperation_t cublasops[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
     T fone = 1.0;
 
-    T * dev_s_buffer;
-    HANDLE_ERROR( cudaMalloc( (void**)&dev_s_buffer, t_size * sizeof(T) ) );
-    HANDLE_ERROR( cudaMemset( dev_s_buffer, 0, t_size * sizeof(T) ) );
-
+    T * dev_s_buffer = ls_buffer;
     for (uint i = 0; i < b1size; ++i)
     {
-        HANDLE_ERROR( cudaMemset( dev_s_buffer, 0, t_size * sizeof(T) ) );
+        HANDLE_ERROR( cudaMemsetAsync( dev_s_buffer, 0, t_size * sizeof(T) ) );
         const T * alpha_i = alpha[i];
         const unsigned * tidx_i = tidx[i];
 
@@ -97,8 +94,6 @@ void dgemm_ddot_gpu_tpl(cublasHandle_t handle,
             cublasDgemm(handle, cublasops[transL[i]], cublasops[0], ls, rs, ms, &fone, left[i], ls,
                         dev_s_buffer, ms, &fone, dev_out, ls);
     }
-
-    cudaFree(dev_s_buffer);
 }
 
 void dgemm_ddot_gpu(cublasHandle_t handle,
@@ -106,7 +101,7 @@ void dgemm_ddot_gpu(cublasHandle_t handle,
                     //std::vector<cudaStream_t> const & col_streams,
                     unsigned ls, unsigned ms, unsigned rs, unsigned b1size,
                     const unsigned* b2sz, const char* transL, unsigned const* const* tidx,
-                    double const* const* alpha, const double** left, const double* t, double* dev_out)
+                    double const* const* alpha, const double** left, const double* t, double* ls_buf, double* dev_out)
 {
-    return dgemm_ddot_gpu_tpl(handle,ls,ms,rs,b1size,b2sz,transL,tidx,alpha,left,t,dev_out);
+    return dgemm_ddot_gpu_tpl(handle,ls,ms,rs,b1size,b2sz,transL,tidx,alpha,left,t,ls_buf,dev_out);
 }
