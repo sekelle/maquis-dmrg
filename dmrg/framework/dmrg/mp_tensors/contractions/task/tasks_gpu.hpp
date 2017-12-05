@@ -75,8 +75,16 @@ public:
         throw std::runtime_error("not implemented\n");
     }
 
+    template <class OtherMatrix>
+    void init(Boundary<OtherMatrix, SymmGroup> const & left, Boundary<OtherMatrix, SymmGroup> const & right)
+    {
+    }
+
     private:
+        Derived* impl() { return static_cast<Derived*>(this); }
         const Derived* impl() const { return static_cast<const Derived*>(this); }
+
+        GemmDotData<value_type> gdd;
 };
 
 template <class Matrix, class SymmGroup, class Derived>
@@ -88,7 +96,7 @@ public:
     ContractionGroupGpuExtension() : on_gpu(false), buffer_size(0) {}
 
     template <class OtherMatrix>
-    void init(Boundary<OtherMatrix, SymmGroup> const & right)
+    void init(Boundary<OtherMatrix, SymmGroup> const & left, Boundary<OtherMatrix, SymmGroup> const & right)
     {
         size_t nt = impl()->t_key_vec.size();
 
@@ -143,6 +151,9 @@ public:
                       + max_size * impl()->get_m_size() * impl()->get_r_size();
 
         buffer_size = t_buffer_size() + std::max(ls_buf, r_buf);
+
+        for (auto& mg : *impl())
+            mg.init(left, right);
     }
 
 
@@ -189,11 +200,13 @@ public:
     bool on_gpu;
     size_t buffer_size;
 
-    mutable std::vector<BatchGemmData<value_type>> batches;
     mutable value_type* dev_t_pointer;
 
     private:
+        Derived* impl()             { return static_cast<Derived*>(this); }
         const Derived* impl() const { return static_cast<const Derived*>(this); }
+
+        mutable std::vector<BatchGemmData<value_type>> batches;
 };
 
 template <class T>

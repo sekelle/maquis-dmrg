@@ -142,7 +142,7 @@ namespace common {
                     cg.t_key_vec.reserve(t_index.size());
                     for (auto const& kit : t_index) cg.t_key_vec.push_back(kit.first);
                     cg.resort_t_index(t_index);
-                    cg.init(right_boundary);
+                    cg.init(left_boundary, right_boundary);
                 }
                 else {
                     cg.t_key_vec.resize(t_index.size());

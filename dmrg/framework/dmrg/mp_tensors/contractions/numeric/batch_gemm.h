@@ -46,5 +46,14 @@ struct BatchGemmData
 };
 
 
+template <class T>
+struct GemmDotData
+{
+    T** left;
+    unsigned* b2sz;
+
+    T** alpha;
+    unsigned** tidx;
+};
 
 #endif
