@@ -111,12 +111,12 @@ namespace accelerator {
         static std::pair<void*,void*> get_staging_buffer(size_t sz)
         {
             assert(enabled());
-            //size_t sz_aligned = round_up<512>(sz);
-            size_t updated = (instance().sposition += sz); // read out current value and perform atomic update
+            size_t sz_aligned = bit_twiddling::round_up<64>(sz);
+            size_t updated = (instance().sposition += sz_aligned); // read out current value and perform atomic update
             if (instance().sposition > instance().sbuffer_size)
                 throw std::runtime_error("GPU schedule buffer exhausted\n");
 
-            return std::make_pair((char*)instance().sbuffer + updated-sz, (char*)instance().dev_buffer + updated-sz);
+            return std::make_pair((char*)instance().sbuffer + updated-sz_aligned, (char*)instance().dev_buffer + updated-sz_aligned);
         }
 
         static void update_schedule_buffer()
