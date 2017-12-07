@@ -125,7 +125,7 @@ namespace accelerator {
             HANDLE_ERROR( cudaMemcpyAsync(instance().dev_buffer, instance().sbuffer, instance().sposition, cudaMemcpyHostToDevice) );
         }
 
-        static size_t get_schedule_position() { instance().sposition; }
+        static size_t get_schedule_position() { return instance().sposition; }
 
         static void reset_buffers() {
             instance().sposition = 0;
