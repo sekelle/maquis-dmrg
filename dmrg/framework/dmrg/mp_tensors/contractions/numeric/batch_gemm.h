@@ -49,6 +49,8 @@ struct BatchGemmData
 template <class T>
 struct GemmDotData
 {
+    size_t b1size;
+
     T** left;
     unsigned* b2sz;
 

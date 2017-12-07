@@ -63,6 +63,7 @@ class MatrixGroup : public MatrixGroupGpuExtension<Matrix, SymmGroup, MatrixGrou
     typedef MPOTensor_detail::index_type index_type;
     typedef typename Matrix::value_type value_type;
     typedef unsigned long uint;
+    typedef MatrixGroupGpuExtension<Matrix, SymmGroup, MatrixGroup<Matrix, SymmGroup>> base;
 
 public:
 
@@ -74,7 +75,8 @@ public:
     MatrixGroup() {}
     MatrixGroup(unsigned ls, unsigned ms, unsigned rs) : l_size(ls), m_size(ms), r_size(rs) {}
 
-    MatrixGroup(MatrixGroup const & rhs) : offset(rhs.offset)
+    MatrixGroup(MatrixGroup const & rhs) : base(rhs)
+                                         , offset(rhs.offset)
                                          , l_size(rhs.l_size), m_size(rhs.m_size), r_size(rhs.r_size)
                                          , tmpline(rhs.tmpline), bs(rhs.bs), ks(rhs.ks)
                                          , b2sz(rhs.b2sz), trans(rhs.trans)
@@ -107,6 +109,7 @@ public:
 
     friend void swap(MatrixGroup & lhs, MatrixGroup & rhs)
     {
+        swap( static_cast<base&>(lhs), static_cast<base&>(rhs) );
         std::swap(lhs.offset, rhs.offset);
         std::swap(lhs.l_size, rhs.l_size);
         std::swap(lhs.m_size, rhs.m_size);

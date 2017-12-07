@@ -63,7 +63,8 @@ public:
         dgemm_ddot_gpu(accelerator::gpu::instance().handle,
                        impl()->l_size, impl()->m_size, impl()->r_size,
                        impl()->b2sz.size(), impl()->b2sz.data(), &(impl()->trans[0]),
-                       impl()->tidx.data(), impl()->alpha.data(), left_mat, t_pointer, ls_buffer, dev_ret);
+                       impl()->tidx.data(), impl()->alpha.data(), left_mat, t_pointer, ls_buffer, dev_ret,
+                       gdd[0]);
 
         delete[] left_mat;
     }
@@ -80,7 +81,8 @@ public:
     {
         size_t b1size = impl()->b2sz.size();
 
-        for (int pass = 0; pass < 2; ++pass)
+        //for (int pass = 0; pass < 2; ++pass)
+        for (int pass = 0; pass < 1; ++pass)
         {
             size_t schedule_size = 0, b2_sum = 0;
 
@@ -88,7 +90,7 @@ public:
             b1_set.reserve(b1size);
             for (size_t i = 0; i < b1size; ++i)
             {
-                if (impl()->trans[i] != pass) continue; // pass=1 -> trans
+                //if (impl()->trans[i] != pass) continue; // pass=1 -> trans
 
                 b1_set.push_back(i);
                 size_t b2sz = impl()->b2sz[i];
@@ -97,8 +99,9 @@ public:
                 //                   left_ptr             b2sz[i]            alpha_i_ptr
                 schedule_size += sizeof(value_type*) + sizeof(unsigned) + sizeof(value_type*)
                 //                   alpha_i_value               tidx_i_ptr             tidx_i_value
-                              +  sizeof(value_type) * b2sz + sizeof(value_type*) + sizeof(unsigned) * b2sz;
+                              +  sizeof(value_type) * b2sz + sizeof(value_type*) + sizeof(unsigned) * b2sz + 8;
             }
+            gdd[pass].b1size = b1_set.size();
 
             std::pair<void*, void*> ret = accelerator::gpu::get_staging_buffer(schedule_size);
             char* staging = (char*)ret.first;
@@ -145,7 +148,8 @@ public:
                     for (size_t j = 0; j < b2sz; ++j)
                         alpha_i_staging[j] = impl()->alpha[I][j];
 
-                    dev_alpha_i += b2sz * sizeof(value_type);
+                    dev_alpha_i += b2sz;
+                    alpha_i_staging += b2sz;
                 }
             }
             staging += b1_set.size() * sizeof(value_type*) + b2_sum * sizeof(value_type);
@@ -165,7 +169,8 @@ public:
                     for (size_t j = 0; j < impl()->b2sz[I]; ++j)
                         tidx_i_staging[j] = impl()->tidx[I][j];
 
-                    dev_tidx_i += b2sz * sizeof(unsigned);
+                    dev_tidx_i += b2sz;
+                    tidx_i_staging += b2sz;
                 }
             }
         }
