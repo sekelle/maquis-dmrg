@@ -74,18 +74,6 @@ void dgemm_ddot_gpu_tpl(cublasHandle_t handle,
     cublasOperation_t cublasops[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
     T fone = 1.0;
 
-    //T* gleft[b1size];
-    //cudaMemcpy(gleft, gdd.left, b1size * sizeof(T*), cudaMemcpyDeviceToHost);
-
-    //unsigned gb2[b1size];
-    //cudaMemcpy(gb2, gdd.b2sz, b1size * sizeof(unsigned), cudaMemcpyDeviceToHost);
-
-    //T* gaptr[b1size];
-    //cudaMemcpy(gaptr, gdd.alpha, b1size * sizeof(T*), cudaMemcpyDeviceToHost);
-    //unsigned* gtiptr[b1size];
-    //cudaMemcpy(gtiptr, gdd.tidx, b1size * sizeof(unsigned*), cudaMemcpyDeviceToHost);
-
-
     T * dev_s_buffer = ls_buffer;
     for (uint i = 0; i < b1size; ++i)
     {
@@ -95,26 +83,10 @@ void dgemm_ddot_gpu_tpl(cublasHandle_t handle,
 
         //cublasSetStream(handle, row_streams[i]);
 
-        //if (left[i] != gleft[i])
-        //    throw std::runtime_error("left mismatch\n");
-        //if (b2sz[i] != gb2[i])
-        //    throw std::runtime_error("b2sz mismatch\n");
-
-        //T galpha[b2sz[i]];
-        //cudaMemcpy(galpha, gaptr[i], b2sz[i] * sizeof(T), cudaMemcpyDeviceToHost);
-        //unsigned gti[b2sz[i]];
-        //cudaMemcpy(gti, gtiptr[i], b2sz[i] * sizeof(unsigned), cudaMemcpyDeviceToHost);
-
         for (uint j = 0; j < b2sz[i]; ++j)
         {
             unsigned tpos = tidx_i[j];
             cublasDaxpy(handle, t_size_fortran, (alpha_i+j), t + tpos * t_size_padded, one, dev_s_buffer, one);
-
-            //if ( tidx_i[j] != gti[j] )
-            //    throw std::runtime_error("tidx mismatch\n");
-            //if ( std::abs(alpha_i[j] - galpha[j]) > 1e-6 )
-            //    throw std::runtime_error("alpha mismatch\n");
-
         }
 
         if (transL[i])
