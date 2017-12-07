@@ -61,7 +61,7 @@ void dgemm_ddot_gpu_tpl(cublasHandle_t handle,
                         unsigned ls, unsigned ms, unsigned rs, unsigned b1size,
                         const unsigned* b2sz, const char* transL, unsigned const* const* tidx,
                         T const* const* alpha, const T** left, const T* t, T* ls_buffer, T* dev_out,
-                        GemmDotData<T> const & gdd)
+                        GemmDotData<T> const gdd[])
 {
     typedef unsigned long uint;
 
@@ -104,7 +104,7 @@ void dgemm_ddot_gpu(cublasHandle_t handle,
                     unsigned ls, unsigned ms, unsigned rs, unsigned b1size,
                     const unsigned* b2sz, const char* transL, unsigned const* const* tidx,
                     double const* const* alpha, const double** left, const double* t, double* ls_buf, double* dev_out,
-                    GemmDotData<double> const & gdd)
+                    GemmDotData<double> const gdd[])
 {
     return dgemm_ddot_gpu_tpl(handle,ls,ms,rs,b1size,b2sz,transL,tidx,alpha,left,t,ls_buf,dev_out, gdd);
 }

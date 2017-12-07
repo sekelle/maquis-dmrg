@@ -36,7 +36,7 @@ void dgemm_ddot_gpu(cublasHandle_t handle,
                     unsigned ls, unsigned ms, unsigned rs, unsigned b1size,
                     const unsigned* b2sz, const char* transL, unsigned const* const* tidx,
                     double const* const* alpha, const double** left, const double* t, double* ls_buf, double* out,
-                    GemmDotData<double> const & gdd);
+                    GemmDotData<double> const gdd[]);
 
 void vgemm(cublasHandle_t handle, BatchGemmData<double> & batch, int, int, size_t, double*, double*);
 

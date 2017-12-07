@@ -64,7 +64,7 @@ public:
                        impl()->l_size, impl()->m_size, impl()->r_size,
                        impl()->b2sz.size(), impl()->b2sz.data(), &(impl()->trans[0]),
                        impl()->tidx.data(), impl()->alpha.data(), left_mat, t_pointer, ls_buffer, dev_ret,
-                       gdd[0]);
+                       gdd);
 
         delete[] left_mat;
     }
