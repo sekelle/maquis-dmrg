@@ -180,7 +180,7 @@ public:
         Derived* impl() { return static_cast<Derived*>(this); }
         const Derived* impl() const { return static_cast<const Derived*>(this); }
 
-        GemmDotData<value_type> gdd[2];
+        mutable GemmDotData<value_type> gdd[2];
 };
 
 template <class Matrix, class SymmGroup, class Derived>
