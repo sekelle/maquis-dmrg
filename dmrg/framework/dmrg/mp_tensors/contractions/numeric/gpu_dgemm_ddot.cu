@@ -388,17 +388,14 @@ void dgemm_ddot_gpu_tpl(cublasHandle_t handle,
 {
     typedef unsigned long uint;
 
-    int one = 1;
     uint t_size = ms * rs;
     //uint t_size_padded = round_up<ALIGNMENT/sizeof(T)>(t_size);
-    uint t_size_padded = t_size;
-    int t_size_fortran = t_size;
 
     cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
     T fone = 1.0, fzero = 0.0;
 
     compute_s_stacked<<<std::min(b1sz, 1024u), 64>>>(ms, rs, b1sz, gdd.b2sz, gdd.alpha, gdd.tidx, t, ls_buffer);
-    //compute_s<<<64, 64>>>(ms, rs, b1sz, gdd.b2sz, gdd.alpha, gdd.tidx, t, lsb2);
+    //compute_s<<<64, 64>>>(ms, rs, b1sz, gdd.b2sz, gdd.alpha, gdd.tidx, t, ls_buffer);
 
     T* l_buffer = ls_buffer + b1sz * t_size;
     size_t l_size = ls * ms;
@@ -410,24 +407,13 @@ void dgemm_ddot_gpu_tpl(cublasHandle_t handle,
 
     //for (unsigned i = 0; i < gdd.nn; ++i)
     //    cuda_copy_i<<<blocks,threads>>>(ls, ms, i, gdd.left, l_buffer + i * l_size);
+    //    cudaMemcpy(l_buffer + i * l_size, left[i], ls * ms * sizeof(T), cudaMemcpyDeviceToDevice);
     //for (unsigned i = gdd.nn; i < gdd.b1sz; ++i)
     //    cuda_transpose_i<<<blocks,threads>>>(ms, ls, i, gdd.left, l_buffer + i * l_size);
-
-    //for (uint i = 0; i < b1sz; ++i)
-    //{
-    //    //cublasSetStream(handle, row_streams[i]);
-
-    //    dim3 blocks(2,2), threads(TILE_DIM, BLOCK_ROWS);
-    //    if (transL[i]) {
-    //        cuda_transpose<<<blocks,threads>>>(ms, ls, left[i], l_buffer + i * l_size);
-    //        //cublasDgeam(handle, cuop[1], cuop[0], ls, ms,
-    //        //            &fone, left[i], ms,
-    //        //            &fzero, left[i], ls,
-    //        //            l_buffer + i * l_size, ls);
-    //    }
-    //    else
-    //        cudaMemcpy(l_buffer + i * l_size, left[i], ls * ms * sizeof(T), cudaMemcpyDeviceToDevice);
-    //}
+    //    cublasDgeam(handle, cuop[1], cuop[0], ls, ms,
+    //                &fone, left[i], ms,
+    //                &fzero, left[i], ls,
+    //                l_buffer + i * l_size, ls);
 
     cublasDgemm(handle, cuop[0], cuop[0], ls, rs, ms*b1sz, &fone, l_buffer, ls, ls_buffer, ms*b1sz, &fone, dev_out, ls);
 }
