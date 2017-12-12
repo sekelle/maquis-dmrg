@@ -258,39 +258,45 @@ __global__ void cuda_transpose_v(unsigned N, unsigned M, unsigned cnt, T** dev_a
     unsigned y = threadIdx.y + blockIdx.y * TILE_DIM;
 
     ///size_t i = blockIdx.z;
-    for (unsigned my = y; my < M + TILE_DIM; my += gridDim.y * TILE_DIM)
-    {
-        for (unsigned mx = x; mx < N + TILE_DIM; mx += gridDim.x * TILE_DIM)
+    //size_t mz = blockIdx.z;
+    //while (mz < cnt)
+    //{
+        //size_t out = mz * N * M;
+        for (unsigned my = y; my < M + TILE_DIM; my += gridDim.y * TILE_DIM)
         {
-            for (unsigned i = 0; i < cnt; ++i)
+            for (unsigned mx = x; mx < N + TILE_DIM; mx += gridDim.x * TILE_DIM)
             {
-                size_t out = i * N * M;
-                #pragma unroll
-                for (unsigned j = 0; j < TILE_DIM; j+=BLOCK_ROWS)
+                for (unsigned mz = blockIdx.z; mz < cnt; mz += gridDim.z)
                 {
-                    size_t offset = mx + (my+j) * N;
-                    if (mx < N && (my+j) < M)
+                    size_t out = mz * N * M;
+                    #pragma unroll
+                    for (unsigned j = 0; j < TILE_DIM; j+=BLOCK_ROWS)
                     {
-                       tile[threadIdx.y+j][threadIdx.x] = dev_a[i][offset];
+                        size_t offset = mx + (my+j) * N;
+                        if (mx < N && (my+j) < M)
+                        {
+                           tile[threadIdx.y+j][threadIdx.x] = dev_a[mz][offset];
+                        }
                     }
+
+                    __syncthreads();
+
+                    #pragma unroll
+                    for (unsigned j = 0; j < TILE_DIM; j+=BLOCK_ROWS)
+                    {
+                        unsigned tx = my-threadIdx.y + threadIdx.x;
+                        unsigned ty = mx-threadIdx.x + threadIdx.y + j;
+                        size_t tr_offset = tx + ty * M;
+                        if (tx < M && ty < N)
+                           dev_tra[out + tr_offset] = tile[threadIdx.x][threadIdx.y+j];
+                    }
+
+                    __syncthreads();
                 }
-
-                __syncthreads();
-
-                #pragma unroll
-                for (unsigned j = 0; j < TILE_DIM; j+=BLOCK_ROWS)
-                {
-                    unsigned tx = my-threadIdx.y + threadIdx.x;
-                    unsigned ty = mx-threadIdx.x + threadIdx.y + j;
-                    size_t tr_offset = tx + ty * M;
-                    if (tx < M && ty < N)
-                       dev_tra[out + tr_offset] = tile[threadIdx.x][threadIdx.y+j];
-                }
-
-                __syncthreads();
             }
         }
-    }
+        //mz += gridDim.z;
+    //}
 }
 
 template <class T>
@@ -397,18 +403,19 @@ void dgemm_ddot_gpu_tpl(cublasHandle_t handle,
     cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
     T fone = 1.0, fzero = 0.0;
 
-    compute_s_stacked<<<std::min(b1sz, 1024u), 64>>>(ms, rs, b1sz, gdd.b2sz, gdd.alpha, gdd.tidx, t, ls_buffer);
+    unsigned nth = std::min(round_up<32>(ms*rs), 1024u);
+    compute_s_stacked<<<std::min(b1sz, 1024u), nth>>>(ms, rs, b1sz, gdd.b2sz, gdd.alpha, gdd.tidx, t, ls_buffer);
     //compute_s<<<64, 64>>>(ms, rs, b1sz, gdd.b2sz, gdd.alpha, gdd.tidx, t, ls_buffer);
 
     T* l_buffer = ls_buffer + b1sz * t_size;
     size_t l_size = ls * ms;
 
-    dim3 blocks(2,2), threads(TILE_DIM, BLOCK_ROWS);
+    dim3 threads(TILE_DIM, BLOCK_ROWS);
     dim3 blocks3d(2,2,std::min(gdd.nn, 65535u));
-    dim3 blocks3d_t(2,2,gdd.b1sz-gdd.nn);
+    dim3 blocks3d_t(2,2,std::min(gdd.b1sz-gdd.nn, 65535u));
 
     cuda_copy_v<<<blocks3d,threads>>>(ls, ms, gdd.nn, gdd.left, l_buffer);
-    cuda_transpose_v<<<blocks,threads>>>(ms, ls, gdd.b1sz-gdd.nn, gdd.left + gdd.nn, l_buffer + gdd.nn * l_size);
+    cuda_transpose_v<<<blocks3d_t,threads>>>(ms, ls, gdd.b1sz-gdd.nn, gdd.left + gdd.nn, l_buffer + gdd.nn * l_size);
 
     //for (unsigned i = 0; i < gdd.nn; ++i)
     //    cuda_copy_i<<<blocks,threads>>>(ls, ms, i, gdd.left, l_buffer + i * l_size);
