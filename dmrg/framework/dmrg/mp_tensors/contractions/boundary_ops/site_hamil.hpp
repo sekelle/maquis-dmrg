@@ -55,9 +55,9 @@ namespace common {
         storage::gpu::zero(ret_gpu);
         storage::gpu::fetch(ket_tensor);
 
+        cudaEvent_t start, stop;
         if (tasks.enumeration_gpu.size() && ket_tensor.device_ptr.size())
         {
-            cudaEvent_t start, stop;
             HANDLE_ERROR( cudaEventCreate(&start) );
             HANDLE_ERROR( cudaEventCreate(&stop) );
             HANDLE_ERROR( cudaEventRecord(start,0) );
@@ -69,10 +69,6 @@ namespace common {
                      .contract_gpu(ket_tensor, left, right, (value_type*)ret_gpu.device_ptr[boost::get<0>(tasks.enumeration_gpu[tn])]);
 
             HANDLE_ERROR( cudaEventRecord(stop,0) );
-            HANDLE_ERROR( cudaEventSynchronize(stop) );
-            float gpu_time;
-            HANDLE_ERROR( cudaEventElapsedTime( &gpu_time, start, stop ) );
-            tasks.gpu_time += gpu_time/1000;
         }
 
         storage::gpu::evict(ret_gpu);
@@ -89,6 +85,14 @@ namespace common {
 
         boost::chrono::high_resolution_clock::time_point then = boost::chrono::high_resolution_clock::now();
         tasks.cpu_time += boost::chrono::duration<double>(then - now).count();
+
+        if (tasks.enumeration_gpu.size() && ket_tensor.device_ptr.size())
+        {
+            HANDLE_ERROR( cudaEventSynchronize(stop) );
+            float gpu_time;
+            HANDLE_ERROR( cudaEventElapsedTime( &gpu_time, start, stop ) );
+            tasks.gpu_time += gpu_time/1000;
+        }
 
         storage::gpu::pin(ret_gpu);
 
