@@ -283,7 +283,7 @@ public:
 
         for (auto& B : batches)
             vgemm(accelerator::gpu::instance().handle, B, M, N, t_size,
-                 (value_type*)mps.device_ptr[impl()->get_mps_block()], dev_t_pointer);
+                 (value_type*)mps.device_ptr[impl()->get_mps_block()], dev_t_pointer, dev_t_pointer + t_buffer_size());
     }
 
     size_t t_buffer_size() const { return impl()->get_m_size() * impl()->get_r_size() * impl()->t_key_vec.size(); }

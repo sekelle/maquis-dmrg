@@ -38,6 +38,6 @@ void dgemm_ddot_gpu(cublasHandle_t handle,
                     double const* const* alpha, const double** left, const double* t, double* ls_buf, double* out,
                     GemmDotData<double> & gdd);
 
-void vgemm(cublasHandle_t handle, BatchGemmData<double> & batch, int, int, size_t, double*, double*);
+void vgemm(cublasHandle_t handle, BatchGemmData<double> & batch, int, int, size_t, double*, double*, double*);
 
 #endif
