@@ -138,6 +138,8 @@ void coalesced_gemm_tpl(cublasHandle_t handle, BatchGemmData<T> & batch, int M, 
     T zero = 0.0;
 
     size_t b_size = batch.K * N;
+    dim3 threads(TILE_DIM, BLOCK_ROWS);
+    dim3 blocks3d(2,2,std::min(batch.size, 65535lu));
 
     if (batch.trans)
         for (size_t k = 0; k < batch.b.size(); ++k)
@@ -146,8 +148,9 @@ void coalesced_gemm_tpl(cublasHandle_t handle, BatchGemmData<T> & batch, int M, 
                         &zero, batch.b[k], batch.K,
                         r_buf + k*b_size, batch.K);
     else
-        for (size_t k = 0; k < batch.b.size(); ++k)
-            cudaMemcpy( r_buf + k * b_size, batch.b[k], b_size* sizeof(T), cudaMemcpyDeviceToDevice);
+        //for (size_t k = 0; k < batch.b.size(); ++k)
+        //    cudaMemcpy( r_buf + k * b_size, batch.b[k], b_size* sizeof(T), cudaMemcpyDeviceToDevice);
+        cuda_copy_v<<<blocks3d, threads>>>(batch.K, N, batch.size, batch.dev_b + batch.size, r_buf);
 
 
     cublasDgemm(handle, cuop[0], cuop[0], M, N * batch.b.size(), batch.K, &one,
