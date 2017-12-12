@@ -32,6 +32,8 @@
 #include "cuda.h"
 #include "batch_gemm.h"
 
+#define BUFFER_ALIGNMENT 128
+
 void dgemm_ddot_gpu(cublasHandle_t handle,
                     unsigned ls, unsigned ms, unsigned rs, unsigned b1size,
                     const unsigned* b2sz, const char* transL, unsigned const* const* tidx,

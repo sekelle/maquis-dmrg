@@ -34,7 +34,7 @@
 #include <cstring>
 #include <malloc.h>
 #include <stdint.h>
-#include <boost/static_assert.hpp>
+//#include <boost/static_assert.hpp>
 // BLAS declarations
 //#include <boost/numeric/bindings/blas/detail/blas.h>
 
@@ -257,7 +257,6 @@ __global__ void cuda_transpose_v(unsigned N, unsigned M, unsigned cnt, T** dev_a
     unsigned x = threadIdx.x + blockIdx.x * TILE_DIM;
     unsigned y = threadIdx.y + blockIdx.y * TILE_DIM;
 
-    ///size_t i = blockIdx.z;
     //size_t mz = blockIdx.z;
     //while (mz < cnt)
     //{
@@ -403,16 +402,18 @@ void dgemm_ddot_gpu_tpl(cublasHandle_t handle,
     cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
     T fone = 1.0, fzero = 0.0;
 
-    unsigned nth = std::min(round_up<32>(ms*rs), 1024u);
+    unsigned nth = std::min(round_up<TILE_DIM>(ms*rs), 1024u);
     compute_s_stacked<<<std::min(b1sz, 1024u), nth>>>(ms, rs, b1sz, gdd.b2sz, gdd.alpha, gdd.tidx, t, ls_buffer);
     //compute_s<<<64, 64>>>(ms, rs, b1sz, gdd.b2sz, gdd.alpha, gdd.tidx, t, ls_buffer);
 
-    T* l_buffer = ls_buffer + b1sz * t_size;
+    T* l_buffer = ls_buffer + round_up<BUFFER_ALIGNMENT/sizeof(T)>(b1sz * t_size);
     size_t l_size = ls * ms;
 
+    unsigned lsb = std::min( (ls+TILE_DIM-1)/TILE_DIM, 1024u);
+    unsigned msb = std::min( (ms+TILE_DIM-1)/TILE_DIM, 1024u);
     dim3 threads(TILE_DIM, BLOCK_ROWS);
-    dim3 blocks3d(2,2,std::min(gdd.nn, 65535u));
-    dim3 blocks3d_t(2,2,std::min(gdd.b1sz-gdd.nn, 65535u));
+    dim3 blocks3d(lsb, msb, std::min(gdd.nn, 65535u));
+    dim3 blocks3d_t(msb, lsb, std::min(gdd.b1sz-gdd.nn, 65535u));
 
     cuda_copy_v<<<blocks3d,threads>>>(ls, ms, gdd.nn, gdd.left, l_buffer);
     cuda_transpose_v<<<blocks3d_t,threads>>>(ms, ls, gdd.b1sz-gdd.nn, gdd.left + gdd.nn, l_buffer + gdd.nn * l_size);

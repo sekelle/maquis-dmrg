@@ -40,7 +40,7 @@
 //#include <boost/numeric/bindings/blas/detail/blas.h>
 
 #include "gpu.h"
-//#include "common.h"
+#include "common.h"
 
 
 static void HandleError( cudaError_t err,
@@ -137,7 +137,6 @@ __global__ void cuda_transpose_v(unsigned N, unsigned M, unsigned cnt, T** dev_a
     unsigned x = threadIdx.x + blockIdx.x * TILE_DIM;
     unsigned y = threadIdx.y + blockIdx.y * TILE_DIM;
 
-    ///size_t i = blockIdx.z;
     //size_t mz = blockIdx.z;
     //while (mz < cnt)
     //{
@@ -188,8 +187,13 @@ void coalesced_gemm_tpl(cublasHandle_t handle, BatchGemmData<T> & batch, int M, 
     T zero = 0.0;
 
     size_t b_size = batch.K * N;
+
+    int nb = std::min( (N+TILE_DIM-1)/TILE_DIM, 1024);
+    int kb = std::min( (batch.K+TILE_DIM-1)/TILE_DIM, 1024);
+
     dim3 threads(TILE_DIM, BLOCK_ROWS);
-    dim3 blocks3d(2,2,std::min(batch.size, 65535lu));
+    dim3 blocks3d(kb, nb, std::min(batch.size, 65535lu));
+    dim3 blocks3d_t(nb, kb, std::min(batch.size, 65535lu));
 
     if (batch.trans)
         //for (size_t k = 0; k < batch.b.size(); ++k)
@@ -197,7 +201,7 @@ void coalesced_gemm_tpl(cublasHandle_t handle, BatchGemmData<T> & batch, int M, 
         //                &one, batch.b[k], batch.LDB,
         //                &zero, batch.b[k], batch.K,
         //                r_buf + k*b_size, batch.K);
-        cuda_transpose_v<<<blocks3d, threads>>>(N, batch.K, batch.size, batch.dev_b + batch.size, r_buf);
+        cuda_transpose_v<<<blocks3d_t, threads>>>(N, batch.K, batch.size, batch.dev_b + batch.size, r_buf);
     else
         //for (size_t k = 0; k < batch.b.size(); ++k)
         //    cudaMemcpy( r_buf + k * b_size, batch.b[k], b_size* sizeof(T), cudaMemcpyDeviceToDevice);

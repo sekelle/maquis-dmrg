@@ -28,6 +28,8 @@
 #ifndef MAQUIS_COMMON_H
 #define MAQUIS_COMMON_H
 
+#include <boost/static_assert.hpp>
+
 #define ALIGNMENT 32
 
 template <unsigned A, typename T>

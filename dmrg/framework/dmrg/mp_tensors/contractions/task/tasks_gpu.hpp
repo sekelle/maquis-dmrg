@@ -259,7 +259,9 @@ public:
         for (int ss1 = 0; ss1 < impl()->size(); ++ss1)
         {
             if (!(*impl())[ss1].n_tasks()) continue;
-            (*impl())[ss1].contract_gpu(left, dev_t_pointer, dev_t_pointer + t_buffer_size(), output + impl()->get_l_size() * (*impl())[ss1].offset);
+            (*impl())[ss1].contract_gpu(left, dev_t_pointer,
+                                        dev_t_pointer + bit_twiddling::round_up<BUFFER_ALIGNMENT/sizeof(value_type)>(t_buffer_size()),
+                                        output + impl()->get_l_size() * (*impl())[ss1].offset);
         }
     }
 
@@ -283,7 +285,8 @@ public:
 
         for (auto& B : batches)
             vgemm(accelerator::gpu::instance().handle, B, M, N, t_size,
-                 (value_type*)mps.device_ptr[impl()->get_mps_block()], dev_t_pointer, dev_t_pointer + t_buffer_size());
+                 (value_type*)mps.device_ptr[impl()->get_mps_block()], dev_t_pointer,
+                  dev_t_pointer + bit_twiddling::round_up<BUFFER_ALIGNMENT/sizeof(value_type)>(t_buffer_size()));
     }
 
     size_t t_buffer_size() const { return impl()->get_m_size() * impl()->get_r_size() * impl()->t_key_vec.size(); }
@@ -333,7 +336,7 @@ public:
         for (size_t tn = 0; tn < enumeration_gpu.size(); ++tn)
         {
             size_t buffer_size = boost::get<3>(enumeration_gpu[tn]);
-            v_type* buffer = (v_type*)accelerator::gpu::get_pipeline_buffer(buffer_size * sizeof(v_type));
+            v_type* buffer = (v_type*)accelerator::gpu::get_pipeline_buffer(buffer_size * sizeof(v_type) + 2*BUFFER_ALIGNMENT);
             if (buffer)
                 pipeline.push_back(MaquisStream<v_type>(buffer));
             else
