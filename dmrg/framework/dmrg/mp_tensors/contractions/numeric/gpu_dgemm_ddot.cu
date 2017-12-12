@@ -211,6 +211,134 @@ __global__ void cuda_transpose(unsigned N, unsigned M, const T* dev_a, T* dev_tr
 }
 
 template <class T>
+__global__ void cuda_transpose_i(unsigned N, unsigned M, unsigned i, T** dev_a, T* dev_tra)
+{
+    __shared__ T tile[TILE_DIM][TILE_DIM+1];
+
+    unsigned x = threadIdx.x + blockIdx.x * TILE_DIM;
+    unsigned y = threadIdx.y + blockIdx.y * TILE_DIM;
+
+    for (unsigned my = y; my < M + TILE_DIM; my += gridDim.y * TILE_DIM)
+    {
+        for (unsigned mx = x; mx < N + TILE_DIM; mx += gridDim.x * TILE_DIM)
+        {
+            #pragma unroll
+            for (unsigned j = 0; j < TILE_DIM; j+=BLOCK_ROWS)
+            {
+                size_t offset = mx + (my+j) * N;
+                if (mx < N && (my+j) < M)
+                {
+                   tile[threadIdx.y+j][threadIdx.x] = dev_a[i][offset];
+                }
+            }
+
+            __syncthreads();
+
+            #pragma unroll
+            for (unsigned j = 0; j < TILE_DIM; j+=BLOCK_ROWS)
+            {
+                unsigned tx = my-threadIdx.y + threadIdx.x;
+                unsigned ty = mx-threadIdx.x + threadIdx.y + j;
+                size_t tr_offset = tx + ty * M;
+                if (tx < M && ty < N)
+                   dev_tra[tr_offset] = tile[threadIdx.x][threadIdx.y+j];
+            }
+
+            __syncthreads();
+        }
+    }
+}
+
+template <class T>
+__global__ void cuda_transpose_v(unsigned N, unsigned M, unsigned istart, unsigned iend, T** dev_a, T* dev_tra)
+{
+    __shared__ T tile[TILE_DIM][TILE_DIM+1];
+
+    unsigned x = threadIdx.x + blockIdx.x * TILE_DIM;
+    unsigned y = threadIdx.y + blockIdx.y * TILE_DIM;
+
+    for (unsigned my = y; my < M + TILE_DIM; my += gridDim.y * TILE_DIM)
+    {
+        for (unsigned mx = x; mx < N + TILE_DIM; mx += gridDim.x * TILE_DIM)
+        {
+            for (unsigned i = istart; i < iend; ++i)
+            {
+                size_t out = (i-istart) * N * M;
+                #pragma unroll
+                for (unsigned j = 0; j < TILE_DIM; j+=BLOCK_ROWS)
+                {
+                    size_t offset = mx + (my+j) * N;
+                    if (mx < N && (my+j) < M)
+                    {
+                       tile[threadIdx.y+j][threadIdx.x] = dev_a[i][offset];
+                    }
+                }
+
+                __syncthreads();
+
+                #pragma unroll
+                for (unsigned j = 0; j < TILE_DIM; j+=BLOCK_ROWS)
+                {
+                    unsigned tx = my-threadIdx.y + threadIdx.x;
+                    unsigned ty = mx-threadIdx.x + threadIdx.y + j;
+                    size_t tr_offset = tx + ty * M;
+                    if (tx < M && ty < N)
+                       dev_tra[out + tr_offset] = tile[threadIdx.x][threadIdx.y+j];
+                }
+
+                __syncthreads();
+            }
+        }
+    }
+}
+
+template <class T>
+__global__ void cuda_copy_i(unsigned N, unsigned M, unsigned i, T** dev_a, T* dev_tra)
+{
+    unsigned x = threadIdx.x + blockIdx.x * TILE_DIM;
+    unsigned y = threadIdx.y + blockIdx.y * TILE_DIM;
+
+    for (unsigned my = y; my < M + TILE_DIM; my += gridDim.y * TILE_DIM)
+    {
+        for (unsigned mx = x; mx < N + TILE_DIM; mx += gridDim.x * TILE_DIM)
+        {
+            #pragma unroll
+            for (unsigned j = 0; j < TILE_DIM; j+=BLOCK_ROWS)
+            {
+                size_t offset = mx + (my+j) * N;
+                if (mx < N && (my+j) < M)
+                   dev_tra[offset] = dev_a[i][offset];
+            }
+        }
+    }
+}
+
+template <class T>
+__global__ void cuda_copy_v(unsigned N, unsigned M, unsigned cnt, T** dev_a, T* dev_tra)
+{
+    unsigned x = threadIdx.x + blockIdx.x * TILE_DIM;
+    unsigned y = threadIdx.y + blockIdx.y * TILE_DIM;
+
+    for (unsigned i = 0; i < cnt; ++i)
+    {
+        size_t out = i * N * M;
+        for (unsigned my = y; my < M + TILE_DIM; my += gridDim.y * TILE_DIM)
+        {
+            for (unsigned mx = x; mx < N + TILE_DIM; mx += gridDim.x * TILE_DIM)
+            {
+                #pragma unroll
+                for (unsigned j = 0; j < TILE_DIM; j+=BLOCK_ROWS)
+                {
+                    size_t offset = mx + (my+j) * N;
+                    if (mx < N && (my+j) < M)
+                       dev_tra[out + offset] = dev_a[i][offset];
+                }
+            }
+        }
+    }
+}
+
+template <class T>
 void dgemm_ddot_gpu_tpl_seq(cublasHandle_t handle,
                             unsigned ls, unsigned ms, unsigned rs, unsigned b1sz,
                             const unsigned* b2sz, const char* transL, unsigned const* const* tidx,
@@ -256,7 +384,7 @@ void dgemm_ddot_gpu_tpl(cublasHandle_t handle,
                         unsigned ls, unsigned ms, unsigned rs, unsigned b1sz,
                         const unsigned* b2sz, const char* transL, unsigned const* const* tidx,
                         T const* const* alpha, const T** left, const T* t, T* ls_buffer, T* dev_out,
-                        GemmDotData<T> gdd[])
+                        GemmDotData<T> & gdd)
 {
     typedef unsigned long uint;
 
@@ -269,30 +397,37 @@ void dgemm_ddot_gpu_tpl(cublasHandle_t handle,
     cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
     T fone = 1.0, fzero = 0.0;
 
-    compute_s_stacked<<<std::min(b1sz, 1024u), 64>>>(ms, rs, b1sz, gdd[0].b2sz, gdd[0].alpha, gdd[0].tidx, t, ls_buffer);
-    //compute_s<<<64, 64>>>(ms, rs, b1sz, gdd[0].b2sz, gdd[0].alpha, gdd[0].tidx, t, lsb2);
+    compute_s_stacked<<<std::min(b1sz, 1024u), 64>>>(ms, rs, b1sz, gdd.b2sz, gdd.alpha, gdd.tidx, t, ls_buffer);
+    //compute_s<<<64, 64>>>(ms, rs, b1sz, gdd.b2sz, gdd.alpha, gdd.tidx, t, lsb2);
 
     T* l_buffer = ls_buffer + b1sz * t_size;
     size_t l_size = ls * ms;
 
-    for (uint i = 0; i < b1sz; ++i)
-    {
-        const T * alpha_i = alpha[i];
-        const unsigned * tidx_i = tidx[i];
+    dim3 blocks(2,2), threads(TILE_DIM, BLOCK_ROWS);
 
-        //cublasSetStream(handle, row_streams[i]);
+    cuda_copy_v<<<blocks,threads>>>(ls, ms, gdd.nn, gdd.left, l_buffer);
+    cuda_transpose_v<<<blocks,threads>>>(ms, ls, gdd.nn, gdd.b1sz, gdd.left, l_buffer + gdd.nn * l_size);
 
-        dim3 blocks(2,2), threads(TILE_DIM, BLOCK_ROWS);
-        if (transL[i]) {
-            cuda_transpose<<<blocks,threads>>>(ms, ls, left[i], l_buffer + i * l_size);
-            //cublasDgeam(handle, cuop[1], cuop[0], ls, ms,
-            //            &fone, left[i], ms,
-            //            &fzero, left[i], ls,
-            //            l_buffer + i * l_size, ls);
-        }
-        else
-            cudaMemcpy(l_buffer + i * l_size, left[i], ls * ms * sizeof(T), cudaMemcpyDeviceToDevice);
-    }
+    //for (unsigned i = 0; i < gdd.nn; ++i)
+    //    cuda_copy_i<<<blocks,threads>>>(ls, ms, i, gdd.left, l_buffer + i * l_size);
+    //for (unsigned i = gdd.nn; i < gdd.b1sz; ++i)
+    //    cuda_transpose_i<<<blocks,threads>>>(ms, ls, i, gdd.left, l_buffer + i * l_size);
+
+    //for (uint i = 0; i < b1sz; ++i)
+    //{
+    //    //cublasSetStream(handle, row_streams[i]);
+
+    //    dim3 blocks(2,2), threads(TILE_DIM, BLOCK_ROWS);
+    //    if (transL[i]) {
+    //        cuda_transpose<<<blocks,threads>>>(ms, ls, left[i], l_buffer + i * l_size);
+    //        //cublasDgeam(handle, cuop[1], cuop[0], ls, ms,
+    //        //            &fone, left[i], ms,
+    //        //            &fzero, left[i], ls,
+    //        //            l_buffer + i * l_size, ls);
+    //    }
+    //    else
+    //        cudaMemcpy(l_buffer + i * l_size, left[i], ls * ms * sizeof(T), cudaMemcpyDeviceToDevice);
+    //}
 
     cublasDgemm(handle, cuop[0], cuop[0], ls, rs, ms*b1sz, &fone, l_buffer, ls, ls_buffer, ms*b1sz, &fone, dev_out, ls);
 }
@@ -303,7 +438,7 @@ void dgemm_ddot_gpu(cublasHandle_t handle,
                     unsigned ls, unsigned ms, unsigned rs, unsigned b1sz,
                     const unsigned* b2sz, const char* transL, unsigned const* const* tidx,
                     double const* const* alpha, const double** left, const double* t, double* ls_buf, double* dev_out,
-                    GemmDotData<double> gdd[])
+                    GemmDotData<double> & gdd)
 {
     return dgemm_ddot_gpu_tpl(handle,ls,ms,rs,b1sz,b2sz,transL,tidx,alpha,left,t,ls_buf,dev_out, gdd);
 }
