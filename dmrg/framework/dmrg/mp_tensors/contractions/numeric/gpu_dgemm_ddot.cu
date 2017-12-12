@@ -257,6 +257,7 @@ __global__ void cuda_transpose_v(unsigned N, unsigned M, unsigned cnt, T** dev_a
     unsigned x = threadIdx.x + blockIdx.x * TILE_DIM;
     unsigned y = threadIdx.y + blockIdx.y * TILE_DIM;
 
+    ///size_t i = blockIdx.z;
     for (unsigned my = y; my < M + TILE_DIM; my += gridDim.y * TILE_DIM)
     {
         for (unsigned mx = x; mx < N + TILE_DIM; mx += gridDim.x * TILE_DIM)
@@ -319,9 +320,10 @@ __global__ void cuda_copy_v(unsigned N, unsigned M, unsigned cnt, T** dev_a, T* 
     unsigned x = threadIdx.x + blockIdx.x * TILE_DIM;
     unsigned y = threadIdx.y + blockIdx.y * TILE_DIM;
 
-    for (unsigned i = 0; i < cnt; ++i)
+    size_t mz = blockIdx.z;
+    while (mz < cnt)
     {
-        size_t out = i * N * M;
+        size_t out = mz * N * M;
         for (unsigned my = y; my < M + TILE_DIM; my += gridDim.y * TILE_DIM)
         {
             for (unsigned mx = x; mx < N + TILE_DIM; mx += gridDim.x * TILE_DIM)
@@ -331,10 +333,11 @@ __global__ void cuda_copy_v(unsigned N, unsigned M, unsigned cnt, T** dev_a, T* 
                 {
                     size_t offset = mx + (my+j) * N;
                     if (mx < N && (my+j) < M)
-                       dev_tra[out + offset] = dev_a[i][offset];
+                       dev_tra[out + offset] = dev_a[mz][offset];
                 }
             }
         }
+        mz += gridDim.z;
     }
 }
 
@@ -401,8 +404,10 @@ void dgemm_ddot_gpu_tpl(cublasHandle_t handle,
     size_t l_size = ls * ms;
 
     dim3 blocks(2,2), threads(TILE_DIM, BLOCK_ROWS);
+    dim3 blocks3d(2,2,std::min(gdd.nn, 65535u));
+    dim3 blocks3d_t(2,2,gdd.b1sz-gdd.nn);
 
-    cuda_copy_v<<<blocks,threads>>>(ls, ms, gdd.nn, gdd.left, l_buffer);
+    cuda_copy_v<<<blocks3d,threads>>>(ls, ms, gdd.nn, gdd.left, l_buffer);
     cuda_transpose_v<<<blocks,threads>>>(ms, ls, gdd.b1sz-gdd.nn, gdd.left + gdd.nn, l_buffer + gdd.nn * l_size);
 
     //for (unsigned i = 0; i < gdd.nn; ++i)
