@@ -80,38 +80,24 @@ public:
     void init(Boundary<OtherMatrix, SymmGroup> const & left, Boundary<OtherMatrix, SymmGroup> const & right)
     {
         size_t b1size = impl()->b2sz.size();
-        size_t schedule_size = 0, b2_sum = 0;
 
         std::vector<size_t> b1_set;
         b1_set.reserve(b1size);
         for (size_t i = 0; i < b1size; ++i)
-        {
-            if (impl()->trans[i]) continue;
+            if (!impl()->trans[i]) b1_set.push_back(i);
 
-            b1_set.push_back(i);
-            size_t b2sz = impl()->b2sz[i];
-            b2_sum += b2sz;
-
-            //                   left_ptr             b2sz[i]            alpha_i_ptr
-            schedule_size += sizeof(value_type*) + sizeof(unsigned) + sizeof(value_type*)
-            //                   alpha_i_value               tidx_i_ptr             tidx_i_value
-                          +  sizeof(value_type) * b2sz + sizeof(value_type*) + sizeof(unsigned) * b2sz + 8;
-        }
         gdd.nn = b1_set.size();
+
         for (size_t i = 0; i < b1size; ++i)
-        {
-            if (! impl()->trans[i]) continue;
+            if (impl()->trans[i]) b1_set.push_back(i);
 
-            b1_set.push_back(i);
-            size_t b2sz = impl()->b2sz[i];
-            b2_sum += b2sz;
+        gdd.b1sz = b1size;
 
-            //                   left_ptr             b2sz[i]            alpha_i_ptr
-            schedule_size += sizeof(value_type*) + sizeof(unsigned) + sizeof(value_type*)
-            //                   alpha_i_value               tidx_i_ptr             tidx_i_value
-                          +  sizeof(value_type) * b2sz + sizeof(value_type*) + sizeof(unsigned) * b2sz + 8;
-        }
-        gdd.b1sz = b1_set.size();
+        size_t b2_sum = std::accumulate(impl()->b2sz.begin(), impl()->b2sz.end(), 0);
+        //                   left_ptr             b2sz[i]            alpha_i_ptr         alpha_i_value   alignment
+        size_t lsz    = sizeof(value_type*) + sizeof(unsigned) + sizeof(value_type*) + sizeof(value_type*) + 8;
+        //                                                  alpha_i_value      tidx_i_value
+        size_t schedule_size = b1size * lsz + b2_sum * (sizeof(value_type) + sizeof(unsigned));
 
         std::pair<void*, void*> ret = accelerator::gpu::get_staging_buffer(schedule_size);
         char* staging = (char*)ret.first;
@@ -121,35 +107,35 @@ public:
         gdd.left = (value_type**) dev_schedule;
         {
             value_type** tmp_staging = (value_type**)staging;
-            for (size_t i = 0; i < b1_set.size(); ++i)
+            for (size_t i = 0; i < b1size; ++i)
             {
                 size_t I = b1_set[i];
                 tmp_staging[i] = (value_type*)left.device_ptr[impl()->bs[I]] + impl()->ks[I];
             }
         }
-        staging += b1_set.size() * sizeof(value_type*);
-        dev_schedule += b1_set.size() * sizeof(value_type*);
+        staging += b1size * sizeof(value_type*);
+        dev_schedule += b1size * sizeof(value_type*);
 
         //b2sz
         gdd.b2sz = (unsigned*) dev_schedule;
         {
             unsigned* tmp_staging = (unsigned*) staging;
-            for (size_t i = 0; i < b1_set.size(); ++i)
+            for (size_t i = 0; i < b1size; ++i)
             {
                 size_t I = b1_set[i];
                 tmp_staging[i] = impl()->b2sz[I];
             }
         }
-        staging += bit_twiddling::round_up<8>(b1_set.size() * sizeof(unsigned));
-        dev_schedule += bit_twiddling::round_up<8>(b1_set.size() * sizeof(unsigned));
+        staging += bit_twiddling::round_up<8>(b1size * sizeof(unsigned));
+        dev_schedule += bit_twiddling::round_up<8>(b1size * sizeof(unsigned));
 
         //alpha_i_ptr, alpha_i_value
         gdd.alpha = (value_type**) dev_schedule;
         {
-            value_type* dev_alpha_i =     (value_type*) (dev_schedule + b1_set.size() * sizeof(value_type*));
-            value_type* alpha_i_staging = (value_type*) (staging + b1_set.size() * sizeof(value_type*));
+            value_type* dev_alpha_i =     (value_type*) (dev_schedule + b1size * sizeof(value_type*));
+            value_type* alpha_i_staging = (value_type*) (staging + b1size * sizeof(value_type*));
             value_type** alpha_staging = (value_type**) staging;
-            for (size_t i = 0; i < b1_set.size(); ++i)
+            for (size_t i = 0; i < b1size; ++i)
             {
                 size_t I = b1_set[i];
 
@@ -162,15 +148,15 @@ public:
                 alpha_i_staging += b2sz;
             }
         }
-        staging += b1_set.size() * sizeof(value_type*) + b2_sum * sizeof(value_type);
-        dev_schedule += b1_set.size() * sizeof(value_type*) + b2_sum * sizeof(value_type);
+        staging += b1size * sizeof(value_type*) + b2_sum * sizeof(value_type);
+        dev_schedule += b1size * sizeof(value_type*) + b2_sum * sizeof(value_type);
 
         gdd.tidx = (unsigned**) dev_schedule;
         {
-            unsigned* dev_tidx_i =     (unsigned*) (dev_schedule + b1_set.size() * sizeof(unsigned*));
-            unsigned* tidx_i_staging = (unsigned*) (staging + b1_set.size() * sizeof(unsigned*));
+            unsigned* dev_tidx_i =     (unsigned*) (dev_schedule + b1size * sizeof(unsigned*));
+            unsigned* tidx_i_staging = (unsigned*) (staging + b1size * sizeof(unsigned*));
             unsigned** tidx_staging = (unsigned**) staging;
-            for (size_t i = 0; i < b1_set.size(); ++i)
+            for (size_t i = 0; i < b1size; ++i)
             {
                 size_t I = b1_set[i];
 
