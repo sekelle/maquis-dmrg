@@ -250,7 +250,7 @@ __global__ void cuda_transpose_i(unsigned N, unsigned M, unsigned i, T** dev_a, 
 }
 
 template <class T>
-__global__ void cuda_transpose_v(unsigned N, unsigned M, unsigned istart, unsigned iend, T** dev_a, T* dev_tra)
+__global__ void cuda_transpose_v(unsigned N, unsigned M, unsigned cnt, T** dev_a, T* dev_tra)
 {
     __shared__ T tile[TILE_DIM][TILE_DIM+1];
 
@@ -261,9 +261,9 @@ __global__ void cuda_transpose_v(unsigned N, unsigned M, unsigned istart, unsign
     {
         for (unsigned mx = x; mx < N + TILE_DIM; mx += gridDim.x * TILE_DIM)
         {
-            for (unsigned i = istart; i < iend; ++i)
+            for (unsigned i = 0; i < cnt; ++i)
             {
-                size_t out = (i-istart) * N * M;
+                size_t out = i * N * M;
                 #pragma unroll
                 for (unsigned j = 0; j < TILE_DIM; j+=BLOCK_ROWS)
                 {
@@ -403,7 +403,7 @@ void dgemm_ddot_gpu_tpl(cublasHandle_t handle,
     dim3 blocks(2,2), threads(TILE_DIM, BLOCK_ROWS);
 
     cuda_copy_v<<<blocks,threads>>>(ls, ms, gdd.nn, gdd.left, l_buffer);
-    cuda_transpose_v<<<blocks,threads>>>(ms, ls, gdd.nn, gdd.b1sz, gdd.left, l_buffer + gdd.nn * l_size);
+    cuda_transpose_v<<<blocks,threads>>>(ms, ls, gdd.b1sz-gdd.nn, gdd.left + gdd.nn, l_buffer + gdd.nn * l_size);
 
     //for (unsigned i = 0; i < gdd.nn; ++i)
     //    cuda_copy_i<<<blocks,threads>>>(ls, ms, i, gdd.left, l_buffer + i * l_size);
