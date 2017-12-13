@@ -55,18 +55,9 @@ public:
     typename boost::enable_if<boost::is_same<typename OtherMatrix::value_type, double>, void>::type
     contract_gpu(Boundary<OtherMatrix, SymmGroup> const & left, const value_type* t_pointer, value_type* ls_buffer, value_type* dev_ret) const
     {
-        const value_type** left_mat = new const value_type*[impl()->b2sz.size()];
-
-        for (index_type i = 0; i < impl()->b2sz.size(); ++i)
-            left_mat[i] = (value_type*)left.device_ptr[impl()->bs[i]] + impl()->ks[i];
-
         dgemm_ddot_gpu(accelerator::gpu::instance().handle,
                        impl()->l_size, impl()->m_size, impl()->r_size,
-                       impl()->b2sz.size(), impl()->b2sz.data(), &(impl()->trans[0]),
-                       impl()->tidx.data(), impl()->alpha.data(), left_mat, t_pointer, ls_buffer, dev_ret,
-                       gdd);
-
-        delete[] left_mat;
+                       impl()->b2sz.data(), t_pointer, ls_buffer, dev_ret, gdd);
     }
 
     template <class OtherMatrix>

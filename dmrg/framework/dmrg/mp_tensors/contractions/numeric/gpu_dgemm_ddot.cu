@@ -389,24 +389,20 @@ template <class T>
 void dgemm_ddot_gpu_tpl(cublasHandle_t handle,
                         //std::vector<cudaStream_t> const & row_streams,
                         //std::vector<cudaStream_t> const & col_streams,
-                        unsigned ls, unsigned ms, unsigned rs, unsigned b1sz,
-                        const unsigned* b2sz, const char* transL, unsigned const* const* tidx,
-                        T const* const* alpha, const T** left, const T* t, T* ls_buffer, T* dev_out,
-                        GemmDotData<T> & gdd)
+                        unsigned ls, unsigned ms, unsigned rs,
+                        const unsigned* b2sz, const T* t, T* ls_buffer, T* dev_out, GemmDotData<T> & gdd)
 {
-    typedef unsigned long uint;
-
-    uint t_size = ms * rs;
-    //uint t_size_padded = round_up<ALIGNMENT/sizeof(T)>(t_size);
+    size_t t_size = ms * rs;
+    //size_t t_size_padded = round_up<ALIGNMENT/sizeof(T)>(t_size);
 
     cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
     T fone = 1.0, fzero = 0.0;
 
     unsigned nth = std::min(round_up<TILE_DIM>(ms*rs), 1024u);
-    compute_s_stacked<<<std::min(b1sz, 1024u), nth>>>(ms, rs, b1sz, gdd.b2sz, gdd.alpha, gdd.tidx, t, ls_buffer);
-    //compute_s<<<64, 64>>>(ms, rs, b1sz, gdd.b2sz, gdd.alpha, gdd.tidx, t, ls_buffer);
+    compute_s_stacked<<<std::min(gdd.b1sz, 1024u), nth>>>(ms, rs, gdd.b1sz, gdd.b2sz, gdd.alpha, gdd.tidx, t, ls_buffer);
+    //compute_s<<<64, 64>>>(ms, rs, gdd.b1sz, gdd.b2sz, gdd.alpha, gdd.tidx, t, ls_buffer);
 
-    T* l_buffer = ls_buffer + round_up<BUFFER_ALIGNMENT/sizeof(T)>(b1sz * t_size);
+    T* l_buffer = ls_buffer + round_up<BUFFER_ALIGNMENT/sizeof(T)>(gdd.b1sz * t_size);
     size_t l_size = ls * ms;
 
     unsigned lsb = std::min( (ls+TILE_DIM-1)/TILE_DIM, 1024u);
@@ -418,26 +414,15 @@ void dgemm_ddot_gpu_tpl(cublasHandle_t handle,
     cuda_copy_v<<<blocks3d,threads>>>(ls, ms, gdd.nn, gdd.left, l_buffer);
     cuda_transpose_v<<<blocks3d_t,threads>>>(ms, ls, gdd.b1sz-gdd.nn, gdd.left + gdd.nn, l_buffer + gdd.nn * l_size);
 
-    //for (unsigned i = 0; i < gdd.nn; ++i)
-    //    cuda_copy_i<<<blocks,threads>>>(ls, ms, i, gdd.left, l_buffer + i * l_size);
-    //    cudaMemcpy(l_buffer + i * l_size, left[i], ls * ms * sizeof(T), cudaMemcpyDeviceToDevice);
-    //for (unsigned i = gdd.nn; i < gdd.b1sz; ++i)
-    //    cuda_transpose_i<<<blocks,threads>>>(ms, ls, i, gdd.left, l_buffer + i * l_size);
-    //    cublasDgeam(handle, cuop[1], cuop[0], ls, ms,
-    //                &fone, left[i], ms,
-    //                &fzero, left[i], ls,
-    //                l_buffer + i * l_size, ls);
-
-    cublasDgemm(handle, cuop[0], cuop[0], ls, rs, ms*b1sz, &fone, l_buffer, ls, ls_buffer, ms*b1sz, &fone, dev_out, ls);
+    cublasDgemm(handle, cuop[0], cuop[0], ls, rs, ms*gdd.b1sz, &fone, l_buffer, ls, ls_buffer, ms*gdd.b1sz, &fone, dev_out, ls);
 }
 
 void dgemm_ddot_gpu(cublasHandle_t handle,
                     //std::vector<cudaStream_t> const & row_streams,
                     //std::vector<cudaStream_t> const & col_streams,
-                    unsigned ls, unsigned ms, unsigned rs, unsigned b1sz,
-                    const unsigned* b2sz, const char* transL, unsigned const* const* tidx,
-                    double const* const* alpha, const double** left, const double* t, double* ls_buf, double* dev_out,
+                    unsigned ls, unsigned ms, unsigned rs,
+                    const unsigned* b2sz, const double* t, double* ls_buf, double* dev_out,
                     GemmDotData<double> & gdd)
 {
-    return dgemm_ddot_gpu_tpl(handle,ls,ms,rs,b1sz,b2sz,transL,tidx,alpha,left,t,ls_buf,dev_out, gdd);
+    return dgemm_ddot_gpu_tpl(handle,ls,ms,rs,b2sz,t,ls_buf,dev_out, gdd);
 }
