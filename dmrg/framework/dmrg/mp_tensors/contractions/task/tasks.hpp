@@ -56,6 +56,11 @@ namespace detail {
 
 } // namespace detail
 
+template <class Matrix, class SymmGroup>
+class MatrixGroup;
+
+template <class Matrix, class SymmGroup>
+void print(MatrixGroup<Matrix, SymmGroup> const &);
 
 template <class Matrix, class SymmGroup>
 class MatrixGroup : public MatrixGroupGpuExtension<Matrix, SymmGroup, MatrixGroup<Matrix, SymmGroup>>
@@ -71,6 +76,7 @@ public:
     typedef typename SymmGroup::charge charge;
 
     friend class MatrixGroupGpuExtension<Matrix, SymmGroup, MatrixGroup<Matrix, SymmGroup>>;
+    friend void print<>(MatrixGroup const &);
 
     MatrixGroup() {}
     MatrixGroup(unsigned ls, unsigned ms, unsigned rs) : l_size(ls), m_size(ms), r_size(rs) {}
@@ -346,6 +352,95 @@ private:
     std::vector<unsigned> b2sz;
     std::vector<char> trans;
 };
+
+namespace detail {
+    struct f3 { f3(double a_) : a(a_) {} double a; };
+    inline std::ostream & operator<<(std::ostream & os, f3 A)
+    {
+        double a = A.a;
+        if (std::abs(a) < 1e-300)
+        {
+            os << '0';
+            return os;
+        }
+
+        char sign = (a>0) ? '+' : '-';
+        a = std::abs(a);
+        double mant = a * pow(10, -floor(log10(std::abs(a))));
+        int d1 = floor(mant);
+        int d2 = int(floor(mant * 10)) % (d1*10);
+
+        std::string out = boost::lexical_cast<std::string>(d1) + sign + boost::lexical_cast<std::string>(d2);
+
+        os << out;
+        return os;
+    }
+}
+
+//print function for the MatrixGroup used in contraction codes
+template <class Matrix, class SymmGroup>
+void print(MatrixGroup<Matrix, SymmGroup> const & mpsb)
+{
+    typedef typename Matrix::value_type value_type;
+    typedef std::map<unsigned, unsigned> amap_t;
+
+    std::vector<value_type*> const& palpha = mpsb.alpha;
+    std::vector<unsigned*> const& tidx = mpsb.tidx;
+    std::vector<unsigned> const& b2sz = mpsb.b2sz;
+    std::vector<MPOTensor_detail::index_type> const & bs = mpsb.get_bs();
+    std::vector<size_t> const & ks = mpsb.get_ks();
+    std::vector<char> const & trans = mpsb.trans;
+    int sw = 4;
+    int ttsw = 8;
+
+    unsigned cnt = 0;
+    amap_t b2_col;
+    for (int i = 0; i < b2sz.size(); ++i)
+        for (int j = 0; j < b2sz[i]; ++j)
+        {
+            unsigned tt = tidx[i][j];
+            if (b2_col.count(tt) == 0)
+                b2_col[tt] = cnt++;
+        }
+
+    alps::numeric::matrix<value_type> alpha(b2sz.size(), b2_col.size(), 0);
+    for (int i = 0; i < b2sz.size(); ++i)
+        for (int j = 0; j < b2sz[i]; ++j)
+        {
+            unsigned tt = tidx[i][j];
+            value_type val = palpha[i][j];
+            alpha(i, b2_col[tt]) = (std::abs(val) > 1e-300) ? val : 1e-301;
+        }
+
+    int lpc = sw + 2 + ttsw;
+    std::string leftpad(lpc, ' ');
+
+    maquis::cout << leftpad;
+    for (amap_t::const_iterator it = b2_col.begin(); it != b2_col.end(); ++it)
+        maquis::cout << std::setw(sw) << it->second;
+    maquis::cout << std::endl;
+
+    std::string hline(lpc + sw * b2_col.size(), '_');
+    maquis::cout << hline << std::endl;
+
+    for (int i = 0; i < bs.size(); ++i)
+    {
+        if(trans[i]) maquis::cout << std::setw(sw) << bs[i] << "*" << std::setw(ttsw) << ks[i] << "| ";
+        else maquis::cout << std::setw(sw) << bs[i] << " " << std::setw(ttsw) << ks[i] << "| ";
+        for (amap_t::const_iterator it = b2_col.begin(); it != b2_col.end(); ++it)
+        {
+            int col = it->second;
+            double val = alpha(i, col);
+            if (val == 0.)
+                maquis::cout << std::setw(sw) << ".";
+            else
+                maquis::cout << std::setw(sw) << detail::f3(alpha(i, col));
+        }
+        maquis::cout << std::endl;
+    }
+    maquis::cout << std::endl << std::endl;
+}
+
 
 template <class Matrix, class SymmGroup>
 class ContractionGroup : public ContractionGroupGpuExtension<Matrix, SymmGroup, ContractionGroup<Matrix, SymmGroup>>
