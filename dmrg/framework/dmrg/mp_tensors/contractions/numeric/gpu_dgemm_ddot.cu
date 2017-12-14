@@ -386,6 +386,56 @@ void dgemm_ddot_gpu_tpl_seq(cublasHandle_t handle,
 }
 
 template <class T>
+__global__ void compute_s_stacked2(unsigned ms, unsigned rs, unsigned b1sz, unsigned* b2sz, T** alpha, unsigned** tidx,
+                                   const T* t_buf, T* ls_buf, unsigned b2max)
+{
+    unsigned b = blockIdx.x;
+    unsigned lda = b1sz * ms;
+    size_t t_size = ms * rs;
+
+    unsigned nbimax = (t_size + blockDim.x-1) / blockDim.x;
+    unsigned z = 0, nbsum = 0, nbz = max( (nbimax*b2sz[0])/b2max, 1u);
+    while(nbsum < b)
+    {
+        nbz = max( (nbimax*b2sz[z])/b2max, 1u);
+        if (b < nbsum + nbz) break;
+
+        nbsum += nbz;
+        z++;
+    }
+    nbz = max( (nbimax*b2sz[z])/b2max, 1u);
+
+    int i = b-nbsum;
+    unsigned remain = t_size % nbz;
+    unsigned segment = t_size / nbz;
+
+    unsigned nseg1 = (i < remain) ? i : remain;
+    unsigned nseg2 = (i < remain) ? 0 : i - remain;
+
+    size_t start = (nseg1 + nseg2) * segment + nseg1;
+    size_t end = start + segment + ((i < remain) ? 1 : 0);
+
+    T* alpha_i = alpha[z];
+    unsigned* tidx_i = tidx[z];
+
+    unsigned tid = start + threadIdx.x;
+    while (tid < end)
+    {
+        unsigned sx = z * ms + tid%ms;
+        unsigned sy = tid/ms;
+        size_t offset = sx + lda*sy;
+
+        T acc = 0;
+        for (unsigned j = 0; j < b2sz[z]; ++j)
+            acc += alpha_i[j] * t_buf[tidx_i[j]*t_size + tid];
+
+        ls_buf[offset] = acc;
+
+        tid += blockDim.x;
+    }
+}
+
+template <class T>
 void dgemm_ddot_gpu_tpl(cublasHandle_t handle,
                         //std::vector<cudaStream_t> const & row_streams,
                         //std::vector<cudaStream_t> const & col_streams,
@@ -398,9 +448,14 @@ void dgemm_ddot_gpu_tpl(cublasHandle_t handle,
     cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
     T fone = 1.0, fzero = 0.0;
 
-    unsigned nth = std::min(round_up<TILE_DIM>(ms*rs), 1024u);
-    compute_s_stacked<<<std::min(gdd.b1sz, 1024u), nth>>>(ms, rs, gdd.b1sz, gdd.b2sz, gdd.alpha, gdd.tidx, t, ls_buffer);
-    //compute_s<<<64, 64>>>(ms, rs, gdd.b1sz, gdd.b2sz, gdd.alpha, gdd.tidx, t, ls_buffer);
+    unsigned nb = 0;
+    unsigned nbimax = (t_size + 255)/ 256;
+    for (unsigned i = 0; i < gdd.b1sz; ++i)
+        nb += std::max( (nbimax * b2sz[i]) / gdd.b2max, 1u);
+
+    unsigned nth = std::min(round_up<TILE_DIM>(ms*rs), 256u);
+    //compute_s_stacked<<<std::min(gdd.b1sz, 1024u), nth>>>(ms, rs, gdd.b1sz, gdd.b2sz, gdd.alpha, gdd.tidx, t, ls_buffer);
+    compute_s_stacked2<<<nb, nth>>>(ms, rs, gdd.b1sz, gdd.b2sz, gdd.alpha, gdd.tidx, t, ls_buffer, gdd.b2max);
 
     T* l_buffer = ls_buffer + round_up<BUFFER_ALIGNMENT/sizeof(T)>(gdd.b1sz * t_size);
     size_t l_size = ls * ms;

@@ -51,6 +51,7 @@ struct GemmDotData
 {
     unsigned b1sz;
     unsigned nn;
+    unsigned b2max;
 
     T** left;
     unsigned* b2sz;
