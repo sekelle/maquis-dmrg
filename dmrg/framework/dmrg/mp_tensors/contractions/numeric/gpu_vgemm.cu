@@ -180,11 +180,13 @@ __global__ void cuda_transpose_v(unsigned N, unsigned M, unsigned cnt, T** dev_a
 
 
 template <class T>
-void coalesced_gemm_tpl(cublasHandle_t handle, BatchGemmData<T> & batch, int M, int N, size_t t_size, T* mpsdata, T* dev_t, T* r_buf)
+void coalesced_gemm_tpl(cublasHandle_t handle, cudaStream_t stream,
+                        BatchGemmData<T> & batch, int M, int N, size_t t_size, T* mpsdata, T* dev_t, T* r_buf)
 {
     cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
     T one = 1.0;
     T zero = 0.0;
+    cublasSetStream(handle, stream);
 
     size_t b_size = batch.K * N;
 
@@ -201,11 +203,11 @@ void coalesced_gemm_tpl(cublasHandle_t handle, BatchGemmData<T> & batch, int M, 
         //                &one, batch.b[k], batch.LDB,
         //                &zero, batch.b[k], batch.K,
         //                r_buf + k*b_size, batch.K);
-        cuda_transpose_v<<<blocks3d_t, threads>>>(N, batch.K, batch.size, batch.dev_b + batch.size, r_buf);
+        cuda_transpose_v<<<blocks3d_t, threads, 0, stream>>>(N, batch.K, batch.size, batch.dev_b + batch.size, r_buf);
     else
         //for (size_t k = 0; k < batch.b.size(); ++k)
         //    cudaMemcpy( r_buf + k * b_size, batch.b[k], b_size* sizeof(T), cudaMemcpyDeviceToDevice);
-        cuda_copy_v<<<blocks3d, threads>>>(batch.K, N, batch.size, batch.dev_b + batch.size, r_buf);
+        cuda_copy_v<<<blocks3d, threads, 0, stream>>>(batch.K, N, batch.size, batch.dev_b + batch.size, r_buf);
 
 
     cublasDgemm(handle, cuop[0], cuop[0], M, N * batch.b.size(), batch.K, &one,
@@ -214,8 +216,9 @@ void coalesced_gemm_tpl(cublasHandle_t handle, BatchGemmData<T> & batch, int M, 
 }
 
 
-void vgemm(cublasHandle_t handle, BatchGemmData<double> & batch, int M, int N, size_t t_size, double* mpsdata, double* dev_t, double* r_buf)
+void vgemm(cublasHandle_t handle, cudaStream_t stream, BatchGemmData<double> & batch,
+           int M, int N, size_t t_size, double* mpsdata, double* dev_t, double* r_buf)
 {
-   coalesced_gemm_tpl(handle, batch, M, N, t_size, mpsdata, dev_t, r_buf);
+   coalesced_gemm_tpl(handle, stream, batch, M, N, t_size, mpsdata, dev_t, r_buf);
    //batched_gemm_tpl(handle, batch, M, N, t_size, mpsdata, dev_t);
 }

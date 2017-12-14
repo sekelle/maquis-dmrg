@@ -53,16 +53,18 @@ public:
 
     template <class OtherMatrix>
     typename boost::enable_if<boost::is_same<typename OtherMatrix::value_type, double>, void>::type
-    contract_gpu(Boundary<OtherMatrix, SymmGroup> const & left, const value_type* t_pointer, value_type* ls_buffer, value_type* dev_ret) const
+    contract_gpu(cudaStream_t stream, Boundary<OtherMatrix, SymmGroup> const & left,
+                 const value_type* t_pointer, value_type* ls_buffer, value_type* dev_ret) const
     {
-        dgemm_ddot_gpu(accelerator::gpu::instance().handle,
+        dgemm_ddot_gpu(accelerator::gpu::instance().handle, stream,
                        impl()->l_size, impl()->m_size, impl()->r_size,
                        impl()->b2sz.data(), t_pointer, ls_buffer, dev_ret, gdd);
     }
 
     template <class OtherMatrix>
     typename boost::disable_if<boost::is_same<typename OtherMatrix::value_type, double>, void>::type
-    contract_gpu(Boundary<OtherMatrix, SymmGroup> const & left, const value_type* t_pointer, value_type* ls_buffer, value_type* dev_ret) const
+    contract_gpu(cudaStream_t stream, Boundary<OtherMatrix, SymmGroup> const & left,
+                 const value_type* t_pointer, value_type* ls_buffer, value_type* dev_ret) const
     {
         throw std::runtime_error("not implemented\n");
     }
@@ -251,7 +253,7 @@ public:
         for (int ss1 = 0; ss1 < impl()->size(); ++ss1)
         {
             if (!(*impl())[ss1].n_tasks()) continue;
-            (*impl())[ss1].contract_gpu(left, dev_t_pointer,
+            (*impl())[ss1].contract_gpu(stream, left, dev_t_pointer,
                                         dev_t_pointer + bit_twiddling::round_up<BUFFER_ALIGNMENT/sizeof(value_type)>(t_buffer_size()),
                                         output + impl()->get_l_size() * (*impl())[ss1].offset);
         }
@@ -276,7 +278,7 @@ public:
         std::size_t t_size = size_t(M) * size_t(N);
 
         for (auto& B : batches)
-            vgemm(accelerator::gpu::instance().handle, B, M, N, t_size,
+            vgemm(accelerator::gpu::instance().handle, stream, B, M, N, t_size,
                  (value_type*)mps.device_ptr[impl()->get_mps_block()], dev_t_pointer,
                   dev_t_pointer + bit_twiddling::round_up<BUFFER_ALIGNMENT/sizeof(value_type)>(t_buffer_size()));
     }
@@ -287,6 +289,7 @@ public:
     size_t buffer_size;
 
     mutable value_type* dev_t_pointer;
+    mutable cudaStream_t stream;
 
     private:
         Derived* impl()             { return static_cast<Derived*>(this); }
@@ -343,6 +346,7 @@ public:
 
             unsigned pidx = tn % pipeline.size();
             cg.dev_t_pointer = pipeline[pidx].buffer;
+            cg.stream = pipeline[0].stream;
         }
     }
 

@@ -34,11 +34,11 @@
 
 #define BUFFER_ALIGNMENT 128
 
-void dgemm_ddot_gpu(cublasHandle_t handle,
+void dgemm_ddot_gpu(cublasHandle_t handle, cudaStream_t stream,
                     unsigned ls, unsigned ms, unsigned rs,
                     const unsigned* b2sz, const double* t, double* ls_buf, double* out,
                     GemmDotData<double> & gdd);
 
-void vgemm(cublasHandle_t handle, BatchGemmData<double> & batch, int, int, size_t, double*, double*, double*);
+void vgemm(cublasHandle_t handle, cudaStream_t stream, BatchGemmData<double> & batch, int, int, size_t, double*, double*, double*);
 
 #endif
