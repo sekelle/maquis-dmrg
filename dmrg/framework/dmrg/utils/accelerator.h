@@ -96,6 +96,8 @@ namespace accelerator {
 
         static bool use_gpu(size_t flops) { return enabled() && (flops > (1<<24)); }
 
+        static size_t nstreams() { return instance().streams.size(); }
+
 
 
         static void* get_pipeline_buffer(size_t sz)

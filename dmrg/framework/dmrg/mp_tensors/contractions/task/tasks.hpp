@@ -721,7 +721,7 @@ struct Schedule_ : public std::vector<std::vector<std::vector<ContractionGroup<M
     typedef boost::tuple<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t> stats_t;
 
     Schedule_() : cpu_time(0), gpu_time(0) {}
-    Schedule_(std::size_t dim) : base(dim), base2(dim), cpu_time(0), gpu_time(0) {}
+    Schedule_(std::size_t dim, std::size_t nphys) : base(dim), base2(nphys), cpu_time(0), gpu_time(0) {}
 
     double mflops(double time) const { return total_flops*niter / time / 1e6; }
     double bandwidth(double time) const { return total_mem*niter / time / 1e6; }

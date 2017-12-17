@@ -305,6 +305,29 @@ __global__ void cuda_copy_v(unsigned N, unsigned M, unsigned cnt, T** dev_a, T* 
     }
 }
 
+static __inline__ __device__ double myatomicAdd(double *address, double val) {
+unsigned long long int* address_as_ull = (unsigned long long int*)address;
+unsigned long long int old = *address_as_ull, assumed;
+if (val==0.0)
+  return __longlong_as_double(old);
+do {
+  assumed = old;
+  old = atomicCAS(address_as_ull, assumed, __double_as_longlong(val +__longlong_as_double(assumed)));
+} while (assumed != old);
+return __longlong_as_double(old);
+}
+
+template <class T>
+__global__ void atomic_add(unsigned N, T* in, T* out)
+{
+    unsigned tid = threadIdx.x + blockIdx.x * blockDim.x;
+    while (tid < N)
+    {
+        myatomicAdd(&out[tid], in[tid]);
+        tid += blockDim.x * gridDim.x;
+    }
+}
+
 template <class T>
 void dgemm_ddot_gpu_tpl(cublasHandle_t handle,
                         cudaStream_t stream,
@@ -337,10 +360,16 @@ void dgemm_ddot_gpu_tpl(cublasHandle_t handle,
     dim3 blocks3d(lsb, msb, std::min(gdd.nn, 65535u));
     dim3 blocks3d_t(msb, lsb, std::min(gdd.b1sz-gdd.nn, 65535u));
 
+    if (gdd.nn)
     cuda_copy_v<<<blocks3d,threads, 0, stream>>>(ls, ms, gdd.nn, gdd.left, l_buffer);
+    if (gdd.b1sz-gdd.nn)
     cuda_transpose_v<<<blocks3d_t,threads, 0, stream>>>(ms, ls, gdd.b1sz-gdd.nn, gdd.left + gdd.nn, l_buffer + gdd.nn * l_size);
 
     cublasDgemm(handle, cuop[0], cuop[0], ls, rs, ms*gdd.b1sz, &fone, l_buffer, ls, ls_buffer, ms*gdd.b1sz, &fone, dev_out, ls);
+
+    //T* out_buffer = l_buffer + round_up<BUFFER_ALIGNMENT/sizeof(T)>(l_size * gdd.b1sz);
+    //cublasDgemm(handle, cuop[0], cuop[0], ls, rs, ms*gdd.b1sz, &fone, l_buffer, ls, ls_buffer, ms*gdd.b1sz, &fzero, out_buffer, ls);
+    //atomic_add<<<(ls*rs + 255)/256, 256, 0, stream>>>(ls * rs, out_buffer, dev_out);
 }
 
 void dgemm_ddot_gpu(cublasHandle_t handle,

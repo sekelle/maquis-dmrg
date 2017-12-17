@@ -58,7 +58,7 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
                                                              -boost::lambda::_1, boost::lambda::_2));
 
     initial.make_right_paired();
-    typename Schedule<Matrix, SymmGroup>::schedule_t tasks(left_i.size());
+    typename Schedule<Matrix, SymmGroup>::schedule_t tasks(left_i.size(), physical_i.size());
 
     unsigned loop_max = left_i.size();
     omp_for(index_type mb, parallel::range<index_type>(0,loop_max), {
@@ -81,6 +81,8 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
 
                 if (cg.on_gpu) gpu_flops += cg.flops;
                 else cpu_flops += cg.flops;
+
+                //if (cg.on_gpu) for (auto& mg : cg) print(mg);
             }
 
     std::vector<std::pair<size_t, size_t> > fb(loop_max);

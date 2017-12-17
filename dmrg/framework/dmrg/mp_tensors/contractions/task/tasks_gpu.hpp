@@ -232,7 +232,7 @@ public:
         for (int ss1 = 0; ss1 < impl()->size(); ++ss1)
             max_size = std::max(max_size, (*impl())[ss1].size());
 
-        size_t ls_buf = max_size * impl()->get_l_size() * impl()->get_m_size();
+        size_t ls_buf = max_size * impl()->get_l_size() * impl()->get_m_size()
                       + max_size * impl()->get_m_size() * impl()->get_r_size();
 
         buffer_size = t_buffer_size() + std::max(ls_buf, r_buf);
@@ -303,10 +303,11 @@ class MaquisStream
 {
 public:
 
-    MaquisStream(T* b_) : buffer(b_), stream(accelerator::gpu::next_stream()) {}
+    MaquisStream(T* b_, size_t s) : buffer(b_), sz(s), stream(accelerator::gpu::next_stream()) {}
 
     T* buffer;
     cudaStream_t stream;
+    size_t sz;
 };
 
 template <class Matrix, class SymmGroup, class Derived>
@@ -315,7 +316,7 @@ class ScheduleGpuExtension
     typedef typename Matrix::value_type v_type;
 public:
 
-    ScheduleGpuExtension(size_t n_mps_blocks) {}
+    ScheduleGpuExtension(size_t nphys_) : nphys(nphys_) { }
 
 
     void assign_streams()
@@ -328,12 +329,12 @@ public:
                     { return boost::get<3>(p1) > boost::get<3>(p2); }
                   );
 
-        for (size_t tn = 0; tn < enumeration_gpu.size(); ++tn)
+        for (size_t tn = 0; tn < std::min(accelerator::gpu::nstreams(), enumeration_gpu.size()); ++tn)
         {
-            size_t buffer_size = boost::get<3>(enumeration_gpu[tn]);
-            v_type* buffer = (v_type*)accelerator::gpu::get_pipeline_buffer(buffer_size * sizeof(v_type) + 2*BUFFER_ALIGNMENT);
+            size_t buffer_size = boost::get<3>(enumeration_gpu[0]) * sizeof(v_type) + 2*BUFFER_ALIGNMENT;
+            v_type* buffer = (v_type*)accelerator::gpu::get_pipeline_buffer(buffer_size);
             if (buffer)
-                pipeline.push_back(MaquisStream<v_type>(buffer));
+                pipeline.push_back(MaquisStream<v_type>(buffer, buffer_size));
             else
                 break;
         }
@@ -344,19 +345,23 @@ public:
                                  [ boost::get<1>(enumeration_gpu[tn]) ]
                                  [ boost::get<2>(enumeration_gpu[tn]) ];
 
-            unsigned pidx = tn % pipeline.size();
+            //unsigned pidx = tn % pipeline.size();
+            //unsigned pidx = boost::get<0>(enumeration_gpu[tn]) % pipeline.size();
+
+            unsigned pidx = (boost::get<0>(enumeration_gpu[tn]) * nphys + boost::get<1>(enumeration_gpu[tn])) % pipeline.size();
             cg.dev_t_pointer = pipeline[pidx].buffer;
-            cg.stream = pipeline[0].stream;
+            cg.stream = pipeline[pidx].stream;
         }
     }
 
 
     std::vector<boost::tuple<unsigned, unsigned, unsigned, size_t>> enumeration_gpu;
-
     std::vector<MaquisStream<v_type>> pipeline;
 
     private:
         const Derived* impl() const { return static_cast<const Derived*>(this); }
+
+        size_t nphys;
 };
 
 } // namespace common
