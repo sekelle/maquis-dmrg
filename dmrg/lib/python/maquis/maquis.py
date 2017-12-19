@@ -2,6 +2,9 @@
 
 import libmaquis
 import numpy as np
+import tempfile
+import shutil
+import os.path
 
 class DummyCSF:
 
@@ -20,7 +23,7 @@ class DMRGBox:
                         , "init_bond_dimension" : 400
                           #
                         , "init_state" : 'default'
-                        , "donotsave" : 1
+                        , "donotsave" : 0
                         , "chkp_each" : 100
                         , "measure_each" : 1
                         , "chkpfile" : 'chkp_dummy.h5'
@@ -57,31 +60,49 @@ class DMRGBox:
 
         self.solvers = {}
 
+        self.tempdir = tempfile.mkdtemp(prefix='dmrg_', dir='.')
+
+    def __del__(self):
+        if os.path.exists(self.tempdir):
+            if 'keep_files' in self.options.keys():
+                if self.options['keep_files'] == False:
+                    shutil.rmtree(self.tempdir)
+            else:
+                shutil.rmtree(self.tempdir)
+
     def compute_states(self, S_ind, S_nstate):
-        for S in S_ind:
+        for S,N in zip(S_ind, S_nstate):
             self.options['spin'] = S
-            self.solvers[S] = libmaquis.interface(self.options)
-            self.solvers[S].optimize()
+            ortho_states = ''
+            self.solvers[S] = {}
+            for n in range(N):
+                self.options['chkpfile'] = os.path.join(self.tempdir, "state_S" + str(S) + "_" + str(n))
+                self.options['resultfile'] = os.path.join(self.tempdir, "results_S" + str(S) + "_" + str(n))
+                self.options['n_ortho_states'] = n
+                self.options['ortho_states'] = ortho_states
+                self.solvers[S][n] = libmaquis.interface(self.options)
+                self.solvers[S][n].optimize()
+                ortho_states += self.options['chkpfile'] + ','
 
     def energy(self, S, state):
-        self.solvers[S].measure("Energy")
-        return self.solvers[S].getObservable("Energy")
+        self.solvers[S][state].measure("Energy")
+        return self.solvers[S][state].getObservable("Energy")
 
-    def opdm(self, S, evecs1, evecs2, total):
+    def opdm(self, S, state, evecs2, total):
         """calculate the 1-body reduced density matrix"""
 
-        self.solvers[S].measure("oneptdm")
-        r1 = self.solvers[S].getObservable("oneptdm")
-        r1l = self.solvers[S].getLabels("oneptdm")
+        self.solvers[S][state].measure("oneptdm")
+        r1 = self.solvers[S][state].getObservable("oneptdm")
+        r1l = self.solvers[S][state].getLabels("oneptdm")
         rdm1 = DMRGBox.expand_1rdm(r1, r1l, self.options["L"])
         return rdm1
 
-    def tpdm(self, S, evecs1, evecs2, symmetrize):
+    def tpdm(self, S, state, evecs2, symmetrize):
         """calculate the 2-body reduced density matrix"""
 
-        self.solvers[S].measure("twoptdm")
-        r2 = self.solvers[S].getObservable("twoptdm")
-        r2l = self.solvers[S].getLabels("twoptdm")
+        self.solvers[S][state].measure("twoptdm")
+        r2 = self.solvers[S][state].getObservable("twoptdm")
+        r2l = self.solvers[S][state].getLabels("twoptdm")
         rdm2 = DMRGBox.expand_2rdm(r2, r2l, self.options["L"])
         return rdm2
 
