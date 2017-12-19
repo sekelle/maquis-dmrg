@@ -7,44 +7,44 @@ class dmrg:
 
     def __init__(self, options, Hnp = None, Inp = None):
 
-        self.options = { 
-                        "nsweeps" : 8
-                        , "max_bond_dimension" : 400
-                        , "init_bond_dimension" : 400
-                          #
-                        , "init_state" : 'default'
-                        , "donotsave" : 1
-                        , "chkp_each" : 100
-                        , "measure_each" : 1
-                        , "chkpfile" : 'chkp_dummy.h5'
-                        , "resultfile" : 'result_dummy.h5'
-                          #"storagedir" : '/scratch/sebkelle/boundaries'
-                          #
-                        , "ietl_jcd_maxiter" : 9
-                        , "ietl_jcd_tol" : 1e-7
-                        , "truncation_initial" : 1e-7
-                        , "truncation_final" : 1e-7
-                        , "symmetry" : 'su2u1'
-                          #
-                        , "integral_cutoff" : 1e-20
-                        , "conv_thresh" : 1e-6
-                          #
-                        , "MEASURE[ChemEntropy]" : 1
-                        , "MEASURE[1rdm]" : 1
-                        , "MEASURE[2rdm]" : 1
-                        , "MEASURE[Energy]" : 1
-                       }
+        #self.options = { 
+        #                "nsweeps" : 8
+        #                , "max_bond_dimension" : 400
+        #                , "init_bond_dimension" : 400
+        #                  #
+        #                , "init_state" : 'default'
+        #                , "donotsave" : 1
+        #                , "chkp_each" : 100
+        #                , "measure_each" : 1
+        #                , "chkpfile" : 'chkp_dummy.h5'
+        #                , "resultfile" : 'result_dummy.h5'
+        #                  #"storagedir" : '/scratch/sebkelle/boundaries'
+        #                  #
+        #                , "ietl_jcd_maxiter" : 9
+        #                , "ietl_jcd_tol" : 1e-7
+        #                , "truncation_initial" : 1e-7
+        #                , "truncation_final" : 1e-7
+        #                , "symmetry" : 'su2u1'
+        #                  #
+        #                , "integral_cutoff" : 1e-20
+        #                , "conv_thresh" : 1e-6
+        #                  #
+        #                , "MEASURE[ChemEntropy]" : 1
+        #                , "MEASURE[1rdm]" : 1
+        #                , "MEASURE[2rdm]" : 1
+        #                , "MEASURE[Energy]" : 1
+        #               }
 
-        if Hnp is not None and Inp is not None:
-            Ls = Inp.shape
-            assert(min(Ls) == max(Ls))
-            self.options["L"] = Ls[0]
+        #if Hnp is not None and Inp is not None:
+        #    Ls = Inp.shape
+        #    assert(min(Ls) == max(Ls))
+        #    self.options["L"] = Ls[0]
 
-            Ecore = 0.0;
-            if options.has_key("Ecore"):
-                Ecore = options["Ecore"]
+        #    Ecore = 0.0;
+        #    if options.has_key("Ecore"):
+        #        Ecore = options["Ecore"]
 
-            self.options["integrals"] = dmrg.pack_integrals(Hnp, Inp, self.options["L"], Ecore)
+        #    self.options["integrals"] = dmrg.pack_integrals(Hnp, Inp, self.options["L"], Ecore)
 
         self.options.update(options)
 
@@ -72,23 +72,6 @@ class dmrg:
         r2l = self.solver.getLabels("twoptdm")
         rdm2 = dmrg.expand_2rdm(r2, r2l, self.options["L"])
         return rdm2
-
-    def write_fcidump(self):
-
-        nintegrals = len(self.options["integrals"]) / 24
-        integrals = np.fromstring(self.options["integrals"], count=nintegrals, dtype=np.float64)
-        indices = np.fromstring(self.options["integrals"][8*nintegrals:], count=4*nintegrals, dtype=np.int32)
-
-        f = open("FCIDUMP", 'w')
-        for i in range(nintegrals):
-            f.write('  % 20.14e' % integrals[i] + '  ' + '  '.join([str(x) for x in [indices[4*i], indices[4*i+1], indices[4*i+2], indices[4*i+3]]]) + '\n')
-        f.close()
-
-        ifile = open("di", 'w')
-        for k,v in self.options.items():
-            if k != "integrals":
-                ifile.write(str(k) + ' = ' + str(v) + '\n')
-        ifile.close()
 
     @staticmethod
     def expand_1rdm(rdm, labels, L):
@@ -128,6 +111,100 @@ class dmrg:
                     odm[l,k,j,i] = val
 
         return odm
+
+class DummyCSF:
+    self.total_ndet = 0
+    self.total_nCSF = 0
+
+
+class DMRGBox:
+
+    def __init__(self, options, Hnp, Inp):
+
+        self.options = { 
+                        "nsweeps" : 8
+                        , "max_bond_dimension" : 400
+                        , "init_bond_dimension" : 400
+                          #
+                        , "init_state" : 'default'
+                        , "donotsave" : 1
+                        , "chkp_each" : 100
+                        , "measure_each" : 1
+                        , "chkpfile" : 'chkp_dummy.h5'
+                        , "resultfile" : 'result_dummy.h5'
+                          #"storagedir" : '/scratch/sebkelle/boundaries'
+                          #
+                        , "ietl_jcd_maxiter" : 9
+                        , "ietl_jcd_tol" : 1e-7
+                        , "truncation_initial" : 1e-7
+                        , "truncation_final" : 1e-7
+                        , "symmetry" : 'su2u1'
+                          #
+                        , "integral_cutoff" : 1e-20
+                        , "conv_thresh" : 1e-6
+                          #
+                        , "MEASURE[ChemEntropy]" : 1
+                        , "MEASURE[1rdm]" : 1
+                        , "MEASURE[2rdm]" : 1
+                        , "MEASURE[Energy]" : 1
+                       }
+
+        self.options.update(options)
+
+        if Hnp is not None and Inp is not None:
+            Ls = Inp.shape
+            assert(min(Ls) == max(Ls))
+            self.options["L"] = Ls[0]
+
+            Ecore = 0.0;
+            if options.has_key("Ecore"):
+                Ecore = options["Ecore"]
+
+            self.options["integrals"] = dmrg.pack_integrals(Hnp, Inp, self.options["L"], Ecore)
+
+        self.solvers = {}
+
+    def compute_states(self, S_ind, S_nstate):
+        for S in S_ind:
+            self.options['spin'] = S
+            self.solvers[S] = dmrg(self.options)
+            self.solvers[S].optimize()
+
+    def opdm(self, S, evecs1, evecs2, total):
+        return self.solvers[S].opdm()
+
+    def tpdm(self, S, evecs1, evecs2, symmetrize):
+        return self.solvers[S].tpdm()
+
+
+    # unimplemented CASBox functionality
+    def CSF_basis(self, S):
+        return DummyCSF()
+
+    def amplitude_string(self, a,b,c,d,e):
+        return "Amplitudes not implemented"
+
+    def metric_det(m):
+        raise ValueError("overlaps not implemented")
+
+
+    def write_fcidump(self):
+
+        nintegrals = len(self.options["integrals"]) / 24
+        integrals = np.fromstring(self.options["integrals"], count=nintegrals, dtype=np.float64)
+        indices = np.fromstring(self.options["integrals"][8*nintegrals:], count=4*nintegrals, dtype=np.int32)
+
+        f = open("FCIDUMP", 'w')
+        for i in range(nintegrals):
+            f.write('  % 20.14e' % integrals[i] + '  ' + '  '.join([str(x) for x in [indices[4*i], indices[4*i+1], indices[4*i+2], indices[4*i+3]]]) + '\n')
+        f.close()
+
+        ifile = open("di", 'w')
+        for k,v in self.options.items():
+            if k != "integrals":
+                ifile.write(str(k) + ' = ' + str(v) + '\n')
+        ifile.close()
+
 
     @staticmethod
     def pack_integrals(Hnp, Inp, L, Ecore):
