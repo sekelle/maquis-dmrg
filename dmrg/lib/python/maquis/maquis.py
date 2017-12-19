@@ -55,6 +55,10 @@ class dmrg:
         """calculate ground state wavefunction"""
         self.solver.optimize()
 
+    def energy(self):
+        self.solver.measure("Energy")
+        return self.solver.getObservable("Energy")
+
     def opdm(self):
         """calculate the 1-body reduced density matrix"""
 
@@ -169,6 +173,9 @@ class DMRGBox:
             self.options['spin'] = S
             self.solvers[S] = dmrg(self.options)
             self.solvers[S].optimize()
+
+    def energy(self, S, state):
+        return self.solvers[S].energy()
 
     def opdm(self, S, evecs1, evecs2, total):
         return self.solvers[S].opdm()
