@@ -36,7 +36,7 @@ import pydmrg
 import sys 
 import numpy as np
 
-def plot(fname):
+def read_energy(fname):
 
     ret = pydmrg.LoadDMRGSweeps([fname],['Energy'])
 
@@ -46,12 +46,12 @@ def plot(fname):
 
     ydata = np.array(sweeps)
 
-    if np.min(ydata.imag) != 0: 
-        print "Warning! complex energy value detected"
+    #if np.min(ydata.imag) != 0: 
+    #    print "Warning! complex energy value detected"
   
-    print "Minimum energy:"
-    print np.min(ydata.real)
+    return np.min(ydata.real)
 
-if __name__=='__main__':
+if __name__ == '__main__':
     rfile = sys.argv[1]
-    plot(rfile)
+    print "Minimum energy:"
+    print read_energy(rfile)

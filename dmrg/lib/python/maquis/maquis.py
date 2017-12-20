@@ -6,6 +6,8 @@ import tempfile
 import shutil
 import os.path
 
+import energy as pytool_energy
+
 class DummyCSF:
 
     def __init__(self):
@@ -59,6 +61,7 @@ class DMRGBox:
             self.options["integrals"] = dmrg.pack_integrals(Hnp, Inp, self.options["L"], Ecore)
 
         self.solvers = {}
+        self.result_files = {}
 
         self.tempdir = tempfile.mkdtemp(prefix='dmrg_', dir='.')
 
@@ -75,18 +78,24 @@ class DMRGBox:
             self.options['spin'] = S
             ortho_states = ''
             self.solvers[S] = {}
+            self.result_files[S] = {}
             for n in range(N):
-                self.options['chkpfile'] = os.path.join(self.tempdir, "state_S" + str(S) + "_" + str(n))
-                self.options['resultfile'] = os.path.join(self.tempdir, "results_S" + str(S) + "_" + str(n))
+                self.options['chkpfile'] = os.path.abspath(os.path.join(self.tempdir, "state_S" + str(S) + "_" + str(n)))
+                self.options['resultfile'] = os.path.abspath(os.path.join(self.tempdir, "results_S" + str(S) + "_" + str(n)))
                 self.options['n_ortho_states'] = n
                 self.options['ortho_states'] = ortho_states
+
+                self.result_files[S][n] = self.options['resultfile']
+
                 self.solvers[S][n] = libmaquis.interface(self.options)
                 self.solvers[S][n].optimize()
+
                 ortho_states += self.options['chkpfile'] + ','
 
     def energy(self, S, state):
-        self.solvers[S][state].measure("Energy")
-        return self.solvers[S][state].getObservable("Energy")
+        #self.solvers[S][state].measure("Energy")
+        #return self.solvers[S][state].getObservable("Energy")
+        return pytool_energy.read_energy(self.result_files[S][state])
 
     def opdm(self, S, state, evecs2, total):
         """calculate the 1-body reduced density matrix"""
