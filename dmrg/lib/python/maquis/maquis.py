@@ -58,7 +58,7 @@ class DMRGBox:
             if options.has_key("Ecore"):
                 Ecore = options["Ecore"]
 
-            self.options["integrals"] = dmrg.pack_integrals(Hnp, Inp, self.options["L"], Ecore)
+            self.options["integrals"] = DMRGBox.pack_integrals(Hnp, Inp, self.options["L"], Ecore)
 
         self.solvers = {}
         self.result_files = {}
@@ -97,7 +97,7 @@ class DMRGBox:
         #return self.solvers[S][state].getObservable("Energy")
         return pytool_energy.read_energy(self.result_files[S][state])
 
-    def opdm(self, S, state, evecs2, total):
+    def opdm(self, resources, S, state, evecs2, total):
         """calculate the 1-body reduced density matrix"""
 
         self.solvers[S][state].measure("oneptdm")
@@ -106,7 +106,7 @@ class DMRGBox:
         rdm1 = DMRGBox.expand_1rdm(r1, r1l, self.options["L"])
         return rdm1
 
-    def tpdm(self, S, state, evecs2, symmetrize):
+    def tpdm(self, resources, S, state, evecs2, symmetrize):
         """calculate the 2-body reduced density matrix"""
 
         self.solvers[S][state].measure("twoptdm")
