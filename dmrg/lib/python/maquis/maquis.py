@@ -2,10 +2,22 @@
 
 import libmaquis
 import numpy as np
+import tempfile
+import shutil
+import os.path
 
-class dmrg:
+import energy as pytool_energy
 
-    def __init__(self, options, Hnp = None, Inp = None):
+class DummyCSF:
+
+    def __init__(self):
+        self.total_ndet = 0
+        self.total_nCSF = 0
+
+
+class DMRGBox:
+
+    def __init__(self, options, Hnp, Inp):
 
         self.options = { 
                         "nsweeps" : 8
@@ -13,7 +25,7 @@ class dmrg:
                         , "init_bond_dimension" : 400
                           #
                         , "init_state" : 'default'
-                        , "donotsave" : 1
+                        , "donotsave" : 0
                         , "chkp_each" : 100
                         , "measure_each" : 1
                         , "chkpfile" : 'chkp_dummy.h5'
@@ -35,6 +47,8 @@ class dmrg:
                         , "MEASURE[Energy]" : 1
                        }
 
+        self.options.update(options)
+
         if Hnp is not None and Inp is not None:
             Ls = Inp.shape
             assert(min(Ls) == max(Ls))
@@ -44,34 +58,74 @@ class dmrg:
             if options.has_key("Ecore"):
                 Ecore = options["Ecore"]
 
-            self.options["integrals"] = dmrg.pack_integrals(Hnp, Inp, self.options["L"], Ecore)
+            self.options["integrals"] = DMRGBox.pack_integrals(Hnp, Inp, self.options["L"], Ecore)
 
-        self.options.update(options)
+        self.solvers = {}
+        self.result_files = {}
 
-        # the C++ DMRG instance holding the wavefunction
-        self.solver = libmaquis.interface(self.options)
+        self.tempdir = tempfile.mkdtemp(prefix='dmrg_', dir='.')
 
-    def optimize(self):
-        """calculate ground state wavefunction"""
-        self.solver.optimize()
+    def __del__(self):
+        if os.path.exists(self.tempdir):
+            if 'keep_files' in self.options.keys():
+                if self.options['keep_files'] == False:
+                    shutil.rmtree(self.tempdir)
+            else:
+                shutil.rmtree(self.tempdir)
 
-    def opdm(self):
+    def compute_states(self, S_ind, S_nstate):
+        for S,N in zip(S_ind, S_nstate):
+            self.options['spin'] = S
+            ortho_states = ''
+            self.solvers[S] = {}
+            self.result_files[S] = {}
+            for n in range(N):
+                self.options['chkpfile'] = os.path.abspath(os.path.join(self.tempdir, "state_S" + str(S) + "_" + str(n)))
+                self.options['resultfile'] = os.path.abspath(os.path.join(self.tempdir, "results_S" + str(S) + "_" + str(n)))
+                self.options['n_ortho_states'] = n
+                self.options['ortho_states'] = ortho_states
+
+                self.result_files[S][n] = self.options['resultfile']
+
+                self.solvers[S][n] = libmaquis.interface(self.options)
+                self.solvers[S][n].optimize()
+
+                ortho_states += self.options['chkpfile'] + ','
+
+    def energy(self, S, state):
+        #self.solvers[S][state].measure("Energy")
+        #return self.solvers[S][state].getObservable("Energy")
+        return pytool_energy.read_energy(self.result_files[S][state])
+
+    def opdm(self, resources, S, state, evecs2, total):
         """calculate the 1-body reduced density matrix"""
 
-        self.solver.measure("oneptdm")
-        r1 = self.solver.getObservable("oneptdm")
-        r1l = self.solver.getLabels("oneptdm")
-        rdm1 = dmrg.expand_1rdm(r1, r1l, self.options["L"])
+        self.solvers[S][state].measure("oneptdm")
+        r1 = self.solvers[S][state].getObservable("oneptdm")
+        r1l = self.solvers[S][state].getLabels("oneptdm")
+        rdm1 = DMRGBox.expand_1rdm(r1, r1l, self.options["L"])
         return rdm1
 
-    def tpdm(self):
+    def tpdm(self, resources, S, state, evecs2, symmetrize):
         """calculate the 2-body reduced density matrix"""
 
-        self.solver.measure("twoptdm")
-        r2 = self.solver.getObservable("twoptdm")
-        r2l = self.solver.getLabels("twoptdm")
-        rdm2 = dmrg.expand_2rdm(r2, r2l, self.options["L"])
+        self.solvers[S][state].measure("twoptdm")
+        r2 = self.solvers[S][state].getObservable("twoptdm")
+        r2l = self.solvers[S][state].getLabels("twoptdm")
+        rdm2 = DMRGBox.expand_2rdm(r2, r2l, self.options["L"])
         return rdm2
+
+
+    # unimplemented CASBox functionality
+    def CSF_basis(self, S):
+        return DummyCSF()
+
+    def amplitude_string(self, a,b,c,d,e):
+        return "Amplitudes not implemented"
+
+    def metric_det(m):
+        raise ValueError("overlaps not implemented")
+
 
     def write_fcidump(self):
 
@@ -128,6 +182,7 @@ class dmrg:
                     odm[l,k,j,i] = val
 
         return odm
+
 
     @staticmethod
     def pack_integrals(Hnp, Inp, L, Ecore):
