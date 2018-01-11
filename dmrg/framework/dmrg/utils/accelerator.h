@@ -81,10 +81,10 @@ namespace accelerator {
 
             HANDLE_ERROR( cudaGetDeviceProperties(&instance().prop, 0) );
 
-            instance().pbuffer_size = instance().prop.totalGlobalMem/4;
+            instance().pbuffer_size = instance().prop.totalGlobalMem/5;
             cudaMalloc( &instance().pbuffer, instance().pbuffer_size );
 
-            instance().sbuffer_size = 50000000; // 50 MiB
+            instance().sbuffer_size = 150000000; // 50 MiB
             cudaMallocHost(&instance().sbuffer, instance().sbuffer_size);
             cudaMalloc(&instance().dev_buffer, instance().sbuffer_size);
 
