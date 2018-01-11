@@ -8,6 +8,9 @@ import os.path
 
 import energy as pytool_energy
 
+import signal
+signal.signal(signal.SIGINT, signal.SIG_DFL)
+
 class DummyCSF:
 
     def __init__(self):
