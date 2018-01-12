@@ -80,6 +80,8 @@ public:
     virtual ~sim();
     
     virtual void run() =0;
+
+    parameters::proxy get_parm(std::string const& key);
     
 protected:
     typedef typename Model<Matrix, SymmGroup>::measurements_type measurements_type;

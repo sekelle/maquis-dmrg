@@ -96,9 +96,9 @@ class DMRGBox:
                 ortho_states += self.options['chkpfile'] + ','
 
     def energy(self, S, state):
-        #self.solvers[S][state].measure("Energy")
         #return self.solvers[S][state].getObservable("Energy")
-        return pytool_energy.read_energy(self.result_files[S][state])
+        #return pytool_energy.read_energy(self.result_files[S][state])
+        return pytool_energy.read_energy(self.solvers[S][state].value('resultfile'))
 
     def opdm(self, resources, S, state, evecs2, total):
         """calculate the 1-body reduced density matrix"""

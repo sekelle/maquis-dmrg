@@ -68,7 +68,7 @@ public:
 
     void SetParameters(DmrgParameters & p) { parms = p; }
 
-    std::string value(std::string key) { return parms[key]; }
+    std::string value(std::string key) { return sim->get_parm(key); }
 
     void optimize()
     {
