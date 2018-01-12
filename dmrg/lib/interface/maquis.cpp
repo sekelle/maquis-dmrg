@@ -78,7 +78,7 @@ public:
         gettimeofday(&now, NULL);
 
         try {
-            sim->run(parms);
+            sim->run();
 
         } catch (std::exception & e) {
             maquis::cerr << "Exception thrown!" << std::endl;
@@ -94,7 +94,7 @@ public:
 
     void measure(std::string name)
     {
-        sim->measure_observable(parms, name, observables["name"], labels["name"]);
+        sim->measure_observable(name, observables["name"], labels["name"]);
     } 
 
     std::vector<double> getObservable(std::string name)

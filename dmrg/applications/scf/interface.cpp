@@ -48,7 +48,7 @@ void DmrgInterface::optimize()
         gettimeofday(&now, NULL);
         
         try {
-            sim->run(opt.parms);
+            sim->run();
 
         } catch (std::exception & e) {
             maquis::cerr << "Exception thrown!" << std::endl;
@@ -67,5 +67,5 @@ void DmrgInterface::measure(std::string name,
                             std::vector<double> & results,
                             std::vector<std::vector<int> > & labels)
 {
-    sim->measure_observable(opt.parms, name, results, labels);
+    sim->measure_observable(name, results, labels);
 }

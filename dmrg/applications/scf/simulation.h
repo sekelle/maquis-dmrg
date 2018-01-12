@@ -35,8 +35,8 @@
 class simulation_base {
 public:
     virtual ~simulation_base() {}
-    virtual void run(DmrgParameters & parms) =0;
-    virtual void measure_observable(DmrgParameters & parms, std::string name,
+    virtual void run() =0;
+    virtual void measure_observable(std::string name,
                                     std::vector<double> & results, std::vector<std::vector<int> > & labels) =0;
 
     virtual parameters::proxy get_parm(std::string const& key) =0;
@@ -47,9 +47,9 @@ class simulation : public simulation_base {
 public:
     simulation(DmrgParameters & parms);
 
-    void run(DmrgParameters & parms);
+    void run();
 
-    void measure_observable(DmrgParameters & parms, std::string name,
+    void measure_observable(std::string name,
                             std::vector<double> & results, std::vector<std::vector<int> > & labels);
 
     parameters::proxy get_parm(std::string const& key);
