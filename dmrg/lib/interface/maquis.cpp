@@ -47,6 +47,7 @@ public:
     {
         list keys = kwargs.keys();
 
+        DmrgParameters parms;
         for(int i = 0; i < len(keys); ++i) {
             object curArg = kwargs[keys[i]];
             std::string k = extract<std::string>(keys[i]);
@@ -66,7 +67,7 @@ public:
         sim = dmrg::symmetry_factory<simulation_traits>(parms);
     }
 
-    void SetParameters(DmrgParameters & p) { parms = p; }
+    void SetParameters(DmrgParameters & p) { /*parms = p;*/ }
 
     std::string value(std::string key) { return sim->get_parm(key); }
 
@@ -108,8 +109,6 @@ public:
     }
 
 private:
-    DmrgParameters parms;
-
     std::map<std::string, std::vector<double> > observables;
     std::map<std::string, std::vector<std::vector<int> > > labels;
 
