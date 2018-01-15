@@ -144,6 +144,12 @@ void dmrg_sim<Matrix, SymmGroup>::measure_observable(std::string name_, std::vec
             maquis::cout << "Measuring " << it->name() << std::endl;
             it->evaluate(mps);
             it->extract(results, labels);
+
+            if (parms["keep_files"])
+            {
+                storage::archive ar(rfile, "w");
+                ar["/spectrum/results"] << *it;
+            }
         }
     }
 }

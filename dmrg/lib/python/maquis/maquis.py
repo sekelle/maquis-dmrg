@@ -84,7 +84,7 @@ class DMRGBox:
             self.result_files[S] = {}
             for n in range(N):
                 self.options['chkpfile'] = os.path.abspath(os.path.join(self.tempdir, "state_S" + str(S) + "_" + str(n)))
-                self.options['resultfile'] = os.path.abspath(os.path.join(self.tempdir, "results_S" + str(S) + "_" + str(n)))
+                self.options['resultfile'] = os.path.abspath(os.path.join(self.tempdir, "results_S" + str(S) + "_" + str(n) + ".h5"))
                 self.options['n_ortho_states'] = n
                 self.options['ortho_states'] = ortho_states
 
