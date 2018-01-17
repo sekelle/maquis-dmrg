@@ -121,7 +121,7 @@ class DMRGBox:
     def tpdm(self, resources, S, state, evecs2, symmetrize):
         """calculate the 2-body reduced density matrix"""
 
-        self.solvers[S][state].measure("twoptdm")
+        self.solvers[S][state].measure("twoptdm", "")
         r2 = self.solvers[S][state].getObservable("twoptdm")
         r2l = self.solvers[S][state].getLabels("twoptdm")
         rdm2 = DMRGBox.expand_2rdm(r2, r2l, self.options["L"])
