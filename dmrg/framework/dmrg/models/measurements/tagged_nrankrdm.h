@@ -130,7 +130,8 @@ namespace measurements {
             this->cast_to_real = false;
         }
         
-        void evaluate(MPS<Matrix, SymmGroup> const& ket_mps, boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none)
+        void evaluate(MPS<Matrix, SymmGroup> const& ket_mps, boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none
+                                                           , boost::optional<std::string const&> on_the_fly_bra = boost::none)
         {
             this->vector_results.clear();
             this->labels.clear();
@@ -447,10 +448,13 @@ namespace measurements {
             this->cast_to_real = false;
         }
         
-        void evaluate(MPS<Matrix, SymmGroup> const& ket_mps, boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none)
+        void evaluate(MPS<Matrix, SymmGroup> const& ket_mps, boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none
+                                                           , boost::optional<std::string const&> on_the_fly_bra = boost::none)
         {
             this->vector_results.clear();
             this->labels.clear();
+
+            if (on_the_fly_bra) bra_ckp = *on_the_fly_bra;
 
             MPS<Matrix, SymmGroup> bra_mps;
             if (bra_ckp != "") {
@@ -517,7 +521,7 @@ namespace measurements {
 
                     // check if term is allowed by symmetry
                     if(not measurements_details::checkpg<SymmGroup>()(terms[0], tag_handler_local, lattice))
-                           continue;
+                        continue;
                     
                     generate_mpo::TaggedMPOMaker<Matrix, SymmGroup> mpo_m(lattice, op_collection.ident.no_couple, op_collection.ident_full.no_couple,
                                                                           op_collection.fill.no_couple, tag_handler_local, terms);
