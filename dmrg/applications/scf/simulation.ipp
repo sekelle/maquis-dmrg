@@ -54,12 +54,13 @@ void simulation<SymmGroup>::run()
 template <class SymmGroup>
 void simulation<SymmGroup>::measure_observable(std::string name,
                                                std::vector<double> & results,
-                                               std::vector<std::vector<Lattice::pos_t> > & labels)
+                                               std::vector<std::vector<Lattice::pos_t> > & labels,
+                                               std::string bra)
 {
     if (sim_ptr_complex.get())
         throw std::runtime_error("extraction of complex observables not implemented\n");
 
-    sim_ptr_real->measure_observable(name, results, labels); 
+    sim_ptr_real->measure_observable(name, results, labels, bra);
 }
 
 

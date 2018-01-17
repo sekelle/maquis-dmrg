@@ -46,6 +46,7 @@ class DMRGBox:
                           #
                         , "MEASURE[ChemEntropy]" : 1
                         , "MEASURE[1rdm]" : 1
+                        , "MEASURE[trans1rdm]" : 1
                         , "MEASURE[2rdm]" : 1
                         , "MEASURE[Energy]" : 1
                        }
@@ -100,13 +101,21 @@ class DMRGBox:
         #return pytool_energy.read_energy(self.result_files[S][state])
         return pytool_energy.read_energy(self.solvers[S][state].value('resultfile'))
 
-    def opdm(self, resources, S, state, evecs2, total):
-        """calculate the 1-body reduced density matrix"""
+    def opdm(self, resources, S, state, state2, total):
+        """calculate the (transition) 1-body reduced density matrix"""
 
-        self.solvers[S][state].measure("oneptdm")
-        r1 = self.solvers[S][state].getObservable("oneptdm")
-        r1l = self.solvers[S][state].getLabels("oneptdm")
-        rdm1 = DMRGBox.expand_1rdm(r1, r1l, self.options["L"])
+        rdm1 = 0
+        if state == state2:
+            self.solvers[S][state].measure("oneptdm", "")
+            r1 = self.solvers[S][state].getObservable("oneptdm")
+            r1l = self.solvers[S][state].getLabels("oneptdm")
+            rdm1 = DMRGBox.expand_1rdm(r1, r1l, self.options["L"])
+        else:
+            self.solvers[S][state2].measure("transition_oneptdm", os.path.abspath(os.path.join(self.tempdir, "state_S" + str(S) + "_" + str(state))))
+            r1 = self.solvers[S][state2].getObservable("transition_oneptdm")
+            r1l = self.solvers[S][state2].getLabels("transition_oneptdm")
+            rdm1 = DMRGBox.expand_t1rdm(r1, r1l, self.options["L"])
+
         return rdm1
 
     def tpdm(self, resources, S, state, evecs2, symmetrize):
@@ -157,6 +166,19 @@ class DMRGBox:
 
             odm[i,j] = val
             odm[j,i] = val
+
+        return odm
+
+    @staticmethod
+    def expand_t1rdm(rdm, labels, L):
+        odm = np.zeros([L,L])
+
+        for lab, val in zip(labels, rdm):
+            i = lab[0]
+            j = lab[1]
+
+            odm[i,j] = val
+            #odm[j,i] = val
 
         return odm
 

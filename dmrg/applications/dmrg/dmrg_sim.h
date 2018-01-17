@@ -65,8 +65,11 @@ public:
     
     ~dmrg_sim();
 
-    void measure_observable(std::string name_, std::vector<typename Matrix::value_type> & results,
-                            std::vector<std::vector<Lattice::pos_t> > & labels);
+    void measure_observable(std::string const& name_,
+                            std::vector<typename Matrix::value_type> & results,
+                            std::vector<std::vector<Lattice::pos_t> > & labels,
+                            std::string const& bra
+                           );
 
 private:
     std::string results_archive_path(int sweep) const;

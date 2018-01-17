@@ -93,9 +93,9 @@ public:
         maquis::cout << "Task took " << elapsed << " seconds." << std::endl;
     }
 
-    void measure(std::string name)
+    void measure(std::string name, std::string bra = "")
     {
-        sim->measure_observable(name, observables["name"], labels["name"]);
+        sim->measure_observable(name, observables["name"], labels["name"], bra);
     } 
 
     std::vector<double> getObservable(std::string name)

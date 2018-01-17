@@ -133,8 +133,9 @@ dmrg_sim<Matrix, SymmGroup>::~dmrg_sim()
 }
 
 template <class Matrix, class SymmGroup>
-void dmrg_sim<Matrix, SymmGroup>::measure_observable(std::string name_, std::vector<typename Matrix::value_type> & results,
-                                                     std::vector<std::vector<Lattice::pos_t> > & labels)
+void dmrg_sim<Matrix, SymmGroup>::measure_observable(std::string const & name_, std::vector<typename Matrix::value_type> & results,
+                                                     std::vector<std::vector<Lattice::pos_t> > & labels,
+                                                     std::string const & bra)
 {
     mps.normalize_left();
     for (typename measurements_type::iterator it = all_measurements.begin(); it != all_measurements.end(); ++it)
@@ -142,7 +143,7 @@ void dmrg_sim<Matrix, SymmGroup>::measure_observable(std::string name_, std::vec
         if (it->name() == name_)
         {
             maquis::cout << "Measuring " << it->name() << std::endl;
-            it->evaluate(mps);
+            it->evaluate(mps, boost::none, bra);
             it->extract(results, labels);
 
             if (parms["keep_files"])

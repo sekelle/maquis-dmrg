@@ -37,7 +37,8 @@ public:
     virtual ~simulation_base() {}
     virtual void run() =0;
     virtual void measure_observable(std::string name,
-                                    std::vector<double> & results, std::vector<std::vector<int> > & labels) =0;
+                                    std::vector<double> & results, std::vector<std::vector<int> > & labels,
+                                    std::string bra) =0;
 
     virtual parameters::proxy get_parm(std::string const& key) =0;
 };
@@ -50,7 +51,8 @@ public:
     void run();
 
     void measure_observable(std::string name,
-                            std::vector<double> & results, std::vector<std::vector<int> > & labels);
+                            std::vector<double> & results, std::vector<std::vector<int> > & labels,
+                            std::string bra);
 
     parameters::proxy get_parm(std::string const& key);
 
