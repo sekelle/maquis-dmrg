@@ -146,6 +146,7 @@ public:
 
         boost::regex expression_oneptdm("^MEASURE\\[1rdm\\]");
         boost::regex expression_twoptdm("^MEASURE\\[2rdm\\]");
+        boost::regex expression_transition_oneptdm("^MEASURE\\[trans1rdm\\]");
         boost::regex expression_transition_twoptdm("^MEASURE\\[trans2rdm\\]");
         boost::smatch what;
 
@@ -164,11 +165,17 @@ public:
                                 name, lat, tag_handler, op_collection, positions, bra_ckp));
             }
 
-            if (boost::regex_match(lhs, what, expression_oneptdm)) {
-
-                name = "oneptdm";
+            if (boost::regex_match(lhs, what, expression_oneptdm) ||
+                boost::regex_match(lhs, what, expression_transition_oneptdm)) {
 
                 std::string bra_ckp("");
+                if(lhs == "MEASURE[trans1rdm]"){
+                    name = "transition_oneptdm";
+                    bra_ckp = it->value();
+                }
+                else
+                    name = "oneptdm";
+
                 std::vector<pos_t> positions;
                 meas.push_back( new measurements::TaggedNRankRDM<Matrix, SymmGroup>(
                                 name, lat, tag_handler, op_collection, positions, bra_ckp));

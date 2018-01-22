@@ -82,6 +82,7 @@ private:
         add_option("initfile", "", value(""));
         
         add_option("donotsave", "", value(0));
+        add_option("keep_files", "keep result/chkp files generated with the python interface", value(0));
         add_option("run_seconds", "", value(0));
         add_option("storagedir", "", value(""));
         add_option("use_compressed", "", value(0));

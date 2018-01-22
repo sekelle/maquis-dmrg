@@ -35,17 +35,27 @@
 class simulation_base {
 public:
     virtual ~simulation_base() {}
-    virtual void run(DmrgParameters & parms) =0;
-    virtual void measure_observable(DmrgParameters & parms, std::string name,
-                                    std::vector<double> & results, std::vector<std::vector<int> > & labels) =0;
+    virtual void run() =0;
+    virtual void measure_observable(std::string name,
+                                    std::vector<double> & results, std::vector<std::vector<int> > & labels,
+                                    std::string bra) =0;
+
+    virtual parameters::proxy get_parm(std::string const& key) =0;
 };
 
 template <class SymmGroup>
 class simulation : public simulation_base {
 public:
-    void run(DmrgParameters & parms);
-    void measure_observable(DmrgParameters & parms, std::string name,
-                            std::vector<double> & results, std::vector<std::vector<int> > & labels);
+    simulation(DmrgParameters & parms);
+
+    void run();
+
+    void measure_observable(std::string name,
+                            std::vector<double> & results, std::vector<std::vector<int> > & labels,
+                            std::string bra);
+
+    parameters::proxy get_parm(std::string const& key);
+
 private:
     boost::shared_ptr<dmrg_sim<matrix, SymmGroup> > sim_ptr_real;
     boost::shared_ptr<dmrg_sim<cmatrix, SymmGroup> > sim_ptr_complex;

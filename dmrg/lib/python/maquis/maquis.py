@@ -8,6 +8,9 @@ import os.path
 
 import energy as pytool_energy
 
+import signal
+signal.signal(signal.SIGINT, signal.SIG_DFL)
+
 class DummyCSF:
 
     def __init__(self):
@@ -43,6 +46,7 @@ class DMRGBox:
                           #
                         , "MEASURE[ChemEntropy]" : 1
                         , "MEASURE[1rdm]" : 1
+                        , "MEASURE[trans1rdm]" : 1
                         , "MEASURE[2rdm]" : 1
                         , "MEASURE[Energy]" : 1
                        }
@@ -81,7 +85,7 @@ class DMRGBox:
             self.result_files[S] = {}
             for n in range(N):
                 self.options['chkpfile'] = os.path.abspath(os.path.join(self.tempdir, "state_S" + str(S) + "_" + str(n)))
-                self.options['resultfile'] = os.path.abspath(os.path.join(self.tempdir, "results_S" + str(S) + "_" + str(n)))
+                self.options['resultfile'] = os.path.abspath(os.path.join(self.tempdir, "results_S" + str(S) + "_" + str(n) + ".h5"))
                 self.options['n_ortho_states'] = n
                 self.options['ortho_states'] = ortho_states
 
@@ -93,23 +97,31 @@ class DMRGBox:
                 ortho_states += self.options['chkpfile'] + ','
 
     def energy(self, S, state):
-        #self.solvers[S][state].measure("Energy")
         #return self.solvers[S][state].getObservable("Energy")
-        return pytool_energy.read_energy(self.result_files[S][state])
+        #return pytool_energy.read_energy(self.result_files[S][state])
+        return pytool_energy.read_energy(self.solvers[S][state].value('resultfile'))
 
-    def opdm(self, resources, S, state, evecs2, total):
-        """calculate the 1-body reduced density matrix"""
+    def opdm(self, resources, S, state, state2, total):
+        """calculate the (transition) 1-body reduced density matrix"""
 
-        self.solvers[S][state].measure("oneptdm")
-        r1 = self.solvers[S][state].getObservable("oneptdm")
-        r1l = self.solvers[S][state].getLabels("oneptdm")
-        rdm1 = DMRGBox.expand_1rdm(r1, r1l, self.options["L"])
+        rdm1 = 0
+        if state == state2:
+            self.solvers[S][state].measure("oneptdm", "")
+            r1 = self.solvers[S][state].getObservable("oneptdm")
+            r1l = self.solvers[S][state].getLabels("oneptdm")
+            rdm1 = DMRGBox.expand_1rdm(r1, r1l, self.options["L"])
+        else:
+            self.solvers[S][state2].measure("transition_oneptdm", os.path.abspath(os.path.join(self.tempdir, "state_S" + str(S) + "_" + str(state))))
+            r1 = self.solvers[S][state2].getObservable("transition_oneptdm")
+            r1l = self.solvers[S][state2].getLabels("transition_oneptdm")
+            rdm1 = DMRGBox.expand_t1rdm(r1, r1l, self.options["L"])
+
         return rdm1
 
     def tpdm(self, resources, S, state, evecs2, symmetrize):
         """calculate the 2-body reduced density matrix"""
 
-        self.solvers[S][state].measure("twoptdm")
+        self.solvers[S][state].measure("twoptdm", "")
         r2 = self.solvers[S][state].getObservable("twoptdm")
         r2l = self.solvers[S][state].getLabels("twoptdm")
         rdm2 = DMRGBox.expand_2rdm(r2, r2l, self.options["L"])
@@ -154,6 +166,19 @@ class DMRGBox:
 
             odm[i,j] = val
             odm[j,i] = val
+
+        return odm
+
+    @staticmethod
+    def expand_t1rdm(rdm, labels, L):
+        odm = np.zeros([L,L])
+
+        for lab, val in zip(labels, rdm):
+            i = lab[0]
+            j = lab[1]
+
+            odm[i,j] = val
+            #odm[j,i] = val
 
         return odm
 

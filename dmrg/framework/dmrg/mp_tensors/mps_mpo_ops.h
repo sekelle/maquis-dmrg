@@ -55,18 +55,15 @@ template<class Matrix, class SymmGroup>
 typename Matrix::value_type expval(MPS<Matrix, SymmGroup> const & bra,
               MPS<Matrix, SymmGroup> const & ket,
               MPO<Matrix, SymmGroup> const & mpo,
-              bool verbose = false)
+              bool symmetric = false)
 {
     assert(mpo.length() == bra.length() && bra.length() == ket.length());
     std::size_t L = bra.length();
 
     Boundary<Matrix, SymmGroup> left = mps_mpo_detail::mixed_left_boundary(bra, ket);
 
-    for (int i = 0; i < L; ++i) {
-        if (verbose)
-            std::cout << "expval site " << i << std::endl;
-        left = contraction::Engine<Matrix, Matrix, SymmGroup>::overlap_mpo_left_step(bra[i], ket[i], left, mpo[i]);
-    }
+    for (int i = 0; i < L; ++i)
+        left = contraction::Engine<Matrix, Matrix, SymmGroup>::overlap_mpo_left_step(bra[i], ket[i], left, mpo[i], symmetric);
 
     // MD: if bra and ket are different, result might be complex!
     return left.trace();
@@ -77,7 +74,7 @@ template<class Matrix, class SymmGroup>
 typename Matrix::value_type expval(MPS<Matrix, SymmGroup> const & mps, MPO<Matrix, SymmGroup> const & mpo,
               bool verbose = false)
 {
-    return expval(mps, mps, mpo, verbose);
+    return expval(mps, mps, mpo, true);
 }
 
 template<class Matrix, class SymmGroup>

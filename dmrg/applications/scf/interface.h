@@ -41,7 +41,8 @@ public:
 
     void measure(std::string name,
                  std::vector<double> & results,
-                 std::vector<std::vector<int> > & labels);
+                 std::vector<std::vector<int> > & labels,
+                 std::string bra = "");
 
 private:
     DmrgOptions opt;

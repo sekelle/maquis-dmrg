@@ -57,7 +57,8 @@ namespace measurements {
             this->cast_to_real = false;
         }
         
-        void evaluate(MPS<Matrix, SymmGroup> & mps, boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none)
+        void evaluate(MPS<Matrix, SymmGroup> const& mps, boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none
+                                                       , boost::optional<std::string const&> on_the_fly_bra = boost::none)
         {
             this->vector_results.clear();
             this->vector_results.reserve(positions.size());

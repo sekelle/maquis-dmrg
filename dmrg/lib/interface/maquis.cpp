@@ -47,6 +47,7 @@ public:
     {
         list keys = kwargs.keys();
 
+        DmrgParameters parms;
         for(int i = 0; i < len(keys); ++i) {
             object curArg = kwargs[keys[i]];
             std::string k = extract<std::string>(keys[i]);
@@ -66,9 +67,9 @@ public:
         sim = dmrg::symmetry_factory<simulation_traits>(parms);
     }
 
-    void SetParameters(DmrgParameters & p) { parms = p; }
+    void SetParameters(DmrgParameters & p) { /*parms = p;*/ }
 
-    std::string value(std::string key) { return parms[key]; }
+    std::string value(std::string key) { return sim->get_parm(key); }
 
     void optimize()
     {
@@ -78,7 +79,7 @@ public:
         gettimeofday(&now, NULL);
 
         try {
-            sim->run(parms);
+            sim->run();
 
         } catch (std::exception & e) {
             maquis::cerr << "Exception thrown!" << std::endl;
@@ -92,9 +93,9 @@ public:
         maquis::cout << "Task took " << elapsed << " seconds." << std::endl;
     }
 
-    void measure(std::string name)
+    void measure(std::string name, std::string bra = "")
     {
-        sim->measure_observable(parms, name, observables["name"], labels["name"]);
+        sim->measure_observable(name, observables["name"], labels["name"], bra);
     } 
 
     std::vector<double> getObservable(std::string name)
@@ -108,8 +109,6 @@ public:
     }
 
 private:
-    DmrgParameters parms;
-
     std::map<std::string, std::vector<double> > observables;
     std::map<std::string, std::vector<std::vector<int> > > labels;
 

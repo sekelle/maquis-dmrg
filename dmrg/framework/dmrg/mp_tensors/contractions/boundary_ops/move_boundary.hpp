@@ -195,7 +195,8 @@ namespace contraction {
         overlap_mpo_left_step(MPSTensor<Matrix, SymmGroup> const & bra_tensor_in,
                               MPSTensor<Matrix, SymmGroup> const & ket_tensor,
                               Boundary<OtherMatrix, SymmGroup> const & left,
-                              MPOTensor<Matrix, SymmGroup> const & mpo)
+                              MPOTensor<Matrix, SymmGroup> const & mpo,
+                              bool symmetric = false)
         {
             typedef typename SymmGroup::charge charge;
             typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
@@ -230,7 +231,7 @@ namespace contraction {
             unsigned loop_max = bra_right_i.size();
             schedule_t tasks(loop_max);
             omp_for(unsigned rb_bra, parallel::range<unsigned>(0,loop_max), {
-                lshtm_tasks(mpo, bra_tensor, ket_tensor, left.index(), bra_right_pb, ket_right_pb, rb_bra, tasks[rb_bra], true);
+                lshtm_tasks(mpo, bra_tensor, ket_tensor, left.index(), bra_right_pb, ket_right_pb, rb_bra, tasks[rb_bra], symmetric);
             });
 
             BoundaryIndex<Matrix, SymmGroup> b_index(bra_right_i, ket_right_i);
@@ -238,7 +239,7 @@ namespace contraction {
                 for (auto& e : tasks[rb_bra])
                     b_index.add_cohort(rb_bra, ket_right_i.position(e.first), e.second.get_offsets());
 
-            b_index.complement_transpose(mpo.herm_right, true);
+            if (symmetric) b_index.complement_transpose(mpo.herm_right, true);
             Boundary<OtherMatrix, SymmGroup> ret(b_index);
 
             // Contraction

@@ -130,7 +130,8 @@ namespace measurements {
             this->cast_to_real = false;
         }
         
-        void evaluate(MPS<Matrix, SymmGroup> & ket_mps, boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none)
+        void evaluate(MPS<Matrix, SymmGroup> const& ket_mps, boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none
+                                                           , boost::optional<std::string const&> on_the_fly_bra = boost::none)
         {
             this->vector_results.clear();
             this->labels.clear();
@@ -191,7 +192,7 @@ namespace measurements {
                     if(measurements_details::checkpg<SymmGroup>()(term, tag_handler_local, lattice))
                     {
                         MPO<Matrix, SymmGroup> mpo = generate_mpo::sign_and_fill(term, identities, fillings, tag_handler_local, lattice);
-                        typename MPS<Matrix, SymmGroup>::scalar_type value = operator_terms[0].second * expval(bra_mps, ket_mps, mpo);
+                        typename MPS<Matrix, SymmGroup>::scalar_type value = operator_terms[0].second * expval(bra_mps, ket_mps, mpo, !bra_neq_ket);
 
                         dct.push_back(value);
                         num_labels.push_back(positions);
@@ -269,7 +270,7 @@ namespace measurements {
                             {
                                 checkpass = true;
                                 MPO<Matrix, SymmGroup> mpo = generate_mpo::sign_and_fill(term, identities, fillings, tag_handler_local, lattice);
-                                value += operator_terms[synop].second * expval(bra_mps, ket_mps, mpo);
+                                value += operator_terms[synop].second * expval(bra_mps, ket_mps, mpo, !bra_neq_ket);
                             }
                             else break;
                         }
@@ -447,10 +448,13 @@ namespace measurements {
             this->cast_to_real = false;
         }
         
-        void evaluate(MPS<Matrix, SymmGroup> & ket_mps, boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none)
+        void evaluate(MPS<Matrix, SymmGroup> const& ket_mps, boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none
+                                                           , boost::optional<std::string const&> on_the_fly_bra = boost::none)
         {
             this->vector_results.clear();
             this->labels.clear();
+
+            if (on_the_fly_bra) bra_ckp = *on_the_fly_bra;
 
             MPS<Matrix, SymmGroup> bra_mps;
             if (bra_ckp != "") {
@@ -460,9 +464,9 @@ namespace measurements {
                     throw std::runtime_error("The bra checkpoint file " + bra_ckp + " was not found\n");
             }
 
-            if (this->name() == "oneptdm")
+            if (this->name() == "oneptdm" || this->name() == "transition_oneptdm")
                 measure_correlation(bra_mps, ket_mps);
-            else if (this->name() == "twoptdm")
+            else if (this->name() == "twoptdm" || this->name() == "transition_twoptdm")
                 measure_2rdm(bra_mps, ket_mps);
         }
         
@@ -495,7 +499,8 @@ namespace measurements {
 
                 std::vector<typename MPS<Matrix, SymmGroup>::scalar_type> dct;
                 std::vector<std::vector<pos_t> > num_labels;
-                for (pos_t p2 = p1; p2 < lattice.size(); ++p2)
+                pos_t subref = (bra_neq_ket) ? 0 : p1;
+                for (pos_t p2 = subref; p2 < lattice.size(); ++p2)
                 { 
                     pos_t pos_[2] = {p1, p2};
                     std::vector<pos_t> positions(pos_, pos_ + 2);
@@ -516,12 +521,12 @@ namespace measurements {
 
                     // check if term is allowed by symmetry
                     if(not measurements_details::checkpg<SymmGroup>()(terms[0], tag_handler_local, lattice))
-                           continue;
+                        continue;
                     
                     generate_mpo::TaggedMPOMaker<Matrix, SymmGroup> mpo_m(lattice, op_collection.ident.no_couple, op_collection.ident_full.no_couple,
                                                                           op_collection.fill.no_couple, tag_handler_local, terms);
                     MPO<Matrix, SymmGroup> mpo = mpo_m.create_mpo();
-                    typename MPS<Matrix, SymmGroup>::scalar_type value = expval(bra_mps, ket_mps, mpo);
+                    typename MPS<Matrix, SymmGroup>::scalar_type value = expval(bra_mps, ket_mps, mpo, !bra_neq_ket);
 
                     dct.push_back(value);
                     positions[0] = lattice.get_prop<pos_t>("nlabel", positions[0]);
@@ -592,7 +597,7 @@ namespace measurements {
                                                                               op_collection.ident_full.no_couple,
                                                                               op_collection.fill.no_couple, tag_handler_local, terms);
                         MPO<Matrix, SymmGroup> mpo = mpo_m.create_mpo();
-                        typename MPS<Matrix, SymmGroup>::scalar_type value = expval(bra_mps, ket_mps, mpo);
+                        typename MPS<Matrix, SymmGroup>::scalar_type value = expval(bra_mps, ket_mps, mpo, !bra_neq_ket);
 
                         dct.push_back(value);
                         // reorder positions p -> order[p]

@@ -155,11 +155,11 @@ namespace bit_twiddling
         //assert(c <= bits::max2);
         //assert(d <= bits::max1);
         //assert(e <= bits::max0);
+        assert(d <= bits::max4);
+        assert(e <= bits::max3);
         assert(a <= bits::max2);
         assert(b <= bits::max1);
         assert(c <= bits::max0);
-        assert(d <= bits::max4);
-        assert(e <= bits::max3);
 
         //return ((__uint128_t)a<<bits::s[4]) + ((__uint128_t)b<<bits::s[3]) + ((__uint128_t)c<<bits::s[2]) + ((__uint128_t)d<<bits::s[1]) + e;
         return ((__uint128_t)d<<bits::s[4]) + ((__uint128_t)e<<bits::s[3]) + ((__uint128_t)a<<bits::s[2]) + ((__uint128_t)b<<bits::s[1]) + c;

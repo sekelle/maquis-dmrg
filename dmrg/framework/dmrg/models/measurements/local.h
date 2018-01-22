@@ -71,7 +71,8 @@ namespace measurements {
             this->cast_to_real = is_hermitian_meas(site_term);
         }
 
-        void evaluate(MPS<Matrix, SymmGroup> & mps, boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none)
+        void evaluate(MPS<Matrix, SymmGroup> const& mps, boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none
+                                                       , boost::optional<std::string const&> on_the_fly_bra = boost::none)
         {
             this->vector_results.clear();
             this->labels.clear();
@@ -96,10 +97,11 @@ namespace measurements {
                         MPOTensor<Matrix, SymmGroup> temp;
                         temp.set(0, 0, site_term[type]);
                         
+                        MPSTensor<Matrix, SymmGroup> mpsp = mps[p];
                         MPSTensor<Matrix, SymmGroup> vec2
-                        = contraction::Engine<Matrix, Matrix, SymmGroup>::site_hamil2(mps[p], rmps.get().left(p), rmps.get().right(p), temp);
+                        = contraction::Engine<Matrix, Matrix, SymmGroup>::site_hamil2(mpsp, rmps.get().left(p), rmps.get().right(p), temp);
                         
-                        typename MPS<Matrix, SymmGroup>::scalar_type res = mps[p].scalar_overlap(vec2);
+                        typename MPS<Matrix, SymmGroup>::scalar_type res = mpsp.scalar_overlap(vec2);
                         
                         this->vector_results.push_back(res);
                         this->labels.push_back( lattice.get_prop<std::string>("label", p) );
@@ -114,7 +116,7 @@ namespace measurements {
             return new local(*this);
         }
         
-        void evaluate_with_mpo(MPS<Matrix, SymmGroup> & mps)
+        void evaluate_with_mpo(MPS<Matrix, SymmGroup> const& mps)
         {
             typedef typename SymmGroup::subcharge subcharge;
             typedef std::map<std::string, typename Matrix::value_type> result_type;

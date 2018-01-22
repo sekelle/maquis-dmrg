@@ -166,6 +166,12 @@ sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_, bool measure_on_mps)
 }
 
 template <class Matrix, class SymmGroup>
+parameters::proxy sim<Matrix, SymmGroup>::get_parm(std::string const& key)
+{
+    return parms[key];
+}
+
+template <class Matrix, class SymmGroup>
 typename sim<Matrix, SymmGroup>::measurements_type
 sim<Matrix, SymmGroup>::iteration_measurements(int sweep)
 {

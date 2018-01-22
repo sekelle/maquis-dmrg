@@ -45,46 +45,6 @@ namespace dmrg {
         typedef typename TR::shared_ptr ptr_type;
         std::map<std::string, ptr_type> factory_map;
         
-        maquis::cout << "This binary contains symmetries: ";
-#ifdef HAVE_NU1
-        factory_map["nu1"] = ptr_type(new typename TR::template F<NU1>::type());
-        maquis::cout << "nu1 ";
-#endif
-#ifdef HAVE_TrivialGroup
-        factory_map["none"] = ptr_type(new typename TR::template F<TrivialGroup>::type());
-        maquis::cout << "none ";
-#endif
-#ifdef HAVE_U1
-        factory_map["u1"] = ptr_type(new typename TR::template F<U1>::type());
-        maquis::cout << "u1 ";
-#endif
-#ifdef HAVE_U1DG
-        factory_map["u1dg"] = ptr_type(new typename TR::template F<U1DG>::type());
-        maquis::cout << "u1dg ";
-#endif
-#ifdef HAVE_TwoU1
-        factory_map["2u1"] = ptr_type(new typename TR::template F<TwoU1>::type());
-        maquis::cout << "2u1 ";
-#endif
-#ifdef HAVE_TwoU1PG
-        factory_map["2u1pg"] = ptr_type(new typename TR::template F<TwoU1PG>::type());
-        maquis::cout << "2u1pg ";
-#endif
-#ifdef HAVE_Ztwo
-        factory_map["Z2"] = ptr_type(new typename TR::template F<Ztwo>::type());
-        maquis::cout << "Z2 ";
-#endif
-#ifdef HAVE_SU2U1
-        factory_map["su2u1"] = ptr_type(new typename TR::template F<SU2U1>::type());
-        maquis::cout << "su2u1 ";
-#endif
-#ifdef HAVE_SU2U1PG
-        factory_map["su2u1pg"] = ptr_type(new typename TR::template F<SU2U1PG>::type());
-        maquis::cout << "su2u1pg ";
-#endif
-        maquis::cout << std::endl;
-        
-        
         std::string symm_name;
         if (!parms.is_set("symmetry")) {
 #ifdef HAVE_NU1
@@ -97,13 +57,63 @@ namespace dmrg {
             symm_name = parms["symmetry"].str();
         }
         
+
+        maquis::cout << "This binary contains symmetries: ";
+#ifdef HAVE_NU1
+        if (symm_name == "nu1")
+        factory_map["nu1"] = ptr_type(new typename TR::template F<NU1>::type(parms));
+        maquis::cout << "nu1 ";
+#endif
+#ifdef HAVE_TrivialGroup
+        if (symm_name == "none")
+        factory_map["none"] = ptr_type(new typename TR::template F<TrivialGroup>::type(parms));
+        maquis::cout << "none ";
+#endif
+#ifdef HAVE_U1
+        if (symm_name == "u1")
+        factory_map["u1"] = ptr_type(new typename TR::template F<U1>::type(parms));
+        maquis::cout << "u1 ";
+#endif
+#ifdef HAVE_U1DG
+        if (symm_name == "u1dg")
+        factory_map["u1dg"] = ptr_type(new typename TR::template F<U1DG>::type(parms));
+        maquis::cout << "u1dg ";
+#endif
+#ifdef HAVE_TwoU1
+        if (symm_name == "2u1")
+        factory_map["2u1"] = ptr_type(new typename TR::template F<TwoU1>::type(parms));
+        maquis::cout << "2u1 ";
+#endif
+#ifdef HAVE_TwoU1PG
+        if (symm_name == "2u1pg")
+        factory_map["2u1pg"] = ptr_type(new typename TR::template F<TwoU1PG>::type(parms));
+        maquis::cout << "2u1pg ";
+#endif
+#ifdef HAVE_Ztwo
+        if (symm_name == "Z2")
+        factory_map["Z2"] = ptr_type(new typename TR::template F<Ztwo>::type(parms));
+        maquis::cout << "Z2 ";
+#endif
+#ifdef HAVE_SU2U1
+        if (symm_name == "su2u1")
+        factory_map["su2u1"] = ptr_type(new typename TR::template F<SU2U1>::type(parms));
+        maquis::cout << "su2u1 ";
+#endif
+#ifdef HAVE_SU2U1PG
+        if (symm_name == "su2u1pg")
+        factory_map["su2u1pg"] = ptr_type(new typename TR::template F<SU2U1PG>::type(parms));
+        maquis::cout << "su2u1pg ";
+#endif
+        maquis::cout << std::endl;
+        
         if (factory_map.find(symm_name) != factory_map.end())
             return factory_map[symm_name];
         else
             throw std::runtime_error("Don't know this symmetry group. Please, check your compilation flags.");
 
         parallel::sync();
-        return ptr_type();
+        return factory_map[symm_name];
+        //return ptr_type();
     }
 
 }
