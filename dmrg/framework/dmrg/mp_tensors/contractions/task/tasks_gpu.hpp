@@ -85,7 +85,10 @@ public:
             if (impl()->trans[i]) b1_set.push_back(i);
 
         gdd.b1sz = b1size;
-        gdd.b2max = *std::max_element(impl()->b2sz.begin(), impl()->b2sz.end());
+        if (b1size)
+            gdd.b2max = *std::max_element(impl()->b2sz.begin(), impl()->b2sz.end());
+        else
+            gdd.b2max = 0;
 
         size_t b2_sum = std::accumulate(impl()->b2sz.begin(), impl()->b2sz.end(), 0);
         //                   left_ptr             b2sz[i]            alpha_i_ptr         alpha_i_value   alignment
