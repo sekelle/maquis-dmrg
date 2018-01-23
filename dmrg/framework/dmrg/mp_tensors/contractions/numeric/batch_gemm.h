@@ -49,8 +49,8 @@ struct BatchGemmData
 template <class T>
 struct GemmDotData
 {
-    unsigned b1sz;
-    unsigned nn;
+    unsigned b1sz;  // number of rows
+    unsigned nn;    // number of rows with non-transposed left boundary
     unsigned b2max;
 
     T** left;
