@@ -453,6 +453,7 @@ namespace measurements {
         {
             this->vector_results.clear();
             this->labels.clear();
+            this->numeric_labels.clear();
 
             if (on_the_fly_bra) bra_ckp = *on_the_fly_bra;
 
