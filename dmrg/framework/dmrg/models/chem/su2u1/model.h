@@ -157,9 +157,14 @@ public:
             if (boost::regex_match(lhs, what, expression_twoptdm) ||
                 boost::regex_match(lhs, what, expression_transition_twoptdm)) {
 
-                name = "twoptdm";
-
                 std::string bra_ckp("");
+                if(lhs == "MEASURE[trans2rdm]"){
+                    name = "transition_twoptdm";
+                    bra_ckp = it->value();
+                }
+                else
+                    name = "twoptdm";
+
                 std::vector<pos_t> positions;
                 meas.push_back( new measurements::TaggedNRankRDM<Matrix, SymmGroup>(
                                 name, lat, tag_handler, op_collection, positions, bra_ckp));

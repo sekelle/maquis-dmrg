@@ -575,7 +575,7 @@ namespace measurements {
 
                 // if bra != ket, pertmutation symmetry is only pqrs == qpsr
                 if (bra_neq_ket)
-                    pos_t subref = 0;
+                    subref = 0;
 
                 std::vector<typename MPS<Matrix, SymmGroup>::scalar_type> dct;
                 std::vector<std::vector<pos_t> > num_labels;
