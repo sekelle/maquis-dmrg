@@ -49,10 +49,6 @@ def load_2rdm_matrix(rdm):
         k = lab[2]
         l = lab[3]
 
-        track = False
-        if i==8 and j==k==l==7:
-            track = True
-
         odm[i,j,k,l] = val
 
         if l != k or i != j:
