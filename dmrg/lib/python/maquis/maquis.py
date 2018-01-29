@@ -186,7 +186,6 @@ class DMRGBox:
             j = lab[1]
 
             odm[i,j] = val
-            #odm[j,i] = val
 
         return odm
 
@@ -194,7 +193,6 @@ class DMRGBox:
     def expand_2rdm(rdm, labels, L):
         odm = np.zeros([L,L,L,L])
 
-        print len(rdm), "values"
         for lab, val_raw in zip(labels, rdm):
             i = lab[0]
             j = lab[1]
