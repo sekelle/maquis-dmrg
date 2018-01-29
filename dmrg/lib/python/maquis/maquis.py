@@ -47,6 +47,7 @@ class DMRGBox:
                         , "MEASURE[ChemEntropy]" : 1
                         , "MEASURE[1rdm]" : 1
                         , "MEASURE[trans1rdm]" : 1
+                        , "MEASURE[trans2rdm]" : 1
                         , "MEASURE[2rdm]" : 1
                         , "MEASURE[Energy]" : 1
                        }
@@ -118,13 +119,20 @@ class DMRGBox:
 
         return rdm1
 
-    def tpdm(self, resources, S, state, evecs2, symmetrize):
-        """calculate the 2-body reduced density matrix"""
+    def tpdm(self, resources, S, state, state2, symmetrize):
+        """calculate the (transition) 2-body reduced density matrix"""
 
-        self.solvers[S][state].measure("twoptdm", "")
-        r2 = self.solvers[S][state].getObservable("twoptdm")
-        r2l = self.solvers[S][state].getLabels("twoptdm")
-        rdm2 = DMRGBox.expand_2rdm(r2, r2l, self.options["L"])
+        rdm2 = 0
+        if state == state2:
+            self.solvers[S][state].measure("twoptdm", "")
+            r2 = self.solvers[S][state].getObservable("twoptdm")
+            r2l = self.solvers[S][state].getLabels("twoptdm")
+            rdm2 = DMRGBox.expand_2rdm(r2, r2l, self.options["L"])
+        else:
+            self.solvers[S][state2].measure("transition_twoptdm", os.path.abspath(os.path.join(self.tempdir, "state_S" + str(S) + "_" + str(state))))
+            r2 = self.solvers[S][state2].getObservable("transition_twoptdm")
+            r2l = self.solvers[S][state2].getLabels("transition_twoptdm")
+            rdm2 = DMRGBox.expand_t2rdm(r2, r2l, self.options["L"])
         return rdm2
 
 
@@ -178,7 +186,6 @@ class DMRGBox:
             j = lab[1]
 
             odm[i,j] = val
-            #odm[j,i] = val
 
         return odm
 
@@ -192,7 +199,7 @@ class DMRGBox:
             k = lab[2]
             l = lab[3]
 
-            # lightspeed doesnt use canonical ordering
+            # adapt ordering to lightspeed
             j,l = l,j
 
             val = 0.5 * val_raw
@@ -205,6 +212,25 @@ class DMRGBox:
                 odm[k,l,i,j] = val
                 if l != k or i != j:
                     odm[l,k,j,i] = val
+
+        return odm
+
+    @staticmethod
+    def expand_t2rdm(rdm, labels, L):
+        odm = np.zeros([L,L,L,L])
+
+        for lab, val_raw in zip(labels, rdm):
+            i = lab[0]
+            j = lab[1]
+            k = lab[2]
+            l = lab[3]
+
+            # adapt ordering to lightspeed
+            j,l = l,j
+
+            val = 0.5 * val_raw
+            odm[i,j,k,l] = val
+            odm[l,k,j,i] = val
 
         return odm
 
