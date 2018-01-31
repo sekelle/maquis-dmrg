@@ -360,10 +360,10 @@ void dgemm_ddot_gpu_tpl(cublasHandle_t handle,
     dim3 blocks3d(lsb, msb, std::min(gdd.nn, 65535u));
     dim3 blocks3d_t(msb, lsb, std::min(gdd.b1sz-gdd.nn, 65535u));
 
-    if (gdd.nn)
-    cuda_copy_v<<<blocks3d,threads, 0, stream>>>(ls, ms, gdd.nn, gdd.left, l_buffer);
-    if (gdd.b1sz-gdd.nn)
-    cuda_transpose_v<<<blocks3d_t,threads, 0, stream>>>(ms, ls, gdd.b1sz-gdd.nn, gdd.left + gdd.nn, l_buffer + gdd.nn * l_size);
+    //if (gdd.nn)
+    //cuda_copy_v<<<blocks3d,threads, 0, stream>>>(ls, ms, gdd.nn, gdd.left, l_buffer);
+    //if (gdd.b1sz-gdd.nn)
+    //cuda_transpose_v<<<blocks3d_t,threads, 0, stream>>>(ms, ls, gdd.b1sz-gdd.nn, gdd.left + gdd.nn, l_buffer + gdd.nn * l_size);
 
     cublasDgemm(handle, cuop[0], cuop[0], ls, rs, ms*gdd.b1sz, &fone, l_buffer, ls, ls_buffer, ms*gdd.b1sz, &fone, dev_out, ls);
 
@@ -379,4 +379,30 @@ void dgemm_ddot_gpu(cublasHandle_t handle,
                     GemmDotData<double> & gdd)
 {
     return dgemm_ddot_gpu_tpl(handle,stream,ls,ms,rs,b2sz,t,ls_buf,dev_out, gdd);
+}
+
+template <class T>
+void dcopytr_tpl(cublasHandle_t handle,
+                        cudaStream_t stream,
+                        unsigned ls, unsigned ms, unsigned rs, T* l_buffer, GemmDotData<T> & gdd)
+{
+    size_t l_size = ls * ms;
+
+    unsigned lsb = std::min( (ls+TILE_DIM-1)/TILE_DIM, 1024u);
+    unsigned msb = std::min( (ms+TILE_DIM-1)/TILE_DIM, 1024u);
+    dim3 threads(TILE_DIM, BLOCK_ROWS);
+    dim3 blocks3d(lsb, msb, std::min(gdd.nn, 65535u));
+    dim3 blocks3d_t(msb, lsb, std::min(gdd.b1sz-gdd.nn, 65535u));
+
+    if (gdd.nn)
+    cuda_copy_v<<<blocks3d,threads, 0, stream>>>(ls, ms, gdd.nn, gdd.left, l_buffer);
+    if (gdd.b1sz-gdd.nn)
+    cuda_transpose_v<<<blocks3d_t,threads, 0, stream>>>(ms, ls, gdd.b1sz-gdd.nn, gdd.left + gdd.nn, l_buffer + gdd.nn * l_size);
+}
+
+void dcopytr_gpu(cublasHandle_t handle,
+                        cudaStream_t stream,
+                        unsigned ls, unsigned ms, unsigned rs, double* l_buffer, GemmDotData<double> & gdd)
+{
+    return dcopytr_tpl(handle, stream, ls, ms, rs, l_buffer, gdd);
 }

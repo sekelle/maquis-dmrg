@@ -131,13 +131,15 @@ public:
 
     void add_line(unsigned b1, unsigned k, char transb1)
     {
-        if (tmpline.size())
-        {
+        //if (tmpline.size())
+        //{
             bs.push_back(b1);
             ks.push_back(k);
             trans.push_back(transb1);
             b2sz.push_back(tmpline.size());
 
+        if (tmpline.size())
+        {
             value_type* alphai = new value_type[*b2sz.rbegin()];
             unsigned* tidx_i = new unsigned[*b2sz.rbegin()];
             for (unsigned t = 0; t < *b2sz.rbegin(); ++t){
@@ -146,9 +148,19 @@ public:
             }
             alpha.push_back(alphai);
             tidx.push_back(tidx_i);
+        }
+        else {
+            alpha.push_back(NULL);
+            tidx.push_back(NULL);
+        }
 
             tmpline.clear();
-        }
+        //}
+    }
+
+    std::size_t current_line_size()
+    {
+        return tmpline.size();
     }
 
     void push_back(micro_task mt)

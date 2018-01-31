@@ -69,6 +69,23 @@ public:
         throw std::runtime_error("not implemented\n");
     }
 
+    template <typename VT>
+    typename boost::enable_if<boost::is_same<VT, double>, void>::type
+    create_L_gpu(cudaStream_t stream, VT* ls_buffer) const
+    {
+        value_type* l_buffer = ls_buffer
+                             + bit_twiddling::round_up<BUFFER_ALIGNMENT/sizeof(value_type)>(impl()->m_size * impl()->r_size * impl()->size());
+        dcopytr_gpu(accelerator::gpu::instance().handle, stream,
+                    impl()->l_size, impl()->m_size, impl()->r_size, l_buffer, gdd);
+    }
+
+    template <typename VT>
+    typename boost::disable_if<boost::is_same<VT, double>, void>::type
+    create_L_gpu(cudaStream_t stream, VT* ls_buffer) const
+    {
+        throw std::runtime_error("not implemented\n");
+    }
+
     template <class OtherMatrix>
     void init(Boundary<OtherMatrix, SymmGroup> const & left, Boundary<OtherMatrix, SymmGroup> const & right)
     {
@@ -235,8 +252,8 @@ public:
         for (int ss1 = 0; ss1 < impl()->size(); ++ss1)
             max_size = std::max(max_size, (*impl())[ss1].size());
 
-        size_t ls_buf = max_size * impl()->get_l_size() * impl()->get_m_size()
-                      + max_size * impl()->get_m_size() * impl()->get_r_size();
+        size_t ls_buf = max_size * impl()->get_l_size() * impl()->get_m_size()   // L part
+                      + max_size * impl()->get_m_size() * impl()->get_r_size();  // S part
 
         buffer_size = t_buffer_size() + std::max(ls_buf, r_buf);
 
@@ -252,6 +269,10 @@ public:
                       value_type* output) const
     {
         create_T_gpu(mps, right);
+
+        // construct the L matrix if cg not empty
+        if (impl()->size())
+            (*impl())[0].create_L_gpu(stream, dev_t_pointer + bit_twiddling::round_up<BUFFER_ALIGNMENT/sizeof(value_type)>(t_buffer_size()));
 
         for (int ss1 = 0; ss1 < impl()->size(); ++ss1)
         {

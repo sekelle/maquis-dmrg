@@ -133,7 +133,11 @@ namespace common {
                             } // w_block
                         } //op_index
                     } // b2
-                    for (auto& mg : cg) mg.add_line(ci_eff, left.offset(ci, b1), left.trans(ci, b1));
+
+                    bool add = false;
+                    for (auto& mg : cg) add = add || mg.current_line_size();
+                    if (add)
+                        for (auto& mg : cg) mg.add_line(ci_eff, left.offset(ci, b1), left.trans(ci, b1));
                 } // b1
 
                 cg.data_stats(right, t_index);

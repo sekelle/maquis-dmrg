@@ -34,6 +34,9 @@
 
 #define BUFFER_ALIGNMENT 128
 
+void dcopytr_gpu(cublasHandle_t handle, cudaStream_t stream,
+                 unsigned ls, unsigned ms, unsigned rs, double* l_buf, GemmDotData<double> & gdd);
+
 void dgemm_ddot_gpu(cublasHandle_t handle, cudaStream_t stream,
                     unsigned ls, unsigned ms, unsigned rs,
                     const unsigned* b2sz, const double* t, double* ls_buf, double* out,

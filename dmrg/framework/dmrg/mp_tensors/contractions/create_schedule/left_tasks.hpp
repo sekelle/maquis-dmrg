@@ -126,7 +126,11 @@ namespace common {
                             } // w_block
                         } //op_index
                     } // b1
-                    for (auto& mg : cg) mg.add_line(b2, 0, !mpo.herm_right.skip(b2, rc_bra, rc_ket));
+
+                    bool add = false;
+                    for (auto& mg : cg) add = add || mg.current_line_size();
+                    if (add)
+                        for (auto& mg : cg) mg.add_line(b2, 0, !mpo.herm_right.skip(b2, rc_bra, rc_ket));
                 } // b2
 
                 if (cg.n_tasks())
