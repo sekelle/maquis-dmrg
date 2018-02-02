@@ -329,19 +329,11 @@ __global__ void atomic_add(unsigned N, T* in, T* out)
 }
 
 template <class T>
-void dgemm_ddot_gpu_tpl(cublasHandle_t handle,
-                        cudaStream_t stream,
-                        unsigned ls, unsigned ms, unsigned rs,
-                        const unsigned* b2sz, const T* t, T* ls_buffer, T* dev_out, GemmDotData<T> & gdd)
+void dsacc_gpu_tpl(cublasHandle_t handle,
+                   cudaStream_t stream,
+                   unsigned ls, unsigned ms, unsigned rs,
+                   const unsigned* b2sz, const T* t, T* s_buf, T* dev_out, GemmDotData<T> & gdd)
 {
-    size_t t_size = ms * rs;
-    //size_t t_size_padded = round_up<ALIGNMENT/sizeof(T)>(t_size);
-
-    cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
-    T fone = 1.0, fzero = 0.0;
-
-    cublasSetStream(handle, stream);
-
     //unsigned nb = 0;
     //unsigned nbimax = (t_size + 1023)/ 1024;
     //for (unsigned i = 0; i < gdd.b1sz; ++i)
@@ -349,9 +341,43 @@ void dgemm_ddot_gpu_tpl(cublasHandle_t handle,
     //compute_s_stacked2<<<nb, nth>>>(ms, rs, gdd.b1sz, gdd.b2sz, gdd.alpha, gdd.tidx, t, ls_buffer, gdd.b2max);
 
     unsigned nth = std::min(round_up<TILE_DIM>(ms*rs), 1024u);
-    compute_s_stacked<<<std::min(gdd.b1sz, 1024u), nth, 0, stream>>>(ms, rs, gdd.b1sz, gdd.b2sz, gdd.alpha, gdd.tidx, t, ls_buffer);
+    compute_s_stacked<<<std::min(gdd.b1sz, 1024u), nth, 0, stream>>>(ms, rs, gdd.b1sz, gdd.b2sz, gdd.alpha, gdd.tidx, t, s_buf);
+}
 
-    T* l_buffer = ls_buffer + round_up<BUFFER_ALIGNMENT/sizeof(T)>(gdd.b1sz * t_size);
+void dsacc_gpu(cublasHandle_t handle,
+               cudaStream_t stream,
+               unsigned ls, unsigned ms, unsigned rs,
+               const unsigned* b2sz, const double* t, double* s_buf, double* dev_out, GemmDotData<double> & gdd)
+{
+    return dsacc_gpu_tpl(handle,stream,ls,ms,rs,b2sz,t,s_buf,dev_out,gdd);
+}
+
+template <class T>
+void dgemm_gpu_tpl(cublasHandle_t handle,
+                   cudaStream_t stream,
+                   unsigned ls, unsigned ms, unsigned rs,
+                   T* s_buf, T* dev_out, GemmDotData<T> & gdd, T* l_buf)
+{
+    cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
+    T fone = 1.0;
+
+    cublasSetStream(handle, stream);
+    cublasDgemm(handle, cuop[0], cuop[0], ls, rs, ms*gdd.b1sz, &fone, l_buf, ls, s_buf, ms*gdd.b1sz, &fone, dev_out, ls);
+}
+
+void dgemm_gpu(cublasHandle_t handle,
+               cudaStream_t stream,
+               unsigned ls, unsigned ms, unsigned rs,
+               double* s_buf, double* dev_out, GemmDotData<double> & gdd, double* l_buf)
+{
+    dgemm_gpu_tpl(handle,stream, ls,ms,rs,s_buf,dev_out,gdd,l_buf);
+}
+
+template <class T>
+void dcopytr_tpl(cublasHandle_t handle,
+                 cudaStream_t stream,
+                 unsigned ls, unsigned ms, unsigned rs, T* l_buffer, GemmDotData<T> & gdd)
+{
     size_t l_size = ls * ms;
 
     unsigned lsb = std::min( (ls+TILE_DIM-1)/TILE_DIM, 1024u);
@@ -364,19 +390,11 @@ void dgemm_ddot_gpu_tpl(cublasHandle_t handle,
     cuda_copy_v<<<blocks3d,threads, 0, stream>>>(ls, ms, gdd.nn, gdd.left, l_buffer);
     if (gdd.b1sz-gdd.nn)
     cuda_transpose_v<<<blocks3d_t,threads, 0, stream>>>(ms, ls, gdd.b1sz-gdd.nn, gdd.left + gdd.nn, l_buffer + gdd.nn * l_size);
-
-    cublasDgemm(handle, cuop[0], cuop[0], ls, rs, ms*gdd.b1sz, &fone, l_buffer, ls, ls_buffer, ms*gdd.b1sz, &fone, dev_out, ls);
-
-    //T* out_buffer = l_buffer + round_up<BUFFER_ALIGNMENT/sizeof(T)>(l_size * gdd.b1sz);
-    //cublasDgemm(handle, cuop[0], cuop[0], ls, rs, ms*gdd.b1sz, &fone, l_buffer, ls, ls_buffer, ms*gdd.b1sz, &fzero, out_buffer, ls);
-    //atomic_add<<<(ls*rs + 255)/256, 256, 0, stream>>>(ls * rs, out_buffer, dev_out);
 }
 
-void dgemm_ddot_gpu(cublasHandle_t handle,
-                    cudaStream_t stream,
-                    unsigned ls, unsigned ms, unsigned rs,
-                    const unsigned* b2sz, const double* t, double* ls_buf, double* dev_out,
-                    GemmDotData<double> & gdd)
+void dcopytr_gpu(cublasHandle_t handle,
+                 cudaStream_t stream,
+                 unsigned ls, unsigned ms, unsigned rs, double* l_buffer, GemmDotData<double> & gdd)
 {
-    return dgemm_ddot_gpu_tpl(handle,stream,ls,ms,rs,b2sz,t,ls_buf,dev_out, gdd);
+    return dcopytr_tpl(handle, stream, ls, ms, rs, l_buffer, gdd);
 }

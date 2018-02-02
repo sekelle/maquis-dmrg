@@ -54,17 +54,34 @@ public:
     template <class OtherMatrix>
     typename boost::enable_if<boost::is_same<typename OtherMatrix::value_type, double>, void>::type
     contract_gpu(cudaStream_t stream, Boundary<OtherMatrix, SymmGroup> const & left,
-                 const value_type* t_pointer, value_type* ls_buffer, value_type* dev_ret) const
+                 const value_type* t_pointer, value_type* s_buffer, value_type* dev_ret) const
     {
-        dgemm_ddot_gpu(accelerator::gpu::instance().handle, stream,
-                       impl()->l_size, impl()->m_size, impl()->r_size,
-                       impl()->b2sz.data(), t_pointer, ls_buffer, dev_ret, gdd);
+        dsacc_gpu(accelerator::gpu::instance().handle, stream,
+                  impl()->l_size, impl()->m_size, impl()->r_size,
+                  impl()->b2sz.data(), t_pointer, s_buffer, dev_ret, gdd);
     }
 
     template <class OtherMatrix>
     typename boost::disable_if<boost::is_same<typename OtherMatrix::value_type, double>, void>::type
     contract_gpu(cudaStream_t stream, Boundary<OtherMatrix, SymmGroup> const & left,
-                 const value_type* t_pointer, value_type* ls_buffer, value_type* dev_ret) const
+                 const value_type* t_pointer, value_type* s_buffer, value_type* dev_ret) const
+    {
+        throw std::runtime_error("not implemented\n");
+    }
+
+    template <typename VT>
+    typename boost::enable_if<boost::is_same<VT, double>, void>::type
+    create_L_gpu(cudaStream_t stream, VT* l_buffer) const
+    {
+        //value_type* l_buffer = ls_buffer
+        //                     + bit_twiddling::round_up<BUFFER_ALIGNMENT/sizeof(value_type)>(impl()->m_size * impl()->r_size * impl()->size());
+        dcopytr_gpu(accelerator::gpu::instance().handle, stream,
+                    impl()->l_size, impl()->m_size, impl()->r_size, l_buffer, gdd);
+    }
+
+    template <typename VT>
+    typename boost::disable_if<boost::is_same<VT, double>, void>::type
+    create_L_gpu(cudaStream_t stream, VT* ls_buffer) const
     {
         throw std::runtime_error("not implemented\n");
     }
@@ -168,11 +185,11 @@ public:
         }
     }
 
+    mutable GemmDotData<value_type> gdd;
+
     private:
         Derived* impl() { return static_cast<Derived*>(this); }
         const Derived* impl() const { return static_cast<const Derived*>(this); }
-
-        mutable GemmDotData<value_type> gdd;
 };
 
 template <class Matrix, class SymmGroup, class Derived>
@@ -235,8 +252,8 @@ public:
         for (int ss1 = 0; ss1 < impl()->size(); ++ss1)
             max_size = std::max(max_size, (*impl())[ss1].size());
 
-        size_t ls_buf = max_size * impl()->get_l_size() * impl()->get_m_size()
-                      + max_size * impl()->get_m_size() * impl()->get_r_size();
+        size_t ls_buf = max_size * impl()->get_l_size() * impl()->get_m_size()   // L part
+                      + impl()->size() * max_size * impl()->get_m_size() * impl()->get_r_size();  // S part
 
         buffer_size = t_buffer_size() + std::max(ls_buf, r_buf);
 
@@ -253,13 +270,27 @@ public:
     {
         create_T_gpu(mps, right);
 
-        for (int ss1 = 0; ss1 < impl()->size(); ++ss1)
-        {
-            if (!(*impl())[ss1].n_tasks()) continue;
+        value_type* s_buffer = dev_t_pointer + bit_twiddling::round_up<BUFFER_ALIGNMENT/sizeof(value_type)>(t_buffer_size());
+        size_t s_slice = impl()->get_m_size() * impl()->get_r_size() * (*impl())[0].size();
+        value_type* l_buffer = s_buffer + bit_twiddling::round_up<BUFFER_ALIGNMENT/sizeof(value_type)>(impl()->size() * s_slice);
+
+        // construct the L matrix if cg not empty
+        if (impl()->size())
+            (*impl())[0].create_L_gpu(stream, l_buffer);
+
+        // s_buffer has to be set to zero even if there are no tasks
+        for (unsigned ss1 = 0; ss1 < impl()->size(); ++ss1)
+            //if (!(*impl())[ss1].n_tasks()) continue;
             (*impl())[ss1].contract_gpu(stream, left, dev_t_pointer,
-                                        dev_t_pointer + bit_twiddling::round_up<BUFFER_ALIGNMENT/sizeof(value_type)>(t_buffer_size()),
-                                        output + impl()->get_l_size() * (*impl())[ss1].offset);
-        }
+                                        s_buffer + ss1 * s_slice, output + impl()->get_l_size() * (*impl())[ss1].offset);
+        if (impl()->size())
+        dgemm_gpu(accelerator::gpu::instance().handle, stream,
+                  impl()->get_l_size(), impl()->get_m_size(), impl()->get_r_size() * impl()->size(),
+                  s_buffer,
+                  output + impl()->get_l_size() * (*impl())[0].offset, // dev_out
+                  (*impl())[0].gdd,
+                  l_buffer);
+
     }
 
     template <class DefaultMatrix, class OtherMatrix>
