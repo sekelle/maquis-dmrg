@@ -31,6 +31,8 @@
 #include <sys/time.h>
 #include <sys/stat.h>
 
+#include <cuda_profiler_api.h>
+
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 
@@ -142,7 +144,9 @@ int main(int argc, char ** argv)
         storage::gpu::fetch(right);
 
         SiteProblem<matrix, smatrix, symm> sp(initial, left, right, tsmpo);
+        cudaProfilerStart(); 
         auto res = solve_ietl_jcd(sp, initial, parms, ortho_vecs);
+        cudaProfilerStop();
 
         maquis::cout << "Energy " << res.first << std::endl;
         //input_per_mps(sp, initial, site);
