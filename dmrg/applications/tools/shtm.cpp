@@ -36,14 +36,16 @@
 
 #include <alps/hdf5.hpp>
 
+#include "dmrg/utils/DmrgParameters.h"
 #include "dmrg/sim/matrix_types.h"
 #include "dmrg/mp_tensors/boundary.h"
 #include "dmrg/mp_tensors/mpo.h"
 #include "dmrg/mp_tensors/mps.h"
 #include "dmrg/optimize/site_problem.h"
+#include "dmrg/optimize/ietl_lanczos_solver.h"
+#include "dmrg/optimize/ietl_jacobi_davidson.h"
 #include "dmrg/mp_tensors/contractions.h"
 
-#include "shtm/load.hpp"
 //#include "shtm/prop.hpp"
 //#include "shtm/ips.hpp"
 // provides MatrixGroupPrint, verbose version used for converting from rbtm schedule types
@@ -92,6 +94,14 @@ MPSTensor<matrix, symm> load_mps(std::string file)
     return mps;
 }
 
+template <class Loadable>
+void load(Loadable & Data, std::string file)
+{
+    std::ifstream ifs(file.c_str());
+    boost::archive::binary_iarchive iar(ifs, std::ios::binary);
+    iar >> Data;
+}
+
 
 int main(int argc, char ** argv)
 {
@@ -102,13 +112,39 @@ int main(int argc, char ** argv)
         Boundary<smatrix, symm> left, right;
         load(left, argv[1]);
         load(right, argv[2]);
+        maquis::cout << "boundaries loaded\n";
+        maquis::cout << size_of(left) << std::endl;
+        maquis::cout << size_of(right) << std::endl;
         
         MPSTensor<matrix, symm> initial = load_mps(argv[3]);
-        MPO<matrix, symm> mpo = load_mpo(argv[4]);
+        //MPO<matrix, symm> mpo = load_mpo(argv[4]);
+        maquis::cout << "mpstensor loaded\n";
 
         int site = boost::lexical_cast<int>(argv[5]);
-        SiteProblem<matrix, smatrix, symm> sp(initial, left, right, mpo[site]);
+        //MPOTensor<matrix, symm> tsmpo = make_twosite_mpo<matrix, matrix, symm>(mpo[site], mpo[site+1], initial.site_dim(), initial.site_dim());
+        MPOTensor<matrix, symm> tsmpo;
+        load(tsmpo, argv[4]);
 
+        DmrgParameters parms;
+        parms.set("ietl_jcd_gmres", 0);
+        parms.set("ietl_jcd_tol", 1e-6);
+        parms.set("ietl_jcd_maxiter", 9);
+        parms.set("storagedir", "");
+        parms.set("GPU", 1);
+        std::vector<MPSTensor<matrix, symm>> ortho_vecs;
+
+        storage::setup(parms);
+        accelerator::setup(parms);
+
+        storage::gpu::prefetch(left);
+        storage::gpu::prefetch(right);
+        storage::gpu::fetch(left);
+        storage::gpu::fetch(right);
+
+        SiteProblem<matrix, smatrix, symm> sp(initial, left, right, tsmpo);
+        auto res = solve_ietl_jcd(sp, initial, parms, ortho_vecs);
+
+        maquis::cout << "Energy " << res.first << std::endl;
         //input_per_mps(sp, initial, site);
         //prop(sp, initial, site);
         //analyze(sp, initial);
