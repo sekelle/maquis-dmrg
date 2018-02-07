@@ -185,17 +185,19 @@ public:
                 std::vector<int> snapshot = parms["snapshot"];
                 if (twosweep == snapshot[0] && site1 == snapshot[1])
                 {
-                    save_boundary(left_[site1], "left_" + boost::lexical_cast<std::string>(twosweep) + "_"
-                                                        + boost::lexical_cast<std::string>(site1));
-                    save_boundary(right_[site2+1], "right_" + boost::lexical_cast<std::string>(twosweep) + "_"
-                                                            + boost::lexical_cast<std::string>(site2+1));
+                    std::string sweep_str = boost::lexical_cast<std::string>(twosweep) + "_";
+                    std::string site1_str = boost::lexical_cast<std::string>(site1);
+                    std::string site2_str = boost::lexical_cast<std::string>(site2+1);
+                    save_boundary(left_[site1], "left_" + sweep_str + site1_str);
+                    save_boundary(right_[site2+1], "right_" + sweep_str + site2_str);
 
-                    storage::archive ari("initial_" + boost::lexical_cast<std::string>(twosweep) + "_"
-                                                    + boost::lexical_cast<std::string>(site1), "w");
+                    storage::archive ari("initial_" + sweep_str + site1_str, "w");
                     twin_mps.save(ari);
-                    //storage::archive ssari("ssinitial_" + boost::lexical_cast<std::string>(twosweep) + "_"
-                    //                                    + boost::lexical_cast<std::string>(site2), "w");
-                    //mps[site2].save(ssari);
+
+                    std::ofstream ofs(("tsmpo" + sweep_str + site1_str).c_str());
+                    boost::archive::binary_oarchive mpo_ar(ofs);
+                    mpo_ar << ts_cache_mpo[site1];
+
                     maquis::cout << "saved snapshot\n";
                 }
             }
