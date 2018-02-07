@@ -182,16 +182,28 @@ public:
             SiteProblem<Matrix, BoundaryMatrix, SymmGroup>
                 sp(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1]);
 
-            //if (twosweep == 5)
-            //{
-            //    save_boundary(left_[site1], "left_5_" + boost::lexical_cast<std::string>(site1));
-            //    save_boundary(right_[site2+1], "right_5_" + boost::lexical_cast<std::string>(site2+1));
+            if (parms.is_set("snapshot"))
+            {
+                int twosweep = 2*sweep + (-lr + 1)/2;
+                std::vector<int> snapshot = parms["snapshot"];
+                if (twosweep == snapshot[0] && site1 == snapshot[1])
+                {
+                    std::string sweep_str = boost::lexical_cast<std::string>(twosweep) + "_";
+                    std::string site1_str = boost::lexical_cast<std::string>(site1);
+                    std::string site2_str = boost::lexical_cast<std::string>(site2+1);
+                    save_boundary(left_[site1], "left_" + sweep_str + site1_str);
+                    save_boundary(right_[site2+1], "right_" + sweep_str + site2_str);
 
-            //    storage::archive ari("initial_5_" + boost::lexical_cast<std::string>(site1), "w");
-            //    twin_mps.save(ari);
-            //    storage::archive ssari("ssinitial_5_" + boost::lexical_cast<std::string>(site2), "w");
-            //    mps[site2].save(ssari);
-            //}
+                    storage::archive ari("initial_" + sweep_str + site1_str, "w");
+                    twin_mps.save(ari);
+
+                    std::ofstream ofs(("tsmpo" + sweep_str + site1_str).c_str());
+                    boost::archive::binary_oarchive mpo_ar(ofs);
+                    mpo_ar << ts_cache_mpo[site1];
+
+                    maquis::cout << "saved snapshot\n";
+                }
+            }
 
             /// Compute orthogonal vectors
             std::vector<MPSTensor<Matrix, SymmGroup> > ortho_vecs(base::northo);
