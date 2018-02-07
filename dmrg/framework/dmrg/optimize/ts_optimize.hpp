@@ -187,7 +187,7 @@ public:
                 int twosweep = 2*sweep + (-lr + 1)/2;
                 std::vector<int> snapshots = parms["snapshot"];
                 for (int snapidx = 0; snapidx < snapshots.size(); snapidx+=2)
-                if (twosweep == snapshots[snapidx] && site1 == snapshots[snapidx])
+                if (twosweep == snapshots[snapidx] && site1 == snapshots[snapidx+1])
                 {
                     std::string sweep_str = boost::lexical_cast<std::string>(twosweep) + "_";
                     std::string site1_str = boost::lexical_cast<std::string>(site1);
