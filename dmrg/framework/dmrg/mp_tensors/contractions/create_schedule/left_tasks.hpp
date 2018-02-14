@@ -127,10 +127,7 @@ namespace common {
                         } //op_index
                     } // b1
 
-                    bool add = false;
-                    for (auto& mg : cg) add = add || mg.current_line_size();
-                    if (add)
-                        for (auto& mg : cg) mg.add_line(b2, 0, !mpo.herm_right.skip(b2, rc_bra, rc_ket));
+                    for (auto& mg : cg) cg.add_line(b2, 0, !mpo.herm_right.skip(b2, rc_bra, rc_ket));
                 } // b2
 
                 if (cg.n_tasks())

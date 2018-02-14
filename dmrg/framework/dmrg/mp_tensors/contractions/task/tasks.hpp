@@ -458,11 +458,13 @@ template <class Matrix, class SymmGroup>
 class ContractionGroup : public ContractionGroupGpuExtension<Matrix, SymmGroup, ContractionGroup<Matrix, SymmGroup>>
                        , public std::vector<MatrixGroup<Matrix, SymmGroup> >
 {
-public:
-    typedef std::vector<MatrixGroup<Matrix, SymmGroup> > base;    
     typedef typename Matrix::value_type value_type;
-    typedef __uint128_t t_key;
+    typedef typename detail::micro_task_shtm<value_type> micro_task;
+    typedef std::vector<MatrixGroup<Matrix, SymmGroup> > base;
     typedef typename SymmGroup::charge charge;
+
+public:
+    typedef __uint128_t t_key;
 
     friend class ContractionGroupGpuExtension<Matrix, SymmGroup, ContractionGroup<Matrix, SymmGroup>>;
 
@@ -479,6 +481,21 @@ public:
     {
         return std::accumulate(this->begin(), this->end(), 0,
                                bl::_1 + bl::bind(&base::value_type::n_tasks, bl::_2));
+    }
+
+    void push_back(unsigned ss2, micro_task mt)
+    {
+        (*this)[ss2].push_back(mt);
+    }
+
+    void add_line(unsigned ci, unsigned off, char trans)
+    {
+        bool add = false;
+        for (unsigned ss = 0; ss < this->size(); ++ss)
+            add = add || (*this)[ss].current_line_size();
+        if (add)
+            for (unsigned ss = 0; ss < this->size(); ++ss)
+                (*this)[ss].add_line(ci, off, trans);
     }
 
     template <class DefaultMatrix, class OtherMatrix>

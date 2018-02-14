@@ -66,7 +66,7 @@ namespace detail {
             std::pair<typename Map::iterator, bool> pos = t_map.insert(std::make_pair(tq2, t_map.size()));
             task.t_index = pos.first->second;
 
-            cg[ss2].push_back(task);
+            cg.push_back(ss2, task);
         }
     }
 
