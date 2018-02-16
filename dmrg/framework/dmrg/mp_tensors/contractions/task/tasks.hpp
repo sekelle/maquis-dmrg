@@ -461,6 +461,7 @@ class ContractionGroup : public ContractionGroupGpuExtension<Matrix, SymmGroup, 
     typedef typename Matrix::value_type value_type;
     typedef typename detail::micro_task_shtm<value_type> micro_task;
     typedef std::vector<MatrixGroup<Matrix, SymmGroup> > base;
+    typedef ContractionGroupGpuExtension<Matrix, SymmGroup, ContractionGroup<Matrix, SymmGroup>> base2;
     typedef typename SymmGroup::charge charge;
 
 public:
@@ -483,8 +484,10 @@ public:
                                bl::_1 + bl::bind(&base::value_type::n_tasks, bl::_2));
     }
 
-    void push_back(unsigned ss2, micro_task mt)
+    void push_back(unsigned ss2, t_key tq, micro_task mt)
     {
+        auto pos = t_map.insert(std::make_pair(tq, t_map.size()));
+        mt.t_index = pos.first->second;
         (*this)[ss2].push_back(mt);
     }
 
@@ -624,12 +627,33 @@ public:
         this->on_gpu = accelerator::gpu::use_gpu(flops);
     }
 
+    void finalize_t()
+    {
+        t_key_vec.resize(t_map.size());
+        for (auto const& kit : t_map) t_key_vec[kit.second] = kit.first;
+        t_map.clear();
+    }
+
+    template <class OtherMatrix>
+    void finalize(Boundary<OtherMatrix, SymmGroup> const & left,
+                  Boundary<OtherMatrix, SymmGroup> const & right)
+    {
+        data_stats(right.index(), t_map);
+        if (base2::on_gpu)
+        {
+            t_key_vec.reserve(t_map.size());
+            for (auto const& kit : t_map) t_key_vec.push_back(kit.first);
+            resort_t_index(t_map);
+            t_map.clear();
+            base2::init(left, right);
+        }
+        else finalize_t();
+    }
+
     unsigned get_mps_block() const { return mps_block; }
     unsigned get_l_size() const { return (*this)[0].get_l_size(); }
     unsigned get_r_size() const { return (*this)[0].get_r_size(); }
     unsigned get_m_size() const { return (*this)[0].get_m_size(); }
-
-    std::vector<t_key> t_key_vec;
 
     size_t flops, memops;
 
@@ -637,6 +661,9 @@ public:
 private:
     unsigned mps_block;
     mutable value_type* t_pointer;
+
+    std::vector<t_key> t_key_vec;
+    std::map<t_key, unsigned> t_map;
 
     template <class DefaultMatrix, class OtherMatrix>
     void create_T_left(Boundary<OtherMatrix, SymmGroup> const & left, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const

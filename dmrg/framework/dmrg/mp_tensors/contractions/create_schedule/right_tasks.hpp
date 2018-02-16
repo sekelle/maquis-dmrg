@@ -80,7 +80,6 @@ namespace common {
 
                 ::SU2::Wigner9jCache<value_type, SymmGroup> w9j(lc_bra, lc_ket, rc_bra);
 
-                t_map_t t_index;
                 for (index_type b1 = 0; b1 < mpo.row_dim(); ++b1)
                 {
                     if (mpo.herm_left.skip(b1, lc_ket, lc_bra) && skip) continue;
@@ -118,7 +117,7 @@ namespace common {
                                     = bit_twiddling::pack(ci_eff, right_offset, 0, ket_offset, right_transpose);
                                 
                                 detail::op_iterate<Matrix, typename common::BoundarySchedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
-                                    (W, w_block, couplings, cg, tq, rs_ket, t_index);
+                                    (W, w_block, couplings, cg, tq, rs_ket);
                             } // w_block
                         } //op_index
                     } // b2
@@ -126,11 +125,9 @@ namespace common {
                     cg.add_line(b1, 0, !mpo.herm_left.skip(b1, lc_ket, lc_bra));
                 } // b1
 
+                cg.finalize_t();
                 if (cg.n_tasks())
                 {
-                    cg.t_key_vec.resize(t_index.size());
-                    for (auto const& kit : t_index) cg.t_key_vec[kit.second] = kit.first;
-
                     mpsb[lc_ket].push_back(cg);
 
                     auto& b2o = mpsb[lc_ket].get_offsets();

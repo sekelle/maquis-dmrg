@@ -82,7 +82,6 @@ namespace common {
                 typename block_type::mapped_value_type cg(lb_bra, phys_i[s].second, rs_bra, ls_bra, rs_ket,
                                                           bra_offset, true);
 
-                t_map_t t_index;
                 for (index_type b2 = 0; b2 < mpo.col_dim(); ++b2)
                 {
                     if (mpo.herm_right.skip(b2, rc_bra, rc_ket) && skip) continue;
@@ -122,7 +121,7 @@ namespace common {
                                 auto tq = bit_twiddling::pack(ci_eff, left_offset, lb_ket, ket_offset, left_transpose);
                                 
                                 detail::op_iterate<Matrix, typename common::BoundarySchedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
-                                    (W, w_block, couplings, cg, tq, rs_ket, t_index);
+                                    (W, w_block, couplings, cg, tq, rs_ket);
                             } // w_block
                         } //op_index
                     } // b1
@@ -130,17 +129,17 @@ namespace common {
                     for (auto& mg : cg) cg.add_line(b2, 0, !mpo.herm_right.skip(b2, rc_bra, rc_ket));
                 } // b2
 
+                cg.finalize_t();
+
                 if (cg.n_tasks())
                 {
-                    cg.t_key_vec.resize(t_index.size());
-                    for (auto const& kit : t_index) cg.t_key_vec[kit.second] = kit.first;
-
                     mpsb[rc_ket].push_back(cg);
 
                     auto& b2o = mpsb[rc_ket].get_offsets(); // mark each used b2 with 1
                     b2o.resize(mpo.col_dim());
                     for (auto& mg : cg) for (index_type b : mg.get_bs()) b2o[b] = 1;
                 }
+
             } // phys_out
 
             if (mpsb.count(rc_ket) > 0)

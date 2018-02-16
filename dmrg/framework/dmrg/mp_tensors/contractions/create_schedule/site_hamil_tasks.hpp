@@ -88,7 +88,6 @@ namespace common {
 
                 ::SU2::Wigner9jCache<value_type, SymmGroup> w9j(lc_out, lc_in, rc_out);
 
-                t_map_t t_index;
                 for (index_type b1 = 0; b1 < mpo.row_dim(); ++b1)
                 {
                     if (!left.has_block(ci, b1)) continue;
@@ -129,7 +128,7 @@ namespace common {
                                 typename cgroup::t_key tq = bit_twiddling::pack(ci_right_eff, right_offset, 0, in_offset, right_transpose);
                                 
                                 detail::op_iterate<Matrix, typename common::Schedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
-                                    (W, w_block, couplings, cg, tq, rs_in, t_index);
+                                    (W, w_block, couplings, cg, tq, rs_in);
                             } // w_block
                         } //op_index
                     } // b2
@@ -137,19 +136,7 @@ namespace common {
                     cg.add_line(ci_eff, left.offset(ci, b1), left.trans(ci, b1));
                 } // b1
 
-                cg.data_stats(right, t_index);
-                if (cg.on_gpu)
-                {
-                    cg.t_key_vec.reserve(t_index.size());
-                    for (auto const& kit : t_index) cg.t_key_vec.push_back(kit.first);
-                    cg.resort_t_index(t_index);
-                    cg.init(left_boundary, right_boundary);
-                }
-                else {
-                    cg.t_key_vec.resize(t_index.size());
-                    for (auto const& kit : t_index) cg.t_key_vec[kit.second] = kit.first;
-                }
-
+                cg.finalize(left_boundary, right_boundary);
                 if (cg.n_tasks()) mpsb[s].push_back(cg);
 
             } // lb_in
