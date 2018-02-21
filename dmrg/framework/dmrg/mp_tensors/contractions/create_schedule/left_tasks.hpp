@@ -130,31 +130,14 @@ namespace common {
                 } // b2
 
                 cg.finalize_t();
-
                 if (cg.n_tasks())
-                {
-                    mpsb[rc_ket].push_back(cg);
-
-                    auto& b2o = mpsb[rc_ket].get_offsets(); // mark each used b2 with 1
-                    b2o.resize(mpo.col_dim());
-                    for (auto& mg : cg) for (index_type b : mg.get_bs()) b2o[b] = 1;
-                }
+                    mpsb[rc_ket].push_back(cg, mpo.col_dim());
 
             } // phys_out
 
             if (mpsb.count(rc_ket) > 0)
-            {
-                auto& b2o = mpsb[rc_ket].get_offsets();
-                std::size_t block_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(rs_bra * rs_ket);
+                mpsb[rc_ket].compute_mpo_offsets(rs_bra, rs_ket);
 
-                index_type cnt = 0;
-                for(auto& b : b2o) if (b) b = block_size * cnt++; else b = -1;
-
-                for (auto& cg : mpsb[rc_ket])
-                    for (auto& mg : cg)
-                        for (index_type b = 0; b < mg.get_bs().size(); ++b)
-                            mg.get_ks()[b] = b2o[mg.get_bs()[b]];
-            }
         } // rb_ket
     }
 

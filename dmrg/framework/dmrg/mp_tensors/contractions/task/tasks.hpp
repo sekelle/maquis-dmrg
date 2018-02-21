@@ -497,8 +497,12 @@ public:
         for (unsigned ss = 0; ss < this->size(); ++ss)
             add = add || (*this)[ss].current_line_size();
         if (add)
+        {
             for (unsigned ss = 0; ss < this->size(); ++ss)
                 (*this)[ss].add_line(ci, off, trans);
+
+            previous_b.push_back(ci);
+        }
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -657,6 +661,9 @@ public:
 
     size_t flops, memops;
 
+    // a list of all mpo b values that appear in the boundary on the "S"-intermediate side
+    std::vector<unsigned> previous_b;
+
     // invariant: phys_out, phys_offset
 private:
     unsigned mps_block;
@@ -664,6 +671,7 @@ private:
 
     std::vector<t_key> t_key_vec;
     std::map<t_key, unsigned> t_map;
+
 
     template <class DefaultMatrix, class OtherMatrix>
     void create_T_left(Boundary<OtherMatrix, SymmGroup> const & left, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
@@ -729,9 +737,31 @@ class Cohort : public std::vector<ContractionGroup<Matrix, SymmGroup> >
 {
     typedef typename SymmGroup::charge charge;
     typedef std::vector<ContractionGroup<Matrix, SymmGroup> > base;
+    typedef MPOTensor_detail::index_type index_type;
+    typedef typename Matrix::value_type float_type;
 
 public:
     typedef typename base::value_type value_type;
+
+    void push_back(ContractionGroup<Matrix, SymmGroup> const & cg, index_type mpo_dim)
+    {
+        base::push_back(cg);
+        mpo_offsets.resize(mpo_dim); // mark each used b with 1
+        for (index_type b : cg.previous_b) mpo_offsets[b] = 1;
+    }
+
+    void compute_mpo_offsets(size_t rs_bra, size_t rs_ket)
+    {
+        std::size_t block_size = bit_twiddling::round_up<ALIGNMENT/sizeof(float_type)>(rs_bra * rs_ket);
+
+        index_type cnt = 0;
+        for(auto& b : mpo_offsets) if (b) b = block_size * cnt++; else b = -1;
+
+        for (auto& cg : (*this))
+            for (auto& mg : cg)
+                for (index_type b = 0; b < mg.get_bs().size(); ++b)
+                    mg.get_ks()[b] = mpo_offsets[mg.get_bs()[b]];
+    }
 
     std::vector<long int>      & get_offsets()       { return mpo_offsets; }
     std::vector<long int> const& get_offsets() const { return mpo_offsets; }
@@ -761,7 +791,6 @@ struct BoundarySchedule : public std::vector<MPSBlock<
 
     typedef std::vector<MPSBlock<AlignedMatrix, SymmGroup> > base;
 
-    BoundarySchedule() {}
     BoundarySchedule(std::size_t dim) : base(dim), load_balance(dim) {}
 
     std::vector<size_t> load_balance;

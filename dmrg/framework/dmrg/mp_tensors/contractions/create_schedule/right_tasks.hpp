@@ -127,28 +127,13 @@ namespace common {
 
                 cg.finalize_t();
                 if (cg.n_tasks())
-                {
-                    mpsb[lc_ket].push_back(cg);
+                    mpsb[lc_ket].push_back(cg, mpo.row_dim());
 
-                    auto& b2o = mpsb[lc_ket].get_offsets();
-                    b2o.resize(mpo.row_dim());
-                    for (auto& mg : cg) for (index_type b : mg.get_bs()) b2o[b] = 1;
-                }
             } // phys_out
 
             if (mpsb.count(lc_ket) > 0) 
-            {
-                auto& b2o = mpsb[lc_ket].get_offsets();
-                std::size_t block_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(ls_ket * ls_bra);
+                mpsb[lc_ket].compute_mpo_offsets(ls_ket, ls_bra);
 
-                index_type cnt = 0;
-                for(auto& b : b2o) if (b) b = block_size * cnt++; else b = -1;
-
-                for (auto& cg : mpsb[lc_ket])
-                    for (auto& mg : cg)
-                        for (index_type b = 0; b < mg.get_bs().size(); ++b)
-                            mg.get_ks()[b] = b2o[mg.get_bs()[b]];
-            }
         } // lb_ket
     }
 
