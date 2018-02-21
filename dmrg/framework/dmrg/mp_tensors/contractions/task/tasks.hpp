@@ -131,12 +131,10 @@ public:
 
     void add_line(unsigned b1, unsigned k, char transb1)
     {
-        //if (tmpline.size())
-        //{
-            bs.push_back(b1);
-            ks.push_back(k);
-            trans.push_back(transb1);
-            b2sz.push_back(tmpline.size());
+        bs.push_back(b1);
+        ks.push_back(k);
+        trans.push_back(transb1);
+        b2sz.push_back(tmpline.size());
 
         if (tmpline.size())
         {
@@ -154,8 +152,7 @@ public:
             tidx.push_back(NULL);
         }
 
-            tmpline.clear();
-        //}
+        tmpline.clear();
     }
 
     std::size_t current_line_size()
