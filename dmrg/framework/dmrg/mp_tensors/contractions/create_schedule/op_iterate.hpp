@@ -58,11 +58,10 @@ namespace detail {
             else if (rspin == 2) casenr = 1;
             else if (cspin == 2) casenr = 2;
 
-            typename MatrixGroup<Matrix, SymmGroup>::micro_task task;
-            task.scale = it->coefficient * couplings[casenr];
-
+            typename Matrix::value_type scale = it->coefficient * couplings[casenr];
             typename cgroup::t_key tq2 = bit_twiddling::add_last(tq, ss1*m2_size);
-            cg.push_back(ss2, tq2, task);
+
+            cg.push_back(ss2, tq2, scale);
         }
     }
 

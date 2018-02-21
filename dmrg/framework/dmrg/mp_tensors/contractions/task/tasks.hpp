@@ -481,10 +481,14 @@ public:
                                bl::_1 + bl::bind(&base::value_type::n_tasks, bl::_2));
     }
 
-    void push_back(unsigned ss2, t_key tq, micro_task mt)
+    void push_back(unsigned ss2, t_key tq, value_type scale)
     {
         auto pos = t_map.insert(std::make_pair(tq, t_map.size()));
+
+        typename MatrixGroup<Matrix, SymmGroup>::micro_task mt;
+        mt.scale = scale;
         mt.t_index = pos.first->second;
+
         (*this)[ss2].push_back(mt);
     }
 
