@@ -492,7 +492,7 @@ public:
         (*this)[ss2].push_back(mt);
     }
 
-    void add_line(unsigned ci, std::size_t off, char trans)
+    bool add_line(unsigned ci, std::size_t off, char trans)
     {
         bool add = false;
         for (unsigned ss = 0; ss < this->size(); ++ss)
@@ -504,6 +504,7 @@ public:
 
             previous_b.push_back(ci);
         }
+        return add;
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -744,11 +745,32 @@ class Cohort : public std::vector<ContractionGroup<Matrix, SymmGroup> >
 public:
     typedef typename base::value_type value_type;
 
+    Cohort() {}
+    Cohort(std::size_t mpodim) : mpo_offsets(mpodim) {}
+    Cohort(std::size_t phys_size, std::size_t mpodim) : base(phys_size), mpo_offsets(mpodim) {}
+
     void push_back(ContractionGroup<Matrix, SymmGroup> const & cg, index_type mpo_dim)
     {
         base::push_back(cg);
         mpo_offsets.resize(mpo_dim); // mark each used b with 1
         for (index_type b : cg.previous_b) mpo_offsets[b] = 1;
+    }
+
+    void add_line(unsigned b2, char trans)
+    {
+        bool add = false;
+        for (auto& cg : (*this)) add = cg.add_line(b2, 0, trans) || add;
+
+        if (add) mpo_offsets[b2] = 1;
+    }
+
+    void finalize(size_t rs_bra, size_t rs_ket)
+    {
+        base::erase(std::remove_if(base::begin(), base::end(),
+                                   [](ContractionGroup<Matrix, SymmGroup> const & cg) { return cg.n_tasks() == 0; }), base::end());
+        for (auto& cg : (*this)) cg.finalize_t();
+
+        compute_mpo_offsets(rs_bra, rs_ket);
     }
 
     void compute_mpo_offsets(size_t rs_bra, size_t rs_ket)
@@ -768,6 +790,9 @@ public:
     std::vector<long int> const& get_offsets() const { return mpo_offsets; }
 
 private:
+    // a list of all mpo b values that appear in the boundary on the "S"-intermediate side
+    std::vector<unsigned> previous_b;
+
     std::vector<long int> mpo_offsets;
 };
 
