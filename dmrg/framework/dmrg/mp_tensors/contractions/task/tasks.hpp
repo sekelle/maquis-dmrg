@@ -497,13 +497,11 @@ public:
         bool add = false;
         for (unsigned ss = 0; ss < this->size(); ++ss)
             add = add || (*this)[ss].current_line_size();
+
         if (add)
-        {
             for (unsigned ss = 0; ss < this->size(); ++ss)
                 (*this)[ss].add_line(ci, off, trans);
 
-            previous_b.push_back(ci);
-        }
         return add;
     }
 
@@ -663,9 +661,6 @@ public:
 
     size_t flops, memops;
 
-    // a list of all mpo b values that appear in the boundary on the "S"-intermediate side
-    std::vector<unsigned> previous_b;
-
     // invariant: phys_out, phys_offset
 private:
     unsigned mps_block;
@@ -749,18 +744,12 @@ public:
     Cohort(std::size_t mpodim) : mpo_offsets(mpodim) {}
     Cohort(std::size_t phys_size, std::size_t mpodim) : base(phys_size), mpo_offsets(mpodim) {}
 
-    void push_back(ContractionGroup<Matrix, SymmGroup> const & cg, index_type mpo_dim)
-    {
-        base::push_back(cg);
-        mpo_offsets.resize(mpo_dim); // mark each used b with 1
-        for (index_type b : cg.previous_b) mpo_offsets[b] = 1;
-    }
-
     void add_line(unsigned b2, char trans)
     {
         bool add = false;
         for (auto& cg : (*this)) add = cg.add_line(b2, 0, trans) || add;
 
+        // a list of all mpo b values that appear in the boundary on the "S"-intermediate side
         if (add) mpo_offsets[b2] = 1;
     }
 
@@ -790,9 +779,6 @@ public:
     std::vector<long int> const& get_offsets() const { return mpo_offsets; }
 
 private:
-    // a list of all mpo b values that appear in the boundary on the "S"-intermediate side
-    std::vector<unsigned> previous_b;
-
     std::vector<long int> mpo_offsets;
 };
 

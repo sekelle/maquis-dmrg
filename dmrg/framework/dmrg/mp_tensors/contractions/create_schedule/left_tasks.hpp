@@ -70,7 +70,6 @@ namespace common {
             if (std::abs(SymmGroup::particleNumber(rc_bra) - SymmGroup::particleNumber(rc_ket)) > site_basis_max_diff) continue;
             unsigned rs_ket = ket_right_i[rb_ket].second;
 
-            //typename block_type::mapped_type cohort(mpo.col_dim());
             typename block_type::mapped_type cohort(phys_i.size(), mpo.col_dim());
 
             for (unsigned s = 0; s < phys_i.size(); ++s)
@@ -82,8 +81,6 @@ namespace common {
 
                 unsigned bra_offset = bra_right_pb(phys_out, rc_bra);
 
-                //typename block_type::mapped_value_type cg(lb_bra, phys_i[s].second, rs_bra, ls_bra, rs_ket,
-                //                                          bra_offset, true);
                 cohort[s] = typename block_type::mapped_value_type(lb_bra, phys_i[s].second, rs_bra, ls_bra, rs_ket,
                                                                    bra_offset, true);
 
@@ -126,20 +123,13 @@ namespace common {
                                 auto tq = bit_twiddling::pack(ci_eff, left_offset, lb_ket, ket_offset, left_transpose);
                                 
                                 detail::op_iterate<Matrix, typename common::BoundarySchedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
-                                    //(W, w_block, couplings, cg, tq, rs_ket);
                                     (W, w_block, couplings, cohort[s], tq, rs_ket);
                             } // w_block
                         } //op_index
                     } // b1
 
-                    //cg.add_line(b2, 0, !mpo.herm_right.skip(b2, rc_bra, rc_ket));
                     cohort.add_line(b2, !mpo.herm_right.skip(b2, rc_bra, rc_ket));
                 } // b2
-
-                //cg.finalize_t();
-                //if (cg.n_tasks())
-                //    cohort.push_back(cg, mpo.col_dim());
-
             } // phys_out
 
             cohort.finalize(rs_bra, rs_ket);

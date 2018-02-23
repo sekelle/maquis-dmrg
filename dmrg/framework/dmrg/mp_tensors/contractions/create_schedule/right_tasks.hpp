@@ -78,7 +78,6 @@ namespace common {
                 unsigned rs_bra = right_i[rb_bra].second;
                 unsigned bra_offset = right_pb(phys_out, rc_bra);
 
-                //typename block_type::mapped_value_type cg(lb_ket, phys_i[s].second, ls_bra, ls_ket, rs_bra, bra_offset);
                 cohort[s] = typename block_type::mapped_value_type(lb_ket, phys_i[s].second, ls_bra, ls_ket, rs_bra, bra_offset);
 
                 ::SU2::Wigner9jCache<value_type, SymmGroup> w9j(lc_bra, lc_ket, rc_bra);
@@ -120,27 +119,17 @@ namespace common {
                                     = bit_twiddling::pack(ci_eff, right_offset, 0, ket_offset, right_transpose);
                                 
                                 detail::op_iterate<Matrix, typename common::BoundarySchedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
-                                    //(W, w_block, couplings, cg, tq, rs_ket);
                                     (W, w_block, couplings, cohort[s], tq, rs_ket);
                             } // w_block
                         } //op_index
                     } // b2
 
-                    //cg.add_line(b1, 0, !mpo.herm_left.skip(b1, lc_ket, lc_bra));
                     cohort.add_line(b1, !mpo.herm_left.skip(b1, lc_ket, lc_bra));
                 } // b1
-
-                //cg.finalize_t();
-                //if (cg.n_tasks())
-                //    mpsb[lc_ket].push_back(cg, mpo.row_dim());
-
             } // phys_out
 
             cohort.finalize(ls_ket, ls_bra);
             if (cohort.size()) mpsb[lc_ket] = cohort;
-            //if (mpsb.count(lc_ket) > 0) 
-            //    mpsb[lc_ket].compute_mpo_offsets(ls_ket, ls_bra);
-
         } // lb_ket
     }
 
