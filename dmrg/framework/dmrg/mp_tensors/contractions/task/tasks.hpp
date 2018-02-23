@@ -129,7 +129,7 @@ public:
         std::swap(lhs.tidx, rhs.tidx);
     }
 
-    void add_line(unsigned b1, unsigned k, char transb1)
+    void add_line(unsigned b1, std::size_t k, char transb1)
     {
         bs.push_back(b1);
         ks.push_back(k);
@@ -492,7 +492,7 @@ public:
         (*this)[ss2].push_back(mt);
     }
 
-    void add_line(unsigned ci, unsigned off, char trans)
+    void add_line(unsigned ci, std::size_t off, char trans)
     {
         bool add = false;
         for (unsigned ss = 0; ss < this->size(); ++ss)
