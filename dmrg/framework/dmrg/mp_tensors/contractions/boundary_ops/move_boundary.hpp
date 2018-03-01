@@ -204,13 +204,15 @@ namespace contraction {
             typedef typename schedule_t::block_type::const_iterator const_iterator;
 
             MPSTensor<Matrix, SymmGroup> buffer; // holds the conjugate tensor if we deal with complex numbers
-            MPSTensor<Matrix, SymmGroup> const & bra_tensor = set_conjugate(bra_tensor_in, buffer);
+            //MPSTensor<Matrix, SymmGroup> const & bra_tensor = set_conjugate(bra_tensor_in, buffer);
+            MPSTensor<Matrix, SymmGroup> bra_tensor = set_conjugate(bra_tensor_in, buffer);
 
             if (!ket_tensor.is_right_paired() || !bra_tensor.is_right_paired())
             {
                 parallel_critical {
                 ket_tensor.make_right_paired();
-                bra_tensor.make_right_paired();
+                //bra_tensor.make_right_paired();
+                bra_tensor.make_left_paired();
                 }
             }
 
@@ -220,9 +222,10 @@ namespace contraction {
                                      ket_right_i = ket_tensor.col_dim(),
                                      bra_right_i = bra_tensor.col_dim();
 
-            ProductBasis<SymmGroup> bra_right_pb(physical_i, bra_tensor.col_dim(),
-                    boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
-                                    -boost::lambda::_1, boost::lambda::_2));
+            //ProductBasis<SymmGroup> bra_right_pb(physical_i, bra_tensor.col_dim(),
+            //        boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
+            //                        -boost::lambda::_1, boost::lambda::_2));
+            ProductBasis<SymmGroup> bra_right_pb(physical_i, bra_tensor.row_dim());
             ProductBasis<SymmGroup> ket_right_pb(physical_i, ket_right_i,
                     boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
                                     -boost::lambda::_1, boost::lambda::_2));

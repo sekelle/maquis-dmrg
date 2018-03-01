@@ -248,7 +248,7 @@ public:
 
     template <class DefaultMatrix, class OtherMatrix>
     void prop_l(DefaultMatrix const & bra, const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret,
-                unsigned ci) const
+                unsigned ci, size_t stripe) const
     {
         int M = l_size, N = r_size, K = m_size;
         uint t_size = m_size * r_size;
@@ -265,7 +265,8 @@ public:
                                                     t_pointer + tidx[i][j] * t_size_padded + t_size,
                                                     &S(0,0), alpha[i][j]);
 
-            blas_gemm('T', 'N', M, N, K, value_type(1), &bra(0,offset), K, &S(0,0), K, value_type(1), &ret.data()[ci][ks[i]], M);
+            //blas_gemm('T', 'N', M, N, K, value_type(1), &bra(0,offset), K, &S(0,0), K, value_type(1), &ret.data()[ci][ks[i]], M);
+            blas_gemm('T', 'N', M, N, K, value_type(1), &bra(offset,0), stripe, &S(0,0), K, value_type(1), &ret.data()[ci][ks[i]], M);
         }
     }
 
@@ -492,7 +493,8 @@ public:
     ContractionGroup(unsigned b, unsigned s, unsigned ls, unsigned ms, unsigned rs, unsigned out_offset, bool left=false)
         : mps_block(b), offset(out_offset), base(s, typename base::value_type(ls, ms, rs))
     {
-        unsigned pair_size = (left) ? ls : rs;
+        //unsigned pair_size = (left) ? ls : rs;
+        unsigned pair_size = (left) ? ms : rs;
         for (unsigned i = 0 ; i < s; ++i)
             (*this)[i].offset = out_offset + i * pair_size;
     }
@@ -572,7 +574,7 @@ public:
         for (int ss1 = 0; ss1 < this->size(); ++ss1)
         {
             if (!(*this)[ss1].n_tasks()) continue;
-            (*this)[ss1].prop_l(bra_mps.data()[mps_block], t_pointer, new_left, ci);
+            (*this)[ss1].prop_l(bra_mps.data()[mps_block], t_pointer, new_left, ci, num_rows(bra_mps.data()[mps_block]));
         }
         free(t_pointer);
     }
