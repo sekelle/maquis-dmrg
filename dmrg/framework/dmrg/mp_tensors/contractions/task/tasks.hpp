@@ -269,6 +269,28 @@ public:
         }
     }
 
+    template <class DefaultMatrix, class OtherMatrix>
+    void create_S_l(std::vector<value_type> & Sbuf, const value_type* t_pointer, unsigned ss, unsigned nrows) const
+    {
+        //int M = l_size, N = r_size, K = m_size;
+        uint t_size = m_size * r_size;
+        uint t_size_padded = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(t_size);
+
+        Matrix S(m_size, r_size);
+        for (index_type i = 0; i < b2sz.size(); ++i)
+        {
+            //index_type b2 = bs[i];
+            memset(&S(0,0), 0, m_size * r_size * sizeof(typename Matrix::value_type));
+
+            for (index_type j = 0; j < b2sz[i]; ++j)
+                maquis::dmrg::detail::iterator_axpy(t_pointer + tidx[i][j] * t_size_padded,
+                                                    t_pointer + tidx[i][j] * t_size_padded + t_size,
+                                                    &S(0,0), alpha[i][j]);
+            for (unsigned c = 0; c < r_size; ++c)
+                std::copy(&S(0,c), &S(0,c) + m_size, Sbuf.data() + i*m_size*r_size*nrows  + c * m_size * nrows + ss * m_size);
+        }
+    }
+
     template <class OtherMatrix>
     void lbtm(const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret, unsigned ci) const
     {
@@ -468,7 +490,7 @@ public:
 
     ContractionGroup() {}
     ContractionGroup(unsigned b, unsigned s, unsigned ls, unsigned ms, unsigned rs, unsigned out_offset, bool left=false)
-        : mps_block(b), base(s, typename base::value_type(ls, ms, rs)) 
+        : mps_block(b), offset(out_offset), base(s, typename base::value_type(ls, ms, rs))
     {
         unsigned pair_size = (left) ? ls : rs;
         for (unsigned i = 0 ; i < s; ++i)
@@ -553,6 +575,26 @@ public:
             (*this)[ss1].prop_l(bra_mps.data()[mps_block], t_pointer, new_left, ci);
         }
         free(t_pointer);
+    }
+
+    template <class DefaultMatrix, class OtherMatrix>
+    void create_S_l(MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
+                    std::vector<value_type> & S,
+                    Boundary<OtherMatrix, SymmGroup> const & left) const
+    {
+        create_T_left(left, ket_mps);
+        for (int ss = 0; ss < this->size(); ++ss)
+            (*this)[ss].create_S_l(S, t_pointer, ss, this->size());
+
+        free(t_pointer);
+    }
+
+    template <class DefaultMatrix, class OtherMatrix>
+    void extract_bra(MPSTensor<DefaultMatrix, SymmGroup> const & bra_mps,
+                     std::vector<value_type> & buf) const
+    {
+        const typename DefaultMatrix::value_type* src = &bra_mps.data()[mps_block](0, offset);
+        //std::copy(src, src +
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -659,11 +701,14 @@ public:
     unsigned get_r_size() const { return (*this)[0].get_r_size(); }
     unsigned get_m_size() const { return (*this)[0].get_m_size(); }
 
+    unsigned get_sm_size() const { return get_m_size() * this->size(); }
+
     size_t flops, memops;
 
     // invariant: phys_out, phys_offset
 private:
     unsigned mps_block;
+    unsigned offset;
     mutable value_type* t_pointer;
 
     std::vector<t_key> t_key_vec;
@@ -762,6 +807,28 @@ public:
         compute_mpo_offsets(rs_bra, rs_ket);
     }
 
+    template <class DefaultMatrix, class OtherMatrix>
+    void prop_l(MPSTensor<DefaultMatrix, SymmGroup> const & bra_mps,
+                MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
+                unsigned ci,
+                Boundary<OtherMatrix, SymmGroup> const & left,
+                Boundary<OtherMatrix, SymmGroup> & new_left) const
+    {
+        std::size_t tot_m_size = 0;
+        for (auto& cg : *this) tot_m_size += cg.get_sm_size();
+        size_t S_size = new_left.index().n_blocks(ci) * tot_m_size * new_left.index().right_size(ci);
+
+        std::vector<float_type> S(S_size);
+
+        for (int s = 0; s < this->size(); ++s)
+            (*this)[s].create_S_l(ket_mps, S, left);
+    }
+
+    std::vector<long int>      & get_offsets()       { return mpo_offsets; }
+    std::vector<long int> const& get_offsets() const { return mpo_offsets; }
+
+private:
+
     void compute_mpo_offsets(size_t rs_bra, size_t rs_ket)
     {
         std::size_t block_size = bit_twiddling::round_up<ALIGNMENT/sizeof(float_type)>(rs_bra * rs_ket);
@@ -775,10 +842,6 @@ public:
                     mg.get_ks()[b] = mpo_offsets[mg.get_bs()[b]];
     }
 
-    std::vector<long int>      & get_offsets()       { return mpo_offsets; }
-    std::vector<long int> const& get_offsets() const { return mpo_offsets; }
-
-private:
     std::vector<long int> mpo_offsets;
 };
 
