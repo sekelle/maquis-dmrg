@@ -270,7 +270,6 @@ public:
         }
     }
 
-    template <class DefaultMatrix, class OtherMatrix>
     void create_S_l(std::vector<value_type> & Sbuf, const value_type* t_pointer, unsigned ss, unsigned nrows) const
     {
         //int M = l_size, N = r_size, K = m_size;
@@ -589,14 +588,6 @@ public:
             (*this)[ss].create_S_l(S, t_pointer, ss, this->size());
 
         free(t_pointer);
-    }
-
-    template <class DefaultMatrix, class OtherMatrix>
-    void extract_bra(MPSTensor<DefaultMatrix, SymmGroup> const & bra_mps,
-                     std::vector<value_type> & buf) const
-    {
-        const typename DefaultMatrix::value_type* src = &bra_mps.data()[mps_block](0, offset);
-        //std::copy(src, src +
     }
 
     template <class DefaultMatrix, class OtherMatrix>

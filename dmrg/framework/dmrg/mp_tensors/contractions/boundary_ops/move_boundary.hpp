@@ -207,7 +207,8 @@ namespace contraction {
             //MPSTensor<Matrix, SymmGroup> const & bra_tensor = set_conjugate(bra_tensor_in, buffer);
             MPSTensor<Matrix, SymmGroup> bra_tensor = set_conjugate(bra_tensor_in, buffer);
 
-            if (!ket_tensor.is_right_paired() || !bra_tensor.is_right_paired())
+            //if (!ket_tensor.is_right_paired() || !bra_tensor.is_right_paired())
+            if (!ket_tensor.is_right_paired() || !bra_tensor.is_left_paired())
             {
                 parallel_critical {
                 ket_tensor.make_right_paired();
@@ -262,6 +263,7 @@ namespace contraction {
                     {
                         charge rc_ket = it->first;
                         ret.allocate(rc_bra, rc_ket);
+                        //it->second.prop_l(bra_tensor, ket_tensor, ret.index().cohort_index(rc_bra, rc_ket), left, ret);
                         for (auto const& cg : it->second) // physical index loop
                             cg.prop_l(bra_tensor, ket_tensor, ret.index().cohort_index(rc_bra, rc_ket), left, ret);
                     }
