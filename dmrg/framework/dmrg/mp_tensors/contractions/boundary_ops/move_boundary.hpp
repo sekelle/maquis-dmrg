@@ -68,7 +68,7 @@ namespace contraction {
             unsigned loop_max = right_i.size();
             schedule_t tasks(loop_max);
             omp_for(unsigned mb, parallel::range<unsigned>(0,loop_max), {
-                lshtm_tasks(mpo, ket_tensor, ket_tensor, left.index(), right_pb, right_pb, mb, tasks[mb], false);
+                lshtm_tasks(mpo, ket_tensor, ket_tensor, left.index(), left_pb, right_pb, mb, tasks[mb], false);
             });
 
             BoundaryIndex<Matrix, SymmGroup> b_index(out_left_i, right_i);
@@ -90,20 +90,12 @@ namespace contraction {
                     b_index.add_cohort(rb_bra, right_i.position(rc_ket), e.second.get_offsets());
 
                     for (auto& cg : e.second)
-                    {
-                        unsigned lb_bra = cg.get_mps_block();
-                        charge lc_bra = left_i[lb_bra].first;
-                        charge phys_out = SymmGroup::fuse(rc_bra, -lc_bra);
-
-                        unsigned base_offset = left_pb(phys_out, lc_bra);
                         for (unsigned ss = 0; ss < cg.size(); ++ss)
                         {
                             cg[ss].set_l_size(ls_paired);
-                            unsigned intra_b_offset = base_offset + ss * cg[ss].get_m_size();
                             for (index_type b = 0; b < cg[ss].get_bs().size(); ++b) 
-                                cg[ss].get_ks()[b] = intra_b_offset + offsets[cg[ss].get_bs()[b]];
+                                cg[ss].get_ks()[b] = cg[ss].offset + offsets[cg[ss].get_bs()[b]];
                         }
-                    }
                 }
             }
 
