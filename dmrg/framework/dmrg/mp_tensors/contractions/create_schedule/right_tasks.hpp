@@ -68,7 +68,7 @@ namespace common {
             if (std::abs(SymmGroup::particleNumber(lc_ket) - SymmGroup::particleNumber(lc_bra)) > site_basis_max_diff) continue;
             unsigned ls_ket = left_i[lb_ket].second;
 
-            typename block_type::mapped_type cohort(phys_i.size(), mpo.row_dim());
+            typename block_type::mapped_type cohort(lb_bra, phys_i.size(), mpo.row_dim());
 
             for (unsigned s = 0; s < phys_i.size(); ++s)
             {

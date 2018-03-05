@@ -490,7 +490,7 @@ public:
 
     ContractionGroup() {}
     ContractionGroup(unsigned b, unsigned s, unsigned ls, unsigned ms, unsigned rs, unsigned out_offset, bool left=false)
-        : mps_block(b), offset(out_offset), base(s, typename base::value_type(ls, ms, rs))
+        : mps_block(b), offset(out_offset), l_size(ls), m_size(ms), r_size(rs), base(s, typename base::value_type(ls, ms, rs))
     {
         //unsigned pair_size = (left) ? ls : rs;
         unsigned pair_size = (left) ? ms : rs;
@@ -553,6 +553,8 @@ public:
               Boundary<OtherMatrix, SymmGroup> const & right,
               Boundary<OtherMatrix, SymmGroup> & new_right) const
     {
+        if (!this->n_tasks()) return;
+
         create_T(ket_mps, right);
         for (int ss1 = 0; ss1 < this->size(); ++ss1)
         {
@@ -569,6 +571,8 @@ public:
                 Boundary<OtherMatrix, SymmGroup> const & left,
                 Boundary<OtherMatrix, SymmGroup> & new_left) const
     {
+        if (!this->n_tasks()) return;
+
         create_T_left(left, ket_mps);
         for (int ss1 = 0; ss1 < this->size(); ++ss1)
         {
@@ -583,6 +587,8 @@ public:
                     std::vector<value_type> & S,
                     Boundary<OtherMatrix, SymmGroup> const & left) const
     {
+        if (!this->n_tasks()) return;
+
         create_T_left(left, ket_mps);
         for (int ss = 0; ss < this->size(); ++ss)
             (*this)[ss].create_S_l(S, t_pointer, ss, this->size());
@@ -596,6 +602,8 @@ public:
               Boundary<OtherMatrix, SymmGroup> const & left,
               Boundary<OtherMatrix, SymmGroup> & new_left) const
     {
+        if (!this->n_tasks()) return;
+
         create_T_left(left, ket_mps);
         for (int ss1 = 0; ss1 < this->size(); ++ss1)
         {
@@ -611,6 +619,8 @@ public:
               Boundary<OtherMatrix, SymmGroup> const & right,
               Boundary<OtherMatrix, SymmGroup> & new_right) const
     {
+        if (!this->n_tasks()) return;
+
         create_T(ket_mps, right);
         for (int ss1 = 0; ss1 < this->size(); ++ss1)
         {
@@ -690,9 +700,9 @@ public:
     }
 
     unsigned get_mps_block() const { return mps_block; }
-    unsigned get_l_size() const { return (*this)[0].get_l_size(); }
-    unsigned get_r_size() const { return (*this)[0].get_r_size(); }
-    unsigned get_m_size() const { return (*this)[0].get_m_size(); }
+    unsigned get_l_size() const { return l_size; }
+    unsigned get_m_size() const { return m_size; }
+    unsigned get_r_size() const { return r_size; }
 
     unsigned get_sm_size() const { return get_m_size() * this->size(); }
 
@@ -702,6 +712,8 @@ public:
 private:
     unsigned mps_block;
     unsigned offset;
+    unsigned l_size, m_size, r_size;
+
     mutable value_type* t_pointer;
 
     std::vector<t_key> t_key_vec;
@@ -711,8 +723,6 @@ private:
     template <class DefaultMatrix, class OtherMatrix>
     void create_T_left(Boundary<OtherMatrix, SymmGroup> const & left, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
     {
-        if (!this->size()) return;
-
         char gemmtrans[2] = {'N', 'T'};
         int M = (*this)[0].get_m_size(), N = get_r_size();
 
@@ -738,8 +748,6 @@ private:
     template <class DefaultMatrix, class OtherMatrix>
     void create_T(MPSTensor<DefaultMatrix, SymmGroup> const & mps, Boundary<OtherMatrix, SymmGroup> const & right) const
     {
-        if (!this->size()) return;
-
         int M = get_m_size();
         int N = get_r_size();
 
@@ -780,7 +788,7 @@ public:
 
     Cohort() {}
     Cohort(std::size_t mpodim) : mpo_offsets(mpodim) {}
-    Cohort(std::size_t phys_size, std::size_t mpodim) : base(phys_size), mpo_offsets(mpodim) {}
+    Cohort(unsigned mb, std::size_t phys_size, std::size_t mpodim) : mpsblock(mb), base(phys_size), mpo_offsets(mpodim) {}
 
     void add_line(unsigned b2, char trans)
     {
@@ -793,6 +801,9 @@ public:
 
     void finalize(size_t rs_bra, size_t rs_ket)
     {
+        unsigned cgcount = std::count_if(base::begin(), base::end(),
+                            [](ContractionGroup<Matrix, SymmGroup> const & cg) { return cg.n_tasks() > 0; });
+        if (cgcount == 0)
         base::erase(std::remove_if(base::begin(), base::end(),
                                    [](ContractionGroup<Matrix, SymmGroup> const & cg) { return cg.n_tasks() == 0; }), base::end());
         for (auto& cg : (*this)) cg.finalize_t();
@@ -812,15 +823,33 @@ public:
         size_t S_size = new_left.index().n_blocks(ci) * tot_m_size * new_left.index().right_size(ci);
 
         std::vector<float_type> S(S_size);
+        Matrix SM(tot_m_size, new_left.index().n_blocks(ci) * new_left.index().right_size(ci));
 
         for (int s = 0; s < this->size(); ++s)
+            if ( (*this)[s].n_tasks() )
             (*this)[s].create_S_l(ket_mps, S, left);
+        std::copy(&S[0], &S[0] + S_size, &SM(0,0));
+
+        //maquis::cout << SM << std::endl;
+        //std::copy(S.begin(), S.end(), std::ostream_iterator<float_type>(std::cout, " " ));
+        //maquis::cout << std::endl;
+
+        //assert(num_rows(bra_mps.data()[mpsblock]) == tot_m_size);
+        Matrix coh(num_cols(bra_mps.data()[mpsblock]), new_left.index().n_blocks(ci) * new_left.index().right_size(ci));
+        //maquis::cout << num_rows(bra_mps.data()[mpsblock]) << " " << tot_m_size << std::endl;
+        gemm(transpose(bra_mps.data()[mpsblock]), SM, coh);
+        //maquis::cout << new_left.data()[ci].size() << " " << num_rows(coh) * num_cols(coh) << std::endl;
+        //assert(new_left.data()[ci].size() == num_rows(coh) * num_cols(coh));
+        std::copy(&coh(0,0), &coh(0,0) + num_rows(coh)*num_cols(coh), &new_left.data()[ci][0]);
+        //new_left.data()[ci] = coh.get_values();
     }
 
     std::vector<long int>      & get_offsets()       { return mpo_offsets; }
     std::vector<long int> const& get_offsets() const { return mpo_offsets; }
 
 private:
+
+    unsigned mpsblock;
 
     void compute_mpo_offsets(size_t rs_bra, size_t rs_ket)
     {
