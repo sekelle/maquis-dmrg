@@ -329,7 +329,7 @@ namespace storage {
 
             for (size_t ci = 0; ci < o.index().n_cohorts(); ++ci)
             {
-                size_t cohort_size = o.index().n_blocks(ci) * o.index().block_size(ci);
+                size_t cohort_size = o.data()[ci].size();
                 cudaMalloc( (void**)(&(o.device_ptr[ci])), cohort_size * sizeof(typename Matrix::value_type) );
                 cudaMemcpy( o.device_ptr[ci], &o.data()[ci][0], cohort_size * sizeof(typename Matrix::value_type), cudaMemcpyHostToDevice );
             }
@@ -350,7 +350,7 @@ namespace storage {
             {
                 if (o.device_ptr[ci] != NULL)
                 {
-                    size_t cohort_size = o.index().n_blocks(ci) * o.index().block_size(ci);
+                    size_t cohort_size = o.data()[ci].size();
                     cudaMemcpy( &(o.data()[ci][0]), o.device_ptr[ci], cohort_size
                                                                       * sizeof(typename Matrix::value_type), cudaMemcpyDeviceToHost );
                     cudaFree(o.device_ptr[ci]);
