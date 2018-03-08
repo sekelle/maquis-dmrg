@@ -308,7 +308,8 @@ public:
             assert(ud[i].first == ld[i].first);
 
             std::size_t ls = ud[i].second, rs = ld[i].second;
-            std::size_t block_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(ls*rs);
+            //std::size_t block_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(ls*rs);
+            std::size_t block_size = bit_twiddling::round_up<1>(ls*rs);
             data()[i].resize(block_size * ad, value_type(0.));
             std::fill(data()[i].begin(), data()[i].begin() + ls * rs, value_type(1.));
             std::vector<long int> offsets(ad);

@@ -270,7 +270,7 @@ public:
         }
     }
 
-    void create_S_l(std::vector<value_type> & Sbuf, const value_type* t_pointer, unsigned ss, unsigned nrows) const
+    void create_S_l(std::vector<value_type> & Sbuf, const value_type* t_pointer, unsigned ss, unsigned nrows, size_t stripe) const
     {
         //int M = l_size, N = r_size, K = m_size;
         uint t_size = m_size * r_size;
@@ -286,8 +286,10 @@ public:
                 maquis::dmrg::detail::iterator_axpy(t_pointer + tidx[i][j] * t_size_padded,
                                                     t_pointer + tidx[i][j] * t_size_padded + t_size,
                                                     &S(0,0), alpha[i][j]);
+
+            unsigned ii = ks[i] / (l_size * r_size);
             for (unsigned c = 0; c < r_size; ++c)
-                std::copy(&S(0,c), &S(0,c) + m_size, Sbuf.data() + i*m_size*r_size*nrows  + c * m_size * nrows + ss * m_size);
+                std::copy(&S(0,c), &S(0,c) + m_size, Sbuf.data() + stripe * (ii*r_size + c) + offset);
         }
     }
 
@@ -585,13 +587,13 @@ public:
     template <class DefaultMatrix, class OtherMatrix>
     void create_S_l(MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
                     std::vector<value_type> & S,
-                    Boundary<OtherMatrix, SymmGroup> const & left) const
+                    Boundary<OtherMatrix, SymmGroup> const & left, size_t stripe) const
     {
         if (!this->n_tasks()) return;
 
         create_T_left(left, ket_mps);
         for (int ss = 0; ss < this->size(); ++ss)
-            (*this)[ss].create_S_l(S, t_pointer, ss, this->size());
+            (*this)[ss].create_S_l(S, t_pointer, ss, this->size(), stripe);
 
         free(t_pointer);
     }
@@ -697,6 +699,19 @@ public:
             base2::init(left, right);
         }
         else finalize_t();
+    }
+
+    size_t lf() const
+    {
+        if (this->begin() != this->end())
+        {
+            int s = this->begin()->size();
+            for (auto& mg : *this)
+                assert(s == mg.size());
+
+            return this->size() * 2 * l_size * m_size * r_size * this->begin()->size();
+        }
+        else return 0;
     }
 
     unsigned get_mps_block() const { return mps_block; }
@@ -818,34 +833,42 @@ public:
                 Boundary<OtherMatrix, SymmGroup> const & left,
                 Boundary<OtherMatrix, SymmGroup> & new_left) const
     {
-        std::size_t tot_m_size = 0;
-        for (auto& cg : *this) tot_m_size += cg.get_sm_size();
-        size_t S_size = new_left.index().n_blocks(ci) * tot_m_size * new_left.index().right_size(ci);
+        int stripe = num_rows(bra_mps.data()[mpsblock]);
+        size_t S_size = new_left.index().n_blocks(ci) * stripe * new_left.index().right_size(ci);
 
         std::vector<float_type> S(S_size);
-        Matrix SM(tot_m_size, new_left.index().n_blocks(ci) * new_left.index().right_size(ci));
-
         for (int s = 0; s < this->size(); ++s)
             if ( (*this)[s].n_tasks() )
-            (*this)[s].create_S_l(ket_mps, S, left);
-        std::copy(&S[0], &S[0] + S_size, &SM(0,0));
+            (*this)[s].create_S_l(ket_mps, S, left, stripe);
 
-        //maquis::cout << SM << std::endl;
-        //std::copy(S.begin(), S.end(), std::ostream_iterator<float_type>(std::cout, " " ));
-        //maquis::cout << std::endl;
-
-        //assert(num_rows(bra_mps.data()[mpsblock]) == tot_m_size);
-        Matrix coh(num_cols(bra_mps.data()[mpsblock]), new_left.index().n_blocks(ci) * new_left.index().right_size(ci));
-        //maquis::cout << num_rows(bra_mps.data()[mpsblock]) << " " << tot_m_size << std::endl;
-        gemm(transpose(bra_mps.data()[mpsblock]), SM, coh);
-        //maquis::cout << new_left.data()[ci].size() << " " << num_rows(coh) * num_cols(coh) << std::endl;
-        //assert(new_left.data()[ci].size() == num_rows(coh) * num_cols(coh));
-        std::copy(&coh(0,0), &coh(0,0) + num_rows(coh)*num_cols(coh), &new_left.data()[ci][0]);
-        //new_left.data()[ci] = coh.get_values();
+        int M = num_cols(bra_mps.data()[mpsblock]);
+        int N = new_left.index().n_blocks(ci) * new_left.index().right_size(ci);
+        blas_gemm('T', 'N', M, N, stripe, float_type(1),
+                  &bra_mps.data()[mpsblock](0,0), stripe, &S[0], stripe, float_type(0), &new_left.data()[ci][0], M);
     }
 
     std::vector<long int>      & get_offsets()       { return mpo_offsets; }
     std::vector<long int> const& get_offsets() const { return mpo_offsets; }
+
+    size_t lf() const
+    {
+        size_t ret = 0;
+        for (auto& cg : *this)
+            ret += cg.lf();
+
+        return ret;
+    }
+
+    template <class DefaultMatrix, class OtherMatrix>
+    size_t lf_new(
+                  MPSTensor<DefaultMatrix, SymmGroup> const & bra_mps,
+                  unsigned ci,
+                  Boundary<OtherMatrix, SymmGroup> & new_left
+                 ) const
+    {
+        size_t stripe = num_rows(bra_mps.data()[mpsblock]);
+        return 2 * num_cols(bra_mps.data()[mpsblock]) * stripe * new_left.index().n_blocks(ci) * new_left.index().right_size(ci);
+    }
 
 private:
 
@@ -853,7 +876,8 @@ private:
 
     void compute_mpo_offsets(size_t rs_bra, size_t rs_ket)
     {
-        std::size_t block_size = bit_twiddling::round_up<ALIGNMENT/sizeof(float_type)>(rs_bra * rs_ket);
+        //std::size_t block_size = bit_twiddling::round_up<ALIGNMENT/sizeof(float_type)>(rs_bra * rs_ket);
+        std::size_t block_size = rs_bra * rs_ket;
 
         index_type cnt = 0;
         for(auto& b : mpo_offsets) if (b) b = block_size * cnt++; else b = -1;
