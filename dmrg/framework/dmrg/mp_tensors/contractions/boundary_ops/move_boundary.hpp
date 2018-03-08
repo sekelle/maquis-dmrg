@@ -238,21 +238,6 @@ namespace contraction {
             if (symmetric) b_index.complement_transpose(mpo.herm_right, true);
             Boundary<OtherMatrix, SymmGroup> ret(b_index);
 
-
-            {
-                size_t f_new = 0, f_old = 0;
-                for(index_type rb_bra = 0; rb_bra < loop_max; ++rb_bra) {
-                    charge rc_bra = bra_right_i[rb_bra].first;
-                    for (const_iterator it = tasks[rb_bra].begin(); it != tasks[rb_bra].end(); ++it)
-                    {
-                        charge rc_ket = it->first;
-                        f_old += it->second.lf();
-                        f_new += it->second.lf_new(bra_tensor, ret.index().cohort_index(rc_bra, rc_ket), ret);
-                    }
-                }
-                maquis::cout << "BG " << f_old << " " << f_new << " " << double(f_old) / f_new << std::endl;
-            }
-
             // Contraction
             #ifdef MAQUIS_OPENMP
             #pragma omp parallel

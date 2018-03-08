@@ -701,19 +701,6 @@ public:
         else finalize_t();
     }
 
-    size_t lf() const
-    {
-        if (this->begin() != this->end())
-        {
-            int s = this->begin()->size();
-            for (auto& mg : *this)
-                assert(s == mg.size());
-
-            return this->size() * 2 * l_size * m_size * r_size * this->begin()->size();
-        }
-        else return 0;
-    }
-
     unsigned get_mps_block() const { return mps_block; }
     unsigned get_l_size() const { return l_size; }
     unsigned get_m_size() const { return m_size; }
@@ -849,26 +836,6 @@ public:
 
     std::vector<long int>      & get_offsets()       { return mpo_offsets; }
     std::vector<long int> const& get_offsets() const { return mpo_offsets; }
-
-    size_t lf() const
-    {
-        size_t ret = 0;
-        for (auto& cg : *this)
-            ret += cg.lf();
-
-        return ret;
-    }
-
-    template <class DefaultMatrix, class OtherMatrix>
-    size_t lf_new(
-                  MPSTensor<DefaultMatrix, SymmGroup> const & bra_mps,
-                  unsigned ci,
-                  Boundary<OtherMatrix, SymmGroup> & new_left
-                 ) const
-    {
-        size_t stripe = num_rows(bra_mps.data()[mpsblock]);
-        return 2 * num_cols(bra_mps.data()[mpsblock]) * stripe * new_left.index().n_blocks(ci) * new_left.index().right_size(ci);
-    }
 
 private:
 
