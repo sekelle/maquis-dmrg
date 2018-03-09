@@ -844,7 +844,7 @@ private:
     void compute_mpo_offsets(size_t rs_bra, size_t rs_ket)
     {
         //std::size_t block_size = bit_twiddling::round_up<ALIGNMENT/sizeof(float_type)>(rs_bra * rs_ket);
-        std::size_t block_size = rs_bra * rs_ket;
+        std::size_t block_size = rs_bra * rs_ket; // ALIGN
 
         index_type cnt = 0;
         for(auto& b : mpo_offsets) if (b) b = block_size * cnt++; else b = -1;

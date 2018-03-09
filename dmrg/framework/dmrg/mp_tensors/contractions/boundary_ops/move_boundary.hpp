@@ -107,7 +107,7 @@ namespace contraction {
                 for (const_iterator it = tasks[rb_bra].begin(); it != tasks[rb_bra].end(); ++it) // mc loop
                 {
                     charge rc_ket = it->first;
-                    ret.template allocate<1>(rc_bra, rc_ket);
+                    ret.allocate(rc_bra, rc_ket);
                     for (auto const& cg : it->second) // physical index loop
                         cg.lbtm(ket_tensor, ret.index().cohort_index(rc_bra, rc_ket), left, ret);
                 }
@@ -173,7 +173,7 @@ namespace contraction {
                 for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it) // lc_ket loop
                 {
                     charge lc_ket = it->first;
-                    ret.template allocate<1>(lc_ket, lc_bra);
+                    ret.allocate(lc_ket, lc_bra);
                     for (auto const& cg : it->second) // physical index loop
                         cg.rbtm(ket_tensor, ret.index().cohort_index(lc_ket, lc_bra), right, ret);
                 }
@@ -254,8 +254,7 @@ namespace contraction {
                     for (const_iterator it = tasks[rb_bra].begin(); it != tasks[rb_bra].end(); ++it)
                     {
                         charge rc_ket = it->first;
-                        //ret.allocate(rc_bra, rc_ket);
-                        ret.template allocate<1>(rc_bra, rc_ket);
+                        ret.allocate(rc_bra, rc_ket);
                         //for (auto const& cg : it->second) // physical index loop
                         //    cg.prop_l(bra_tensor, ket_tensor, ret.index().cohort_index(rc_bra, rc_ket), left, ret);
 
@@ -331,8 +330,7 @@ namespace contraction {
                     for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it) // lc_ket loop
                     {
                         charge lc_ket = it->first;
-                        //ret.allocate(lc_ket, lc_bra);
-                        ret.template allocate<1>(lc_ket, lc_bra);
+                        ret.allocate(lc_ket, lc_bra);
                         for (auto const& cg : it->second) // physical index loop
                             cg.prop(ket_tensor, bra_tensor.data()[lb_bra], ret.index().cohort_index(lc_ket, lc_bra), right, ret);
                     }
