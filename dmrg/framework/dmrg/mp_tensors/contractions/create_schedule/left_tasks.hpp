@@ -40,7 +40,7 @@ namespace common {
                      MPSTensor<Matrix, SymmGroup> const & bra,
                      MPSTensor<Matrix, SymmGroup> const & ket,
                      BoundaryIndex<OtherMatrix, SymmGroup> const & left,
-                     ProductBasis<SymmGroup> const & bra_right_pb,
+                     ProductBasis<SymmGroup> const & bra_left_pb,
                      ProductBasis<SymmGroup> const & ket_right_pb,
                      unsigned rb_bra,
                      typename common::BoundarySchedule<Matrix, SymmGroup>::block_type & mpsb,
@@ -78,13 +78,9 @@ namespace common {
                 charge lc_bra = SymmGroup::fuse(rc_bra, -phys_out);
                 unsigned lb_bra = bra_left_i.position(lc_bra); if (lb_bra == bra_left_i.size()) continue;
                 unsigned ls_bra = bra_left_i[lb_bra].second;
+                unsigned bra_offset = bra_left_pb(phys_out, lc_bra);
 
-                //unsigned bra_offset = bra_right_pb(phys_out, rc_bra);
-                unsigned bra_offset = bra_right_pb(phys_out, lc_bra);
-
-                //cohort[s] = typename block_type::mapped_value_type(lb_bra, phys_i[s].second, rs_bra, ls_bra, rs_ket,
-                cohort[s] = typename block_type::mapped_value_type(rb_bra, phys_i[s].second, rs_bra, ls_bra, rs_ket,
-                                                                   bra_offset, true);
+                cohort[s] = typename block_type::mapped_value_type(rb_bra, phys_i[s].second, rs_bra, ls_bra, rs_ket, bra_offset, true);
             }
 
             for (unsigned s = 0; s < phys_i.size(); ++s)
