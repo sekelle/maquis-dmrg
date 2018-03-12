@@ -90,8 +90,7 @@ namespace common {
             for (unsigned s = 0; s < phys_i.size(); ++s)
             {
                 charge phys_out = phys_i[s].first;
-                charge lc_bra = SymmGroup::fuse(rc_bra, -phys_out);
-                unsigned lb_bra = bra_left_i.position(lc_bra); if (lb_bra == bra_left_i.size()) continue;
+                charge lc_bra = SymmGroup::fuse(rc_bra, -phys_out); if (!bra_left_i.has(lc_bra)) continue;
 
                 for (index_type b2 = 0; b2 < mpo.col_dim(); ++b2)
                 {
