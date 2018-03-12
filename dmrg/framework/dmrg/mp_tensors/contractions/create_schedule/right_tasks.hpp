@@ -130,7 +130,7 @@ namespace common {
                         } //op_index
                     } // b2
 
-                    cohort.add_line(b1, !mpo.herm_left.skip(b1, lc_ket, lc_bra));
+                    cohort.add_line(b1);
                 } // b1
             } // phys_out
 

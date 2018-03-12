@@ -799,10 +799,10 @@ public:
     Cohort(std::size_t mpodim) : mpo_offsets(mpodim) {}
     Cohort(unsigned mb, std::size_t phys_size, std::size_t mpodim) : mpsblock(mb), base(phys_size), mpo_offsets(mpodim) {}
 
-    void add_line(unsigned b2, char trans)
+    void add_line(unsigned b2)
     {
         bool add = false;
-        for (auto& cg : (*this)) add = cg.add_line(b2, 0, trans) || add;
+        for (auto& cg : (*this)) add = cg.add_line(b2, 0, false) || add;
 
         //for (auto& cg : (*this)) add = cg.check_add() || add;
         //if (add) for (auto& cg : (*this)) cg.add_line_direct(b2, 0, trans);

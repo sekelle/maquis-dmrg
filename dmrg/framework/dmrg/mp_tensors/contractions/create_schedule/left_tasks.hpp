@@ -136,7 +136,7 @@ namespace common {
                         } //op_index
                     } // b1
 
-                    cohort.add_line(b2, !mpo.herm_right.skip(b2, rc_bra, rc_ket));
+                    cohort.add_line(b2);
                 } // b2
             } // phys_out
 
