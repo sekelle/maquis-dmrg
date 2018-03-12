@@ -79,6 +79,13 @@ namespace common {
                 unsigned bra_offset = right_pb(phys_out, rc_bra);
 
                 cohort[s] = typename block_type::mapped_value_type(lb_ket, phys_i[s].second, ls_bra, ls_ket, rs_bra, bra_offset);
+            }
+
+            for (unsigned s = 0; s < phys_i.size(); ++s)
+            {
+                charge phys_out = phys_i[s].first;
+                charge rc_bra = SymmGroup::fuse(lc_bra, phys_out);
+                unsigned rb_bra = right_i.position(rc_bra); if (rb_bra == right_i.size()) continue;
 
                 ::SU2::Wigner9jCache<value_type, SymmGroup> w9j(lc_bra, lc_ket, rc_bra);
 

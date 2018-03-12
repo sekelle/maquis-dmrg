@@ -155,7 +155,7 @@ public:
         tmpline.clear();
     }
 
-    std::size_t current_line_size()
+    std::size_t current_line_size() const
     {
         return tmpline.size();
     }
@@ -232,7 +232,6 @@ public:
         Matrix S(m_size, r_size);
         for (index_type i = 0; i < b2sz.size(); ++i)
         {
-            index_type b1 = bs[i];
             memset(&S(0,0), 0, m_size * r_size * sizeof(typename Matrix::value_type));
 
             const value_type* alpha_i = alpha[i];
@@ -257,7 +256,6 @@ public:
         Matrix S(m_size, r_size);
         for (index_type i = 0; i < b2sz.size(); ++i)
         {
-            //index_type b2 = bs[i];
             memset(&S(0,0), 0, m_size * r_size * sizeof(typename Matrix::value_type));
 
             for (index_type j = 0; j < b2sz[i]; ++j)
@@ -270,16 +268,14 @@ public:
         }
     }
 
-    void create_S_l(std::vector<value_type> & Sbuf, const value_type* t_pointer, unsigned ss, unsigned nrows, size_t stripe) const
+    void create_S_l(std::vector<value_type> & Sbuf, const value_type* t_pointer, size_t stripe, std::vector<std::size_t> const & ksa) const
     {
-        //int M = l_size, N = r_size, K = m_size;
         uint t_size = m_size * r_size;
         uint t_size_padded = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(t_size);
 
         Matrix S(m_size, r_size);
         for (index_type i = 0; i < b2sz.size(); ++i)
         {
-            //index_type b2 = bs[i];
             memset(&S(0,0), 0, m_size * r_size * sizeof(typename Matrix::value_type));
 
             for (index_type j = 0; j < b2sz[i]; ++j)
@@ -288,6 +284,7 @@ public:
                                                     &S(0,0), alpha[i][j]);
 
             unsigned ii = ks[i] / (l_size * r_size);
+            //if (b2sz[i])
             for (unsigned c = 0; c < r_size; ++c)
                 std::copy(&S(0,c), &S(0,c) + m_size, Sbuf.data() + stripe * (ii*r_size + c) + offset);
         }
@@ -517,15 +514,26 @@ public:
         (*this)[ss2].push_back(mt);
     }
 
+    bool check_add() const
+    {
+        bool add = false;
+        for (auto& mg : (*this)) add = add || mg.current_line_size();
+
+        return add;
+    }
+
+    void add_line_direct(unsigned ci, std::size_t off, char trans)
+    {
+        for (auto& mg : (*this)) mg.add_line(ci, off, trans);
+    }
+
     bool add_line(unsigned ci, std::size_t off, char trans)
     {
         bool add = false;
-        for (unsigned ss = 0; ss < this->size(); ++ss)
-            add = add || (*this)[ss].current_line_size();
+        for (auto& mg : (*this)) add = add || mg.current_line_size();
 
         if (add)
-            for (unsigned ss = 0; ss < this->size(); ++ss)
-                (*this)[ss].add_line(ci, off, trans);
+        for (auto& mg : (*this)) mg.add_line(ci, off, trans);
 
         return add;
     }
@@ -569,8 +577,7 @@ public:
     template <class DefaultMatrix, class OtherMatrix>
     void prop_l(MPSTensor<DefaultMatrix, SymmGroup> const & bra_mps,
                 MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
-                unsigned ci,
-                Boundary<OtherMatrix, SymmGroup> const & left,
+                unsigned ci, Boundary<OtherMatrix, SymmGroup> const & left,
                 Boundary<OtherMatrix, SymmGroup> & new_left) const
     {
         if (!this->n_tasks()) return;
@@ -587,13 +594,13 @@ public:
     template <class DefaultMatrix, class OtherMatrix>
     void create_S_l(MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
                     std::vector<value_type> & S,
-                    Boundary<OtherMatrix, SymmGroup> const & left, size_t stripe) const
+                    Boundary<OtherMatrix, SymmGroup> const & left, size_t stripe, std::vector<std::size_t> const & ks) const
     {
         if (!this->n_tasks()) return;
 
         create_T_left(left, ket_mps);
         for (int ss = 0; ss < this->size(); ++ss)
-            (*this)[ss].create_S_l(S, t_pointer, ss, this->size(), stripe);
+            (*this)[ss].create_S_l(S, t_pointer, stripe, ks);
 
         free(t_pointer);
     }
@@ -797,6 +804,9 @@ public:
         bool add = false;
         for (auto& cg : (*this)) add = cg.add_line(b2, 0, trans) || add;
 
+        //for (auto& cg : (*this)) add = cg.check_add() || add;
+        //if (add) for (auto& cg : (*this)) cg.add_line_direct(b2, 0, trans);
+
         // a list of all mpo b values that appear in the boundary on the "S"-intermediate side
         if (add) mpo_offsets[b2] = 1;
     }
@@ -826,7 +836,7 @@ public:
         std::vector<float_type> S(S_size);
         for (int s = 0; s < this->size(); ++s)
             if ( (*this)[s].n_tasks() )
-            (*this)[s].create_S_l(ket_mps, S, left, stripe);
+            (*this)[s].create_S_l(ket_mps, S, left, stripe, ks);
 
         int M = num_cols(bra_mps.data()[mpsblock]);
         int N = new_left.index().n_blocks(ci) * new_left.index().right_size(ci);
@@ -843,11 +853,10 @@ private:
 
     void compute_mpo_offsets(size_t rs_bra, size_t rs_ket)
     {
-        //std::size_t block_size = bit_twiddling::round_up<ALIGNMENT/sizeof(float_type)>(rs_bra * rs_ket);
         std::size_t block_size = rs_bra * rs_ket; // ALIGN
 
         index_type cnt = 0;
-        for(auto& b : mpo_offsets) if (b) b = block_size * cnt++; else b = -1;
+        for(auto& b : mpo_offsets) if (b) { b = block_size * cnt++; ks.push_back(std::size_t(b)); } else b = -1;
 
         for (auto& cg : (*this))
             for (auto& mg : cg)
@@ -856,6 +865,7 @@ private:
     }
 
     std::vector<long int> mpo_offsets;
+    std::vector<std::size_t> ks;
 };
 
 

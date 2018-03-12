@@ -85,6 +85,13 @@ namespace common {
                 //cohort[s] = typename block_type::mapped_value_type(lb_bra, phys_i[s].second, rs_bra, ls_bra, rs_ket,
                 cohort[s] = typename block_type::mapped_value_type(rb_bra, phys_i[s].second, rs_bra, ls_bra, rs_ket,
                                                                    bra_offset, true);
+            }
+
+            for (unsigned s = 0; s < phys_i.size(); ++s)
+            {
+                charge phys_out = phys_i[s].first;
+                charge lc_bra = SymmGroup::fuse(rc_bra, -phys_out);
+                unsigned lb_bra = bra_left_i.position(lc_bra); if (lb_bra == bra_left_i.size()) continue;
 
                 for (index_type b2 = 0; b2 < mpo.col_dim(); ++b2)
                 {
