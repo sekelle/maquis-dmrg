@@ -783,7 +783,16 @@ public:
 
     Cohort() {}
     Cohort(std::size_t mpodim) : mpo_offsets(mpodim) {}
-    Cohort(unsigned mb, std::size_t phys_size, std::size_t mpodim) : mpsblock(mb), base(phys_size), mpo_offsets(mpodim) {}
+    Cohort(
+           unsigned mb,
+           Index<SymmGroup> const & phys_i,
+           index_type l_size,
+           index_type r_size,
+           index_type mpodim
+          )
+          : mpsblock(mb), base(phys_i.size()), mpo_offsets(mpodim)
+    {
+    }
 
     void add_line(unsigned b2)
     {
