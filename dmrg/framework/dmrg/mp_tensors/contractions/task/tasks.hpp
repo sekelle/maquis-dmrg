@@ -916,16 +916,10 @@ public:
                 Boundary<OtherMatrix, SymmGroup> const & left,
                 Boundary<OtherMatrix, SymmGroup> & new_left) const
     {
-        std::vector<float_type> t = create_T_left(left, ket_mps);
-
         int stripe = num_rows(bra_mps.data()[mpsblock]);
-        std::size_t S_size = new_left.index().n_blocks(ci) * stripe * new_left.index().right_size(ci);
 
-        //assert(new_left.index().right_size(ci) == rs);
-        //std::size_t count = std::count_if(mpo_offsets.begin(), mpo_offsets.end(), [](long int i) { return i >= 0; } );
-        //assert(count == new_left.index().n_blocks(ci));
-
-        std::vector<float_type> sloc = create_s(S_size, stripe, t);
+        std::vector<float_type> t = create_T_left(left, ket_mps);
+        std::vector<float_type> sloc = create_s(stripe, t);
 
         int M = num_cols(bra_mps.data()[mpsblock]);
         int N = new_left.index().n_blocks(ci) * new_left.index().right_size(ci);
@@ -941,12 +935,10 @@ public:
     //          double alpha
     //         ) const
     //{
-    //    std::vector<float_type> t = create_T_left(left, ket_mps);
-
     //    int stripe = num_rows(out);
 
-    //    std::size_t S_size = new_left.index().n_blocks(ci) * stripe * new_left.index().right_size(ci);
-    //    std::vector<float_type> sloc = create_s(S_size, stripe, t);
+    //    std::vector<float_type> t = create_T_left(left, ket_mps);
+    //    std::vector<float_type> sloc = create_s(stripe, t);
 
     //    int M = stripe;
     //    int K = S_size / M;
@@ -1012,8 +1004,11 @@ private:
         return ret;
     }
 
-    std::vector<float_type> create_s(std::size_t sz, int stripe, std::vector<float_type> const& t) const
+    std::vector<float_type> create_s(int stripe, std::vector<float_type> const& t) const
     {
+        std::size_t count = std::count_if(mpo_offsets.begin(), mpo_offsets.end(), [](long int i) { return i >= 0; } );
+        std::size_t S_size = count * stripe * std::size_t(rs);
+
         std::vector<std::size_t> tuv_offsets(tuv.size());
         std::size_t buffer_size = 0;
         for (unsigned s = 0; s < tuv.size(); ++s)
@@ -1023,7 +1018,7 @@ private:
             //maquis::cout << "sl " << s << " " << buffer_size << std::endl;
         }
 
-        std::vector<float_type> ret(sz);
+        std::vector<float_type> ret(S_size);
         for (auto const& x : suv)
         {
             if (!x.alpha.size()) continue;
