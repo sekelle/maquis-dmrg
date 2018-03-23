@@ -921,21 +921,37 @@ public:
         int stripe = num_rows(bra_mps.data()[mpsblock]);
         std::size_t S_size = new_left.index().n_blocks(ci) * stripe * new_left.index().right_size(ci);
 
+        //assert(new_left.index().right_size(ci) == rs);
+        //std::size_t count = std::count_if(mpo_offsets.begin(), mpo_offsets.end(), [](long int i) { return i >= 0; } );
+        //assert(count == new_left.index().n_blocks(ci));
+
         std::vector<float_type> sloc = create_s(S_size, stripe, t);
-
-        //std::vector<float_type> S(S_size);
-        //for (int s = 0; s < this->size(); ++s)
-        //    if ( (*this)[s].n_tasks() )
-        //    (*this)[s].create_S_l(ket_mps, S, left, stripe);
-
-        //for (size_t i = 0; i < S_size; ++i)
-        //    assert ( std::abs(sloc[i] - S[i]) < 1e-6 );
 
         int M = num_cols(bra_mps.data()[mpsblock]);
         int N = new_left.index().n_blocks(ci) * new_left.index().right_size(ci);
         blas_gemm('T', 'N', M, N, stripe, float_type(1),
                   &bra_mps.data()[mpsblock](0,0), stripe, &sloc[0], stripe, float_type(0), &new_left.data()[ci][0], M);
     }
+
+    //template <class DefaultMatrix, class OtherMatrix>
+    //void lbtm(
+    //          MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
+    //          Boundary<OtherMatrix, SymmGroup> const & left,
+    //          OtherMatrix & out,
+    //          double alpha
+    //         ) const
+    //{
+    //    std::vector<float_type> t = create_T_left(left, ket_mps);
+
+    //    int stripe = num_rows(out);
+
+    //    std::size_t S_size = new_left.index().n_blocks(ci) * stripe * new_left.index().right_size(ci);
+    //    std::vector<float_type> sloc = create_s(S_size, stripe, t);
+
+    //    int M = stripe;
+    //    int K = S_size / M;
+    //    blas_gemm('N', 'T', M, M, K, float_type(alpha), &sloc[0], stripe, &sloc[0], stripe, float_type(1), &out(0,0), M);
+    //}
 
     std::size_t n_tasks() const
     {
