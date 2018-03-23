@@ -773,37 +773,130 @@ private:
 template <class Matrix, class SymmGroup>                     // invariant: mc, m_size
 class Cohort : public std::vector<ContractionGroup<Matrix, SymmGroup> > 
 {
-    typedef typename SymmGroup::charge charge;
     typedef std::vector<ContractionGroup<Matrix, SymmGroup> > base;
     typedef MPOTensor_detail::index_type index_type;
     typedef typename Matrix::value_type float_type;
+
+    typedef typename ContractionGroup<Matrix, SymmGroup>::t_key t_key;
+
+    class SUnit
+    {
+    public:
+
+        void push_back(unsigned ti, float_type scale)
+        {
+            tidx.push_back(ti);
+            alpha.push_back(scale);
+            b2count++;
+        }
+
+        void add_line(unsigned b)
+        {
+            if(b2count)
+            {
+                b2s.push_back(b2count);
+                b1.push_back(b);
+                b2count=0;
+            }
+        }
+
+        std::size_t n_tasks() const { return alpha.size(); }
+
+        unsigned offset;
+        unsigned ms=0;
+        unsigned s;
+        std::vector<index_type> tidx;
+        std::vector<float_type> alpha;
+        std::vector<index_type> b2s;
+        std::vector<index_type> b1;
+
+    private:
+        unsigned b2count=0;
+    };
+
+    class TUnit
+    {
+    public:
+
+        unsigned insert(t_key tq)
+        {
+            auto pos = t_map.insert(std::make_pair(tq, t_map.size()));
+            return pos.first->second;
+        }
+
+        void finalize_t()
+        {
+            t_key_vec.resize(t_map.size());
+            for (auto const& kit : t_map) t_key_vec[kit.second] = kit.first;
+            t_map.clear();
+        }
+
+        unsigned size() const { return t_key_vec.size(); }
+
+        t_key      & operator[](size_t p) { return t_key_vec[p]; }
+        t_key const& operator[](size_t p) const { return t_key_vec[p]; }
+
+    private:
+        std::vector<t_key> t_key_vec;
+        std::map<t_key, unsigned> t_map;
+    };
 
 public:
     typedef typename base::value_type value_type;
 
     Cohort() {}
-    Cohort(std::size_t mpodim) : mpo_offsets(mpodim) {}
+    Cohort(index_type mpodim) : mpo_offsets(mpodim) {}
     Cohort(
-           unsigned mb,
            Index<SymmGroup> const & phys_i,
+           unsigned mb,
            index_type l_size,
            index_type r_size,
            index_type mpodim
           )
-          : mpsblock(mb), base(phys_i.size()), mpo_offsets(mpodim)
+          : base(phys_i.size()), mpsblock(mb), ls(l_size), rs(r_size), mpo_offsets(mpodim), sfold(phys_i.size())
+          , suv(phys_i.sum_of_sizes())
+          , tuv(phys_i.size())
     {
+        unsigned ssum = 0;
+        for (int s = 0; s < phys_i.size(); ++s)
+        {
+            sfold[s] = ssum;
+            ssum += phys_i[s].second;
+        }
     }
 
-    void add_line(unsigned b2)
+    void push_back(unsigned s, unsigned ss2, t_key tq, float_type scale)
+    {
+        (*this)[s].push_back(ss2, tq, scale);
+
+        unsigned sid = sfold[s] + ss2;
+        unsigned ti = tuv[s].insert(tq);
+        suv[sid].push_back(ti, scale);
+    }
+
+    void add_line(index_type b1)
     {
         bool add = false;
-        for (auto& cg : (*this)) add = cg.add_line(b2, 0, false) || add;
+        for (auto& cg : (*this)) add = cg.add_line(b1, 0, false) || add;
 
         // a list of all mpo b values that appear in the boundary on the "S"-intermediate side
-        if (add) mpo_offsets[b2] = 1;
+        if (add) mpo_offsets[b1] = 1;
+
+        for (int sid = 0; sid < suv.size(); ++sid)
+            suv[sid].add_line(b1);
     }
 
-    void finalize(size_t rs_bra, size_t rs_ket)
+    void add_unit(unsigned s, unsigned ss, unsigned m_size, unsigned offset)
+    {
+        for (int i=0; i < ss; ++i)
+        {
+            suv[sfold[s] + i].offset = i * m_size + offset;
+            suv[sfold[s] + i].ms = m_size;
+            suv[sfold[s] + i].s = s;
+        }
+    }
+
+    void finalize()
     {
         unsigned cgcount = std::count_if(base::begin(), base::end(),
                             [](ContractionGroup<Matrix, SymmGroup> const & cg) { return cg.n_tasks() > 0; });
@@ -812,7 +905,8 @@ public:
                                    [](ContractionGroup<Matrix, SymmGroup> const & cg) { return cg.n_tasks() == 0; }), base::end());
         for (auto& cg : (*this)) cg.finalize_t();
 
-        compute_mpo_offsets(rs_bra, rs_ket);
+        for (auto& tu : tuv) tu.finalize_t();
+        compute_mpo_offsets();
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -822,30 +916,141 @@ public:
                 Boundary<OtherMatrix, SymmGroup> const & left,
                 Boundary<OtherMatrix, SymmGroup> & new_left) const
     {
-        int stripe = num_rows(bra_mps.data()[mpsblock]);
-        size_t S_size = new_left.index().n_blocks(ci) * stripe * new_left.index().right_size(ci);
+        std::vector<float_type> t = create_T_left(left, ket_mps);
 
-        std::vector<float_type> S(S_size);
-        for (int s = 0; s < this->size(); ++s)
-            if ( (*this)[s].n_tasks() )
-            (*this)[s].create_S_l(ket_mps, S, left, stripe);
+        int stripe = num_rows(bra_mps.data()[mpsblock]);
+        std::size_t S_size = new_left.index().n_blocks(ci) * stripe * new_left.index().right_size(ci);
+
+        std::vector<float_type> sloc = create_s(S_size, stripe, t);
+
+        //std::vector<float_type> S(S_size);
+        //for (int s = 0; s < this->size(); ++s)
+        //    if ( (*this)[s].n_tasks() )
+        //    (*this)[s].create_S_l(ket_mps, S, left, stripe);
+
+        //for (size_t i = 0; i < S_size; ++i)
+        //    assert ( std::abs(sloc[i] - S[i]) < 1e-6 );
 
         int M = num_cols(bra_mps.data()[mpsblock]);
         int N = new_left.index().n_blocks(ci) * new_left.index().right_size(ci);
         blas_gemm('T', 'N', M, N, stripe, float_type(1),
-                  &bra_mps.data()[mpsblock](0,0), stripe, &S[0], stripe, float_type(0), &new_left.data()[ci][0], M);
+                  &bra_mps.data()[mpsblock](0,0), stripe, &sloc[0], stripe, float_type(0), &new_left.data()[ci][0], M);
+    }
+
+    std::size_t n_tasks() const
+    {
+        return std::accumulate(suv.begin(), suv.end(), 0, [](std::size_t sum, SUnit const& su) { return sum + su.n_tasks();});
     }
 
     std::vector<long int>      & get_offsets()       { return mpo_offsets; }
     std::vector<long int> const& get_offsets() const { return mpo_offsets; }
 
 private:
-
+    index_type ls, rs;
     unsigned mpsblock;
 
-    void compute_mpo_offsets(size_t rs_bra, size_t rs_ket)
+    std::vector<long int> mpo_offsets;
+
+    std::vector<unsigned> sfold;
+    std::vector<SUnit> suv;
+    std::vector<TUnit> tuv;
+
+    template <class DefaultMatrix, class OtherMatrix>
+    std::vector<float_type>
+    create_T_left(Boundary<OtherMatrix, SymmGroup> const & left, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
     {
-        std::size_t block_size = rs_bra * rs_ket; // ALIGN
+        std::size_t buffer_size = 0;
+        for (unsigned s = 0; s < tuv.size(); ++s)
+        {
+            buffer_size += tuv[s].size() * suv[sfold[s]].ms * std::size_t(rs);
+            //maquis::cout << "tl " << s << " " << buffer_size << "     " << tuv[s].size() << " " << suv[sfold[s]].ms << " " << rs << std::endl;
+        }
+
+        std::vector<float_type> ret(buffer_size);
+
+        char gemmtrans[2] = {'N', 'T'};
+
+        std::size_t tuv_offset = 0;
+        for (unsigned s = 0; s < tuv.size(); ++s)
+        {
+            if (!tuv[s].size()) continue;
+            int M = suv[sfold[s]].ms, N = rs;
+            for (unsigned pos = 0; pos < tuv[s].size(); ++pos)
+            {
+                unsigned long ci, offset, lb_ket, in_offset;
+                char trans;
+                bit_twiddling::unpack(tuv[s][pos], ci, offset, lb_ket, in_offset, trans);
+
+                int K = (trans) ? left.index().left_size(ci) : left.index().right_size(ci);
+                int LDA = left.index().left_size(ci);
+
+                //maquis::cout << "    " << tuv_offset << " " << offset << " " << pos << " " << M << " " << N << " " << ret.size() << std::endl;
+                assert( tuv_offset + pos * M*std::size_t(N) + M * N <= ret.size() );
+                blas_gemm(gemmtrans[trans], gemmtrans[0], M, N, K, float_type(1), &left.data()[ci][offset], LDA,
+                          &mps.data()[lb_ket](0, in_offset), K, float_type(0), ret.data() + tuv_offset + pos * M*std::size_t(N), M);
+            }
+
+            tuv_offset += tuv[s].size() * M * std::size_t(rs);
+        }
+
+        return ret;
+    }
+
+    std::vector<float_type> create_s(std::size_t sz, int stripe, std::vector<float_type> const& t) const
+    {
+        std::vector<std::size_t> tuv_offsets(tuv.size());
+        std::size_t buffer_size = 0;
+        for (unsigned s = 0; s < tuv.size(); ++s)
+        {
+            tuv_offsets[s] = buffer_size;
+            buffer_size += tuv[s].size() * suv[sfold[s]].ms * rs;
+            //maquis::cout << "sl " << s << " " << buffer_size << std::endl;
+        }
+
+        std::vector<float_type> ret(sz);
+        for (auto const& x : suv)
+        {
+            if (!x.alpha.size()) continue;
+            //maquis::cout << " alphas " << x.alpha.size() << std::endl;
+            //std::copy(x.alpha.begin(), x.alpha.end(), std::ostream_iterator<float_type>(std::cout, " "));
+            //maquis::cout << std::endl;
+            //std::copy(x.tidx.begin(), x.tidx.end(), std::ostream_iterator<unsigned>(std::cout, " "));
+            //maquis::cout << std::endl;
+
+            const float_type* t_pointer = t.data() + tuv_offsets[x.s];
+            Matrix buf(x.ms, rs);
+
+            index_type seeker = 0;
+            for (index_type b=0; b < x.b1.size(); ++b)
+            {
+                memset(&buf(0,0), 0, x.ms * rs * sizeof(float_type));
+
+                for (int ia = seeker; ia < seeker + x.b2s[b]; ++ia)
+                {
+                    //maquis::cout << "  " << tuv_offsets[x.s] << " " << x.tidx[ia] << " " << x.ms * rs << " " << t.size() << std::endl;
+                    //maquis::cout << "  " << b << " " << ia << " " << x.tidx[ia] << " " << x.ms * rs << " " << t.size() << std::endl;
+                    assert(tuv_offsets[x.s] + (x.tidx[ia]+1) * x.ms * rs <= t.size() );
+                    maquis::dmrg::detail::iterator_axpy(t_pointer + x.tidx[ia] * x.ms * rs,
+                                                        t_pointer + (x.tidx[ia]+1) * x.ms * rs,
+                                                        &buf(0,0), x.alpha[ia]);
+                }
+
+                unsigned ii = mpo_offsets[x.b1[b]] / (ls * rs);
+                for (unsigned c = 0; c < rs; ++c)
+                {
+                    assert( stripe * (ii*rs + c) + x.offset + x.ms <= ret.size() );
+                    std::copy(&buf(0,c), &buf(0,c) + x.ms, ret.data() + stripe * (ii*rs + c) + x.offset);
+                }
+
+                seeker += x.b2s[b];
+            }
+        }
+        return ret;
+    }
+
+    void compute_mpo_offsets()
+    {
+        std::size_t block_size = ls * rs; // ALIGN
 
         index_type cnt = 0;
         for(auto& b : mpo_offsets) if (b) b = block_size * cnt++; else b = -1;
@@ -854,9 +1059,35 @@ private:
             for (auto& mg : cg)
                 for (index_type b = 0; b < mg.get_bs().size(); ++b)
                     mg.get_ks()[b] = mpo_offsets[mg.get_bs()[b]];
-    }
 
-    std::vector<long int> mpo_offsets;
+        for (int s = 0; s < this->size(); ++s)
+            for (int ss = 0; ss < (*this)[s].size(); ++ss)
+            {
+                unsigned sid = sfold[s] + ss;
+                auto& x = suv[sid];
+
+                if (x.alpha.size())
+                {
+                    auto& mg = (*this)[s][ss];
+                    //print(mg);
+
+                    int pos = 0;
+                    for (int b=0; b < x.b1.size(); ++b)
+                    {
+                        //maquis::cout << x.b1[b] << ": ";
+                        for (int ia = pos; ia < pos + x.b2s[b]; ++ia)
+                        {
+                            //maquis::cout << x.alpha.at(ia) << " " << x.tidx.at(ia) << " ";
+                            assert (x.tidx.at(ia) < tuv[s].size());
+                        }
+                        pos += x.b2s[b];
+
+                        //maquis::cout << std::endl;
+                    }
+                    //maquis::cout << std::endl;
+                }
+            }
+    }
 };
 
 
