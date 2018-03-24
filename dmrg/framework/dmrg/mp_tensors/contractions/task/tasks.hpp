@@ -245,70 +245,6 @@ public:
         }
     }
 
-    template <class DefaultMatrix, class OtherMatrix>
-    void prop_l(DefaultMatrix const & bra, const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret,
-                unsigned ci, size_t stripe) const
-    {
-        int M = l_size, N = r_size, K = m_size;
-        uint t_size = m_size * r_size;
-        uint t_size_padded = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(t_size);
-
-        Matrix S(m_size, r_size);
-        for (index_type i = 0; i < b2sz.size(); ++i)
-        {
-            memset(&S(0,0), 0, m_size * r_size * sizeof(typename Matrix::value_type));
-
-            for (index_type j = 0; j < b2sz[i]; ++j)
-                maquis::dmrg::detail::iterator_axpy(t_pointer + tidx[i][j] * t_size_padded,
-                                                    t_pointer + tidx[i][j] * t_size_padded + t_size,
-                                                    &S(0,0), alpha[i][j]);
-
-            //blas_gemm('T', 'N', M, N, K, value_type(1), &bra(0,offset), K, &S(0,0), K, value_type(1), &ret.data()[ci][ks[i]], M);
-            blas_gemm('T', 'N', M, N, K, value_type(1), &bra(offset,0), stripe, &S(0,0), K, value_type(1), &ret.data()[ci][ks[i]], M);
-        }
-    }
-
-    void create_S_l(std::vector<value_type> & Sbuf, const value_type* t_pointer, size_t stripe) const
-    {
-        uint t_size = m_size * r_size;
-        uint t_size_padded = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(t_size);
-
-        Matrix S(m_size, r_size);
-        for (index_type i = 0; i < b2sz.size(); ++i)
-        {
-            memset(&S(0,0), 0, m_size * r_size * sizeof(typename Matrix::value_type));
-
-            for (index_type j = 0; j < b2sz[i]; ++j)
-                maquis::dmrg::detail::iterator_axpy(t_pointer + tidx[i][j] * t_size_padded,
-                                                    t_pointer + tidx[i][j] * t_size_padded + t_size,
-                                                    &S(0,0), alpha[i][j]);
-
-            unsigned ii = ks[i] / (l_size * r_size);
-            for (unsigned c = 0; c < r_size; ++c)
-                std::copy(&S(0,c), &S(0,c) + m_size, Sbuf.data() + stripe * (ii*r_size + c) + offset);
-        }
-    }
-
-    template <class OtherMatrix>
-    void lbtm(const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret, unsigned ci) const
-    {
-        uint t_size = m_size * r_size;
-        uint t_size_padded = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(t_size);
-
-        Matrix S(m_size, r_size);
-        for (index_type i = 0; i < b2sz.size(); ++i)
-        {
-            memset(&S(0,0), 0, m_size * r_size * sizeof(typename Matrix::value_type));
-
-            for (index_type j = 0; j < b2sz[i]; ++j)
-                maquis::dmrg::detail::iterator_axpy(t_pointer + tidx[i][j] * t_size_padded,
-                                                    t_pointer + tidx[i][j] * t_size_padded + t_size,
-                                                    &S(0,0), alpha[i][j]);
-            for (unsigned c = 0; c < r_size; ++c)
-                maquis::dmrg::detail::iterator_axpy(&S(0,c), &S(0,c) + m_size, &ret.data()[ci][ks[i]] + c * l_size, 1.0);
-        }
-    }
-
     template <class OtherMatrix>
     void rbtm(const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret, unsigned ci) const
     {
@@ -561,54 +497,6 @@ public:
     }
 
     template <class DefaultMatrix, class OtherMatrix>
-    void prop_l(MPSTensor<DefaultMatrix, SymmGroup> const & bra_mps,
-                MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
-                unsigned ci, Boundary<OtherMatrix, SymmGroup> const & left,
-                Boundary<OtherMatrix, SymmGroup> & new_left) const
-    {
-        if (!this->n_tasks()) return;
-
-        create_T_left(left, ket_mps);
-        for (int ss1 = 0; ss1 < this->size(); ++ss1)
-        {
-            if (!(*this)[ss1].n_tasks()) continue;
-            (*this)[ss1].prop_l(bra_mps.data()[mps_block], t_pointer, new_left, ci, num_rows(bra_mps.data()[mps_block]));
-        }
-        free(t_pointer);
-    }
-
-    template <class DefaultMatrix, class OtherMatrix>
-    void create_S_l(MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
-                    std::vector<value_type> & S,
-                    Boundary<OtherMatrix, SymmGroup> const & left, size_t stripe) const
-    {
-        if (!this->n_tasks()) return;
-
-        create_T_left(left, ket_mps);
-        for (int ss = 0; ss < this->size(); ++ss)
-            (*this)[ss].create_S_l(S, t_pointer, stripe);
-
-        free(t_pointer);
-    }
-
-    template <class DefaultMatrix, class OtherMatrix>
-    void lbtm(MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
-              unsigned ci,
-              Boundary<OtherMatrix, SymmGroup> const & left,
-              Boundary<OtherMatrix, SymmGroup> & new_left) const
-    {
-        if (!this->n_tasks()) return;
-
-        create_T_left(left, ket_mps);
-        for (int ss1 = 0; ss1 < this->size(); ++ss1)
-        {
-            if (!(*this)[ss1].n_tasks()) continue;
-            (*this)[ss1].lbtm(t_pointer, new_left, ci);
-        }
-        free(t_pointer);
-    }
-
-    template <class DefaultMatrix, class OtherMatrix>
     void rbtm(MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
               unsigned ci,
               Boundary<OtherMatrix, SymmGroup> const & right,
@@ -713,32 +601,6 @@ private:
 
     std::vector<t_key> t_key_vec;
     std::map<t_key, unsigned> t_map;
-
-
-    template <class DefaultMatrix, class OtherMatrix>
-    void create_T_left(Boundary<OtherMatrix, SymmGroup> const & left, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
-    {
-        char gemmtrans[2] = {'N', 'T'};
-        int M = (*this)[0].get_m_size(), N = get_r_size();
-
-        std::size_t t_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>((size_t)(M * N));
-        std::size_t buffer_size = t_size * t_key_vec.size();
-        if (posix_memalign(reinterpret_cast<void**>(&t_pointer), ALIGNMENT, buffer_size * sizeof(value_type)))
-            throw std::bad_alloc();
-
-        for (unsigned pos = 0; pos < t_key_vec.size(); ++pos)
-        {
-            unsigned long ci, offset, lb_ket, in_offset;
-            char trans;
-            bit_twiddling::unpack(t_key_vec[pos], ci, offset, lb_ket, in_offset, trans);
-
-            int K = (trans) ? left.index().left_size(ci) : left.index().right_size(ci);
-            int LDA = left.index().left_size(ci);
-
-            blas_gemm(gemmtrans[trans], gemmtrans[0], M, N, K, value_type(1), &left.data()[ci][offset], LDA,
-                      &mps.data()[lb_ket](0, in_offset), K, value_type(0), t_pointer + pos * t_size, M);
-        }
-    }
 
     template <class DefaultMatrix, class OtherMatrix>
     void create_T(MPSTensor<DefaultMatrix, SymmGroup> const & mps, Boundary<OtherMatrix, SymmGroup> const & right) const
@@ -927,23 +789,23 @@ public:
                   &bra_mps.data()[mpsblock](0,0), stripe, &sloc[0], stripe, float_type(0), &new_left.data()[ci][0], M);
     }
 
-    //template <class DefaultMatrix, class OtherMatrix>
-    //void lbtm(
-    //          MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
-    //          Boundary<OtherMatrix, SymmGroup> const & left,
-    //          OtherMatrix & out,
-    //          double alpha
-    //         ) const
-    //{
-    //    int stripe = num_rows(out);
+    template <class DefaultMatrix, class OtherMatrix>
+    void lbtm(
+              MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
+              Boundary<OtherMatrix, SymmGroup> const & left,
+              OtherMatrix & out,
+              double alpha
+             ) const
+    {
+        int stripe = num_rows(out);
 
-    //    std::vector<float_type> t = create_T_left(left, ket_mps);
-    //    std::vector<float_type> sloc = create_s(stripe, t);
+        std::vector<float_type> t = create_T_left(left, ket_mps);
+        std::vector<float_type> sloc = create_s(stripe, t);
 
-    //    int M = stripe;
-    //    int K = S_size / M;
-    //    blas_gemm('N', 'T', M, M, K, float_type(alpha), &sloc[0], stripe, &sloc[0], stripe, float_type(1), &out(0,0), M);
-    //}
+        int M = stripe;
+        int K = sloc.size() / M;
+        blas_gemm('N', 'T', M, M, K, float_type(alpha), &sloc[0], stripe, &sloc[0], stripe, float_type(1), &out(0,0), M);
+    }
 
     std::size_t n_tasks() const
     {

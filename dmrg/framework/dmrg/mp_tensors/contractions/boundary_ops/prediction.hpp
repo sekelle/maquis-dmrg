@@ -49,27 +49,7 @@ namespace contraction {
                 block_matrix<OtherMatrix, SymmGroup> dm;
                 gemm(psi.data(), transpose(conjugate(psi.data())), dm);
                 
-                Boundary<OtherMatrix, SymmGroup> half_dm = left_boundary_tensor_mpo(psi, left, mpo);
-
-                omp_for(unsigned lb, parallel::range<unsigned>(0,psi.data().basis().size()),
-                {
-                    charge lc = psi.data().basis().left_charge(lb);
-                    size_t ls = psi.data().basis().left_size(lb);
-                    OtherMatrix tdm(ls, ls);
-
-                    for (auto lcci : half_dm.index()(lc))
-                    {
-                        unsigned ci = lcci.second;
-                        assert (half_dm.data()[ci].size() % ls == 0);
-
-                        typename Matrix::value_type one(1);
-                        typename Matrix::value_type alpha_v(alpha);
-                        int M = ls, N = ls, K = half_dm.data()[ci].size() / ls;
-                        blas_gemm('N', 'T', M, N, K, alpha_v, &half_dm.data()[ci][0], M, &half_dm.data()[ci][0], N, one, &tdm(0,0), M);
-                    }
-
-                    dm[lb] += tdm;
-                });
+                alpha_dm_direct(psi, left, mpo, dm, alpha);
 
                 return dm;
             }
