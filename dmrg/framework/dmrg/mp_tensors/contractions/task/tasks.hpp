@@ -710,12 +710,13 @@ public:
     Cohort(index_type mpodim) : mpo_offsets(mpodim) {}
     Cohort(
            Index<SymmGroup> const & phys_i,
-           unsigned mb,
+           index_type l_block,
+           index_type r_block,
            index_type l_size,
            index_type r_size,
            index_type mpodim
           )
-          : base(phys_i.size()), mpsblock(mb), ls(l_size), rs(r_size), mpo_offsets(mpodim), sfold(phys_i.size())
+          : base(phys_i.size()), lb(l_block), rb(r_block), ls(l_size), rs(r_size), mpo_offsets(mpodim), sfold(phys_i.size())
           , suv(phys_i.sum_of_sizes())
           , tuv(phys_i.size())
     {
@@ -778,15 +779,15 @@ public:
                 Boundary<OtherMatrix, SymmGroup> const & left,
                 Boundary<OtherMatrix, SymmGroup> & new_left) const
     {
-        int stripe = num_rows(bra_mps.data()[mpsblock]);
+        int stripe = num_rows(bra_mps.data()[lb]);
 
         std::vector<float_type> t = create_T_left(left, ket_mps);
         std::vector<float_type> sloc = create_s(stripe, t);
 
-        int M = num_cols(bra_mps.data()[mpsblock]);
+        int M = num_cols(bra_mps.data()[lb]);
         int N = new_left.index().n_blocks(ci) * new_left.index().right_size(ci);
         blas_gemm('T', 'N', M, N, stripe, float_type(1),
-                  &bra_mps.data()[mpsblock](0,0), stripe, &sloc[0], stripe, float_type(0), &new_left.data()[ci][0], M);
+                  &bra_mps.data()[lb](0,0), stripe, &sloc[0], stripe, float_type(0), &new_left.data()[ci][0], M);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -816,8 +817,7 @@ public:
     std::vector<long int> const& get_offsets() const { return mpo_offsets; }
 
 private:
-    index_type ls, rs;
-    unsigned mpsblock;
+    index_type lb, rb, ls, rs;
 
     std::vector<long int> mpo_offsets;
 

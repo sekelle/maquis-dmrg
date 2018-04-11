@@ -68,7 +68,7 @@ namespace common {
             if (std::abs(SymmGroup::particleNumber(lc_ket) - SymmGroup::particleNumber(lc_bra)) > site_basis_max_diff) continue;
             unsigned ls_ket = left_i[lb_ket].second;
 
-            typename block_type::mapped_type cohort(phys_i, lb_bra, ls_ket, ls_bra, mpo.row_dim());
+            typename block_type::mapped_type cohort(phys_i, lb_ket, lb_bra, ls_ket, ls_bra, mpo.row_dim());
 
             for (unsigned s = 0; s < phys_i.size(); ++s)
             {
@@ -79,6 +79,7 @@ namespace common {
                 unsigned bra_offset = right_pb(phys_out, rc_bra);
 
                 cohort[s] = typename block_type::mapped_value_type(lb_ket, phys_i[s].second, ls_bra, ls_ket, rs_bra, bra_offset);
+                cohort.add_unit(s, phys_i[s].second, rs_bra, bra_offset);
                 ::SU2::Wigner9jCache<value_type, SymmGroup> w9j(lc_bra, lc_ket, rc_bra);
 
                 for (index_type b1 = 0; b1 < mpo.row_dim(); ++b1)
