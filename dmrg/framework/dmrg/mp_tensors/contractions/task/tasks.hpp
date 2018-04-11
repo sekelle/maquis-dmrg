@@ -791,6 +791,24 @@ public:
     }
 
     template <class DefaultMatrix, class OtherMatrix>
+    void prop_r(MPSTensor<DefaultMatrix, SymmGroup> const & bra_mps,
+                MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
+                unsigned ci,
+                Boundary<OtherMatrix, SymmGroup> const & right,
+                Boundary<OtherMatrix, SymmGroup> & new_right) const
+    {
+        //int stripe = num_rows(bra_mps.data()[lb]);
+
+        std::vector<float_type> t = create_T(right, ket_mps);
+        //std::vector<float_type> sloc = create_s(stripe, t);
+
+        //int M = num_cols(bra_mps.data()[lb]);
+        //int N = new_left.index().n_blocks(ci) * new_left.index().right_size(ci);
+        //blas_gemm('T', 'N', M, N, stripe, float_type(1),
+        //          &bra_mps.data()[lb](0,0), stripe, &sloc[0], stripe, float_type(0), &new_left.data()[ci][0], M);
+    }
+
+    template <class DefaultMatrix, class OtherMatrix>
     void lbtm(
               MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
               Boundary<OtherMatrix, SymmGroup> const & left,
@@ -860,7 +878,48 @@ private:
                           &mps.data()[lb_ket](0, in_offset), K, float_type(0), ret.data() + tuv_offset + pos * M*std::size_t(N), M);
             }
 
-            tuv_offset += tuv[s].size() * M * std::size_t(rs);
+            tuv_offset += tuv[s].size() * M * std::size_t(N);
+        }
+
+        return ret;
+    }
+
+    template <class DefaultMatrix, class OtherMatrix>
+    std::vector<float_type>
+    create_T(Boundary<OtherMatrix, SymmGroup> const & right, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
+    {
+        std::size_t buffer_size = 0;
+        for (unsigned s = 0; s < tuv.size(); ++s)
+        {
+            buffer_size += tuv[s].size() * suv[sfold[s]].ms * std::size_t(ls);
+            //maquis::cout << "tl " << s << " " << buffer_size << "     " << tuv[s].size() << " " << suv[sfold[s]].ms << " " << rs << std::endl;
+        }
+
+        std::vector<float_type> ret(buffer_size);
+
+        char gemmtrans[2] = {'N', 'T'};
+        const float_type* mpsdata = &mps.data()[lb](0,0);
+
+        std::size_t tuv_offset = 0;
+        for (unsigned s = 0; s < tuv.size(); ++s)
+        {
+            if (!tuv[s].size()) continue;
+            int M = ls, N = suv[sfold[s]].ms;
+            size_t t_size = M * std::size_t(N);
+            for (unsigned pos = 0; pos < tuv[s].size(); ++pos)
+            {
+                unsigned long ci, offset, dummy, in_offset;
+                char trans;
+                bit_twiddling::unpack(tuv[s][pos], ci, offset, dummy, in_offset, trans);
+
+                int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
+                int LDB = right.index().left_size(ci);
+
+                blas_gemm(gemmtrans[0], gemmtrans[trans], M, N, K, float_type(1), mpsdata + in_offset * M, M,
+                          &right.data()[ci][offset], LDB, float_type(0), ret.data() + tuv_offset + pos * t_size, M);
+            }
+
+            tuv_offset += tuv[s].size() * t_size;
         }
 
         return ret;

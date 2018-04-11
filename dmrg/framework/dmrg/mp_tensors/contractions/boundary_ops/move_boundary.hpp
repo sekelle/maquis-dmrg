@@ -289,6 +289,7 @@ namespace contraction {
                     {
                         charge lc_ket = it->first;
                         ret.allocate(lc_ket, lc_bra);
+                        it->second.prop_r(bra_tensor, ket_tensor, ret.index().cohort_index(lc_ket, lc_bra), right, ret);
                         for (auto const& cg : it->second) // physical index loop
                             cg.prop(ket_tensor, bra_tensor.data()[lb_bra], ret.index().cohort_index(lc_ket, lc_bra), right, ret);
                     }
