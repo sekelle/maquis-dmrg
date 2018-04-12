@@ -76,10 +76,8 @@ namespace contraction {
             omp_for(index_type rb_bra, parallel::range<index_type>(0,loop_max), {
                 charge rc_bra = right_i[rb_bra].first;
                 for (const_iterator it = tasks[rb_bra].begin(); it != tasks[rb_bra].end(); ++it) // mc loop
-                {
                     //charge rc_ket = it->first;
                     it->second.lbtm(ket_tensor, left, dm_out[rb_bra], alpha);
-                }
             });
         }
 
@@ -119,102 +117,13 @@ namespace contraction {
                 rshtm_tasks(mpo, right.index(), left_i, right_i, physical_i, right_pb, lb_bra, tasks[lb_bra], false);
             });
 
-            //BoundaryIndex<Matrix, SymmGroup> b_index(left_i, out_right_i);
-            //for(unsigned lb_bra = 0; lb_bra < loop_max; ++lb_bra)
-            //    for (auto& e : tasks[lb_bra])
-            //    {
-            //        charge lc_ket = e.first;
-            //        size_t block_size = left_i.size_of_block(lc_ket) * out_right_i[lb_bra].second;
-            //        index_type cnt = 0;
-            //        // rescale the offsets for the larger paired sector sizes
-            //        std::vector<long int> & offsets = e.second.get_offsets();
-            //        for (index_type b = 0; b < offsets.size(); ++b) if (offsets[b] > -1) offsets[b] = block_size * cnt++; 
-
-            //        b_index.add_cohort(left_i.position(e.first), lb_bra, offsets);
-            //    }
-
-            //Boundary<OtherMatrix, SymmGroup> ret(b_index);
-
             // Contraction
             omp_for(index_type lb_bra, parallel::range<index_type>(0,loop_max), {
                 charge lc_bra = left_i[lb_bra].first;
                 for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it) // lc_ket loop
-                {
                     //charge lc_ket = it->first;
-                    //ret.allocate(lc_ket, lc_bra);
                     it->second.rbtm(ket_tensor, right, dm_out[lb_bra], alpha);
-                    //for (auto const& cg : it->second) // physical index loop
-                    //    cg.rbtm(ket_tensor, ret.index().cohort_index(lc_ket, lc_bra), right, ret);
-                }
             });
-
-            //return ret;
-        }
-
-        template<class Matrix, class OtherMatrix, class SymmGroup>
-        static Boundary<OtherMatrix, SymmGroup>
-        right_boundary_tensor_mpo(MPSTensor<Matrix, SymmGroup> ket_tensor,
-                                  Boundary<OtherMatrix, SymmGroup> const & right,
-                                  MPOTensor<Matrix, SymmGroup> const & mpo)
-        {
-            typedef typename SymmGroup::charge charge;
-            typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
-            typedef BoundarySchedule<Matrix, SymmGroup> schedule_t;
-            typedef typename schedule_t::block_type::const_iterator const_iterator;
-
-            if (!ket_tensor.is_right_paired())
-            {
-                parallel_critical
-                ket_tensor.make_right_paired();
-            }
-
-            // MPS indices
-            Index<SymmGroup> const & physical_i = ket_tensor.site_dim(),
-                                     right_i = ket_tensor.col_dim();
-            Index<SymmGroup> left_i = ket_tensor.row_dim(),
-                             out_right_i = adjoin(physical_i) * right_i;
-
-            common_subset(out_right_i, left_i);
-            ProductBasis<SymmGroup> right_pb(physical_i, right_i,
-                                    boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
-                                            -boost::lambda::_1, boost::lambda::_2));
-
-            // Schedule
-            unsigned loop_max = left_i.size();
-            schedule_t tasks(loop_max);
-            omp_for(unsigned lb_bra, parallel::range<unsigned>(0,loop_max), {
-                rshtm_tasks(mpo, right.index(), left_i, right_i, physical_i, right_pb, lb_bra, tasks[lb_bra], false);
-            });
-
-            BoundaryIndex<Matrix, SymmGroup> b_index(left_i, out_right_i);
-            for(unsigned lb_bra = 0; lb_bra < loop_max; ++lb_bra)
-                for (auto& e : tasks[lb_bra])
-                {
-                    charge lc_ket = e.first;
-                    size_t block_size = left_i.size_of_block(lc_ket) * out_right_i[lb_bra].second;
-                    index_type cnt = 0;
-                    // rescale the offsets for the larger paired sector sizes
-                    std::vector<long int> & offsets = e.second.get_offsets();
-                    for (index_type b = 0; b < offsets.size(); ++b) if (offsets[b] > -1) offsets[b] = block_size * cnt++; 
-
-                    b_index.add_cohort(left_i.position(e.first), lb_bra, offsets);
-                }
-
-            Boundary<OtherMatrix, SymmGroup> ret(b_index);
-
-            // Contraction
-            omp_for(index_type lb_bra, parallel::range<index_type>(0,loop_max), {
-                charge lc_bra = left_i[lb_bra].first;
-                for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it) // lc_ket loop
-                {
-                    charge lc_ket = it->first;
-                    ret.allocate(lc_ket, lc_bra);
-                    for (auto const& cg : it->second) // physical index loop
-                        cg.rbtm(ket_tensor, ret.index().cohort_index(lc_ket, lc_bra), right, ret);
-                }
-            });
-
-            return ret;
         }
 
         template<class Matrix, class OtherMatrix, class SymmGroup>
