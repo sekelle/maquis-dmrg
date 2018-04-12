@@ -612,14 +612,17 @@ class Cohort : public std::vector<ContractionGroup<Matrix, SymmGroup> >
             b2count++;
         }
 
-        void add_line(unsigned b)
+        unsigned add_line(unsigned b)
         {
-            if(b2count)
-            {
+            unsigned ret = b2count;
+
+            if(b2count) {
                 b2s.push_back(b2count);
                 b1.push_back(b);
                 b2count=0;
             }
+
+            return ret;
         }
 
         std::size_t n_tasks() const { return alpha.size(); }
@@ -681,7 +684,7 @@ public:
           , tuv(phys_i.size())
     {
         unsigned ssum = 0;
-        for (int s = 0; s < phys_i.size(); ++s)
+        for (unsigned s = 0; s < phys_i.size(); ++s)
         {
             sfold[s] = ssum;
             ssum += phys_i[s].second;
@@ -699,19 +702,15 @@ public:
 
     void add_line(index_type b1)
     {
-        bool add = false;
-        for (auto& cg : (*this)) add = cg.add_line(b1, 0, false) || add;
+        for (auto& cg : (*this)) cg.add_line(b1, 0, false);
 
-        // a list of all mpo b values that appear in the boundary on the "S"-intermediate side
-        if (add) mpo_offsets[b1] = 1;
-
-        for (int sid = 0; sid < suv.size(); ++sid)
-            suv[sid].add_line(b1);
+        for (unsigned sid = 0; sid < suv.size(); ++sid)
+            mpo_offsets[b1] += suv[sid].add_line(b1); // mpo_offsets[b1] == number of entries for this row
     }
 
     void add_unit(unsigned s, unsigned ss, unsigned m_size, unsigned offset)
     {
-        for (int i=0; i < ss; ++i)
+        for (unsigned i=0; i < ss; ++i)
         {
             suv[sfold[s] + i].offset = i * m_size + offset;
             suv[sfold[s] + i].ms = m_size;
