@@ -623,9 +623,10 @@ private:
             bit_twiddling::unpack(t_key_vec[pos], ci, offset, dummy, in_offset, trans);
 
             int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
-            int LDB = right.index().left_size(ci);
+            //int LDB = right.index().left_size(ci);
+            int LDB = right.index().right_size(ci);
 
-            blas_gemm(gemmtrans[0], gemmtrans[trans], M, N, K, value_type(1), mpsdata + in_offset * M, M,
+            blas_gemm(gemmtrans[0], gemmtrans[!trans], M, N, K, value_type(1), mpsdata + in_offset * M, M,
                       &right.data()[ci][offset], LDB, value_type(0), t_pointer + pos * t_size, M);
         }
     }
@@ -797,15 +798,24 @@ public:
                 Boundary<OtherMatrix, SymmGroup> const & right,
                 Boundary<OtherMatrix, SymmGroup> & new_right) const
     {
-        //int stripe = num_rows(bra_mps.data()[lb]);
+        int stripe = num_cols(bra_mps.data()[rb]);
 
         std::vector<float_type> t = create_T(right, ket_mps);
-        //std::vector<float_type> sloc = create_s(stripe, t);
+        std::vector<float_type> sloc = create_s_r(stripe, t);
 
-        //int M = num_cols(bra_mps.data()[lb]);
-        //int N = new_left.index().n_blocks(ci) * new_left.index().right_size(ci);
-        //blas_gemm('T', 'N', M, N, stripe, float_type(1),
-        //          &bra_mps.data()[lb](0,0), stripe, &sloc[0], stripe, float_type(0), &new_left.data()[ci][0], M);
+        //maquis::cout << "T " << t.size() << std::endl;
+        //std::copy(t.begin(), t.end(), std::ostream_iterator<float_type>(std::cout, " "));
+        //maquis::cout << std::endl;
+        //maquis::cout << "S " << sloc.size() << std::endl;
+        //std::copy(sloc.begin(), sloc.end(), std::ostream_iterator<float_type>(std::cout, " "));
+        //maquis::cout << std::endl;
+
+        int M = rs; // == num_rows(bra_mps.data()[rb]);
+        int N = new_right.index().n_blocks(ci) * ls;
+
+        assert (M*N == new_right.index().block_size(ci) * new_right.index().n_blocks(ci));
+        blas_gemm('N', 'N', M, N, stripe, float_type(1),
+                  &bra_mps.data()[rb](0,0), M, &sloc[0], stripe, float_type(0), &new_right.data()[ci][0], M);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -849,10 +859,7 @@ private:
     {
         std::size_t buffer_size = 0;
         for (unsigned s = 0; s < tuv.size(); ++s)
-        {
             buffer_size += tuv[s].size() * suv[sfold[s]].ms * std::size_t(rs);
-            //maquis::cout << "tl " << s << " " << buffer_size << "     " << tuv[s].size() << " " << suv[sfold[s]].ms << " " << rs << std::endl;
-        }
 
         std::vector<float_type> ret(buffer_size);
 
@@ -890,10 +897,7 @@ private:
     {
         std::size_t buffer_size = 0;
         for (unsigned s = 0; s < tuv.size(); ++s)
-        {
             buffer_size += tuv[s].size() * suv[sfold[s]].ms * std::size_t(ls);
-            //maquis::cout << "tl " << s << " " << buffer_size << "     " << tuv[s].size() << " " << suv[sfold[s]].ms << " " << rs << std::endl;
-        }
 
         std::vector<float_type> ret(buffer_size);
 
@@ -913,9 +917,10 @@ private:
                 bit_twiddling::unpack(tuv[s][pos], ci, offset, dummy, in_offset, trans);
 
                 int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
-                int LDB = right.index().left_size(ci);
+                //int LDB = right.index().left_size(ci);
+                int LDB = right.index().right_size(ci);
 
-                blas_gemm(gemmtrans[0], gemmtrans[trans], M, N, K, float_type(1), mpsdata + in_offset * M, M,
+                blas_gemm(gemmtrans[0], gemmtrans[!trans], M, N, K, float_type(1), mpsdata + in_offset * M, M,
                           &right.data()[ci][offset], LDB, float_type(0), ret.data() + tuv_offset + pos * t_size, M);
             }
 
@@ -936,7 +941,6 @@ private:
         {
             tuv_offsets[s] = buffer_size;
             buffer_size += tuv[s].size() * suv[sfold[s]].ms * rs;
-            //maquis::cout << "sl " << s << " " << buffer_size << std::endl;
         }
 
         std::vector<float_type> ret(S_size);
@@ -972,6 +976,60 @@ private:
                 {
                     assert( stripe * (ii*rs + c) + x.offset + x.ms <= ret.size() );
                     std::copy(&buf(0,c), &buf(0,c) + x.ms, ret.data() + stripe * (ii*rs + c) + x.offset);
+                }
+
+                seeker += x.b2s[b];
+            }
+        }
+        return ret;
+    }
+
+    std::vector<float_type> create_s_r(int stripe, std::vector<float_type> const& t) const
+    {
+        std::size_t count = std::count_if(mpo_offsets.begin(), mpo_offsets.end(), [](long int i) { return i >= 0; } );
+        std::size_t S_size = count * stripe * std::size_t(ls);
+
+        std::vector<std::size_t> tuv_offsets(tuv.size());
+        std::size_t buffer_size = 0;
+        for (unsigned s = 0; s < tuv.size(); ++s)
+        {
+            tuv_offsets[s] = buffer_size;
+            buffer_size += tuv[s].size() * suv[sfold[s]].ms * ls;
+        }
+
+        std::vector<float_type> ret(S_size);
+        for (auto const& x : suv)
+        {
+            if (!x.alpha.size()) continue;
+            //maquis::cout << " alphas " << x.alpha.size() << std::endl;
+            //std::copy(x.alpha.begin(), x.alpha.end(), std::ostream_iterator<float_type>(std::cout, " "));
+            //maquis::cout << std::endl;
+            //std::copy(x.tidx.begin(), x.tidx.end(), std::ostream_iterator<unsigned>(std::cout, " "));
+            //maquis::cout << std::endl;
+
+            const float_type* t_pointer = t.data() + tuv_offsets[x.s];
+            Matrix buf(ls, x.ms);
+
+            index_type seeker = 0;
+            for (index_type b=0; b < x.b1.size(); ++b)
+            {
+                memset(&buf(0,0), 0, ls * x.ms * sizeof(float_type));
+
+                for (int ia = seeker; ia < seeker + x.b2s[b]; ++ia)
+                {
+                    //maquis::cout << "  " << tuv_offsets[x.s] << " " << x.tidx[ia] << " " << x.ms * rs << " " << t.size() << std::endl;
+                    //maquis::cout << "  " << b << " " << ia << " " << x.tidx[ia] << " " << x.ms * rs << " " << t.size() << std::endl;
+                    assert(tuv_offsets[x.s] + (x.tidx[ia]+1) * ls * x.ms <= t.size() );
+                    maquis::dmrg::detail::iterator_axpy(t_pointer + x.tidx[ia] * x.ms * ls,
+                                                        t_pointer + (x.tidx[ia]+1) * x.ms * ls,
+                                                        &buf(0,0), x.alpha[ia]);
+                }
+
+                unsigned ii = mpo_offsets[x.b1[b]] / (ls * rs);
+                for (unsigned r = 0; r < ls; ++r)
+                {
+                    assert( stripe * (ii*ls + r) + x.offset + x.ms <= ret.size() );
+                    std::copy(buf.row(r).first, buf.row(r).second, ret.data() + stripe * (ii*ls + r) + x.offset);
                 }
 
                 seeker += x.b2s[b];

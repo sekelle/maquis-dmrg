@@ -119,7 +119,8 @@ namespace common {
                                     = bit_twiddling::pack(ci_eff, right_offset, 0, ket_offset, right_transpose);
                                 
                                 detail::op_iterate<Matrix, typename common::BoundarySchedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
-                                    (W, w_block, couplings, cohort[s], tq, rs_ket);
+                                    (W, w_block, couplings, cohort, s, tq, rs_ket);
+                                    //(W, w_block, couplings, cohort[s], tq, rs_ket);
                             } // w_block
                         } //op_index
                     } // b2

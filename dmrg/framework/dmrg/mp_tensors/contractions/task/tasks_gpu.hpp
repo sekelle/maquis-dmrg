@@ -212,11 +212,12 @@ public:
             bit_twiddling::unpack(impl()->t_key_vec[pos], ci, offset, lb_ket, in_offset, trans);
 
             int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
-            int LDB = right.index().left_size(ci);
+            //int LDB = right.index().left_size(ci);
+            int LDB = right.index().right_size(ci);
 
             int found = 0;
             for (int batch = 0 ; batch < batches.size(); ++batch)
-                if (batches[batch].in_offset == in_offset && batches[batch].trans == trans)
+                if (batches[batch].in_offset == in_offset && batches[batch].trans == !trans)
                 {
                     found++;
                     batches[batch].b.push_back((value_type*)(right.device_ptr[ci]) + offset);
@@ -230,7 +231,7 @@ public:
                 batch.K = K;
                 batch.LDB = LDB;
                 batch.tstart = pos;
-                batch.trans = trans;
+                batch.trans = !trans;
                 batch.b.push_back((value_type*)(right.device_ptr[ci]) + offset);
                 batches.push_back(batch);
             }
