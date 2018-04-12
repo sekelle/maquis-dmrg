@@ -270,8 +270,7 @@ namespace contraction {
                     b_index.add_cohort(ket_left_i.position(e.first), lb_bra, e.second.get_offsets());
 
             b_index.complement_transpose(mpo.herm_left, false);
-            //Boundary<OtherMatrix, SymmGroup> ret(b_index);
-            Boundary<OtherMatrix, SymmGroup> ret2(b_index);
+            Boundary<OtherMatrix, SymmGroup> ret(b_index);
 
             // Contraction
             #ifdef MAQUIS_OPENMP
@@ -289,50 +288,14 @@ namespace contraction {
                     for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it) // lc_ket loop
                     {
                         charge lc_ket = it->first;
-                        //ret.allocate(lc_ket, lc_bra);
-                        ret2.allocate(lc_ket, lc_bra);
-                        it->second.prop_r(bra_tensor, ket_tensor, ret2.index().cohort_index(lc_ket, lc_bra), right, ret2);
-                        //for (auto const& cg : it->second) // physical index loop
-                        //    cg.prop(ket_tensor, bra_tensor.data()[lb_bra], ret.index().cohort_index(lc_ket, lc_bra), right, ret);
+                        ret.allocate(lc_ket, lc_bra);
+                        it->second.prop_r(bra_tensor, ket_tensor, ret.index().cohort_index(lc_ket, lc_bra), right, ret);
                     }
                 }
             }
-            //ret2.index().transpose();
+            //ret.index().transpose();
 
-            //assert(ret.data().size() == ret2.data().size());
-            //for (int ci = 0; ci < ret.index().n_cohorts(); ++ci)
-            //{
-            //    assert(ret.data()[ci].size() == ret2.data()[ci].size());
-            //    unsigned n = ret.index().n_blocks(ci);
-            //    unsigned ls = ret.index().left_size(ci);
-            //    unsigned rs = ret.index().right_size(ci);
-
-            //    unsigned offset = 0;
-            //    for (unsigned b = 0; b < n; ++b)
-            //    {
-            //        for (unsigned col = 0; col < rs; ++col)
-            //        for (unsigned row = 0; row < ls; ++row)
-            //            assert(
-            //                std::abs
-            //                (ret.data()[ci][offset + col * ls + row]
-            //                -
-            //               ret2.data()[ci][offset + row * rs + col]) < 1e-6
-            //                );
-
-            //        offset += ls * rs;
-            //    }
-
-            //    //maquis::cout << "cohort " << ci << " " << ret.index().left_size(ci) << " "
-            //    //             << ret.index().right_size(ci) << " " << ret.index().n_blocks(ci) << std::endl;
-            //    //maquis::cout << "cohort " << ci << " " << ret2.index().left_size(ci) << " "
-            //    //             << ret2.index().right_size(ci) << " " << ret2.index().n_blocks(ci) << std::endl;
-
-            //    //for (size_t s = 0; s < ret.data()[ci].size(); ++s)
-            //    //    maquis::cout << s << " " << ret.data()[ci][s] << " " << ret2.data()[ci][s] << std::endl;
-            //}
-
-
-            return ret2;
+            return ret;
         }
 
     } // namespace common

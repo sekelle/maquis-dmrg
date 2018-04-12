@@ -222,29 +222,6 @@ public:
         return ret;
     }       
 
-    template <class DefaultMatrix, class OtherMatrix>
-    void prop(DefaultMatrix const & bra, const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret, unsigned ci) const
-    {
-        int M = m_size, N = l_size, K = r_size;
-        uint t_size = m_size * r_size;
-        uint t_size_padded = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(t_size);
-
-        Matrix S(m_size, r_size);
-        for (index_type i = 0; i < b2sz.size(); ++i)
-        {
-            memset(&S(0,0), 0, m_size * r_size * sizeof(typename Matrix::value_type));
-
-            const value_type* alpha_i = alpha[i];
-            const unsigned* tidx_i = tidx[i];
-            for (index_type j = 0; j < b2sz[i]; ++j)
-                maquis::dmrg::detail::iterator_axpy(t_pointer + tidx_i[j] * t_size_padded,
-                                                    t_pointer + tidx_i[j] * t_size_padded + t_size,
-                                                    &S(0,0), alpha_i[j]);
-
-            blas_gemm('N', 'T', M, N, K, value_type(1), &S(0,0), M, &bra(0, offset), N, value_type(1), &ret.data()[ci][ks[i]], M);
-        }
-    }
-
     template <class OtherMatrix>
     void rbtm(const value_type* t_pointer, Boundary<OtherMatrix, SymmGroup> & ret, unsigned ci) const
     {
@@ -475,24 +452,6 @@ public:
             maquis::dmrg::detail::iterator_axpy(&C(0,0), &C(0,0) + num_rows(C) * num_cols(C),
                                                 output + get_l_size() * (*this)[ss1].offset, value_type(1.0));
         }        
-        free(t_pointer);
-    }
-
-    template <class DefaultMatrix, class OtherMatrix>
-    void prop(MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
-              DefaultMatrix const & bra_matrix,
-              unsigned ci,
-              Boundary<OtherMatrix, SymmGroup> const & right,
-              Boundary<OtherMatrix, SymmGroup> & new_right) const
-    {
-        if (!this->n_tasks()) return;
-
-        create_T(ket_mps, right);
-        for (int ss1 = 0; ss1 < this->size(); ++ss1)
-        {
-            if (!(*this)[ss1].n_tasks()) continue;
-            (*this)[ss1].prop(bra_matrix, t_pointer, new_right, ci);
-        }
         free(t_pointer);
     }
 
@@ -803,17 +762,8 @@ public:
         std::vector<float_type> t = create_T(right, ket_mps);
         std::vector<float_type> sloc = create_s_r(stripe, t);
 
-        //maquis::cout << "T " << t.size() << std::endl;
-        //std::copy(t.begin(), t.end(), std::ostream_iterator<float_type>(std::cout, " "));
-        //maquis::cout << std::endl;
-        //maquis::cout << "S " << sloc.size() << std::endl;
-        //std::copy(sloc.begin(), sloc.end(), std::ostream_iterator<float_type>(std::cout, " "));
-        //maquis::cout << std::endl;
-
         int M = rs; // == num_rows(bra_mps.data()[rb]);
         int N = new_right.index().n_blocks(ci) * ls;
-
-        assert (M*N == new_right.index().block_size(ci) * new_right.index().n_blocks(ci));
         blas_gemm('N', 'N', M, N, stripe, float_type(1),
                   &bra_mps.data()[rb](0,0), M, &sloc[0], stripe, float_type(0), &new_right.data()[ci][0], M);
     }
@@ -1049,34 +999,6 @@ private:
             for (auto& mg : cg)
                 for (index_type b = 0; b < mg.get_bs().size(); ++b)
                     mg.get_ks()[b] = mpo_offsets[mg.get_bs()[b]];
-
-        for (int s = 0; s < this->size(); ++s)
-            for (int ss = 0; ss < (*this)[s].size(); ++ss)
-            {
-                unsigned sid = sfold[s] + ss;
-                auto& x = suv[sid];
-
-                if (x.alpha.size())
-                {
-                    auto& mg = (*this)[s][ss];
-                    //print(mg);
-
-                    int pos = 0;
-                    for (int b=0; b < x.b1.size(); ++b)
-                    {
-                        //maquis::cout << x.b1[b] << ": ";
-                        for (int ia = pos; ia < pos + x.b2s[b]; ++ia)
-                        {
-                            //maquis::cout << x.alpha.at(ia) << " " << x.tidx.at(ia) << " ";
-                            assert (x.tidx.at(ia) < tuv[s].size());
-                        }
-                        pos += x.b2s[b];
-
-                        //maquis::cout << std::endl;
-                    }
-                    //maquis::cout << std::endl;
-                }
-            }
     }
 };
 
