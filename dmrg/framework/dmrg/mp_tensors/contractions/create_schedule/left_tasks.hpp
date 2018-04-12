@@ -80,7 +80,6 @@ namespace common {
                 unsigned ls_bra = bra_left_i[lb_bra].second;
                 unsigned bra_offset = bra_left_pb(phys_out, lc_bra);
 
-                cohort[s] = typename block_type::mapped_value_type(rb_bra, phys_i[s].second, rs_bra, ls_bra, rs_ket, bra_offset, true);
                 cohort.add_unit(s, phys_i[s].second, ls_bra, bra_offset);
 
                 for (index_type b2 = 0; b2 < mpo.col_dim(); ++b2)

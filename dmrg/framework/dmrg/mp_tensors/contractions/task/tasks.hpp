@@ -631,7 +631,7 @@ public:
            index_type r_size,
            index_type mpodim
           )
-          : base(phys_i.size()), lb(l_block), rb(r_block), ls(l_size), rs(r_size), mpo_offsets(mpodim), sfold(phys_i.size())
+          : /*base(phys_i.size()), */lb(l_block), rb(r_block), ls(l_size), rs(r_size), mpo_offsets(mpodim), sfold(phys_i.size())
           , suv(phys_i.sum_of_sizes())
           , tuv(phys_i.size())
     {
@@ -645,7 +645,7 @@ public:
 
     void push_back(unsigned s, unsigned ss2, t_key tq, float_type scale)
     {
-        (*this)[s].push_back(ss2, tq, scale);
+        //(*this)[s].push_back(ss2, tq, scale);
 
         unsigned sid = sfold[s] + ss2;
         unsigned ti = tuv[s].insert(tq);
@@ -654,7 +654,7 @@ public:
 
     void add_line(index_type b1)
     {
-        for (auto& cg : (*this)) cg.add_line(b1, 0, false);
+        //for (auto& cg : (*this)) cg.add_line(b1, 0, false);
 
         for (unsigned sid = 0; sid < suv.size(); ++sid)
             mpo_offsets[b1] += suv[sid].add_line(b1); // mpo_offsets[b1] == number of entries for this row
@@ -672,12 +672,12 @@ public:
 
     void finalize()
     {
-        unsigned cgcount = std::count_if(base::begin(), base::end(),
-                            [](ContractionGroup<Matrix, SymmGroup> const & cg) { return cg.n_tasks() > 0; });
-        if (cgcount == 0)
-        base::erase(std::remove_if(base::begin(), base::end(),
-                                   [](ContractionGroup<Matrix, SymmGroup> const & cg) { return cg.n_tasks() == 0; }), base::end());
-        for (auto& cg : (*this)) cg.finalize_t();
+        //unsigned cgcount = std::count_if(base::begin(), base::end(),
+        //                    [](ContractionGroup<Matrix, SymmGroup> const & cg) { return cg.n_tasks() > 0; });
+        //if (cgcount == 0)
+        //base::erase(std::remove_if(base::begin(), base::end(),
+        //                           [](ContractionGroup<Matrix, SymmGroup> const & cg) { return cg.n_tasks() == 0; }), base::end());
+        //for (auto& cg : (*this)) cg.finalize_t();
 
         for (auto& tu : tuv) tu.finalize_t();
         compute_mpo_offsets();
@@ -964,10 +964,10 @@ private:
         index_type cnt = 0;
         for(auto& b : mpo_offsets) if (b) b = block_size * cnt++; else b = -1;
 
-        for (auto& cg : (*this))
-            for (auto& mg : cg)
-                for (index_type b = 0; b < mg.get_bs().size(); ++b)
-                    mg.get_ks()[b] = mpo_offsets[mg.get_bs()[b]];
+        //for (auto& cg : (*this))
+        //    for (auto& mg : cg)
+        //        for (index_type b = 0; b < mg.get_bs().size(); ++b)
+        //            mg.get_ks()[b] = mpo_offsets[mg.get_bs()[b]];
     }
 };
 

@@ -78,7 +78,6 @@ namespace common {
                 unsigned rs_bra = right_i[rb_bra].second;
                 unsigned bra_offset = right_pb(phys_out, rc_bra);
 
-                cohort[s] = typename block_type::mapped_value_type(lb_ket, phys_i[s].second, ls_bra, ls_ket, rs_bra, bra_offset);
                 cohort.add_unit(s, phys_i[s].second, rs_bra, bra_offset);
                 ::SU2::Wigner9jCache<value_type, SymmGroup> w9j(lc_bra, lc_ket, rc_bra);
 
@@ -120,7 +119,6 @@ namespace common {
                                 
                                 detail::op_iterate<Matrix, typename common::BoundarySchedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
                                     (W, w_block, couplings, cohort, s, tq, rs_ket);
-                                    //(W, w_block, couplings, cohort[s], tq, rs_ket);
                             } // w_block
                         } //op_index
                     } // b2
@@ -130,7 +128,7 @@ namespace common {
             } // phys_out
 
             cohort.finalize();
-            if (cohort.size()) mpsb[lc_ket] = cohort;
+            if (cohort.n_tasks()) mpsb[lc_ket] = cohort;
         } // lb_ket
     }
 
