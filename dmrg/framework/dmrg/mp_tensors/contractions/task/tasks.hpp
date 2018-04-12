@@ -785,6 +785,24 @@ public:
         blas_gemm('N', 'T', M, M, K, float_type(alpha), &sloc[0], stripe, &sloc[0], stripe, float_type(1), &out(0,0), M);
     }
 
+    template <class DefaultMatrix, class OtherMatrix>
+    void rbtm(
+              MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
+              Boundary<OtherMatrix, SymmGroup> const & right,
+              OtherMatrix & out,
+              double alpha
+             ) const
+    {
+        int stripe = num_rows(out);
+
+        std::vector<float_type> t = create_T(right, ket_mps);
+        std::vector<float_type> sloc = create_s_r(stripe, t);
+
+        int M = stripe;
+        int K = sloc.size() / M;
+        blas_gemm('N', 'T', M, M, K, float_type(alpha), &sloc[0], stripe, &sloc[0], stripe, float_type(1), &out(0,0), M);
+    }
+
     std::size_t n_tasks() const
     {
         return std::accumulate(suv.begin(), suv.end(), 0, [](std::size_t sum, SUnit const& su) { return sum + su.n_tasks();});
