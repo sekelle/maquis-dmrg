@@ -426,14 +426,16 @@ public:
 
     void resort_t_index(std::map<t_key, unsigned> & tmap)
     {
+        // number t_keys according to the sort order in tmap
+
         std::vector<std::pair<unsigned,unsigned>> val_index(tmap.size());
         unsigned cnt = 0;
         for (auto it = tmap.begin(); it != tmap.end(); ++it) {
-            val_index[cnt] = std::make_pair(it->second, cnt);
+            val_index[cnt] = std::make_pair(it->second, cnt); // translation map order seen to sort order
             cnt++;
         }
 
-        std::sort(val_index.begin(), val_index.end(),
+        std::sort(val_index.begin(), val_index.end(),    // invert translation map
                   [](std::pair<unsigned, unsigned> p1, std::pair<unsigned, unsigned> p2) { return p1.first < p2.first;} );
 
         std::vector<unsigned> tmap_inv(tmap.size());
@@ -472,6 +474,7 @@ public:
 
     void finalize_t()
     {
+        // number t_keys in the order they are first seen in create_tasks
         t_key_vec.resize(t_map.size());
         for (auto const& kit : t_map) t_key_vec[kit.second] = kit.first;
         t_map.clear();
