@@ -460,7 +460,7 @@ public:
         {
             unsigned long ci, offset, dummy, mps_off;
             char trans;
-            bit_twiddling::unpack(kit.first, ci, offset, dummy, mps_off, trans);
+            bit_twiddling::unpack(kit.first, mps_off, trans, ci, offset, dummy);
 
             unsigned m2_size = (trans) ? right.right_size(ci) : right.left_size(ci);
             unsigned r_size = get_r_size();
@@ -534,7 +534,7 @@ private:
         {
             unsigned long ci, offset, dummy, in_offset;
             char trans;
-            bit_twiddling::unpack(t_key_vec[pos], ci, offset, dummy, in_offset, trans);
+            bit_twiddling::unpack(t_key_vec[pos], in_offset, trans, ci, offset, dummy);
 
             int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
             //int LDB = right.index().left_size(ci);
@@ -798,7 +798,7 @@ private:
             {
                 unsigned long ci, offset, lb_ket, in_offset;
                 char trans;
-                bit_twiddling::unpack(tuv[s][pos], ci, offset, lb_ket, in_offset, trans);
+                bit_twiddling::unpack(tuv[s][pos], in_offset, trans, ci, offset, lb_ket);
 
                 int K = (trans) ? left.index().left_size(ci) : left.index().right_size(ci);
                 int LDA = left.index().left_size(ci);
@@ -838,7 +838,7 @@ private:
             {
                 unsigned long ci, offset, dummy, in_offset;
                 char trans;
-                bit_twiddling::unpack(tuv[s][pos], ci, offset, dummy, in_offset, trans);
+                bit_twiddling::unpack(tuv[s][pos], in_offset, trans, ci, offset, dummy);
 
                 int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
                 //int LDB = right.index().left_size(ci);
