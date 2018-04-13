@@ -707,6 +707,18 @@ public:
         int N = new_right.index().n_blocks(ci) * ls;
         blas_gemm('N', 'N', M, N, stripe, value_type(1),
                   &bra_mps.data()[rb](0,0), M, &sloc[0], stripe, value_type(0), &new_right.data()[ci][0], M);
+
+        // Test for create_s_r
+        //std::vector<value_type> sloc = create_s_r(stripe, t);
+
+        //int M = new_right.index().n_blocks(ci) * ls;
+        //int N = rs;
+        //Matrix buf(M,N);
+        //blas_gemm('N', 'T', M, N, stripe, value_type(1),
+        //           &sloc[0], M, &bra_mps.data()[rb](0,0), rs, value_type(0), &buf(0,0), M);
+
+        //transpose_inplace(buf);
+        //std::copy(&buf(0,0), &buf(0,0) + M*N, &new_right.data()[ci][0]);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -856,11 +868,6 @@ private:
         for (auto const& x : suv)
         {
             if (!x.alpha.size()) continue;
-            //maquis::cout << " alphas " << x.alpha.size() << std::endl;
-            //std::copy(x.alpha.begin(), x.alpha.end(), std::ostream_iterator<value_type>(std::cout, " "));
-            //maquis::cout << std::endl;
-            //std::copy(x.tidx.begin(), x.tidx.end(), std::ostream_iterator<unsigned>(std::cout, " "));
-            //maquis::cout << std::endl;
 
             const value_type* t_pointer = t.data() + tuv_offsets[x.s];
             Matrix buf(x.ms, rs);
@@ -871,21 +878,14 @@ private:
                 memset(&buf(0,0), 0, x.ms * rs * sizeof(value_type));
 
                 for (int ia = seeker; ia < seeker + x.b2s[b]; ++ia)
-                {
-                    //maquis::cout << "  " << tuv_offsets[x.s] << " " << x.tidx[ia] << " " << x.ms * rs << " " << t.size() << std::endl;
-                    //maquis::cout << "  " << b << " " << ia << " " << x.tidx[ia] << " " << x.ms * rs << " " << t.size() << std::endl;
                     assert(tuv_offsets[x.s] + (x.tidx[ia]+1) * x.ms * rs <= t.size() );
                     maquis::dmrg::detail::iterator_axpy(t_pointer + x.tidx[ia] * x.ms * rs,
                                                         t_pointer + (x.tidx[ia]+1) * x.ms * rs,
                                                         &buf(0,0), x.alpha[ia]);
-                }
 
                 unsigned ii = mpo_offsets[x.b1[b]] / (ls * rs);
                 for (unsigned c = 0; c < rs; ++c)
-                {
-                    assert( stripe * (ii*rs + c) + x.offset + x.ms <= ret.size() );
                     std::copy(&buf(0,c), &buf(0,c) + x.ms, ret.data() + stripe * (ii*rs + c) + x.offset);
-                }
 
                 seeker += x.b2s[b];
             }
