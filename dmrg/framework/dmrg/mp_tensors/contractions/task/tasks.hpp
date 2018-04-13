@@ -545,19 +545,21 @@ private:
 
                                                              // size == phys_i.size()
 template <class Matrix, class SymmGroup>                     // invariant: mc, m_size
-class Cohort : public std::vector<ContractionGroup<Matrix, SymmGroup> > 
+class Cohort
 {
-    typedef std::vector<ContractionGroup<Matrix, SymmGroup> > base;
     typedef MPOTensor_detail::index_type index_type;
-    typedef typename Matrix::value_type float_type;
+    typedef typename Matrix::value_type value_type;
 
-    typedef typename ContractionGroup<Matrix, SymmGroup>::t_key t_key;
+public:
+    typedef __uint128_t t_key;
+
+private:
 
     class SUnit
     {
     public:
 
-        void push_back(unsigned ti, float_type scale)
+        void push_back(unsigned ti, value_type scale)
         {
             tidx.push_back(ti);
             alpha.push_back(scale);
@@ -583,7 +585,7 @@ class Cohort : public std::vector<ContractionGroup<Matrix, SymmGroup> >
         unsigned ms=0;
         unsigned s;
         std::vector<index_type> tidx;
-        std::vector<float_type> alpha;
+        std::vector<value_type> alpha;
         std::vector<index_type> b2s;
         std::vector<index_type> b1;
 
@@ -619,7 +621,6 @@ class Cohort : public std::vector<ContractionGroup<Matrix, SymmGroup> >
     };
 
 public:
-    typedef typename base::value_type value_type;
 
     Cohort() {}
     Cohort(index_type mpodim) : mpo_offsets(mpodim) {}
@@ -631,7 +632,7 @@ public:
            index_type r_size,
            index_type mpodim
           )
-          : /*base(phys_i.size()), */lb(l_block), rb(r_block), ls(l_size), rs(r_size), mpo_offsets(mpodim), sfold(phys_i.size())
+          : lb(l_block), rb(r_block), ls(l_size), rs(r_size), mpo_offsets(mpodim), sfold(phys_i.size())
           , suv(phys_i.sum_of_sizes())
           , tuv(phys_i.size())
     {
@@ -643,10 +644,8 @@ public:
         }
     }
 
-    void push_back(unsigned s, unsigned ss2, t_key tq, float_type scale)
+    void push_back(unsigned s, unsigned ss2, t_key tq, value_type scale)
     {
-        //(*this)[s].push_back(ss2, tq, scale);
-
         unsigned sid = sfold[s] + ss2;
         unsigned ti = tuv[s].insert(tq);
         suv[sid].push_back(ti, scale);
@@ -654,8 +653,6 @@ public:
 
     void add_line(index_type b1)
     {
-        //for (auto& cg : (*this)) cg.add_line(b1, 0, false);
-
         for (unsigned sid = 0; sid < suv.size(); ++sid)
             mpo_offsets[b1] += suv[sid].add_line(b1); // mpo_offsets[b1] == number of entries for this row
     }
@@ -672,13 +669,6 @@ public:
 
     void finalize()
     {
-        //unsigned cgcount = std::count_if(base::begin(), base::end(),
-        //                    [](ContractionGroup<Matrix, SymmGroup> const & cg) { return cg.n_tasks() > 0; });
-        //if (cgcount == 0)
-        //base::erase(std::remove_if(base::begin(), base::end(),
-        //                           [](ContractionGroup<Matrix, SymmGroup> const & cg) { return cg.n_tasks() == 0; }), base::end());
-        //for (auto& cg : (*this)) cg.finalize_t();
-
         for (auto& tu : tuv) tu.finalize_t();
         compute_mpo_offsets();
     }
@@ -692,13 +682,13 @@ public:
     {
         int stripe = num_rows(bra_mps.data()[lb]);
 
-        std::vector<float_type> t = create_T_left(left, ket_mps);
-        std::vector<float_type> sloc = create_s(stripe, t);
+        std::vector<value_type> t = create_T_left(left, ket_mps);
+        std::vector<value_type> sloc = create_s(stripe, t);
 
         int M = num_cols(bra_mps.data()[lb]);
         int N = new_left.index().n_blocks(ci) * new_left.index().right_size(ci);
-        blas_gemm('T', 'N', M, N, stripe, float_type(1),
-                  &bra_mps.data()[lb](0,0), stripe, &sloc[0], stripe, float_type(0), &new_left.data()[ci][0], M);
+        blas_gemm('T', 'N', M, N, stripe, value_type(1),
+                  &bra_mps.data()[lb](0,0), stripe, &sloc[0], stripe, value_type(0), &new_left.data()[ci][0], M);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -710,13 +700,13 @@ public:
     {
         int stripe = num_cols(bra_mps.data()[rb]);
 
-        std::vector<float_type> t = create_T(right, ket_mps);
-        std::vector<float_type> sloc = create_s_r(stripe, t);
+        std::vector<value_type> t = create_T(right, ket_mps);
+        std::vector<value_type> sloc = create_s_r_transpose(stripe, t);
 
         int M = rs; // == num_rows(bra_mps.data()[rb]);
         int N = new_right.index().n_blocks(ci) * ls;
-        blas_gemm('N', 'N', M, N, stripe, float_type(1),
-                  &bra_mps.data()[rb](0,0), M, &sloc[0], stripe, float_type(0), &new_right.data()[ci][0], M);
+        blas_gemm('N', 'N', M, N, stripe, value_type(1),
+                  &bra_mps.data()[rb](0,0), M, &sloc[0], stripe, value_type(0), &new_right.data()[ci][0], M);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -729,12 +719,12 @@ public:
     {
         int stripe = num_rows(out);
 
-        std::vector<float_type> t = create_T_left(left, ket_mps);
-        std::vector<float_type> sloc = create_s(stripe, t);
+        std::vector<value_type> t = create_T_left(left, ket_mps);
+        std::vector<value_type> sloc = create_s(stripe, t);
 
         int M = stripe;
         int K = sloc.size() / M;
-        blas_gemm('N', 'T', M, M, K, float_type(alpha), &sloc[0], stripe, &sloc[0], stripe, float_type(1), &out(0,0), M);
+        blas_gemm('N', 'T', M, M, K, value_type(alpha), &sloc[0], stripe, &sloc[0], stripe, value_type(1), &out(0,0), M);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -747,12 +737,12 @@ public:
     {
         int stripe = num_rows(out);
 
-        std::vector<float_type> t = create_T(right, ket_mps);
-        std::vector<float_type> sloc = create_s_r(stripe, t);
+        std::vector<value_type> t = create_T(right, ket_mps);
+        std::vector<value_type> sloc = create_s_r_transpose(stripe, t);
 
         int M = stripe;
         int K = sloc.size() / M;
-        blas_gemm('N', 'T', M, M, K, float_type(alpha), &sloc[0], stripe, &sloc[0], stripe, float_type(1), &out(0,0), M);
+        blas_gemm('N', 'T', M, M, K, value_type(alpha), &sloc[0], stripe, &sloc[0], stripe, value_type(1), &out(0,0), M);
     }
 
     std::size_t n_tasks() const
@@ -773,14 +763,14 @@ private:
     std::vector<TUnit> tuv;
 
     template <class DefaultMatrix, class OtherMatrix>
-    std::vector<float_type>
+    std::vector<value_type>
     create_T_left(Boundary<OtherMatrix, SymmGroup> const & left, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
     {
         std::size_t buffer_size = 0;
         for (unsigned s = 0; s < tuv.size(); ++s)
             buffer_size += tuv[s].size() * suv[sfold[s]].ms * std::size_t(rs);
 
-        std::vector<float_type> ret(buffer_size);
+        std::vector<value_type> ret(buffer_size);
 
         char gemmtrans[2] = {'N', 'T'};
 
@@ -800,8 +790,8 @@ private:
 
                 //maquis::cout << "    " << tuv_offset << " " << offset << " " << pos << " " << M << " " << N << " " << ret.size() << std::endl;
                 assert( tuv_offset + pos * M*std::size_t(N) + M * N <= ret.size() );
-                blas_gemm(gemmtrans[trans], gemmtrans[0], M, N, K, float_type(1), &left.data()[ci][offset], LDA,
-                          &mps.data()[lb_ket](0, in_offset), K, float_type(0), ret.data() + tuv_offset + pos * M*std::size_t(N), M);
+                blas_gemm(gemmtrans[trans], gemmtrans[0], M, N, K, value_type(1), &left.data()[ci][offset], LDA,
+                          &mps.data()[lb_ket](0, in_offset), K, value_type(0), ret.data() + tuv_offset + pos * M*std::size_t(N), M);
             }
 
             tuv_offset += tuv[s].size() * M * std::size_t(N);
@@ -811,17 +801,17 @@ private:
     }
 
     template <class DefaultMatrix, class OtherMatrix>
-    std::vector<float_type>
+    std::vector<value_type>
     create_T(Boundary<OtherMatrix, SymmGroup> const & right, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
     {
         std::size_t buffer_size = 0;
         for (unsigned s = 0; s < tuv.size(); ++s)
             buffer_size += tuv[s].size() * suv[sfold[s]].ms * std::size_t(ls);
 
-        std::vector<float_type> ret(buffer_size);
+        std::vector<value_type> ret(buffer_size);
 
         char gemmtrans[2] = {'N', 'T'};
-        const float_type* mpsdata = &mps.data()[lb](0,0);
+        const value_type* mpsdata = &mps.data()[lb](0,0);
 
         std::size_t tuv_offset = 0;
         for (unsigned s = 0; s < tuv.size(); ++s)
@@ -839,8 +829,8 @@ private:
                 //int LDB = right.index().left_size(ci);
                 int LDB = right.index().right_size(ci);
 
-                blas_gemm(gemmtrans[0], gemmtrans[!trans], M, N, K, float_type(1), mpsdata + in_offset * M, M,
-                          &right.data()[ci][offset], LDB, float_type(0), ret.data() + tuv_offset + pos * t_size, M);
+                blas_gemm(gemmtrans[0], gemmtrans[!trans], M, N, K, value_type(1), mpsdata + in_offset * M, M,
+                          &right.data()[ci][offset], LDB, value_type(0), ret.data() + tuv_offset + pos * t_size, M);
             }
 
             tuv_offset += tuv[s].size() * t_size;
@@ -849,7 +839,7 @@ private:
         return ret;
     }
 
-    std::vector<float_type> create_s(int stripe, std::vector<float_type> const& t) const
+    std::vector<value_type> create_s(int stripe, std::vector<value_type> const& t) const
     {
         std::size_t count = std::count_if(mpo_offsets.begin(), mpo_offsets.end(), [](long int i) { return i >= 0; } );
         std::size_t S_size = count * stripe * std::size_t(rs);
@@ -862,23 +852,23 @@ private:
             buffer_size += tuv[s].size() * suv[sfold[s]].ms * rs;
         }
 
-        std::vector<float_type> ret(S_size);
+        std::vector<value_type> ret(S_size);
         for (auto const& x : suv)
         {
             if (!x.alpha.size()) continue;
             //maquis::cout << " alphas " << x.alpha.size() << std::endl;
-            //std::copy(x.alpha.begin(), x.alpha.end(), std::ostream_iterator<float_type>(std::cout, " "));
+            //std::copy(x.alpha.begin(), x.alpha.end(), std::ostream_iterator<value_type>(std::cout, " "));
             //maquis::cout << std::endl;
             //std::copy(x.tidx.begin(), x.tidx.end(), std::ostream_iterator<unsigned>(std::cout, " "));
             //maquis::cout << std::endl;
 
-            const float_type* t_pointer = t.data() + tuv_offsets[x.s];
+            const value_type* t_pointer = t.data() + tuv_offsets[x.s];
             Matrix buf(x.ms, rs);
 
             index_type seeker = 0;
             for (index_type b=0; b < x.b1.size(); ++b)
             {
-                memset(&buf(0,0), 0, x.ms * rs * sizeof(float_type));
+                memset(&buf(0,0), 0, x.ms * rs * sizeof(value_type));
 
                 for (int ia = seeker; ia < seeker + x.b2s[b]; ++ia)
                 {
@@ -903,7 +893,7 @@ private:
         return ret;
     }
 
-    std::vector<float_type> create_s_r(int stripe, std::vector<float_type> const& t) const
+    std::vector<value_type> create_s_r_transpose(int stripe, std::vector<value_type> const& t) const
     {
         std::size_t count = std::count_if(mpo_offsets.begin(), mpo_offsets.end(), [](long int i) { return i >= 0; } );
         std::size_t S_size = count * stripe * std::size_t(ls);
@@ -916,40 +906,68 @@ private:
             buffer_size += tuv[s].size() * suv[sfold[s]].ms * ls;
         }
 
-        std::vector<float_type> ret(S_size);
+        std::vector<value_type> ret(S_size);
         for (auto const& x : suv)
         {
             if (!x.alpha.size()) continue;
-            //maquis::cout << " alphas " << x.alpha.size() << std::endl;
-            //std::copy(x.alpha.begin(), x.alpha.end(), std::ostream_iterator<float_type>(std::cout, " "));
-            //maquis::cout << std::endl;
-            //std::copy(x.tidx.begin(), x.tidx.end(), std::ostream_iterator<unsigned>(std::cout, " "));
-            //maquis::cout << std::endl;
 
-            const float_type* t_pointer = t.data() + tuv_offsets[x.s];
+            const value_type* t_pointer = t.data() + tuv_offsets[x.s];
             Matrix buf(ls, x.ms);
 
             index_type seeker = 0;
             for (index_type b=0; b < x.b1.size(); ++b)
             {
-                memset(&buf(0,0), 0, ls * x.ms * sizeof(float_type));
+                memset(&buf(0,0), 0, ls * x.ms * sizeof(value_type));
 
                 for (int ia = seeker; ia < seeker + x.b2s[b]; ++ia)
-                {
-                    //maquis::cout << "  " << tuv_offsets[x.s] << " " << x.tidx[ia] << " " << x.ms * rs << " " << t.size() << std::endl;
-                    //maquis::cout << "  " << b << " " << ia << " " << x.tidx[ia] << " " << x.ms * rs << " " << t.size() << std::endl;
-                    assert(tuv_offsets[x.s] + (x.tidx[ia]+1) * ls * x.ms <= t.size() );
                     maquis::dmrg::detail::iterator_axpy(t_pointer + x.tidx[ia] * x.ms * ls,
                                                         t_pointer + (x.tidx[ia]+1) * x.ms * ls,
                                                         &buf(0,0), x.alpha[ia]);
-                }
 
                 unsigned ii = mpo_offsets[x.b1[b]] / (ls * rs);
                 for (unsigned r = 0; r < ls; ++r)
-                {
-                    assert( stripe * (ii*ls + r) + x.offset + x.ms <= ret.size() );
                     std::copy(buf.row(r).first, buf.row(r).second, ret.data() + stripe * (ii*ls + r) + x.offset);
-                }
+
+                seeker += x.b2s[b];
+            }
+        }
+        return ret;
+    }
+
+    std::vector<value_type> create_s_r(int stripe, std::vector<value_type> const& t) const
+    {
+        std::size_t count = std::count_if(mpo_offsets.begin(), mpo_offsets.end(), [](long int i) { return i >= 0; } );
+        std::size_t S_size = count * stripe * std::size_t(ls);
+
+        std::vector<std::size_t> tuv_offsets(tuv.size());
+        std::size_t buffer_size = 0;
+        for (unsigned s = 0; s < tuv.size(); ++s)
+        {
+            tuv_offsets[s] = buffer_size;
+            buffer_size += tuv[s].size() * suv[sfold[s]].ms * ls;
+        }
+
+        std::vector<value_type> ret(S_size);
+        for (auto const& x : suv)
+        {
+            if (!x.alpha.size()) continue;
+
+            const value_type* t_pointer = t.data() + tuv_offsets[x.s];
+            Matrix buf(ls, x.ms);
+
+            index_type seeker = 0;
+            for (index_type b=0; b < x.b1.size(); ++b)
+            {
+                memset(&buf(0,0), 0, ls * x.ms * sizeof(value_type));
+
+                for (int ia = seeker; ia < seeker + x.b2s[b]; ++ia)
+                    maquis::dmrg::detail::iterator_axpy(t_pointer + x.tidx[ia] * x.ms * ls,
+                                                        t_pointer + (x.tidx[ia]+1) * x.ms * ls,
+                                                        &buf(0,0), x.alpha[ia]);
+
+                unsigned ii = mpo_offsets[x.b1[b]] / (ls * rs);
+                for (unsigned c = 0; c < x.ms; ++c)
+                    std::copy(buf.col(c).first, buf.col(c).second, ret.data() + count*ls * (x.offset+c) + ii*ls);
 
                 seeker += x.b2s[b];
             }
@@ -963,11 +981,6 @@ private:
 
         index_type cnt = 0;
         for(auto& b : mpo_offsets) if (b) b = block_size * cnt++; else b = -1;
-
-        //for (auto& cg : (*this))
-        //    for (auto& mg : cg)
-        //        for (index_type b = 0; b < mg.get_bs().size(); ++b)
-        //            mg.get_ks()[b] = mpo_offsets[mg.get_bs()[b]];
     }
 };
 
@@ -978,7 +991,6 @@ class MPSBlock : public std::map<typename SymmGroup::charge, Cohort<Matrix, Symm
 public:
     typedef std::map<typename SymmGroup::charge, Cohort<Matrix, SymmGroup> > base;
     typedef typename base::mapped_type mapped_type;
-    typedef typename mapped_type::value_type mapped_value_type;
 };
 
 template <class Matrix, class SymmGroup>

@@ -51,9 +51,7 @@ namespace common {
         typedef typename SymmGroup::charge charge;
         typedef typename Matrix::value_type value_type;
         typedef typename common::BoundarySchedule<Matrix, SymmGroup>::block_type block_type;
-        typedef typename block_type::mapped_value_type cgroup;
-        typedef typename cgroup::t_key t_key;
-        typedef std::map<t_key, unsigned> t_map_t;
+        typedef typename block_type::mapped_type::t_key t_key;
 
         const int site_basis_max_diff = 2;
 
@@ -114,8 +112,7 @@ namespace common {
                                 char right_transpose = right.trans(ci, b2);
                                 unsigned ci_eff = (right_transpose) ? right.cohort_index(rc_bra, rc_ket) : ci;
                                 size_t right_offset = right.offset(ci, b2);
-                                typename block_type::mapped_value_type::t_key tq
-                                    = bit_twiddling::pack(ci_eff, right_offset, 0, ket_offset, right_transpose);
+                                t_key tq = bit_twiddling::pack(ci_eff, right_offset, 0, ket_offset, right_transpose);
                                 
                                 detail::op_iterate<Matrix, typename common::BoundarySchedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
                                     (W, w_block, couplings, cohort, s, tq, rs_ket);
