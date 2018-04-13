@@ -878,7 +878,6 @@ private:
                 memset(&buf(0,0), 0, x.ms * rs * sizeof(value_type));
 
                 for (int ia = seeker; ia < seeker + x.b2s[b]; ++ia)
-                    assert(tuv_offsets[x.s] + (x.tidx[ia]+1) * x.ms * rs <= t.size() );
                     maquis::dmrg::detail::iterator_axpy(t_pointer + x.tidx[ia] * x.ms * rs,
                                                         t_pointer + (x.tidx[ia]+1) * x.ms * rs,
                                                         &buf(0,0), x.alpha[ia]);
