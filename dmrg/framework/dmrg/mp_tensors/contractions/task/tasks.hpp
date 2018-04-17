@@ -756,7 +756,12 @@ public:
 
         int M = stripe;
         int K = sloc.size() / M;
-        blas_gemm('N', 'T', M, M, K, value_type(alpha), &sloc[0], stripe, &sloc[0], stripe, value_type(1), &out(0,0), M);
+
+        DefaultMatrix tmp(M,M);
+        blas_gemm('N', 'T', M, M, K, value_type(alpha), &sloc[0], stripe, &sloc[0], stripe, value_type(1), &tmp(0,0), M);
+
+        parallel_critical
+        out += tmp;
     }
 
     std::size_t n_tasks() const

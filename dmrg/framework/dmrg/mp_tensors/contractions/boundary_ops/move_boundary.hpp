@@ -121,8 +121,10 @@ namespace contraction {
             omp_for(index_type lb_bra, parallel::range<index_type>(0,loop_max), {
                 charge lc_bra = left_i[lb_bra].first;
                 for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it) // lc_ket loop
-                    //charge lc_ket = it->first;
-                    it->second.rbtm(ket_tensor, right, dm_out[lb_bra], alpha);
+                {
+                    charge lc_ket = it->first;
+                    it->second.rbtm(ket_tensor, right, dm_out[left_i.position(lc_ket)], alpha);
+                }
             });
         }
 
@@ -235,16 +237,17 @@ namespace contraction {
                                     -boost::lambda::_1, boost::lambda::_2));
 
             // Schedule
-            unsigned loop_max = bra_left_i.size();
+            unsigned loop_max = ket_left_i.size();
             schedule_t tasks(loop_max);
-            omp_for(unsigned lb_bra, parallel::range<unsigned>(0,loop_max), {
-                rshtm_tasks(mpo, right.index(), bra_left_i, bra_right_i, physical_i, bra_right_pb, lb_bra, tasks[lb_bra], true);
+            omp_for(unsigned lb_ket, parallel::range<unsigned>(0,loop_max), {
+                rshtm_tasks(mpo, right.index(), bra_left_i, bra_right_i, physical_i, bra_right_pb, lb_ket, tasks[lb_ket], true);
             });
 
             BoundaryIndex<Matrix, SymmGroup> b_index(ket_left_i, bra_left_i);
-            for(unsigned lb_bra = 0; lb_bra < loop_max; ++lb_bra)
-                for (auto& e : tasks[lb_bra])
-                    b_index.add_cohort(ket_left_i.position(e.first), lb_bra, e.second.get_offsets());
+            for(unsigned lb_ket = 0; lb_ket < loop_max; ++lb_ket)
+                for (auto& e : tasks[lb_ket])
+                    //b_index.add_cohort(ket_left_i.position(e.first), lb_ket, e.second.get_offsets());
+                    b_index.add_cohort(lb_ket, bra_left_i.position(e.first), e.second.get_offsets());
 
             b_index.complement_transpose(mpo.herm_left, false);
             Boundary<OtherMatrix, SymmGroup> ret(b_index);
@@ -257,14 +260,14 @@ namespace contraction {
                 #ifdef MAQUIS_OPENMP
                 #pragma omp single
                 #endif
-                for(index_type lb_bra = 0; lb_bra < loop_max; ++lb_bra) {
-                    charge lc_bra = bra_left_i[lb_bra].first;
+                for(index_type lb_ket = 0; lb_ket < loop_max; ++lb_ket) {
+                    charge lc_ket = ket_left_i[lb_ket].first;
                     #ifdef MAQUIS_OPENMP
                     #pragma omp task
                     #endif
-                    for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it) // lc_ket loop
+                    for (const_iterator it = tasks[lb_ket].begin(); it != tasks[lb_ket].end(); ++it) // lc_ket loop
                     {
-                        charge lc_ket = it->first;
+                        charge lc_bra = it->first;
                         ret.allocate(lc_ket, lc_bra);
                         it->second.prop_r(bra_tensor, ket_tensor, ret.index().cohort_index(lc_ket, lc_bra), right, ret);
                     }

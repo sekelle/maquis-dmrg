@@ -43,7 +43,7 @@ namespace common {
                      Index<SymmGroup> const & right_i,
                      Index<SymmGroup> const & phys_i,
                      ProductBasis<SymmGroup> const & right_pb,
-                     unsigned lb_bra,
+                     unsigned lb_ket,
                      typename common::BoundarySchedule<Matrix, SymmGroup>::block_type & mpsb,
                      bool skip = true)
     {
@@ -55,16 +55,16 @@ namespace common {
 
         const int site_basis_max_diff = 2;
 
-        charge lc_bra = left_i[lb_bra].first;
-        unsigned ls_bra = left_i[lb_bra].second;
+        charge lc_ket = left_i[lb_ket].first;
+        unsigned ls_ket = left_i[lb_ket].second;
 
         // output physical index, output offset range = out_right offset + ss2*rs_bra
         //                                              for ss2 in {0, 1, .., phys_i[s].second}
-        for (unsigned lb_ket = 0; lb_ket < left_i.size(); ++lb_ket)
+        for (unsigned lb_bra = 0; lb_bra < left_i.size(); ++lb_bra)
         {
-            charge lc_ket = left_i[lb_ket].first;
+            charge lc_bra = left_i[lb_bra].first;
             if (std::abs(SymmGroup::particleNumber(lc_ket) - SymmGroup::particleNumber(lc_bra)) > site_basis_max_diff) continue;
-            unsigned ls_ket = left_i[lb_ket].second;
+            unsigned ls_bra = left_i[lb_bra].second;
 
             typename block_type::mapped_type cohort(phys_i, lb_ket, lb_bra, ls_ket, ls_bra, mpo.row_dim());
 
@@ -126,8 +126,8 @@ namespace common {
             } // phys_out
 
             cohort.finalize();
-            if (cohort.n_tasks()) mpsb[lc_ket] = cohort;
-        } // lb_ket
+            if (cohort.n_tasks()) mpsb[lc_bra] = cohort;
+        } // lb_bra
     }
 
 } // namespace common
