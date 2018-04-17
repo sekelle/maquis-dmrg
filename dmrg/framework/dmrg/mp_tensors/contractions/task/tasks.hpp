@@ -537,10 +537,9 @@ private:
             bit_twiddling::unpack(t_key_vec[pos], in_offset, trans, ci, offset, dummy);
 
             int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
-            //int LDB = right.index().left_size(ci);
-            int LDB = right.index().right_size(ci);
+            int LDB = right.index().left_size(ci);
 
-            blas_gemm(gemmtrans[0], gemmtrans[!trans], M, N, K, value_type(1), mpsdata + in_offset * M, M,
+            blas_gemm(gemmtrans[0], gemmtrans[trans], M, N, K, value_type(1), mpsdata + in_offset * M, M,
                       &right.data()[ci][offset], LDB, value_type(0), t_pointer + pos * t_size, M);
         }
     }
@@ -803,7 +802,6 @@ private:
                 int K = (trans) ? left.index().left_size(ci) : left.index().right_size(ci);
                 int LDA = left.index().left_size(ci);
 
-                //maquis::cout << "    " << tuv_offset << " " << offset << " " << pos << " " << M << " " << N << " " << ret.size() << std::endl;
                 assert( tuv_offset + pos * M*std::size_t(N) + M * N <= ret.size() );
                 blas_gemm(gemmtrans[trans], gemmtrans[0], M, N, K, value_type(1), &left.data()[ci][offset], LDA,
                           &mps.data()[lb_ket](0, in_offset), K, value_type(0), ret.data() + tuv_offset + pos * M*std::size_t(N), M);
@@ -841,10 +839,9 @@ private:
                 bit_twiddling::unpack(tuv[s][pos], in_offset, trans, ci, offset, dummy);
 
                 int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
-                //int LDB = right.index().left_size(ci);
-                int LDB = right.index().right_size(ci);
+                int LDB = right.index().left_size(ci);
 
-                blas_gemm(gemmtrans[0], gemmtrans[!trans], M, N, K, value_type(1), mpsdata + in_offset * M, M,
+                blas_gemm(gemmtrans[0], gemmtrans[trans], M, N, K, value_type(1), mpsdata + in_offset * M, M,
                           &right.data()[ci][offset], LDB, value_type(0), ret.data() + tuv_offset + pos * t_size, M);
             }
 

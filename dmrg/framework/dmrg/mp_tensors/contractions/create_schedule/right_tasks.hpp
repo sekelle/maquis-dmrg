@@ -110,7 +110,8 @@ namespace common {
                                 w9j.set_scale(A, K, Ap, rc_ket, scale, couplings);
 
                                 char right_transpose = right.trans(ci, b2);
-                                unsigned ci_eff = (right_transpose) ? right.cohort_index(rc_bra, rc_ket) : ci;
+                                // all stored parts in right boundary are transposed
+                                unsigned ci_eff = (right_transpose) ? ci : right.cohort_index(rc_bra, rc_ket);
                                 size_t right_offset = right.offset(ci, b2);
                                 t_key tq = bit_twiddling::pack(ket_offset, right_transpose, ci_eff, right_offset, 0);
                                 

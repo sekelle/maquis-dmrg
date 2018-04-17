@@ -182,6 +182,34 @@ public:
             }
     }
 
+    void transpose()
+    {
+        for (unsigned ci = 0; ci < transposes.size(); ++ci)
+        {
+            std::swap(left_sizes[ci], right_sizes[ci]);
+            for (unsigned b = 0; b < transposes[ci].size(); ++b)
+                transposes[ci][b] = !transposes[ci][b];
+        }
+    }
+
+    void print()
+    {
+        for (unsigned rb = 0; rb < num_cols(lbrb_ci); ++rb)
+            for (unsigned lb = 0; lb < num_rows(lbrb_ci); ++lb)
+            {
+                if (lbrb_ci(lb, rb) == std::numeric_limits<unsigned>::max()) continue;
+
+                unsigned ci = lbrb_ci(lb, rb);
+                maquis::cout << bra_index[lb].first << ket_index[rb].first << std::endl;
+                for (int b = 0; b < offsets[ci].size(); ++b)
+                    if (offsets[ci][b] != -1) maquis::cout << 1  + transposes[ci][b] << " ";
+
+                maquis::cout << std::endl;
+            }
+
+        maquis::cout << std::endl;
+    }
+
     template <class Data>
     void check_self_adjoint(MPOTensor_detail::Hermitian const & herm, bool forward, Data const & data) const
     {
@@ -324,6 +352,11 @@ public:
     {}
 
     BoundaryIndex<Matrix, SymmGroup> const& index() const
+    {
+        return index_;
+    }
+
+    BoundaryIndex<Matrix, SymmGroup> & index()
     {
         return index_;
     }

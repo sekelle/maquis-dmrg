@@ -124,7 +124,8 @@ namespace common {
 
                                 char right_transpose = right.trans(ci_right, b2);
                                 size_t right_offset = right.offset(ci_right, b2);
-                                unsigned ci_right_eff = (right_transpose) ? right.cohort_index(rc_out, rc_in) : ci_right;
+                                // all stored parts in right boundary are transposed
+                                unsigned ci_right_eff = (right_transpose) ? ci_right : right.cohort_index(rc_out, rc_in);
                                 typename cgroup::t_key tq = bit_twiddling::pack(in_offset, right_transpose, ci_right_eff, right_offset, 0);
                                 
                                 detail::op_iterate<Matrix, typename common::Schedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>

@@ -270,7 +270,7 @@ namespace contraction {
                     }
                 }
             }
-            //ret.index().transpose();
+            ret.index().transpose();
 
             return ret;
         }
