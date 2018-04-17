@@ -75,7 +75,7 @@ namespace contraction {
             // Contraction
             omp_for(index_type rb_bra, parallel::range<index_type>(0,loop_max), {
                 charge rc_bra = right_i[rb_bra].first;
-                for (const_iterator it = tasks[rb_bra].begin(); it != tasks[rb_bra].end(); ++it) // mc loop
+                for (const_iterator it = tasks[rb_bra].begin(); it != tasks[rb_bra].end(); ++it)
                     //charge rc_ket = it->first;
                     it->second.lbtm(ket_tensor, left, dm_out[rb_bra], alpha);
             });
@@ -102,10 +102,8 @@ namespace contraction {
             // MPS indices
             Index<SymmGroup> const & physical_i = ket_tensor.site_dim(),
                                      right_i = ket_tensor.col_dim();
-            Index<SymmGroup> left_i = ket_tensor.row_dim(),
-                             out_right_i = adjoin(physical_i) * right_i;
+            Index<SymmGroup> left_i = ket_tensor.row_dim();
 
-            common_subset(out_right_i, left_i);
             ProductBasis<SymmGroup> right_pb(physical_i, right_i,
                                     boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
                                             -boost::lambda::_1, boost::lambda::_2));
@@ -120,7 +118,7 @@ namespace contraction {
             // Contraction
             omp_for(index_type lb_bra, parallel::range<index_type>(0,loop_max), {
                 charge lc_bra = left_i[lb_bra].first;
-                for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it) // lc_ket loop
+                for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it)
                 {
                     charge lc_ket = it->first;
                     it->second.rbtm(ket_tensor, right, dm_out[left_i.position(lc_ket)], alpha);
@@ -246,7 +244,6 @@ namespace contraction {
             BoundaryIndex<Matrix, SymmGroup> b_index(ket_left_i, bra_left_i);
             for(unsigned lb_ket = 0; lb_ket < loop_max; ++lb_ket)
                 for (auto& e : tasks[lb_ket])
-                    //b_index.add_cohort(ket_left_i.position(e.first), lb_ket, e.second.get_offsets());
                     b_index.add_cohort(lb_ket, bra_left_i.position(e.first), e.second.get_offsets());
 
             b_index.complement_transpose(mpo.herm_left, false);
