@@ -51,9 +51,7 @@ namespace common {
         typedef typename SymmGroup::charge charge;
         typedef typename Matrix::value_type value_type;
         typedef typename common::BoundarySchedule<Matrix, SymmGroup>::block_type block_type;
-        typedef typename block_type::mapped_value_type cgroup;
-        typedef typename cgroup::t_key t_key;
-        typedef std::map<t_key, unsigned> t_map_t;
+        typedef typename block_type::mapped_type::t_key t_key;
 
         const int site_basis_max_diff = 2;
 
@@ -68,7 +66,7 @@ namespace common {
             if (std::abs(SymmGroup::particleNumber(lc_ket) - SymmGroup::particleNumber(lc_bra)) > site_basis_max_diff) continue;
             unsigned ls_ket = left_i[lb_ket].second;
 
-            typename block_type::mapped_type cohort(phys_i.size(), mpo.row_dim());
+            typename block_type::mapped_type cohort(phys_i, lb_ket, lb_bra, ls_ket, ls_bra, mpo.row_dim());
 
             for (unsigned s = 0; s < phys_i.size(); ++s)
             {
@@ -78,8 +76,7 @@ namespace common {
                 unsigned rs_bra = right_i[rb_bra].second;
                 unsigned bra_offset = right_pb(phys_out, rc_bra);
 
-                cohort[s] = typename block_type::mapped_value_type(lb_ket, phys_i[s].second, ls_bra, ls_ket, rs_bra, bra_offset);
-
+                cohort.add_unit(s, phys_i[s].second, rs_bra, bra_offset);
                 ::SU2::Wigner9jCache<value_type, SymmGroup> w9j(lc_bra, lc_ket, rc_bra);
 
                 for (index_type b1 = 0; b1 < mpo.row_dim(); ++b1)
@@ -113,23 +110,23 @@ namespace common {
                                 w9j.set_scale(A, K, Ap, rc_ket, scale, couplings);
 
                                 char right_transpose = right.trans(ci, b2);
-                                unsigned ci_eff = (right_transpose) ? right.cohort_index(rc_bra, rc_ket) : ci;
+                                // all stored parts in right boundary are transposed
+                                unsigned ci_eff = (right_transpose) ? ci : right.cohort_index(rc_bra, rc_ket);
                                 size_t right_offset = right.offset(ci, b2);
-                                typename block_type::mapped_value_type::t_key tq
-                                    = bit_twiddling::pack(ci_eff, right_offset, 0, ket_offset, right_transpose);
+                                t_key tq = bit_twiddling::pack(ket_offset, right_transpose, ci_eff, right_offset, 0);
                                 
                                 detail::op_iterate<Matrix, typename common::BoundarySchedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
-                                    (W, w_block, couplings, cohort[s], tq, rs_ket);
+                                    (W, w_block, couplings, cohort, s, tq, rs_ket);
                             } // w_block
                         } //op_index
                     } // b2
 
-                    cohort.add_line(b1, !mpo.herm_left.skip(b1, lc_ket, lc_bra));
+                    cohort.add_line(b1);
                 } // b1
             } // phys_out
 
-            cohort.finalize(ls_ket, ls_bra);
-            if (cohort.size()) mpsb[lc_ket] = cohort;
+            cohort.finalize();
+            if (cohort.n_tasks()) mpsb[lc_ket] = cohort;
         } // lb_ket
     }
 

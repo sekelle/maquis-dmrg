@@ -65,6 +65,37 @@ namespace detail {
         }
     }
 
+    template <class Matrix, class AlignedMatrix, class SymmGroup>
+    void op_iterate(typename operator_selector<Matrix, SymmGroup>::type const & W, std::size_t w_block,
+                    typename Matrix::value_type couplings[],
+                    Cohort<AlignedMatrix, SymmGroup> & cg,
+                    unsigned s,
+                    typename ContractionGroup<AlignedMatrix, SymmGroup>::t_key tq,
+                    unsigned m2_size)
+    {
+        typedef ContractionGroup<AlignedMatrix, SymmGroup> cgroup;
+        typedef typename SparseOperator<Matrix, SymmGroup>::const_iterator block_iterator;
+
+        std::pair<block_iterator, block_iterator> blocks = W.get_sparse().block(w_block);
+
+        for (block_iterator it = blocks.first; it != blocks.second; ++it)
+        {
+            unsigned ss1 = it->get_row();
+            unsigned ss2 = it->get_col();
+            unsigned rspin = it->get_row_spin();
+            unsigned cspin = it->get_col_spin();
+            unsigned casenr = 0;
+            if (rspin == 2 && cspin == 2) casenr = 3;
+            else if (rspin == 2) casenr = 1;
+            else if (cspin == 2) casenr = 2;
+
+            typename Matrix::value_type scale = it->coefficient * couplings[casenr];
+            typename cgroup::t_key tq2 = bit_twiddling::add_last(tq, ss1*m2_size);
+
+            cg.push_back(s, ss2, tq2, scale);
+        }
+    }
+
 } // namespace detail
 } // namespace common
 } // namespace contraction

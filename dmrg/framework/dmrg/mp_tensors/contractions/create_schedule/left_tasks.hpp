@@ -40,7 +40,7 @@ namespace common {
                      MPSTensor<Matrix, SymmGroup> const & bra,
                      MPSTensor<Matrix, SymmGroup> const & ket,
                      BoundaryIndex<OtherMatrix, SymmGroup> const & left,
-                     ProductBasis<SymmGroup> const & bra_right_pb,
+                     ProductBasis<SymmGroup> const & bra_left_pb,
                      ProductBasis<SymmGroup> const & ket_right_pb,
                      unsigned rb_bra,
                      typename common::BoundarySchedule<Matrix, SymmGroup>::block_type & mpsb,
@@ -51,7 +51,6 @@ namespace common {
         typedef typename MPOTensor<Matrix, SymmGroup>::col_proxy col_proxy;
         typedef MPOTensor_detail::index_type index_type;
         typedef typename common::BoundarySchedule<Matrix, SymmGroup>::block_type block_type;
-        typedef std::map<typename block_type::mapped_value_type::t_key, unsigned> t_map_t;
 
         Index<SymmGroup> const & ket_left_i = ket.row_dim();
         Index<SymmGroup> const & ket_right_i = ket.col_dim();
@@ -70,7 +69,7 @@ namespace common {
             if (std::abs(SymmGroup::particleNumber(rc_bra) - SymmGroup::particleNumber(rc_ket)) > site_basis_max_diff) continue;
             unsigned rs_ket = ket_right_i[rb_ket].second;
 
-            typename block_type::mapped_type cohort(phys_i.size(), mpo.col_dim());
+            typename block_type::mapped_type cohort(phys_i, rb_bra, rb_ket, rs_bra, rs_ket, mpo.col_dim());
 
             for (unsigned s = 0; s < phys_i.size(); ++s)
             {
@@ -78,11 +77,9 @@ namespace common {
                 charge lc_bra = SymmGroup::fuse(rc_bra, -phys_out);
                 unsigned lb_bra = bra_left_i.position(lc_bra); if (lb_bra == bra_left_i.size()) continue;
                 unsigned ls_bra = bra_left_i[lb_bra].second;
+                unsigned bra_offset = bra_left_pb(phys_out, lc_bra);
 
-                unsigned bra_offset = bra_right_pb(phys_out, rc_bra);
-
-                cohort[s] = typename block_type::mapped_value_type(lb_bra, phys_i[s].second, rs_bra, ls_bra, rs_ket,
-                                                                   bra_offset, true);
+                cohort.add_unit(s, phys_i[s].second, ls_bra, bra_offset);
 
                 for (index_type b2 = 0; b2 < mpo.col_dim(); ++b2)
                 {
@@ -120,20 +117,20 @@ namespace common {
                                 unsigned ci_eff = (left_transpose) ? left.cohort_index(lc_ket, lc_bra) : ci;
                                 size_t left_offset = left.offset(ci, b1);
 
-                                auto tq = bit_twiddling::pack(ci_eff, left_offset, lb_ket, ket_offset, left_transpose);
+                                auto tq = bit_twiddling::pack(ket_offset, left_transpose, ci_eff, left_offset, lb_ket);
                                 
                                 detail::op_iterate<Matrix, typename common::BoundarySchedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
-                                    (W, w_block, couplings, cohort[s], tq, rs_ket);
+                                    (W, w_block, couplings, cohort, s, tq, rs_ket);
                             } // w_block
                         } //op_index
                     } // b1
 
-                    cohort.add_line(b2, !mpo.herm_right.skip(b2, rc_bra, rc_ket));
+                    cohort.add_line(b2);
                 } // b2
             } // phys_out
 
-            cohort.finalize(rs_bra, rs_ket);
-            if (cohort.size()) mpsb[rc_ket] = cohort;
+            cohort.finalize();
+            if (cohort.n_tasks()) mpsb[rc_ket] = cohort;
 
         } // rb_ket
     }

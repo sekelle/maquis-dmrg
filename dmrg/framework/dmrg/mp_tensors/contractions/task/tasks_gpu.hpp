@@ -209,7 +209,7 @@ public:
         {
             unsigned long ci, offset, lb_ket, in_offset;
             char trans;
-            bit_twiddling::unpack(impl()->t_key_vec[pos], ci, offset, lb_ket, in_offset, trans);
+            bit_twiddling::unpack(impl()->t_key_vec[pos], in_offset, trans, ci, offset, lb_ket);
 
             int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
             int LDB = right.index().left_size(ci);
@@ -220,6 +220,7 @@ public:
                 {
                     found++;
                     batches[batch].b.push_back((value_type*)(right.device_ptr[ci]) + offset);
+                    // t_keys sorted according to in_offset assumed to produce contiguous output T
                     batches[batch].tend = pos;
                 }
 

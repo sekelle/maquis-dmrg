@@ -116,9 +116,8 @@ public:
 
     size_t     n_blocks       (unsigned ci)             const { return n_blocks_[ci]; }
 
-    template <int A = ALIGNMENT/sizeof(value_type)>
     size_t     block_size     (unsigned ci)             const {
-        return bit_twiddling::round_up<A>(left_sizes[ci] * right_sizes[ci]);
+        return bit_twiddling::round_up<1>(left_sizes[ci] * right_sizes[ci]); // ALIGN
     }
 
     unsigned cohort_index(unsigned lb, unsigned rb, int tag = 0) const
@@ -181,6 +180,34 @@ public:
                     }
                 }
             }
+    }
+
+    void transpose()
+    {
+        for (unsigned ci = 0; ci < transposes.size(); ++ci)
+        {
+            std::swap(left_sizes[ci], right_sizes[ci]);
+            for (unsigned b = 0; b < transposes[ci].size(); ++b)
+                transposes[ci][b] = !transposes[ci][b];
+        }
+    }
+
+    void print()
+    {
+        for (unsigned rb = 0; rb < num_cols(lbrb_ci); ++rb)
+            for (unsigned lb = 0; lb < num_rows(lbrb_ci); ++lb)
+            {
+                if (lbrb_ci(lb, rb) == std::numeric_limits<unsigned>::max()) continue;
+
+                unsigned ci = lbrb_ci(lb, rb);
+                maquis::cout << bra_index[lb].first << ket_index[rb].first << std::endl;
+                for (int b = 0; b < offsets[ci].size(); ++b)
+                    if (offsets[ci][b] != -1) maquis::cout << 1  + transposes[ci][b] << " ";
+
+                maquis::cout << std::endl;
+            }
+
+        maquis::cout << std::endl;
     }
 
     template <class Data>
@@ -308,7 +335,7 @@ public:
             assert(ud[i].first == ld[i].first);
 
             std::size_t ls = ud[i].second, rs = ld[i].second;
-            std::size_t block_size = bit_twiddling::round_up<ALIGNMENT/sizeof(value_type)>(ls*rs);
+            std::size_t block_size = bit_twiddling::round_up<1>(ls*rs); // ALIGN
             data()[i].resize(block_size * ad, value_type(0.));
             std::fill(data()[i].begin(), data()[i].begin() + ls * rs, value_type(1.));
             std::vector<long int> offsets(ad);
@@ -329,16 +356,20 @@ public:
         return index_;
     }
 
+    BoundaryIndex<Matrix, SymmGroup> & index()
+    {
+        return index_;
+    }
+
     std::size_t aux_dim() const { 
         return data_.size(); 
     }
 
-    template <int A = ALIGNMENT/sizeof(value_type)>
     void allocate(charge rc, charge lc)
     {
         unsigned ci = index_.cohort_index(rc, lc);
         assert(ci < data().size());
-        data()[ci].resize(index_.template block_size<A>(ci) * index_.n_blocks(ci));
+        data()[ci].resize(index_.block_size(ci) * index_.n_blocks(ci)); // ALIGN
     }
 
     void resize(size_t n)

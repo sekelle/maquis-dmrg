@@ -36,10 +36,11 @@ namespace contraction {
     namespace common {
 
         template<class Matrix, class OtherMatrix, class SymmGroup>
-        static Boundary<OtherMatrix, SymmGroup>
-        left_boundary_tensor_mpo(MPSTensor<Matrix, SymmGroup> ket_tensor,
-                                 Boundary<OtherMatrix, SymmGroup> const & left,
-                                 MPOTensor<Matrix, SymmGroup> const & mpo)
+        void alpha_dm_direct(MPSTensor<Matrix, SymmGroup> ket_tensor,
+                             Boundary<OtherMatrix, SymmGroup> const & left,
+                             MPOTensor<Matrix, SymmGroup> const & mpo,
+                             block_matrix<OtherMatrix, SymmGroup> & dm_out,
+                             double alpha)
         {
             typedef typename SymmGroup::charge charge;
             typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
@@ -68,67 +69,24 @@ namespace contraction {
             unsigned loop_max = right_i.size();
             schedule_t tasks(loop_max);
             omp_for(unsigned mb, parallel::range<unsigned>(0,loop_max), {
-                lshtm_tasks(mpo, ket_tensor, ket_tensor, left.index(), right_pb, right_pb, mb, tasks[mb], false);
+                lshtm_tasks(mpo, ket_tensor, ket_tensor, left.index(), left_pb, right_pb, mb, tasks[mb], false);
             });
-
-            BoundaryIndex<Matrix, SymmGroup> b_index(out_left_i, right_i);
-            for(unsigned rb_bra = 0; rb_bra < loop_max; ++rb_bra)
-            {
-                charge rc_bra = out_left_i[rb_bra].first;
-                unsigned ls_paired = out_left_i[rb_bra].second;
-                for (auto& e : tasks[rb_bra])
-                {
-                    charge rc_ket = e.first;
-                    unsigned rs_ket = right_i.size_of_block(rc_ket);
-
-                    std::vector<long int> & offsets = e.second.get_offsets();
-                    size_t block_size = ls_paired * rs_ket;
-                    index_type cnt = 0;
-                    // rescale the offsets for the larger paired sector sizes
-                    for (index_type b = 0; b < offsets.size(); ++b) if (offsets[b] > -1) offsets[b] = block_size * cnt++; 
-                    
-                    b_index.add_cohort(rb_bra, right_i.position(rc_ket), e.second.get_offsets());
-
-                    for (auto& cg : e.second)
-                    {
-                        unsigned lb_bra = cg.get_mps_block();
-                        charge lc_bra = left_i[lb_bra].first;
-                        charge phys_out = SymmGroup::fuse(rc_bra, -lc_bra);
-
-                        unsigned base_offset = left_pb(phys_out, lc_bra);
-                        for (unsigned ss = 0; ss < cg.size(); ++ss)
-                        {
-                            cg[ss].set_l_size(ls_paired);
-                            unsigned intra_b_offset = base_offset + ss * cg[ss].get_m_size();
-                            for (index_type b = 0; b < cg[ss].get_bs().size(); ++b) 
-                                cg[ss].get_ks()[b] = intra_b_offset + offsets[cg[ss].get_bs()[b]];
-                        }
-                    }
-                }
-            }
-
-            Boundary<OtherMatrix, SymmGroup> ret(b_index);
 
             // Contraction
             omp_for(index_type rb_bra, parallel::range<index_type>(0,loop_max), {
                 charge rc_bra = right_i[rb_bra].first;
                 for (const_iterator it = tasks[rb_bra].begin(); it != tasks[rb_bra].end(); ++it) // mc loop
-                {
-                    charge rc_ket = it->first;
-                    ret.template allocate<1>(rc_bra, rc_ket);
-                    for (auto const& cg : it->second) // physical index loop
-                        cg.lbtm(ket_tensor, ret.index().cohort_index(rc_bra, rc_ket), left, ret);
-                }
+                    //charge rc_ket = it->first;
+                    it->second.lbtm(ket_tensor, left, dm_out[rb_bra], alpha);
             });
-
-            return ret;
         }
 
         template<class Matrix, class OtherMatrix, class SymmGroup>
-        static Boundary<OtherMatrix, SymmGroup>
-        right_boundary_tensor_mpo(MPSTensor<Matrix, SymmGroup> ket_tensor,
-                                  Boundary<OtherMatrix, SymmGroup> const & right,
-                                  MPOTensor<Matrix, SymmGroup> const & mpo)
+        void alpha_dm_direct_right(MPSTensor<Matrix, SymmGroup> ket_tensor,
+                                   Boundary<OtherMatrix, SymmGroup> const & right,
+                                   MPOTensor<Matrix, SymmGroup> const & mpo,
+                                   block_matrix<OtherMatrix, SymmGroup> & dm_out,
+                                   double alpha)
         {
             typedef typename SymmGroup::charge charge;
             typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
@@ -159,35 +117,13 @@ namespace contraction {
                 rshtm_tasks(mpo, right.index(), left_i, right_i, physical_i, right_pb, lb_bra, tasks[lb_bra], false);
             });
 
-            BoundaryIndex<Matrix, SymmGroup> b_index(left_i, out_right_i);
-            for(unsigned lb_bra = 0; lb_bra < loop_max; ++lb_bra)
-                for (auto& e : tasks[lb_bra])
-                {
-                    charge lc_ket = e.first;
-                    size_t block_size = left_i.size_of_block(lc_ket) * out_right_i[lb_bra].second;
-                    index_type cnt = 0;
-                    // rescale the offsets for the larger paired sector sizes
-                    std::vector<long int> & offsets = e.second.get_offsets();
-                    for (index_type b = 0; b < offsets.size(); ++b) if (offsets[b] > -1) offsets[b] = block_size * cnt++; 
-
-                    b_index.add_cohort(left_i.position(e.first), lb_bra, offsets);
-                }
-
-            Boundary<OtherMatrix, SymmGroup> ret(b_index);
-
             // Contraction
             omp_for(index_type lb_bra, parallel::range<index_type>(0,loop_max), {
                 charge lc_bra = left_i[lb_bra].first;
                 for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it) // lc_ket loop
-                {
-                    charge lc_ket = it->first;
-                    ret.template allocate<1>(lc_ket, lc_bra);
-                    for (auto const& cg : it->second) // physical index loop
-                        cg.rbtm(ket_tensor, ret.index().cohort_index(lc_ket, lc_bra), right, ret);
-                }
+                    //charge lc_ket = it->first;
+                    it->second.rbtm(ket_tensor, right, dm_out[lb_bra], alpha);
             });
-
-            return ret;
         }
 
         template<class Matrix, class OtherMatrix, class SymmGroup>
@@ -204,13 +140,13 @@ namespace contraction {
             typedef typename schedule_t::block_type::const_iterator const_iterator;
 
             MPSTensor<Matrix, SymmGroup> buffer; // holds the conjugate tensor if we deal with complex numbers
-            MPSTensor<Matrix, SymmGroup> const & bra_tensor = set_conjugate(bra_tensor_in, buffer);
+            MPSTensor<Matrix, SymmGroup> bra_tensor = set_conjugate(bra_tensor_in, buffer);
 
-            if (!ket_tensor.is_right_paired() || !bra_tensor.is_right_paired())
+            if (!ket_tensor.is_right_paired() || !bra_tensor.is_left_paired())
             {
                 parallel_critical {
                 ket_tensor.make_right_paired();
-                bra_tensor.make_right_paired();
+                bra_tensor.make_left_paired();
                 }
             }
 
@@ -220,9 +156,7 @@ namespace contraction {
                                      ket_right_i = ket_tensor.col_dim(),
                                      bra_right_i = bra_tensor.col_dim();
 
-            ProductBasis<SymmGroup> bra_right_pb(physical_i, bra_tensor.col_dim(),
-                    boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
-                                    -boost::lambda::_1, boost::lambda::_2));
+            ProductBasis<SymmGroup> bra_right_pb(physical_i, bra_tensor.row_dim());
             ProductBasis<SymmGroup> ket_right_pb(physical_i, ket_right_i,
                     boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
                                     -boost::lambda::_1, boost::lambda::_2));
@@ -259,8 +193,7 @@ namespace contraction {
                     {
                         charge rc_ket = it->first;
                         ret.allocate(rc_bra, rc_ket);
-                        for (auto const& cg : it->second) // physical index loop
-                            cg.prop_l(bra_tensor, ket_tensor, ret.index().cohort_index(rc_bra, rc_ket), left, ret);
+                        it->second.prop_l(bra_tensor, ket_tensor, ret.index().cohort_index(rc_bra, rc_ket), left, ret);
                     }
                 }
             }
@@ -333,11 +266,11 @@ namespace contraction {
                     {
                         charge lc_ket = it->first;
                         ret.allocate(lc_ket, lc_bra);
-                        for (auto const& cg : it->second) // physical index loop
-                            cg.prop(ket_tensor, bra_tensor.data()[lb_bra], ret.index().cohort_index(lc_ket, lc_bra), right, ret);
+                        it->second.prop_r(bra_tensor, ket_tensor, ret.index().cohort_index(lc_ket, lc_bra), right, ret);
                     }
                 }
             }
+            ret.index().transpose();
 
             return ret;
         }

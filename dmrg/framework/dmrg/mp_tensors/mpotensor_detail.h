@@ -146,8 +146,13 @@ namespace MPOTensor_detail
         template <class Charge>
         bool skip(index_type b, Charge l, Charge r) const
         {
-            if (Herm[b] < b) return true;
-            else if (Herm[b] == b) return l < r;
+            //if (Herm[b] < b) return true;
+            //else if (Herm[b] == b) return l < r;
+            //else return false;
+
+            // this produces b-index complete cohorts
+            if (l < r && Herm[b] != std::numeric_limits<index_type>::max()) return true;
+            //else if (l==r && Herm[b] < b) return true;
             else return false;
         }
         index_type conj(index_type b) const { return Herm[b]; }
