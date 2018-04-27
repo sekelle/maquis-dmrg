@@ -703,24 +703,26 @@ public:
         int stripe = num_cols(bra_mps.data()[rb]);
 
         std::vector<value_type> t = create_T(right, ket_mps);
-        std::vector<value_type> sloc = create_s_r_transpose(stripe, t);
 
-        int M = rs; // == num_rows(bra_mps.data()[rb]);
-        int N = new_right.index().n_blocks(ci) * ls;
-        blas_gemm('N', 'N', M, N, stripe, value_type(1),
-                  &bra_mps.data()[rb](0,0), M, &sloc[0], stripe, value_type(0), &new_right.data()[ci][0], M);
+        //std::vector<value_type> sloc = create_s_r_transpose(stripe, t);
+        //int M = rs; // == num_rows(bra_mps.data()[rb]);
+        //int N = new_right.index().n_blocks(ci) * ls;
+        //blas_gemm('N', 'N', M, N, stripe, value_type(1),
+        //          &bra_mps.data()[rb](0,0), M, &sloc[0], stripe, value_type(0), &new_right.data()[ci][0], M);
 
-        // Test for create_s_r
-        //std::vector<value_type> sloc = create_s_r(stripe, t);
-
-        //int M = new_right.index().n_blocks(ci) * ls;
-        //int N = rs;
-        //Matrix buf(M,N);
-        //blas_gemm('N', 'T', M, N, stripe, value_type(1),
-        //           &sloc[0], M, &bra_mps.data()[rb](0,0), rs, value_type(0), &buf(0,0), M);
+        std::vector<value_type> sloc = create_s_r(stripe, t);
+        int M = new_right.index().n_blocks(ci) * ls;
+        int N = rs;
+        Matrix buf(M,N);
+        blas_gemm('N', 'T', M, N, stripe, value_type(1),
+                   &sloc[0], M, &bra_mps.data()[rb](0,0), rs, value_type(0), &buf(0,0), M);
 
         //transpose_inplace(buf);
         //std::copy(&buf(0,0), &buf(0,0) + M*N, &new_right.data()[ci][0]);
+
+        for (unsigned b = 0; b < new_right.index().n_blocks(ci); ++b)
+            for (unsigned col = 0; col < rs; ++col)
+                std::copy(&buf(ls*b,col), &buf(ls*b,col) + ls, &new_right.data()[ci][(b*rs + col)*ls]);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -1072,10 +1074,10 @@ public:
 
             assert(right.data()[ci_eff].size());
 
-            //unsigned bls = (right.index().tr(ci)) ? right.index().right_size(ci) : right.index().left_size(ci);
-            //unsigned brs = (right.index().tr(ci)) ? right.index().left_size(ci) : right.index().right_size(ci);
-            unsigned bls = right.index().right_size(ci);
-            unsigned brs = right.index().left_size(ci);
+            //unsigned bls = right.index().right_size(ci);
+            //unsigned brs = right.index().left_size(ci);
+            unsigned bls = right.index().left_size(ci);
+            unsigned brs = right.index().right_size(ci);
 
             int M = num_rows(mps.data()[lb]);
             int N = right.index().n_blocks(ci_eff) * brs;
