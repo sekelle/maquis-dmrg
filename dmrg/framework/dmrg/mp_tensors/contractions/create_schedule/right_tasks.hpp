@@ -52,7 +52,6 @@ namespace common {
         typedef typename common::BoundarySchedule<Matrix, SymmGroup>::block_type block_type;
 
         mpsb.lb = lb_ket;
-        //maquis::cout << "lb " << lb_ket << std::endl;
 
         charge lc_ket = left_i[lb_ket].first;
         for (unsigned s = 0; s < phys_i.size(); ++s)
@@ -68,10 +67,8 @@ namespace common {
                 unsigned ci = right.cohort_index(rc_ket, right_i[rb_bra].first);
                 if (ci == right.n_cohorts()) continue;
 
-                //unsigned ci_eff = (right.tr(ci)) ? ci : right.cohort_index(right_i[rb_bra].first, rc_ket);
                 unsigned ci_eff = (right.tr(ci)) ? right.cohort_index(right_i[rb_bra].first, rc_ket) : ci;
                 mpsb.t_schedule.push_back(boost::make_tuple(ket_offset, ci, ci_eff));
-                //maquis::cout << "create ti " << mpsb.t_schedule.size() - 1 << " " << ket_offset << " " << ci << " " << ci_eff << std::endl;
             } 
         }
     }
@@ -150,8 +147,6 @@ namespace common {
                                 w9j.set_scale(A, K, Ap, rc_ket, scale, couplings);
 
                                 char right_transpose = right.trans(ci, b2);
-                                // all stored parts in right boundary are transposed
-                                //unsigned ci_eff = (right_transpose) ? ci : right.cohort_index(rc_bra, rc_ket);
                                 unsigned ci_eff = (right_transpose) ? right.cohort_index(rc_bra, rc_ket) : ci;
                                 size_t right_offset = right.offset(ci, b2);
                                 t_key tq = bit_twiddling::pack(ket_offset, right_transpose, ci_eff, right_offset, 0);

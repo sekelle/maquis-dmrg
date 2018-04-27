@@ -866,13 +866,6 @@ public:
         char gemmtrans[2] = {'N', 'T'};
         const value_type* mpsdata = &mps.data()[lb](0,0);
 
-        //for (int ti = 0; ti < sched.size(); ++ti)
-        //{
-        //    maquis::cout << "ti " << ti << " ";
-        //    std::copy(Tnew[ti].begin(), Tnew[ti].end(), std::ostream_iterator<value_type>(std::cout, " "));
-        //    maquis::cout << std::endl;
-        //}
-
         for (unsigned s = 0; s < tuv.size(); ++s)
         {
             if (!tuv[s].size()) continue;
@@ -891,30 +884,13 @@ public:
                 blas_gemm(gemmtrans[0], gemmtrans[trans], M, N, K, value_type(1), mpsdata + in_offset * M, M,
                           &right.data()[ci][offset], LDB, value_type(0), buf.data(), M);
 
-                //maquis::cout << "  find in_offset=" << in_offset << " ci_eff=" << ci << " Rtr=" << (int)trans << std::endl;
                 int ti = 0;
                 for (int t = 0; t < sched.size(); ++t)
-                {
-                    //maquis::cout << "    ti" << t << " " << boost::get<0>(sched[t])
-                    //                              << " " << boost::get<1>(sched[t])
-                    //                              << " " << boost::get<2>(sched[t]) << std::endl;
                     if (boost::get<0>(sched[t]) == in_offset && boost::get<2>(sched[t]) == ci)
                         ti = t;
-                }
 
-                //assert(boost::get<0>(sched[ti]) == in_offset);
-                //assert(boost::get<2>(sched[ti]) == ci);
-
-                //maquis::cout << "  found ti " << ti << std::endl;
-                //maquis::cout << "  offset=" << offset << " M=" << M << " K=" << K << " N=" << N << std::endl;
-                //std::copy(buf.begin(), buf.end(), std::ostream_iterator<value_type>(std::cout, " "));
-                //std::copy(right.data()[ci].begin(), right.data()[ci].end(), std::ostream_iterator<value_type>(std::cout, " "));
-                //maquis::cout << std::endl;
                 for (int e = 0; e < M*N; ++e)
-                {
                     assert( std::abs( buf[e] - Tnew[ti][(offset/K) * M + e]) < 1e-6 );
-                }
-                //maquis::cout << std::endl;
             }
         }
     }
@@ -1072,10 +1048,6 @@ public:
             unsigned ci = boost::get<1>(t_schedule[ti]);
             unsigned ci_eff = boost::get<2>(t_schedule[ti]);
 
-            assert(right.data()[ci_eff].size());
-
-            //unsigned bls = right.index().right_size(ci);
-            //unsigned brs = right.index().left_size(ci);
             unsigned bls = right.index().left_size(ci);
             unsigned brs = right.index().right_size(ci);
 
@@ -1100,28 +1072,7 @@ public:
 
             ret[ti] = std::vector<value_type>(M * size_t(N));
 
-            //if (right.data()[ci_eff].size() != K*N)
-            //    maquis::cout << right.data()[ci_eff].size() << " " << K*N
-            //                 << "   " << ci << " " << ci_eff << " " << bls << " " << brs << " "
-            //                 << " nb " << right.index().n_blocks(ci) << " " << right.index().n_blocks(ci_eff) << std::endl;
-
-            assert (right.data()[ci_eff].size() == K*N);
-
             blas_gemm('N', 'N', M, N, K, value_type(1), mpsdata, M, r_use, K, value_type(0), ret[ti].data(), M);
-
-            //if (ti == 4 && mps_offset == 1 && ci == 18 && ci_eff == 2)
-            //if (right.index().tr(ci) == 0)
-            //{
-            //    assert(right.index().tr(ci) == 0);
-            //    maquis::cout << "cT " << bls << "x" << brs << std::endl;
-            //    maquis::cout << ti << " " << ci << " " << ci_eff << std::endl;
-            //    std::copy(right.data()[ci_eff].begin(), right.data()[ci_eff].end(), std::ostream_iterator<value_type>(std::cout, " "));
-            //    maquis::cout << std::endl;
-            //    std::copy(rbuf.begin(), rbuf.end(), std::ostream_iterator<value_type>(std::cout, " "));
-            //    maquis::cout << std::endl;
-            //    std::copy(ret[ti].begin(), ret[ti].end(), std::ostream_iterator<value_type>(std::cout, " "));
-            //    maquis::cout << std::endl << std::endl;
-            //}
         }
 
         for (auto it = this->begin(); it != this->end(); ++it)

@@ -40,8 +40,6 @@ namespace common {
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
     void shtm_tasks(MPOTensor<Matrix, SymmGroup> const & mpo,
-                    //BoundaryIndex<OtherMatrix, SymmGroup> const & left,
-                    //BoundaryIndex<OtherMatrix, SymmGroup> const & right,
                     Boundary<OtherMatrix, SymmGroup> const & left_boundary,
                     Boundary<OtherMatrix, SymmGroup> const & right_boundary,
                     Index<SymmGroup> const & left_i,
@@ -124,8 +122,6 @@ namespace common {
 
                                 char right_transpose = right.trans(ci_right, b2);
                                 size_t right_offset = right.offset(ci_right, b2);
-                                // all stored parts in right boundary are transposed
-                                //unsigned ci_right_eff = (right_transpose) ? ci_right : right.cohort_index(rc_out, rc_in);
                                 unsigned ci_right_eff = (right_transpose) ? right.cohort_index(rc_out, rc_in) : ci_right;
                                 typename cgroup::t_key tq = bit_twiddling::pack(in_offset, right_transpose, ci_right_eff, right_offset, 0);
                                 
