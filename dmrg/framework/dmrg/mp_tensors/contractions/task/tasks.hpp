@@ -856,6 +856,68 @@ private:
         return ret;
     }
 
+public:
+    template <class DefaultMatrix, class OtherMatrix>
+    void verify_T(std::vector<std::vector<value_type>> const& Tnew, std::vector<boost::tuple<unsigned, unsigned, unsigned>> const& sched,
+                  Boundary<OtherMatrix, SymmGroup> const & right, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
+    {
+        char gemmtrans[2] = {'N', 'T'};
+        const value_type* mpsdata = &mps.data()[lb](0,0);
+
+        //for (int ti = 0; ti < sched.size(); ++ti)
+        //{
+        //    maquis::cout << "ti " << ti << " ";
+        //    std::copy(Tnew[ti].begin(), Tnew[ti].end(), std::ostream_iterator<value_type>(std::cout, " "));
+        //    maquis::cout << std::endl;
+        //}
+
+        for (unsigned s = 0; s < tuv.size(); ++s)
+        {
+            if (!tuv[s].size()) continue;
+            int M = ls, N = suv[sfold[s]].ms;
+            size_t t_size = M * std::size_t(N);
+            for (unsigned pos = 0; pos < tuv[s].size(); ++pos)
+            {
+                unsigned long ci, offset, dummy, in_offset;
+                char trans;
+                bit_twiddling::unpack(tuv[s][pos], in_offset, trans, ci, offset, dummy);
+
+                int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
+                int LDB = right.index().left_size(ci);
+
+                std::vector<value_type> buf(M*N);
+                blas_gemm(gemmtrans[0], gemmtrans[trans], M, N, K, value_type(1), mpsdata + in_offset * M, M,
+                          &right.data()[ci][offset], LDB, value_type(0), buf.data(), M);
+
+                //maquis::cout << "  find in_offset=" << in_offset << " ci_eff=" << ci << " Rtr=" << (int)trans << std::endl;
+                int ti = 0;
+                for (int t = 0; t < sched.size(); ++t)
+                {
+                    //maquis::cout << "    ti" << t << " " << boost::get<0>(sched[t])
+                    //                              << " " << boost::get<1>(sched[t])
+                    //                              << " " << boost::get<2>(sched[t]) << std::endl;
+                    if (boost::get<0>(sched[t]) == in_offset && boost::get<2>(sched[t]) == ci)
+                        ti = t;
+                }
+
+                //assert(boost::get<0>(sched[ti]) == in_offset);
+                //assert(boost::get<2>(sched[ti]) == ci);
+
+                //maquis::cout << "  found ti " << ti << std::endl;
+                //maquis::cout << "  offset=" << offset << " M=" << M << " K=" << K << " N=" << N << std::endl;
+                //std::copy(buf.begin(), buf.end(), std::ostream_iterator<value_type>(std::cout, " "));
+                //std::copy(right.data()[ci].begin(), right.data()[ci].end(), std::ostream_iterator<value_type>(std::cout, " "));
+                //maquis::cout << std::endl;
+                for (int e = 0; e < M*N; ++e)
+                {
+                    assert( std::abs( buf[e] - Tnew[ti][(offset/K) * M + e]) < 1e-6 );
+                }
+                //maquis::cout << std::endl;
+            }
+        }
+    }
+
+private:
     std::vector<value_type> create_s(int stripe, std::vector<value_type> const& t) const
     {
         std::size_t count = std::count_if(mpo_offsets.begin(), mpo_offsets.end(), [](long int i) { return i >= 0; } );
@@ -992,9 +1054,83 @@ private:
 template <class Matrix, class SymmGroup>
 class MPSBlock : public std::map<typename SymmGroup::charge, Cohort<Matrix, SymmGroup> >
 {
+    typedef typename Matrix::value_type value_type;
 public:
     typedef std::map<typename SymmGroup::charge, Cohort<Matrix, SymmGroup> > base;
     typedef typename base::mapped_type mapped_type;
+
+    template <class DefaultMatrix, class OtherMatrix>
+    std::vector<std::vector<value_type>>
+    create_T(Boundary<OtherMatrix, SymmGroup> const & right, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
+    {
+        std::vector<std::vector<value_type>> ret(t_schedule.size());
+        for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
+        {
+            unsigned mps_offset = boost::get<0>(t_schedule[ti]);
+            unsigned ci = boost::get<1>(t_schedule[ti]);
+            unsigned ci_eff = boost::get<2>(t_schedule[ti]);
+
+            assert(right.data()[ci_eff].size());
+
+            //unsigned bls = (right.index().tr(ci)) ? right.index().right_size(ci) : right.index().left_size(ci);
+            //unsigned brs = (right.index().tr(ci)) ? right.index().left_size(ci) : right.index().right_size(ci);
+            unsigned bls = right.index().right_size(ci);
+            unsigned brs = right.index().left_size(ci);
+
+            int M = num_rows(mps.data()[lb]);
+            int N = right.index().n_blocks(ci_eff) * brs;
+            int K = bls;
+
+            std::vector<value_type> rbuf;
+            if (right.index().tr(ci))
+            {
+                rbuf = std::vector<value_type>(K * size_t(N));
+                for (size_t offset = 0; offset < K * size_t(N); offset += brs * bls)
+                {
+                    for (unsigned c = 0; c < brs; ++c)
+                    for (unsigned r = 0; r < bls; ++r)
+                        rbuf[offset + c*bls + r] = right.data()[ci_eff][offset + r*brs + c];
+                }
+            }
+
+            const value_type* r_use = (right.index().tr(ci)) ? rbuf.data() : right.data()[ci_eff].data();
+            const value_type* mpsdata = &mps.data()[lb](0, mps_offset);
+
+            ret[ti] = std::vector<value_type>(M * size_t(N));
+
+            //if (right.data()[ci_eff].size() != K*N)
+            //    maquis::cout << right.data()[ci_eff].size() << " " << K*N
+            //                 << "   " << ci << " " << ci_eff << " " << bls << " " << brs << " "
+            //                 << " nb " << right.index().n_blocks(ci) << " " << right.index().n_blocks(ci_eff) << std::endl;
+
+            assert (right.data()[ci_eff].size() == K*N);
+
+            blas_gemm('N', 'N', M, N, K, value_type(1), mpsdata, M, r_use, K, value_type(0), ret[ti].data(), M);
+
+            //if (ti == 4 && mps_offset == 1 && ci == 18 && ci_eff == 2)
+            //if (right.index().tr(ci) == 0)
+            //{
+            //    assert(right.index().tr(ci) == 0);
+            //    maquis::cout << "cT " << bls << "x" << brs << std::endl;
+            //    maquis::cout << ti << " " << ci << " " << ci_eff << std::endl;
+            //    std::copy(right.data()[ci_eff].begin(), right.data()[ci_eff].end(), std::ostream_iterator<value_type>(std::cout, " "));
+            //    maquis::cout << std::endl;
+            //    std::copy(rbuf.begin(), rbuf.end(), std::ostream_iterator<value_type>(std::cout, " "));
+            //    maquis::cout << std::endl;
+            //    std::copy(ret[ti].begin(), ret[ti].end(), std::ostream_iterator<value_type>(std::cout, " "));
+            //    maquis::cout << std::endl << std::endl;
+            //}
+        }
+
+        for (auto it = this->begin(); it != this->end(); ++it)
+            it->second.verify_T(ret, t_schedule, right, mps);
+
+        return ret;
+    }
+
+    unsigned lb;
+    std::vector<boost::tuple<unsigned, unsigned, unsigned>> t_schedule;
+
 };
 
 template <class Matrix, class SymmGroup>

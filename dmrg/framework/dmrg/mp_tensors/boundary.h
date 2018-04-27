@@ -101,6 +101,7 @@ public:
         left_sizes = rhs.left_sizes;
         right_sizes = rhs.right_sizes;
         n_blocks_ = rhs.n_blocks_;
+        tr_       = rhs.tr_;
     }
 
     unsigned   n_cohorts      ()                        const { return offsets.size(); }
@@ -119,6 +120,8 @@ public:
     size_t     block_size     (unsigned ci)             const {
         return bit_twiddling::round_up<1>(left_sizes[ci] * right_sizes[ci]); // ALIGN
     }
+
+    bool       tr             (unsigned ci) const { return tr_[ci]; }
 
     unsigned cohort_index(unsigned lb, unsigned rb, int tag = 0) const
     {
@@ -149,6 +152,7 @@ public:
         left_sizes      .push_back(bra_index[lb].second);
         right_sizes     .push_back(ket_index[rb].second);
         n_blocks_       .push_back(std::count_if(off_.begin(), off_.end(), [](long int o) { return o > -1; }));
+        tr_             .push_back(0);
 
         return ci;
     }
@@ -163,7 +167,10 @@ public:
                 unsigned ci_A = lbrb_ci(lb, rb);
                 unsigned ci_B = cohort_index(ket_index[rb].first, bra_index[lb].first);
                 if (ci_B == n_cohorts())
+                {
                     ci_B = add_cohort(rb, lb, std::vector<long int>(herm.size(), -1));
+                    tr_[ci_B] = 1;
+                }
 
                 for (unsigned b = 0; b < herm.size(); ++b)
                 {
@@ -187,6 +194,7 @@ public:
         for (unsigned ci = 0; ci < transposes.size(); ++ci)
         {
             std::swap(left_sizes[ci], right_sizes[ci]);
+            tr_[ci] = !tr_[ci];
             for (unsigned b = 0; b < transposes[ci].size(); ++b)
                 transposes[ci][b] = !transposes[ci][b];
         }
@@ -289,6 +297,7 @@ private:
     std::vector<std::size_t>             left_sizes;
     std::vector<std::size_t>             right_sizes;
     std::vector<unsigned>                n_blocks_;
+    std::vector<char>                    tr_;
 
     friend class boost::serialization::access;
 

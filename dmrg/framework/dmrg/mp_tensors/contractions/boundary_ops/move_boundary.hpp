@@ -238,6 +238,7 @@ namespace contraction {
             unsigned loop_max = ket_left_i.size();
             schedule_t tasks(loop_max);
             omp_for(unsigned lb_ket, parallel::range<unsigned>(0,loop_max), {
+                rshtm_t_tasks(   right.index(), bra_left_i, bra_right_i, physical_i, bra_right_pb, lb_ket, tasks[lb_ket]);
                 rshtm_tasks(mpo, right.index(), bra_left_i, bra_right_i, physical_i, bra_right_pb, lb_ket, tasks[lb_ket], true);
             });
 
@@ -259,6 +260,9 @@ namespace contraction {
                 #endif
                 for(index_type lb_ket = 0; lb_ket < loop_max; ++lb_ket) {
                     charge lc_ket = ket_left_i[lb_ket].first;
+
+                    auto T = tasks[lb_ket].create_T(right, ket_tensor);
+
                     #ifdef MAQUIS_OPENMP
                     #pragma omp task
                     #endif

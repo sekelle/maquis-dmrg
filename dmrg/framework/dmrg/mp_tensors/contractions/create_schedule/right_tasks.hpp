@@ -37,6 +37,45 @@ namespace contraction {
 namespace common {
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
+    void rshtm_t_tasks(
+                       BoundaryIndex<OtherMatrix, SymmGroup> const & right,
+                       Index<SymmGroup> const & left_i,
+                       Index<SymmGroup> const & right_i,
+                       Index<SymmGroup> const & phys_i,
+                       ProductBasis<SymmGroup> const & right_pb,
+                       unsigned lb_ket,
+                       common::MPSBlock<Matrix, SymmGroup>& mpsb
+                      )
+    {
+        typedef typename SymmGroup::charge charge;
+        typedef typename Matrix::value_type value_type;
+        typedef typename common::BoundarySchedule<Matrix, SymmGroup>::block_type block_type;
+
+        mpsb.lb = lb_ket;
+        //maquis::cout << "lb " << lb_ket << std::endl;
+
+        charge lc_ket = left_i[lb_ket].first;
+        for (unsigned s = 0; s < phys_i.size(); ++s)
+        {
+            charge phys_in = phys_i[s].first;
+            charge rc_ket = SymmGroup::fuse(lc_ket, phys_in);
+            unsigned rb_ket = right_i.position(rc_ket); if (rb_ket == right_i.size()) continue;
+            unsigned rs_ket = right_i[rb_ket].second;
+            unsigned ket_offset = right_pb(phys_in, rc_ket);
+
+            for (unsigned rb_bra = 0; rb_bra < right_i.size(); ++rb_bra)
+            {
+                unsigned ci = right.cohort_index(rc_ket, right_i[rb_bra].first);
+                if (ci == right.n_cohorts()) continue;
+
+                unsigned ci_eff = (right.tr(ci)) ? ci : right.cohort_index(right_i[rb_bra].first, rc_ket);
+                mpsb.t_schedule.push_back(boost::make_tuple(ket_offset, ci, ci_eff));
+                //maquis::cout << "create ti " << mpsb.t_schedule.size() - 1 << " " << ket_offset << " " << ci << " " << ci_eff << std::endl;
+            } 
+        }
+    }
+
+    template<class Matrix, class OtherMatrix, class SymmGroup>
     void rshtm_tasks(MPOTensor<Matrix, SymmGroup> const & mpo,
                      BoundaryIndex<OtherMatrix, SymmGroup> const & right,
                      Index<SymmGroup> const & left_i,
