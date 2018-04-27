@@ -274,7 +274,6 @@ namespace contraction {
                     }
                 }
             }
-            //ret.index().transpose();
 
             return ret;
         }
