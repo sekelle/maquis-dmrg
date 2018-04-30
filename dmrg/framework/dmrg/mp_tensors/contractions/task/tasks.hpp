@@ -561,11 +561,14 @@ private:
     {
     public:
 
-        void push_back(unsigned ti, value_type scale)
+        void push_back(unsigned ti, value_type scale, index_type ti2, index_type col)
         {
             tidx.push_back(ti);
             alpha.push_back(scale);
             b2count++;
+
+            tidx2.push_back(ti2);
+            tidx2.push_back(col);
         }
 
         unsigned add_line(unsigned b)
@@ -590,6 +593,8 @@ private:
         std::vector<value_type> alpha;
         std::vector<index_type> b2s;
         std::vector<index_type> b1;
+
+        std::vector<index_type> tidx2;
 
     private:
         unsigned b2count=0;
@@ -646,11 +651,12 @@ public:
         }
     }
 
-    void push_back(unsigned s, unsigned ss2, t_key tq, value_type scale)
+    void push_back(unsigned s, unsigned ss2, t_key tq, value_type scale, unsigned ti2, unsigned col)
     {
         unsigned sid = sfold[s] + ss2;
         unsigned ti = tuv[s].insert(tq);
-        suv[sid].push_back(ti, scale);
+
+        suv[sid].push_back(ti, scale, ti2, col);
     }
 
     void add_line(index_type b1)
@@ -696,13 +702,14 @@ public:
     template <class DefaultMatrix, class OtherMatrix>
     void prop_r(MPSTensor<DefaultMatrix, SymmGroup> const & bra_mps,
                 MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
+                std::vector<std::vector<value_type>> const & T,
                 unsigned ci,
                 Boundary<OtherMatrix, SymmGroup> const & right,
                 Boundary<OtherMatrix, SymmGroup> & new_right) const
     {
         int stripe = num_cols(bra_mps.data()[rb]);
 
-        std::vector<value_type> t = create_T(right, ket_mps);
+        //std::vector<value_type> t = create_T(right, ket_mps);
 
         //std::vector<value_type> sloc = create_s_r_transpose(stripe, t);
         //int M = rs; // == num_rows(bra_mps.data()[rb]);
@@ -710,7 +717,8 @@ public:
         //blas_gemm('N', 'N', M, N, stripe, value_type(1),
         //          &bra_mps.data()[rb](0,0), M, &sloc[0], stripe, value_type(0), &new_right.data()[ci][0], M);
 
-        std::vector<value_type> sloc = create_s_r(stripe, t);
+        //std::vector<value_type> sloc = create_s_r(stripe, t, T);
+        std::vector<value_type> sloc = create_s_r2(stripe, T);
         int M = new_right.index().n_blocks(ci) * ls;
         int N = rs;
         Matrix buf(M,N);
@@ -886,7 +894,7 @@ public:
 
                 int ti = 0;
                 for (int t = 0; t < sched.size(); ++t)
-                    if (boost::get<1>(sched[t]) == ci_virt)
+                    if (boost::get<0>(sched[t]) == in_offset && boost::get<1>(sched[t]) == ci_virt)
                         ti = t;
 
                 for (int e = 0; e < M*N; ++e)
@@ -978,7 +986,7 @@ private:
         return ret;
     }
 
-    std::vector<value_type> create_s_r(int stripe, std::vector<value_type> const& t) const
+    std::vector<value_type> create_s_r(int stripe, std::vector<value_type> const& t, std::vector<std::vector<value_type>> const & T) const
     {
         std::size_t count = std::count_if(mpo_offsets.begin(), mpo_offsets.end(), [](long int i) { return i >= 0; } );
         std::size_t S_size = count * stripe * std::size_t(ls);
@@ -1005,9 +1013,52 @@ private:
                 memset(&buf(0,0), 0, ls * x.ms * sizeof(value_type));
 
                 for (int ia = seeker; ia < seeker + x.b2s[b]; ++ia)
+                {
                     maquis::dmrg::detail::iterator_axpy(t_pointer + x.tidx[ia] * x.ms * ls,
                                                         t_pointer + (x.tidx[ia]+1) * x.ms * ls,
                                                         &buf(0,0), x.alpha[ia]);
+                    //assert (x.tidx2[2*ia] < T.size());
+                    //assert (x.tidx2[2*ia+1] * ls + x.ms * ls <=  T[x.tidx2[2*ia]].size());
+                    //maquis::dmrg::detail::iterator_axpy(&T[x.tidx2[2*ia]][x.tidx2[2*ia+1] * ls],
+                    //                                    &T[x.tidx2[2*ia]][x.tidx2[2*ia+1] * ls] + x.ms * ls,
+                    //                                    &buf(0,0), x.alpha[ia]);
+                }
+
+                unsigned ii = mpo_offsets[x.b1[b]] / (ls * rs);
+                for (unsigned c = 0; c < x.ms; ++c)
+                    std::copy(buf.col(c).first, buf.col(c).second, ret.data() + count*ls * (x.offset+c) + ii*ls);
+
+                seeker += x.b2s[b];
+            }
+        }
+        return ret;
+    }
+
+    std::vector<value_type> create_s_r2(int stripe, std::vector<std::vector<value_type>> const & T) const
+    {
+        std::size_t count = std::count_if(mpo_offsets.begin(), mpo_offsets.end(), [](long int i) { return i >= 0; } );
+        std::size_t S_size = count * stripe * std::size_t(ls);
+
+        std::vector<value_type> ret(S_size);
+        for (auto const& x : suv)
+        {
+            if (!x.alpha.size()) continue;
+
+            Matrix buf(ls, x.ms);
+
+            index_type seeker = 0;
+            for (index_type b=0; b < x.b1.size(); ++b)
+            {
+                memset(&buf(0,0), 0, ls * x.ms * sizeof(value_type));
+
+                for (int ia = seeker; ia < seeker + x.b2s[b]; ++ia)
+                {
+                    //assert (x.tidx2[2*ia] < T.size());
+                    //assert (x.tidx2[2*ia+1] * ls + x.ms * ls <=  T[x.tidx2[2*ia]].size());
+                    maquis::dmrg::detail::iterator_axpy(&T[x.tidx2[2*ia]][x.tidx2[2*ia+1] * ls],
+                                                        &T[x.tidx2[2*ia]][x.tidx2[2*ia+1] * ls] + x.ms * ls,
+                                                        &buf(0,0), x.alpha[ia]);
+                }
 
                 unsigned ii = mpo_offsets[x.b1[b]] / (ls * rs);
                 for (unsigned c = 0; c < x.ms; ++c)
@@ -1075,10 +1126,20 @@ public:
             blas_gemm('N', 'N', M, N, K, value_type(1), mpsdata, M, r_use, K, value_type(0), ret[ti].data(), M);
         }
 
-        for (auto it = this->begin(); it != this->end(); ++it)
-            it->second.verify_T(ret, t_schedule, right, mps);
+        //for (auto it = this->begin(); it != this->end(); ++it)
+        //    it->second.verify_T(ret, t_schedule, right, mps);
 
         return ret;
+    }
+
+    unsigned get_ti(unsigned mps_offset, unsigned ci_virt) const
+    {
+        for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
+            if (boost::get<0>(t_schedule[ti]) == mps_offset && boost::get<1>(t_schedule[ti]) == ci_virt)
+                return ti;
+
+        //throw std::runtime_error("ti not found\n");
+        return std::numeric_limits<unsigned>::max();
     }
 
     unsigned lb;

@@ -68,7 +68,8 @@ namespace common {
                 if (ci == right.n_cohorts()) continue;
 
                 unsigned ci_eff = (right.tr(ci)) ? right.cohort_index(right_i[rb_bra].first, rc_ket) : ci;
-                mpsb.t_schedule.push_back(boost::make_tuple(ket_offset, ci, ci_eff));
+                for (unsigned ss = 0; ss < phys_i[s].second; ++ss)
+                    mpsb.t_schedule.push_back(boost::make_tuple(ket_offset + ss * rs_ket, ci, ci_eff));
             } 
         }
     }
@@ -152,7 +153,7 @@ namespace common {
                                 t_key tq = bit_twiddling::pack(ket_offset, right_transpose, ci_eff, right_offset, ci);
                                 
                                 detail::op_iterate<Matrix, typename common::BoundarySchedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
-                                    (W, w_block, couplings, cohort, s, tq, rs_ket);
+                                    (W, w_block, couplings, cohort, s, tq, rs_ket, mpsb, ket_offset, ci, right_offset/rs_ket);
                             } // w_block
                         } //op_index
                     } // b2

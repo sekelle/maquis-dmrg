@@ -261,16 +261,21 @@ namespace contraction {
                 for(index_type lb_ket = 0; lb_ket < loop_max; ++lb_ket) {
                     charge lc_ket = ket_left_i[lb_ket].first;
 
-                    auto T = tasks[lb_ket].create_T(right, ket_tensor);
-
                     #ifdef MAQUIS_OPENMP
                     #pragma omp task
                     #endif
-                    for (const_iterator it = tasks[lb_ket].begin(); it != tasks[lb_ket].end(); ++it) // lc_ket loop
                     {
-                        charge lc_bra = it->first;
-                        ret.allocate(lc_ket, lc_bra);
-                        it->second.prop_r(bra_tensor, ket_tensor, ret.index().cohort_index(lc_ket, lc_bra), right, ret);
+                        auto T = tasks[lb_ket].create_T(right, ket_tensor);
+
+                        #ifdef MAQUIS_OPENMP
+                        #pragma omp task
+                        #endif
+                        for (const_iterator it = tasks[lb_ket].begin(); it != tasks[lb_ket].end(); ++it) // lc_ket loop
+                        {
+                            charge lc_bra = it->first;
+                            ret.allocate(lc_ket, lc_bra);
+                            it->second.prop_r(bra_tensor, ket_tensor, T, ret.index().cohort_index(lc_ket, lc_bra), right, ret);
+                        }
                     }
                 }
             }

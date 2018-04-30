@@ -71,7 +71,11 @@ namespace detail {
                     Cohort<AlignedMatrix, SymmGroup> & cg,
                     unsigned s,
                     typename ContractionGroup<AlignedMatrix, SymmGroup>::t_key tq,
-                    unsigned m2_size)
+                    unsigned m2_size,
+                    MPSBlock<AlignedMatrix, SymmGroup> const & mpsb,
+                    unsigned mps_offset,
+                    unsigned ci,
+                    unsigned boundary_col)
     {
         typedef ContractionGroup<AlignedMatrix, SymmGroup> cgroup;
         typedef typename SparseOperator<Matrix, SymmGroup>::const_iterator block_iterator;
@@ -92,7 +96,9 @@ namespace detail {
             typename Matrix::value_type scale = it->coefficient * couplings[casenr];
             typename cgroup::t_key tq2 = bit_twiddling::add_last(tq, ss1*m2_size);
 
-            cg.push_back(s, ss2, tq2, scale);
+            unsigned ti = mpsb.get_ti(mps_offset + ss1*m2_size, ci);
+
+            cg.push_back(s, ss2, tq2, scale, ti, boundary_col);
         }
     }
 

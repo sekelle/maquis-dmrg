@@ -120,7 +120,7 @@ namespace common {
                                 auto tq = bit_twiddling::pack(ket_offset, left_transpose, ci_eff, left_offset, lb_ket);
                                 
                                 detail::op_iterate<Matrix, typename common::BoundarySchedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
-                                    (W, w_block, couplings, cohort, s, tq, rs_ket);
+                                    (W, w_block, couplings, cohort, s, tq, rs_ket, mpsb, ket_offset, ci, left_offset/ls_bra);
                             } // w_block
                         } //op_index
                     } // b1
