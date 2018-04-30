@@ -873,9 +873,9 @@ public:
             size_t t_size = M * std::size_t(N);
             for (unsigned pos = 0; pos < tuv[s].size(); ++pos)
             {
-                unsigned long ci, offset, dummy, in_offset;
+                unsigned long ci, offset, ci_virt, in_offset;
                 char trans;
-                bit_twiddling::unpack(tuv[s][pos], in_offset, trans, ci, offset, dummy);
+                bit_twiddling::unpack(tuv[s][pos], in_offset, trans, ci, offset, ci_virt);
 
                 int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
                 int LDB = right.index().left_size(ci);
@@ -886,7 +886,7 @@ public:
 
                 int ti = 0;
                 for (int t = 0; t < sched.size(); ++t)
-                    if (boost::get<0>(sched[t]) == in_offset && boost::get<2>(sched[t]) == ci)
+                    if (boost::get<1>(sched[t]) == ci_virt)
                         ti = t;
 
                 for (int e = 0; e < M*N; ++e)
