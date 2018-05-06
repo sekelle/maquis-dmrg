@@ -753,10 +753,6 @@ public:
         std::vector<value_type> t = create_T(right, mps);
         std::vector<value_type> sloc = create_s_r(stripe, t);
 
-        //assert(left.data()[ci_eff].size() % rs == 0);
-        //assert(sloc.size() % stripe == 0);
-        //assert(left.data()[ci_eff].size() / rs == sloc.size() / stripe);
-
         int M = rs;
         int N = stripe;
         int K = sloc.size() / stripe;
@@ -775,7 +771,11 @@ public:
             luse = lbuf.data();
         }
 
-        blas_gemm('N', 'N', M, N, K, value_type(1), luse, M, sloc.data(), K, value_type(1), output.get_values().data(), M);
+        Matrix buf(M,N);
+        blas_gemm('N', 'N', M, N, K, value_type(1), luse, M, sloc.data(), K, value_type(0), buf.get_values().data(), M);
+
+        parallel_critical
+        output += buf;
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -1294,7 +1294,7 @@ struct ScheduleNew : public std::vector<MPSBlock<
     size_t cpu_flops, gpu_flops;
     mutable double cpu_time, gpu_time;
 
-    std::vector<size_t> load_balance;
+    std::vector<std::vector<unsigned>> load_balance;
     std::vector<boost::tuple<unsigned, unsigned, unsigned>> enumeration;
 };
 

@@ -351,6 +351,7 @@ class ScheduleGpuExtension
     typedef typename Matrix::value_type v_type;
 public:
 
+    ScheduleGpuExtension() { }
     ScheduleGpuExtension(size_t nphys_) : nphys(nphys_) { }
 
 

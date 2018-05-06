@@ -123,17 +123,6 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
 
     if (std::max(mpo.row_dim(), mpo.col_dim()) > 10)
     {
-
-        //for (auto& mb : tasks)
-        //    for (auto& cgv : mb)
-        //        for (auto& cg : cgv)
-        //        {
-        //            maquis::cout << "cg " << std::setw(5) << cg.t_key_vec.size() << std::setw(5) << num_rows(initial.data()[cg.get_mps_block()])
-        //                         << std::setw(5) << cg.r_size << std::endl;
-        //            for (auto& mg  : cg)
-        //                maquis::cout << "mg " << std::setw(5) << mg.bs.size() << std::setw(5) << mg.l_size << std::setw(5) << mg.r_size << std::endl;
-        //        }
-
         maquis::cout << "Schedule size: " << tasks.size() << " blocks, " << tasks.enumeration_gpu.size()
                          << " cgs_gpu, " << tasks.enumeration.size() << " cgs_cpu, "
                      << " R " << size_of(right) << "B, "

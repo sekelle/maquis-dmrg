@@ -152,12 +152,23 @@ namespace common {
         MPSTensor<Matrix, SymmGroup> ret(ket_tensor.site_dim(), ket_tensor.row_dim(), ket_tensor.col_dim(),
                                          ket_tensor.data().basis(), RightPaired);
 
-        for (unsigned lb_in = 0; lb_in < tasks.size(); ++lb_in)
+        #ifdef MAQUIS_OPENMP
+        #pragma omp parallel
+        #endif
         {
-            for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
+            #ifdef MAQUIS_OPENMP
+            #pragma omp single
+            #endif
+            for (unsigned lb_in = 0; lb_in < tasks.size(); ++lb_in)
             {
-                charge lc_out = it->first;
-                it->second.contract(ket_tensor, left, right, ret.data()(lc_out, lc_out));
+                    #ifdef MAQUIS_OPENMP
+                    #pragma omp task
+                    #endif
+                for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
+                {
+                    charge lc_out = it->first;
+                    it->second.contract(ket_tensor, left, right, ret.data()(lc_out, lc_out));
+                }
             }
         }
 

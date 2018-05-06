@@ -45,8 +45,7 @@ struct SiteProblem
     : left(left_)
     , right(right_)
     , mpo(mpo_)
-    , contraction_schedule(contraction::Engine<Matrix, OtherMatrix, SymmGroup>::
-                           contraction_schedule(initial, left, right, mpo))
+    //, contraction_schedule(contraction::Engine<Matrix, OtherMatrix, SymmGroup>::contraction_schedule(initial, left, right, mpo))
     , contraction_schedule_new(contraction::common::create_contraction_schedule_new(initial, left, right, mpo))
     { }
     
