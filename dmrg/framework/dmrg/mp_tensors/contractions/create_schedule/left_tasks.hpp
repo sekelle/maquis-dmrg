@@ -42,7 +42,7 @@ namespace common {
                      BoundaryIndex<OtherMatrix, SymmGroup> const & left,
                      ProductBasis<SymmGroup> const & bra_left_pb,
                      ProductBasis<SymmGroup> const & ket_right_pb,
-                     unsigned rb_bra,
+                     unsigned rb_ket,
                      typename common::BoundarySchedule<Matrix, SymmGroup>::block_type & mpsb,
                      bool skip = true)
     {
@@ -58,16 +58,16 @@ namespace common {
         Index<SymmGroup> const & bra_right_i = bra.col_dim();
         Index<SymmGroup> const & phys_i = ket.site_dim();
 
-        charge rc_bra = bra_right_i[rb_bra].first;
-        unsigned rs_bra = bra_right_i[rb_bra].second;
+        charge rc_ket = ket_right_i[rb_ket].first;
+        unsigned rs_ket = ket_right_i[rb_ket].second;
 
         const int site_basis_max_diff = 2;
 
-        for (unsigned rb_ket = 0; rb_ket < ket_right_i.size(); ++rb_ket)
+        for (unsigned rb_bra = 0; rb_bra < bra_right_i.size(); ++rb_bra)
         {
-            charge rc_ket = ket_right_i[rb_ket].first;
+            charge rc_bra = bra_right_i[rb_bra].first;
             if (std::abs(SymmGroup::particleNumber(rc_bra) - SymmGroup::particleNumber(rc_ket)) > site_basis_max_diff) continue;
-            unsigned rs_ket = ket_right_i[rb_ket].second;
+            unsigned rs_bra = bra_right_i[rb_bra].second;
 
             typename block_type::mapped_type cohort(phys_i, rb_bra, rb_ket, rs_bra, rs_ket, 0, 0, mpo.col_dim());
 
@@ -130,9 +130,9 @@ namespace common {
             } // phys_out
 
             cohort.finalize();
-            if (cohort.n_tasks()) mpsb[rc_ket] = cohort;
+            if (cohort.n_tasks()) mpsb[rc_bra] = cohort;
 
-        } // rb_ket
+        } // rb_bra
     }
 
 } // namespace common

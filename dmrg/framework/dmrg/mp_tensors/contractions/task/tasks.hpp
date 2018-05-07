@@ -807,7 +807,12 @@ public:
 
         int M = stripe;
         int K = sloc.size() / M;
-        blas_gemm('N', 'T', M, M, K, value_type(alpha), &sloc[0], stripe, &sloc[0], stripe, value_type(1), &out(0,0), M);
+
+        DefaultMatrix tmp(M,M);
+        blas_gemm('N', 'T', M, M, K, value_type(alpha), &sloc[0], stripe, &sloc[0], stripe, value_type(1), &tmp(0,0), M);
+
+        parallel_critical
+        out += tmp;
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -996,7 +1001,10 @@ private:
 
                 unsigned ii = mpo_offsets[x.b1[b]] / (ls * rs);
                 for (unsigned c = 0; c < rs; ++c)
+                {
+                    assert( stripe * (ii*rs + c) + x.offset <= ret.size() );
                     std::copy(&buf(0,c), &buf(0,c) + x.ms, ret.data() + stripe * (ii*rs + c) + x.offset);
+                }
 
                 seeker += x.b2s[b];
             }
