@@ -137,10 +137,10 @@ namespace common {
     template<class Matrix, class OtherMatrix, class SymmGroup>
     MPSTensor<Matrix, SymmGroup>
     site_hamil_new(MPSTensor<Matrix, SymmGroup> & ket_tensor,
-                Boundary<OtherMatrix, SymmGroup> const & left,
-                Boundary<OtherMatrix, SymmGroup> const & right,
-                MPOTensor<Matrix, SymmGroup> const & mpo,
-                ScheduleNew<Matrix, SymmGroup> const & tasks) 
+                   Boundary<OtherMatrix, SymmGroup> const & left,
+                   Boundary<OtherMatrix, SymmGroup> const & right,
+                   MPOTensor<Matrix, SymmGroup> const & mpo,
+                   ScheduleNew<Matrix, SymmGroup> const & tasks)
     {
         typedef typename SymmGroup::charge charge;
         typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
@@ -161,13 +161,20 @@ namespace common {
             #endif
             for (unsigned lb_in = 0; lb_in < tasks.size(); ++lb_in)
             {
+                #ifdef MAQUIS_OPENMP
+                #pragma omp task
+                #endif
+                {
+                    auto T = tasks[lb_in].create_T(right, ket_tensor);
+
                     #ifdef MAQUIS_OPENMP
                     #pragma omp task
                     #endif
-                for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
-                {
-                    charge lc_out = it->first;
-                    it->second.contract(ket_tensor, left, right, ret.data()(lc_out, lc_out));
+                    for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
+                    {
+                        charge lc_out = it->first;
+                        it->second.contract(ket_tensor, left, right, T, ret.data()(lc_out, lc_out));
+                    }
                 }
             }
         }

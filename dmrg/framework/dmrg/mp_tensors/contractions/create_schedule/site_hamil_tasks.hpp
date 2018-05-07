@@ -228,7 +228,7 @@ namespace common {
                                 unsigned ci_right_eff = (right_transpose) ? right.cohort_index(rc_out, rc_in) : ci_right;
                                 t_key tq = bit_twiddling::pack(in_offset, right_transpose, ci_right_eff, right_offset, 0);
 
-                                detail::op_iterate<Matrix>(W, w_block, couplings, cohort, s, tq, rs_in, mpsb, in_offset, ci, right_offset/rs_in);
+                                detail::op_iterate<Matrix>(W, w_block, couplings, cohort, s, tq, rs_in, mpsb, in_offset, ci_right, right_offset/rs_in);
                             } // w_block
                         } //op_index
                     } // b2

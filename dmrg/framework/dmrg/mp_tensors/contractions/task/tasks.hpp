@@ -746,12 +746,14 @@ public:
     void contract(MPSTensor<DefaultMatrix, SymmGroup> const & mps,
                   Boundary<OtherMatrix, SymmGroup> const & left,
                   Boundary<OtherMatrix, SymmGroup> const & right,
+                  std::vector<std::vector<value_type>> const & T,
                   DefaultMatrix & output) const
     {
         int stripe = num_cols(mps.data()[rb]);
 
-        std::vector<value_type> t = create_T(right, mps);
-        std::vector<value_type> sloc = create_s_r(stripe, t);
+        //std::vector<value_type> t = create_T(right, mps);
+        //std::vector<value_type> sloc = create_s_r(stripe, t);
+        std::vector<value_type> sloc = create_s_r2(stripe, T);
 
         int M = rs;
         int N = stripe;
@@ -766,7 +768,7 @@ public:
             {
                 for (unsigned c = 0; c < rs; ++c)
                 for (unsigned r = 0; r < ls; ++r)
-                    lbuf.at(offset + r*rs + c) = left.data()[ci_eff].at(offset + c*ls + r);
+                    lbuf[offset + r*rs + c] = left.data()[ci_eff][offset + c*ls + r];
             }
             luse = lbuf.data();
         }
@@ -1262,7 +1264,6 @@ struct ScheduleNew : public std::vector<MPSBlock<
 {
     typedef typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, ALIGNMENT>::type AlignedMatrix;
     typedef std::vector<MPSBlock<AlignedMatrix, SymmGroup> > base;
-    //typedef typename base::value_type::const_iterator const_iterator;
     typedef MPSBlock<AlignedMatrix, SymmGroup> block_type;
     typedef boost::tuple<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t> stats_t;
 
