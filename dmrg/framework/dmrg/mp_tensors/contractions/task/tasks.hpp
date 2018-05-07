@@ -776,6 +776,18 @@ public:
         Matrix buf(M,N);
         blas_gemm('N', 'N', M, N, K, value_type(1), luse, M, sloc.data(), K, value_type(0), buf.get_values().data(), M);
 
+        //Matrix buf(M,N);
+        //for (size_t offset = 0; offset < M * size_t(K); offset += rs * ls)
+        //{
+        //    int K = ls;
+        //    if (ci != ci_eff)
+        //        blas_gemm('T', 'N', M, N, K, value_type(1), &left.data()[ci_eff][offset], K,
+        //                  sloc.data() + offset/rs, sloc.size() / stripe, value_type(1), buf.get_values().data(), M);
+        //    else
+        //        blas_gemm('N', 'N', M, N, K, value_type(1), &left.data()[ci_eff][offset], M,
+        //                  sloc.data() + offset/rs, sloc.size() / stripe, value_type(1), buf.get_values().data(), M);
+        //}
+
         parallel_critical
         output += buf;
     }
@@ -1173,10 +1185,22 @@ public:
 
             const value_type* r_use = (right.index().tr(ci)) ? rbuf.data() : right.data()[ci_eff].data();
             const value_type* mpsdata = &mps.data()[lb](0, mps_offset);
-
             ret[ti] = std::vector<value_type>(M * size_t(N));
 
             blas_gemm('N', 'N', M, N, K, value_type(1), mpsdata, M, r_use, K, value_type(0), ret[ti].data(), M);
+
+            //const value_type* mpsdata = &mps.data()[lb](0, mps_offset);
+            //ret[ti] = std::vector<value_type>(M * size_t(N));
+            //for (unsigned b = 0; b < right.index().n_blocks(ci_eff); ++b)
+            //{
+            //    int N = brs;
+            //    size_t roff = b*K*N;
+            //    size_t ooff = b*M*N;
+            //    if (right.index().tr(ci))
+            //        blas_gemm('N', 'T', M, N, K, value_type(1), mpsdata, M, right.data()[ci_eff].data()+roff, N, value_type(0), ret[ti].data()+ooff, M);
+            //    else
+            //        blas_gemm('N', 'N', M, N, K, value_type(1), mpsdata, M, right.data()[ci_eff].data()+roff, K, value_type(0), ret[ti].data()+ooff, M);
+            //}
         }
 
         //for (auto it = this->begin(); it != this->end(); ++it)
@@ -1267,6 +1291,7 @@ struct ScheduleNew : public std::vector<MPSBlock<
     typedef MPSBlock<AlignedMatrix, SymmGroup> block_type;
     typedef boost::tuple<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t> stats_t;
 
+    ScheduleNew() {}
     ScheduleNew(std::size_t dim) : base(dim), load_balance(dim), cpu_time(0), gpu_time(0) {}
 
     double mflops(double time) const { return total_flops*niter / time / 1e6; }
