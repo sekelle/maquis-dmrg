@@ -693,14 +693,16 @@ public:
     template <class DefaultMatrix, class OtherMatrix>
     void prop_l(MPSTensor<DefaultMatrix, SymmGroup> const & bra_mps,
                 MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
+                std::vector<std::vector<value_type>> const & T,
                 unsigned ci,
                 Boundary<OtherMatrix, SymmGroup> const & left,
                 Boundary<OtherMatrix, SymmGroup> & new_left) const
     {
         int stripe = num_rows(bra_mps.data()[lb]);
 
-        std::vector<value_type> t = create_T_left(left, ket_mps);
-        std::vector<value_type> sloc = create_s(stripe, t);
+        //std::vector<value_type> t = create_T_left(left, ket_mps);
+        //std::vector<value_type> sloc = create_s(stripe, t);
+        std::vector<value_type> sloc = create_s2(stripe, T);
 
         int M = num_cols(bra_mps.data()[lb]);
         int N = new_left.index().n_blocks(ci) * new_left.index().right_size(ci);
@@ -1012,6 +1014,44 @@ private:
         return ret;
     }
 
+    std::vector<value_type> create_s2(int stripe, std::vector<std::vector<value_type>> const& T) const
+    {
+        std::size_t count = std::count_if(mpo_offsets.begin(), mpo_offsets.end(), [](long int i) { return i >= 0; } );
+        std::size_t S_size = count * stripe * std::size_t(rs);
+
+        std::vector<value_type> ret(S_size);
+        for (auto const& x : suv)
+        {
+            if (!x.alpha.size()) continue;
+
+            Matrix buf(x.ms, rs);
+
+            index_type seeker = 0;
+            for (index_type b=0; b < x.b1.size(); ++b)
+            {
+                memset(&buf(0,0), 0, x.ms * rs * sizeof(value_type));
+
+                for (int ia = seeker; ia < seeker + x.b2s[b]; ++ia)
+                    //maquis::dmrg::detail::iterator_axpy(t_pointer + x.tidx[ia] * x.ms * rs,
+                    //                                    t_pointer + (x.tidx[ia]+1) * x.ms * rs,
+                    //                                    &buf(0,0), x.alpha[ia]);
+                    maquis::dmrg::detail::iterator_axpy(&T[x.tidx2[2*ia]][x.tidx2[2*ia+1] * rs],
+                                                        &T[x.tidx2[2*ia]][x.tidx2[2*ia+1] * rs] + x.ms * rs,
+                                                        &buf(0,0), x.alpha[ia]);
+
+                unsigned ii = mpo_offsets[x.b1[b]] / (ls * rs);
+                for (unsigned c = 0; c < rs; ++c)
+                {
+                    assert( stripe * (ii*rs + c) + x.offset <= ret.size() );
+                    std::copy(&buf(0,c), &buf(0,c) + x.ms, ret.data() + stripe * (ii*rs + c) + x.offset);
+                }
+
+                seeker += x.b2s[b];
+            }
+        }
+        return ret;
+    }
+
     std::vector<value_type> create_s_r_transpose(int stripe, std::vector<value_type> const& t) const
     {
         std::size_t count = std::count_if(mpo_offsets.begin(), mpo_offsets.end(), [](long int i) { return i >= 0; } );
@@ -1163,19 +1203,83 @@ public:
 
     template <class DefaultMatrix, class OtherMatrix>
     std::vector<std::vector<value_type>>
-    create_T(Boundary<OtherMatrix, SymmGroup> const & right, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
+    create_T_left(Boundary<OtherMatrix, SymmGroup> const & left, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
     {
+
         std::vector<std::vector<value_type>> ret(t_schedule.size());
         for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
         {
             unsigned mps_offset = boost::get<0>(t_schedule[ti]);
             unsigned ci = boost::get<1>(t_schedule[ti]);
             unsigned ci_eff = boost::get<2>(t_schedule[ti]);
+            unsigned lb_ket = boost::get<3>(t_schedule[ti]);
+
+            unsigned bls = left.index().left_size(ci);
+            unsigned brs = left.index().right_size(ci);
+
+            int M = bls;
+            int N = rs_ket;
+            int K = brs;
+            assert( K == num_rows(mps.data()[lb_ket]) );
+
+            //std::vector<value_type> rbuf;
+            //if (left.index().tr(ci))
+            //{
+            //    rbuf = std::vector<value_type>(K * size_t(N));
+            //    for (size_t offset = 0; offset < K * size_t(N); offset += brs * bls)
+            //    {
+            //        for (unsigned c = 0; c < brs; ++c)
+            //        for (unsigned r = 0; r < bls; ++r)
+            //            rbuf[offset + c*bls + r] = left.data()[ci_eff][offset + r*brs + c];
+            //    }
+            //}
+
+            //const value_type* r_use = (left.index().tr(ci)) ? rbuf.data() : left.data()[ci_eff].data();
+            //const value_type* mpsdata = &mps.data()[lb_ket](0, mps_offset);
+            //ret[ti] = std::vector<value_type>(M * size_t(N));
+
+            //blas_gemm('N', 'N', M, N, K, value_type(1), mpsdata, M, r_use, K, value_type(0), ret[ti].data(), M);
+
+            const value_type* mpsdata = &mps.data()[lb_ket](0, mps_offset);
+            ret[ti] = std::vector<value_type>(M * size_t(N) * left.index().n_blocks(ci_eff));
+            assert (left.data()[ci_eff].size() == left.index().n_blocks(ci_eff) * M * K);
+            for (unsigned b = 0; b < left.index().n_blocks(ci_eff); ++b)
+            {
+                size_t loff = b*M*size_t(K);
+                size_t ooff = b*M*size_t(N);
+
+                assert (loff + M*K <= left.data()[ci_eff].size());
+                assert (ooff + M*N <= ret[ti].size());
+                if (left.index().tr(ci))
+                    blas_gemm('T', 'N', M, N, K, value_type(1), left.data()[ci_eff].data()+loff, K, mpsdata, K, value_type(0), ret[ti].data()+ooff, M);
+                else
+                    blas_gemm('N', 'N', M, N, K, value_type(1), left.data()[ci_eff].data()+loff, M, mpsdata, K, value_type(0), ret[ti].data()+ooff, M);
+            }
+        }
+
+        //for (auto it = this->begin(); it != this->end(); ++it)
+        //    it->second.verify_T(ret, t_schedule, right, mps);
+
+        return ret;
+    }
+
+    template <class DefaultMatrix, class OtherMatrix>
+    std::vector<std::vector<value_type>>
+    create_T(Boundary<OtherMatrix, SymmGroup> const & right, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
+    {
+
+        std::vector<std::vector<value_type>> ret(t_schedule.size());
+        for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
+        {
+            unsigned mps_offset = boost::get<0>(t_schedule[ti]);
+            unsigned ci = boost::get<1>(t_schedule[ti]);
+            unsigned ci_eff = boost::get<2>(t_schedule[ti]);
+            unsigned lb_ket = boost::get<3>(t_schedule[ti]);
 
             unsigned bls = right.index().left_size(ci);
             unsigned brs = right.index().right_size(ci);
 
-            int M = num_rows(mps.data()[lb]);
+            int M = num_rows(mps.data()[lb_ket]);
             int N = right.index().n_blocks(ci_eff) * brs;
             int K = bls;
 
@@ -1192,12 +1296,12 @@ public:
             }
 
             const value_type* r_use = (right.index().tr(ci)) ? rbuf.data() : right.data()[ci_eff].data();
-            const value_type* mpsdata = &mps.data()[lb](0, mps_offset);
+            const value_type* mpsdata = &mps.data()[lb_ket](0, mps_offset);
             ret[ti] = std::vector<value_type>(M * size_t(N));
 
             blas_gemm('N', 'N', M, N, K, value_type(1), mpsdata, M, r_use, K, value_type(0), ret[ti].data(), M);
 
-            //const value_type* mpsdata = &mps.data()[lb](0, mps_offset);
+            //const value_type* mpsdata = &mps.data()[lb_ket](0, mps_offset);
             //ret[ti] = std::vector<value_type>(M * size_t(N));
             //for (unsigned b = 0; b < right.index().n_blocks(ci_eff); ++b)
             //{
@@ -1223,12 +1327,12 @@ public:
             if (boost::get<0>(t_schedule[ti]) == mps_offset && boost::get<1>(t_schedule[ti]) == ci_virt)
                 return ti;
 
-        //throw std::runtime_error("ti not found\n");
+        throw std::runtime_error("ti not found\n");
         return std::numeric_limits<unsigned>::max();
     }
 
-    unsigned lb;
-    std::vector<boost::tuple<unsigned, unsigned, unsigned>> t_schedule;
+    unsigned rs_ket;
+    std::vector<boost::tuple<unsigned, unsigned, unsigned, unsigned>> t_schedule;
 };
 
 template <class Matrix, class SymmGroup>

@@ -36,6 +36,44 @@ namespace contraction {
 namespace common {
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
+    void lshtm_t_tasks(
+                       BoundaryIndex<OtherMatrix, SymmGroup> const & left,
+                       Index<SymmGroup> const & left_i,
+                       Index<SymmGroup> const & right_i,
+                       Index<SymmGroup> const & phys_i,
+                       ProductBasis<SymmGroup> const & right_pb,
+                       unsigned rb_ket,
+                       common::MPSBlock<Matrix, SymmGroup>& mpsb
+                      )
+    {
+        typedef typename SymmGroup::charge charge;
+        typedef typename Matrix::value_type value_type;
+        typedef typename common::BoundarySchedule<Matrix, SymmGroup>::block_type block_type;
+
+        charge rc_ket = right_i[rb_ket].first;
+        unsigned rs_ket = right_i[rb_ket].second;
+        for (unsigned s = 0; s < phys_i.size(); ++s)
+        {
+            charge phys_in = phys_i[s].first;
+            charge lc_ket = SymmGroup::fuse(rc_ket, -phys_in);
+            unsigned lb_ket = left_i.position(lc_ket); if (lb_ket == left_i.size()) continue;
+            unsigned ls_ket = left_i[lb_ket].second;
+            unsigned ket_offset = right_pb(phys_in, rc_ket);
+
+            for (unsigned lb_bra = 0; lb_bra < left_i.size(); ++lb_bra)
+            {
+                unsigned ci = left.cohort_index(left_i[lb_bra].first, lc_ket);
+                if (ci == left.n_cohorts()) continue;
+
+                unsigned ci_eff = (left.tr(ci)) ? left.cohort_index(lc_ket, left_i[lb_bra].first) : ci;
+                for (unsigned ss = 0; ss < phys_i[s].second; ++ss)
+                    mpsb.t_schedule.push_back(boost::make_tuple(ket_offset + ss * rs_ket, ci, ci_eff, lb_ket));
+            }
+        }
+        mpsb.rs_ket = rs_ket;
+    }
+
+    template<class Matrix, class OtherMatrix, class SymmGroup>
     void lshtm_tasks(MPOTensor<Matrix, SymmGroup> const & mpo,
                      MPSTensor<Matrix, SymmGroup> const & bra,
                      MPSTensor<Matrix, SymmGroup> const & ket,
@@ -120,7 +158,7 @@ namespace common {
                                 auto tq = bit_twiddling::pack(ket_offset, left_transpose, ci_eff, left_offset, lb_ket);
                                 
                                 detail::op_iterate<Matrix, typename common::BoundarySchedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
-                                    (W, w_block, couplings, cohort, s, tq, rs_ket, mpsb, ket_offset, ci, left_offset/ls_bra);
+                                    (W, w_block, couplings, cohort, s, tq, rs_ket, mpsb, ket_offset, ci, left_offset/ls_ket);
                             } // w_block
                         } //op_index
                     } // b1

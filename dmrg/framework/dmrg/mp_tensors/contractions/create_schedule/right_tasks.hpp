@@ -51,8 +51,6 @@ namespace common {
         typedef typename Matrix::value_type value_type;
         typedef typename common::BoundarySchedule<Matrix, SymmGroup>::block_type block_type;
 
-        mpsb.lb = lb_ket;
-
         charge lc_ket = left_i[lb_ket].first;
         for (unsigned s = 0; s < phys_i.size(); ++s)
         {
@@ -69,7 +67,7 @@ namespace common {
 
                 unsigned ci_eff = (right.tr(ci)) ? right.cohort_index(right_i[rb_bra].first, rc_ket) : ci;
                 for (unsigned ss = 0; ss < phys_i[s].second; ++ss)
-                    mpsb.t_schedule.push_back(boost::make_tuple(ket_offset + ss * rs_ket, ci, ci_eff));
+                    mpsb.t_schedule.push_back(boost::make_tuple(ket_offset + ss * rs_ket, ci, ci_eff, lb_ket));
             } 
         }
     }

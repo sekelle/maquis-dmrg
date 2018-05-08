@@ -69,6 +69,7 @@ namespace contraction {
             unsigned loop_max = right_i.size();
             schedule_t tasks(loop_max);
             omp_for(unsigned mb, parallel::range<unsigned>(0,loop_max), {
+                lshtm_t_tasks(left.index(), left_i, right_i, physical_i, right_pb, mb, tasks[mb]);
                 lshtm_tasks(mpo, ket_tensor, ket_tensor, left.index(), left_pb, right_pb, mb, tasks[mb], false);
             });
 
@@ -113,8 +114,9 @@ namespace contraction {
             // Schedule
             unsigned loop_max = left_i.size();
             schedule_t tasks(loop_max);
-            omp_for(unsigned lb_bra, parallel::range<unsigned>(0,loop_max), {
-                rshtm_tasks(mpo, right.index(), left_i, right_i, physical_i, right_pb, lb_bra, tasks[lb_bra], false);
+            omp_for(unsigned lb_ket, parallel::range<unsigned>(0,loop_max), {
+                rshtm_t_tasks(   right.index(), left_i, right_i, physical_i, right_pb, lb_ket, tasks[lb_ket]);
+                rshtm_tasks(mpo, right.index(), left_i, right_i, physical_i, right_pb, lb_ket, tasks[lb_ket], false);
             });
 
             // Contraction
@@ -167,6 +169,7 @@ namespace contraction {
             unsigned loop_max = ket_right_i.size();
             schedule_t tasks(loop_max);
             omp_for(unsigned rb_ket, parallel::range<unsigned>(0,loop_max), {
+                lshtm_t_tasks(left.index(), ket_tensor.row_dim(), ket_right_i, physical_i, ket_right_pb, rb_ket, tasks[rb_ket]);
                 lshtm_tasks(mpo, bra_tensor, ket_tensor, left.index(), bra_right_pb, ket_right_pb, rb_ket, tasks[rb_ket], symmetric);
             });
 
@@ -188,14 +191,22 @@ namespace contraction {
                 #endif
                 for(index_type rb_ket = 0; rb_ket < loop_max; ++rb_ket) {
                     charge rc_ket = ket_right_i[rb_ket].first;
+
                     #ifdef MAQUIS_OPENMP
                     #pragma omp task
                     #endif
-                    for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
                     {
-                        charge rc_bra = it->first;
-                        ret.allocate(rc_bra, rc_ket);
-                        it->second.prop_l(bra_tensor, ket_tensor, ret.index().cohort_index(rc_bra, rc_ket), left, ret);
+                        auto T = tasks[rb_ket].create_T_left(left, ket_tensor);
+
+                        #ifdef MAQUIS_OPENMP
+                        #pragma omp task
+                        #endif
+                        for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
+                        {
+                            charge rc_bra = it->first;
+                            ret.allocate(rc_bra, rc_ket);
+                            it->second.prop_l(bra_tensor, ket_tensor, T, ret.index().cohort_index(rc_bra, rc_ket), left, ret);
+                        }
                     }
                 }
             }
@@ -240,7 +251,7 @@ namespace contraction {
             unsigned loop_max = ket_left_i.size();
             schedule_t tasks(loop_max);
             omp_for(unsigned lb_ket, parallel::range<unsigned>(0,loop_max), {
-                rshtm_t_tasks(   right.index(), bra_left_i, bra_right_i, physical_i, bra_right_pb, lb_ket, tasks[lb_ket]);
+                rshtm_t_tasks(   right.index(), bra_left_i, bra_right_i, physical_i, bra_right_pb, lb_ket, tasks[lb_ket]); // should pass ket indices
                 rshtm_tasks(mpo, right.index(), bra_left_i, bra_right_i, physical_i, bra_right_pb, lb_ket, tasks[lb_ket], true);
             });
 
