@@ -187,12 +187,12 @@ public:
     }
 
     template <class DefaultMatrix, class OtherMatrix>
-    void contract(MPSTensor<DefaultMatrix, SymmGroup> const & mps,
+    void contract(
                   Boundary<OtherMatrix, SymmGroup> const & left,
                   std::vector<std::vector<value_type>> const & T,
                   DefaultMatrix & output) const
     {
-        int stripe = num_cols(mps.data()[rb]);
+        int stripe = num_cols(output);
         std::vector<value_type> sloc = create_s_r(stripe, T);
 
         int M = rs;
@@ -263,6 +263,18 @@ public:
     std::size_t n_tasks() const
     {
         return std::accumulate(suv.begin(), suv.end(), 0, [](std::size_t sum, SUnit const& su) { return sum + su.n_tasks();});
+    }
+
+    template <class DefaultMatrix, class OtherMatrix>
+    std::size_t n_flops(MPSTensor<DefaultMatrix, SymmGroup> const& mps, BoundaryIndex<OtherMatrix, SymmGroup> const& left) const
+    {
+        std::size_t ret = 0;
+        ret += 2 * rs * ls * left.n_blocks(ci_eff) * num_cols(mps.data()[rb]);
+
+        for (auto const& x : suv)
+            ret += 2 * ls * x.ms * x.alpha.size();
+
+        return ret;
     }
 
     std::vector<long int>      & get_offsets()       { return mpo_offsets; }
@@ -371,7 +383,6 @@ public:
     std::vector<std::vector<value_type>>
     create_T_left(Boundary<OtherMatrix, SymmGroup> const & left, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
     {
-
         std::vector<std::vector<value_type>> ret(t_schedule.size());
         for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
         {
@@ -428,7 +439,6 @@ public:
     std::vector<std::vector<value_type>>
     create_T(Boundary<OtherMatrix, SymmGroup> const & right, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
     {
-
         std::vector<std::vector<value_type>> ret(t_schedule.size());
         for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
         {
@@ -489,8 +499,29 @@ public:
         return std::numeric_limits<unsigned>::max();
     }
 
+    template <class OtherMatrix>
+    size_t n_flops(Index<SymmGroup> const& left_i, BoundaryIndex<OtherMatrix, SymmGroup> const& right) const
+    {
+        std::size_t ret = 0;
+        for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
+        {
+            unsigned ci = boost::get<1>(t_schedule[ti]);
+            unsigned ci_eff = boost::get<2>(t_schedule[ti]);
+            unsigned lb_ket = boost::get<3>(t_schedule[ti]);
+
+            unsigned bls = right.left_size(ci);
+            unsigned brs = right.right_size(ci);
+
+            ret += 2 * left_i[lb_ket].second * right.left_size(ci) * right.right_size(ci) * right.n_blocks(ci_eff);
+        }
+
+        return ret;
+    }
+
     unsigned rs_ket;
     std::vector<boost::tuple<unsigned, unsigned, unsigned, unsigned>> t_schedule;
+
+    bool on_gpu = false;
 };
 
 template <class Matrix, class SymmGroup>
@@ -587,6 +618,7 @@ struct ScheduleNew : public std::vector<MPSBlock<
 
     std::vector<std::vector<unsigned>> load_balance;
     std::vector<boost::tuple<unsigned, unsigned, unsigned>> enumeration;
+    std::vector<boost::tuple<unsigned, unsigned, unsigned>> enumeration_gpu;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////

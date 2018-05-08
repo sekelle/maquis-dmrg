@@ -152,6 +152,7 @@ namespace common {
         MPSTensor<Matrix, SymmGroup> ret(ket_tensor.site_dim(), ket_tensor.row_dim(), ket_tensor.col_dim(),
                                          ket_tensor.data().basis(), RightPaired);
 
+        boost::chrono::high_resolution_clock::time_point now = boost::chrono::high_resolution_clock::now();
         #ifdef MAQUIS_OPENMP
         #pragma omp parallel
         #endif
@@ -173,11 +174,13 @@ namespace common {
                     for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
                     {
                         charge lc_out = it->first;
-                        it->second.contract(ket_tensor, left, T, ret.data()(lc_out, lc_out));
+                        it->second.contract(left, T, ret.data()(lc_out, lc_out));
                     }
                 }
             }
         }
+        boost::chrono::high_resolution_clock::time_point then = boost::chrono::high_resolution_clock::now();
+        tasks.cpu_time += boost::chrono::duration<double>(then - now).count();
 
         ret.make_left_paired();
         return ret;
