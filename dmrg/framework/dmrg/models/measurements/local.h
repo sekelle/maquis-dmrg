@@ -99,7 +99,7 @@ namespace measurements {
                         
                         MPSTensor<Matrix, SymmGroup> mpsp = mps[p];
                         MPSTensor<Matrix, SymmGroup> vec2
-                        = contraction::Engine<Matrix, Matrix, SymmGroup>::site_hamil2(mpsp, rmps.get().left(p), rmps.get().right(p), temp);
+                        = contraction::Engine<Matrix, Matrix, SymmGroup>::site_hamil(mpsp, rmps.get().left(p), rmps.get().right(p), temp);
                         
                         typename MPS<Matrix, SymmGroup>::scalar_type res = mpsp.scalar_overlap(vec2);
                         
