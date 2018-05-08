@@ -140,23 +140,23 @@ namespace contraction {
         }
 
         static MPSTensor<Matrix, SymmGroup>
-        site_hamil2(MPSTensor<Matrix, SymmGroup> & ket_tensor,
-                    Boundary<OtherMatrix, SymmGroup> const & left,
+        site_hamil(MPSTensor<Matrix, SymmGroup> & ket_tensor,
+                   Boundary<OtherMatrix, SymmGroup> const & left,
                     Boundary<OtherMatrix, SymmGroup> const & right,
                     MPOTensor<Matrix, SymmGroup> const & mpo)
         {
             schedule_t tasks = contraction_schedule(ket_tensor, left, right, mpo);
-            return site_hamil2(ket_tensor, left, right, mpo, tasks);
+            return site_hamil(ket_tensor, left, right, mpo, tasks);
         }
 
         static MPSTensor<Matrix, SymmGroup>
-        site_hamil2(MPSTensor<Matrix, SymmGroup> & ket_tensor,
+        site_hamil(MPSTensor<Matrix, SymmGroup> & ket_tensor,
                     Boundary<OtherMatrix, SymmGroup> const & left,
                     Boundary<OtherMatrix, SymmGroup> const & right,
                     MPOTensor<Matrix, SymmGroup> const & mpo,
                     schedule_t const & tasks)
         {
-            return common::site_hamil2(ket_tensor, left, right, mpo, tasks);
+            return common::site_hamil(ket_tensor, left, right, mpo, tasks);
         }
     };
 

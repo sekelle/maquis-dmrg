@@ -143,6 +143,7 @@ namespace common {
                                 unsigned ci = left.cohort_index(lc_bra, lc_ket); if (!left.has_block(ci, b1)) continue;
                                 unsigned ls_ket = ket_left_i[lb_ket].second;
                                 unsigned ket_offset = ket_right_pb(phys_in, rc_ket);
+                                size_t left_offset = left.offset(ci, b1);
 
                                 value_type couplings[4];
                                 value_type scale = left.conjugate_scale(ci, b1) * access.scale(op_index);
@@ -151,14 +152,8 @@ namespace common {
                                                                lc_bra, SymmGroup::fuse(rc_bra, -lc_bra), rc_bra,
                                                                scale, couplings);
 
-                                char left_transpose = left.trans(ci, b1);
-                                unsigned ci_eff = (left_transpose) ? left.cohort_index(lc_ket, lc_bra) : ci;
-                                size_t left_offset = left.offset(ci, b1);
-
-                                auto tq = bit_twiddling::pack(ket_offset, left_transpose, ci_eff, left_offset, lb_ket);
-                                
                                 detail::op_iterate<Matrix, typename common::BoundarySchedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
-                                    (W, w_block, couplings, cohort, s, tq, rs_ket, mpsb, ket_offset, ci, left_offset/ls_ket);
+                                    (W, w_block, couplings, cohort, s, rs_ket, mpsb, ket_offset, ci, left_offset/ls_ket);
                             } // w_block
                         } //op_index
                     } // b1

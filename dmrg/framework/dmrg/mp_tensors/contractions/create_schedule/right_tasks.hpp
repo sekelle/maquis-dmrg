@@ -87,7 +87,6 @@ namespace common {
         typedef typename SymmGroup::charge charge;
         typedef typename Matrix::value_type value_type;
         typedef typename common::BoundarySchedule<Matrix, SymmGroup>::block_type block_type;
-        typedef typename block_type::mapped_type::t_key t_key;
 
         const int site_basis_max_diff = 2;
 
@@ -140,18 +139,14 @@ namespace common {
                                 if (rb_ket == right_i.size()) continue;
                                 unsigned rs_ket = right_i[rb_ket].second;
                                 unsigned ket_offset = right_pb(phys_in, rc_ket);
+                                size_t right_offset = right.offset(ci, b2);
 
                                 value_type couplings[4];
                                 value_type scale = right.conjugate_scale(ci, b2) * access.scale(op_index);
                                 w9j.set_scale(A, K, Ap, rc_ket, scale, couplings);
-
-                                char right_transpose = right.trans(ci, b2);
-                                unsigned ci_eff = (right_transpose) ? right.cohort_index(rc_bra, rc_ket) : ci;
-                                size_t right_offset = right.offset(ci, b2);
-                                t_key tq = bit_twiddling::pack(ket_offset, right_transpose, ci_eff, right_offset, ci);
                                 
                                 detail::op_iterate<Matrix, typename common::BoundarySchedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
-                                    (W, w_block, couplings, cohort, s, tq, rs_ket, mpsb, ket_offset, ci, right_offset/rs_ket);
+                                    (W, w_block, couplings, cohort, s, rs_ket, mpsb, ket_offset, ci, right_offset/rs_ket);
                             } // w_block
                         } //op_index
                     } // b2

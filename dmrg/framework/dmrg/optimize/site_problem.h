@@ -45,15 +45,13 @@ struct SiteProblem
     : left(left_)
     , right(right_)
     , mpo(mpo_)
-    //, contraction_schedule(contraction::Engine<Matrix, OtherMatrix, SymmGroup>::contraction_schedule(initial, left, right, mpo))
-    , contraction_schedule_new(contraction::common::create_contraction_schedule_new(initial, left, right, mpo))
+    , contraction_schedule(contraction::common::create_contraction_schedule(initial, left, right, mpo))
     { }
     
     Boundary<OtherMatrix, SymmGroup> const & left;
     Boundary<OtherMatrix, SymmGroup> const & right;
     MPOTensor<Matrix, SymmGroup> const & mpo;
-    typename contraction::Engine<Matrix, OtherMatrix, SymmGroup>::schedule_t contraction_schedule;
-    contraction::common::ScheduleNew<Matrix, SymmGroup> contraction_schedule_new;
+    contraction::common::ScheduleNew<Matrix, SymmGroup> contraction_schedule;
     double ortho_shift;
 };
 

@@ -31,6 +31,7 @@
 namespace contraction {
 namespace common {
 
+/*
     template <class Matrix, class OtherMatrix, class SymmGroup>
     class gpu_work
     {
@@ -133,20 +134,19 @@ namespace common {
         ret.make_left_paired();
         return ret;
     }
+*/
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
     MPSTensor<Matrix, SymmGroup>
-    site_hamil_new(MPSTensor<Matrix, SymmGroup> & ket_tensor,
-                   Boundary<OtherMatrix, SymmGroup> const & left,
-                   Boundary<OtherMatrix, SymmGroup> const & right,
-                   MPOTensor<Matrix, SymmGroup> const & mpo,
-                   ScheduleNew<Matrix, SymmGroup> const & tasks)
+    site_hamil(MPSTensor<Matrix, SymmGroup> & ket_tensor,
+               Boundary<OtherMatrix, SymmGroup> const & left,
+               Boundary<OtherMatrix, SymmGroup> const & right,
+               MPOTensor<Matrix, SymmGroup> const & mpo,
+               ScheduleNew<Matrix, SymmGroup> const & tasks)
     {
         typedef typename SymmGroup::charge charge;
         typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
         typedef typename Matrix::value_type value_type;
-
-        typedef typename common::Schedule<Matrix, SymmGroup>::block_type::const_iterator const_iterator;
 
         ket_tensor.make_right_paired();
         MPSTensor<Matrix, SymmGroup> ret(ket_tensor.site_dim(), ket_tensor.row_dim(), ket_tensor.col_dim(),
@@ -173,7 +173,7 @@ namespace common {
                     for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
                     {
                         charge lc_out = it->first;
-                        it->second.contract(ket_tensor, left, right, T, ret.data()(lc_out, lc_out));
+                        it->second.contract(ket_tensor, left, T, ret.data()(lc_out, lc_out));
                     }
                 }
             }

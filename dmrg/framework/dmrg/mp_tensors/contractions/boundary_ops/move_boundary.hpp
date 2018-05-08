@@ -82,7 +82,7 @@ namespace contraction {
                 for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
                 {
                     charge rc_bra = it->first;
-                    it->second.lbtm(ket_tensor, left, T, dm_out[right_i.position(rc_bra)], alpha);
+                    it->second.lbtm(T, dm_out[right_i.position(rc_bra)], alpha);
                 }
             });
         }
@@ -131,7 +131,7 @@ namespace contraction {
                 for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it)
                 {
                     charge lc_ket = it->first;
-                    it->second.rbtm(ket_tensor, right, T, dm_out[left_i.position(lc_ket)], alpha);
+                    it->second.rbtm(T, dm_out[left_i.position(lc_ket)], alpha);
                 }
             });
         }
@@ -211,7 +211,7 @@ namespace contraction {
                         {
                             charge rc_bra = it->first;
                             ret.allocate(rc_bra, rc_ket);
-                            it->second.prop_l(bra_tensor, ket_tensor, T, ret.index().cohort_index(rc_bra, rc_ket), left, ret);
+                            it->second.prop_l(bra_tensor, T, ret.index().cohort_index(rc_bra, rc_ket), ret);
                         }
                     }
                 }
@@ -293,7 +293,7 @@ namespace contraction {
                         {
                             charge lc_bra = it->first;
                             ret.allocate(lc_ket, lc_bra);
-                            it->second.prop_r(bra_tensor, ket_tensor, T, ret.index().cohort_index(lc_ket, lc_bra), right, ret);
+                            it->second.prop_r(bra_tensor, T, ret.index().cohort_index(lc_ket, lc_bra), ret);
                         }
                     }
                 }

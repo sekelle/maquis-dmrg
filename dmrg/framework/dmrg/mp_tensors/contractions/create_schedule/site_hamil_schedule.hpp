@@ -33,9 +33,10 @@
 namespace contraction {
 namespace common {
 
+/*
 template<class Matrix, class OtherMatrix, class SymmGroup>
 typename Schedule<Matrix, SymmGroup>::schedule_t
-create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
+create_contraction_schedule_old(MPSTensor<Matrix, SymmGroup> & initial,
                             Boundary<OtherMatrix, SymmGroup> const & left,
                             Boundary<OtherMatrix, SymmGroup> const & right,
                             MPOTensor<Matrix, SymmGroup> const & mpo)
@@ -138,13 +139,14 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
 
     return tasks;
 }
+*/
 
 template<class Matrix, class OtherMatrix, class SymmGroup>
 ScheduleNew<Matrix, SymmGroup>
-create_contraction_schedule_new(MPSTensor<Matrix, SymmGroup> & initial,
-                                Boundary<OtherMatrix, SymmGroup> const & left,
-                                Boundary<OtherMatrix, SymmGroup> const & right,
-                                MPOTensor<Matrix, SymmGroup> const & mpo)
+create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
+                            Boundary<OtherMatrix, SymmGroup> const & left,
+                            Boundary<OtherMatrix, SymmGroup> const & right,
+                            MPOTensor<Matrix, SymmGroup> const & mpo)
 {
     typedef typename SymmGroup::charge charge;
     typedef typename Matrix::value_type value_type;
@@ -169,7 +171,7 @@ create_contraction_schedule_new(MPSTensor<Matrix, SymmGroup> & initial,
     unsigned loop_max = left_i.size();
     omp_for(index_type mb, parallel::range<index_type>(0,loop_max), {
         rshtm_t_tasks(right.index(), left_i, right_i, physical_i, out_right_pb, mb, tasks[mb]);
-        shtm_tasks_new(mpo, left, right, left_i, right_i, physical_i, out_right_pb, mb, tasks[mb]);
+        shtm_tasks(mpo, left, right, left_i, right_i, physical_i, out_right_pb, mb, tasks[mb]);
     });
 
     //accelerator::gpu::update_schedule_buffer();

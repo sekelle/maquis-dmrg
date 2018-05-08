@@ -51,7 +51,6 @@
 //#include "shtm/prop.hpp"
 //#include "shtm/ips.hpp"
 // provides MatrixGroupPrint, verbose version used for converting from rbtm schedule types
-#include "shtm/print_util.hpp"
 //#include "shtm/matrix_group.hpp"
 
 #if defined(USE_TWOU1)
