@@ -798,14 +798,16 @@ public:
     void lbtm(
               MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
               Boundary<OtherMatrix, SymmGroup> const & left,
+              std::vector<std::vector<value_type>> const & T,
               OtherMatrix & out,
               double alpha
              ) const
     {
         int stripe = num_rows(out);
 
-        std::vector<value_type> t = create_T_left(left, ket_mps);
-        std::vector<value_type> sloc = create_s(stripe, t);
+        //std::vector<value_type> t = create_T_left(left, ket_mps);
+        //std::vector<value_type> sloc = create_s(stripe, t);
+        std::vector<value_type> sloc = create_s2(stripe, T);
 
         int M = stripe;
         int K = sloc.size() / M;
@@ -821,20 +823,22 @@ public:
     void rbtm(
               MPSTensor<DefaultMatrix, SymmGroup> const & ket_mps,
               Boundary<OtherMatrix, SymmGroup> const & right,
+              std::vector<std::vector<value_type>> const & T,
               OtherMatrix & out,
               double alpha
              ) const
     {
         int stripe = num_rows(out);
 
-        std::vector<value_type> t = create_T(right, ket_mps);
-        std::vector<value_type> sloc = create_s_r_transpose(stripe, t);
+        //std::vector<value_type> t = create_T(right, ket_mps);
+        //std::vector<value_type> sloc = create_s_r_transpose(stripe, t);
+        std::vector<value_type> sloc = create_s_r2(stripe, T);
 
         int M = stripe;
         int K = sloc.size() / M;
 
         DefaultMatrix tmp(M,M);
-        blas_gemm('N', 'T', M, M, K, value_type(alpha), &sloc[0], stripe, &sloc[0], stripe, value_type(1), &tmp(0,0), M);
+        blas_gemm('T', 'N', M, M, K, value_type(alpha), &sloc[0], K, &sloc[0], K, value_type(1), &tmp(0,0), M);
 
         parallel_critical
         out += tmp;

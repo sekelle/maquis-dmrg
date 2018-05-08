@@ -76,10 +76,13 @@ namespace contraction {
             // Contraction
             omp_for(index_type rb_ket, parallel::range<index_type>(0,loop_max), {
                 charge rc_ket = right_i[rb_ket].first;
+
+                auto T = tasks[rb_ket].create_T_left(left, ket_tensor);
+
                 for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
                 {
                     charge rc_bra = it->first;
-                    it->second.lbtm(ket_tensor, left, dm_out[right_i.position(rc_bra)], alpha);
+                    it->second.lbtm(ket_tensor, left, T, dm_out[right_i.position(rc_bra)], alpha);
                 }
             });
         }
@@ -122,10 +125,13 @@ namespace contraction {
             // Contraction
             omp_for(index_type lb_bra, parallel::range<index_type>(0,loop_max), {
                 charge lc_bra = left_i[lb_bra].first;
+
+                auto T = tasks[lb_bra].create_T(right, ket_tensor);
+
                 for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it)
                 {
                     charge lc_ket = it->first;
-                    it->second.rbtm(ket_tensor, right, dm_out[left_i.position(lc_ket)], alpha);
+                    it->second.rbtm(ket_tensor, right, T, dm_out[left_i.position(lc_ket)], alpha);
                 }
             });
         }
