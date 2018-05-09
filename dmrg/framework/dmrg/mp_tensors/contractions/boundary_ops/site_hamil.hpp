@@ -153,29 +153,15 @@ namespace common {
                                          ket_tensor.data().basis(), RightPaired);
 
         boost::chrono::high_resolution_clock::time_point now = boost::chrono::high_resolution_clock::now();
-        #ifdef MAQUIS_OPENMP
-        #pragma omp parallel
-        #endif
-        {
-            #ifdef MAQUIS_OPENMP
-            #pragma omp single
-            #endif
-            for (unsigned lb_in = 0; lb_in < tasks.enumeration.size(); ++lb_in)
-            {
-                #ifdef MAQUIS_OPENMP
-                #pragma omp task
-                #endif
-                {
-                    auto T = tasks[lb_in].create_T(right, ket_tensor);
 
-                    #ifdef MAQUIS_OPENMP
-                    #pragma omp task
-                    #endif
-                    for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
-                        it->contract(left, T, ret.data()[it->get_rb()]);
-                }
-            }
+        #pragma omp parallel for schedule (dynamic,1)
+        for (unsigned lb_in = 0; lb_in < tasks.enumeration.size(); ++lb_in)
+        {
+            auto T = tasks[lb_in].create_T(right, ket_tensor);
+            for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
+                it->contract(left, T, ret.data()[it->get_rb()]);
         }
+
         boost::chrono::high_resolution_clock::time_point then = boost::chrono::high_resolution_clock::now();
         tasks.cpu_time += boost::chrono::duration<double>(then - now).count();
 
