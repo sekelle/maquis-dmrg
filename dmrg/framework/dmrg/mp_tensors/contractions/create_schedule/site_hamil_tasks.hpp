@@ -74,7 +74,7 @@ namespace common {
             unsigned ci = left.cohort_index(lc_out, lc_in); if (ci == left.n_cohorts()) continue;
             unsigned ci_eff = left.tr(ci) ? left.cohort_index(lc_in, lc_out) : ci;
 
-            typename block_type::mapped_type cohort(phys_i, lb_in, lb_out, ls_in, ls_out, ci, ci_eff, mpo.row_dim());
+            typename block_type::cohort_type cohort(phys_i, lb_in, lb_out, ls_in, ls_out, ci, ci_eff, mpo.row_dim());
 
             for (unsigned s = 0; s < phys_i.size(); ++s)
             {
@@ -129,7 +129,7 @@ namespace common {
             } // phys_out
 
             cohort.finalize(left);
-            if (cohort.n_tasks()) mpsb[lc_out] = cohort;
+            if (cohort.n_tasks()) mpsb.push_back(cohort);
 
         } // lb_out
     }

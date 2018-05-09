@@ -160,7 +160,7 @@ namespace common {
             #ifdef MAQUIS_OPENMP
             #pragma omp single
             #endif
-            for (unsigned lb_in = 0; lb_in < tasks.size(); ++lb_in)
+            for (unsigned lb_in = 0; lb_in < tasks.enumeration.size(); ++lb_in)
             {
                 #ifdef MAQUIS_OPENMP
                 #pragma omp task
@@ -172,7 +172,7 @@ namespace common {
                     #pragma omp task
                     #endif
                     for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
-                        it->second.contract(left, T, ret.data()[it->second.get_rb()]);
+                        it->contract(left, T, ret.data()[it->get_rb()]);
                 }
             }
         }

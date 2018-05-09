@@ -81,8 +81,8 @@ namespace contraction {
 
                 for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
                 {
-                    charge rc_bra = right_i[it->second.get_lb()].first;
-                    it->second.lbtm(T, dm_out[right_i.position(rc_bra)], alpha);
+                    charge rc_bra = right_i[it->get_lb()].first;
+                    it->lbtm(T, dm_out[right_i.position(rc_bra)], alpha);
                 }
             });
         }
@@ -130,8 +130,8 @@ namespace contraction {
 
                 for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it)
                 {
-                    charge lc_ket = left_i[it->second.get_rb()].first;
-                    it->second.rbtm(T, dm_out[left_i.position(lc_ket)], alpha);
+                    charge lc_ket = left_i[it->get_rb()].first;
+                    it->rbtm(T, dm_out[left_i.position(lc_ket)], alpha);
                 }
             });
         }
@@ -182,7 +182,7 @@ namespace contraction {
             BoundaryIndex<Matrix, SymmGroup> b_index(bra_right_i, ket_right_i);
             for(unsigned rb_ket = 0; rb_ket < loop_max; ++rb_ket)
                 for (auto& e : tasks[rb_ket])
-                    b_index.add_cohort(bra_right_i.position(e.first), rb_ket, e.second.get_offsets());
+                    b_index.add_cohort(e.get_lb(), rb_ket, e.get_offsets());
 
             if (symmetric) b_index.complement_transpose(mpo.herm_right, true);
             Boundary<OtherMatrix, SymmGroup> ret(b_index);
@@ -209,9 +209,9 @@ namespace contraction {
                         #endif
                         for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
                         {
-                            charge rc_bra = bra_right_i[it->second.get_lb()].first;
+                            charge rc_bra = bra_right_i[it->get_lb()].first;
                             ret.allocate(rc_bra, rc_ket);
-                            it->second.prop_l(bra_tensor, T, ret.index().cohort_index(rc_bra, rc_ket), ret);
+                            it->prop_l(bra_tensor, T, ret.index().cohort_index(rc_bra, rc_ket), ret);
                         }
                     }
                 }
@@ -265,7 +265,7 @@ namespace contraction {
             BoundaryIndex<Matrix, SymmGroup> b_index(ket_left_i, bra_left_i);
             for(unsigned lb_ket = 0; lb_ket < loop_max; ++lb_ket)
                 for (auto& e : tasks[lb_ket])
-                    b_index.add_cohort(lb_ket, bra_left_i.position(e.first), e.second.get_offsets());
+                    b_index.add_cohort(lb_ket, e.get_rb(), e.get_offsets());
 
             b_index.complement_transpose(mpo.herm_left, false);
             Boundary<OtherMatrix, SymmGroup> ret(b_index);
@@ -292,9 +292,9 @@ namespace contraction {
                         #endif
                         for (const_iterator it = tasks[lb_ket].begin(); it != tasks[lb_ket].end(); ++it) // lc_ket loop
                         {
-                            charge lc_bra = bra_left_i[it->second.get_rb()].first;
+                            charge lc_bra = bra_left_i[it->get_rb()].first;
                             ret.allocate(lc_ket, lc_bra);
-                            it->second.prop_r(bra_tensor, T, ret.index().cohort_index(lc_ket, lc_bra), ret);
+                            it->prop_r(bra_tensor, T, ret.index().cohort_index(lc_ket, lc_bra), ret);
                         }
                     }
                 }

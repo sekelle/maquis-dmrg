@@ -81,7 +81,8 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
         ncg += tasks[block].size();
         for (auto& cohort : tasks[block])
         {
-            size_t lsflops = cohort.second.n_flops(initial, left.index());
+            size_t lsflops = cohort.n_flops(initial, left.index());
+            flops_per_block[block] += lsflops;
             if (tasks[block].on_gpu) gpu_flops += lsflops;
             else                     cpu_flops += lsflops;
         }
@@ -100,6 +101,13 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
     //tasks.total_mem = memops;
     tasks.cpu_flops = cpu_flops;
     tasks.gpu_flops = gpu_flops;
+
+    for (index_type task_block = 0; task_block < loop_max; ++task_block)
+    {
+        index_type mps_block = idx[task_block];
+        if (tasks[mps_block].on_gpu) tasks.enumeration_gpu.push_back(mps_block);
+        else                         tasks.enumeration.push_back(mps_block);
+    }
 
     //index_type inner_loop_max = physical_i.size();
     //for (index_type task_block = 0; task_block < loop_max; ++task_block)

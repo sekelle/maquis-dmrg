@@ -107,7 +107,7 @@ namespace common {
             if (std::abs(SymmGroup::particleNumber(rc_bra) - SymmGroup::particleNumber(rc_ket)) > site_basis_max_diff) continue;
             unsigned rs_bra = bra_right_i[rb_bra].second;
 
-            typename block_type::mapped_type cohort(phys_i, rb_bra, rb_ket, rs_bra, rs_ket, 0, 0, mpo.col_dim());
+            typename block_type::cohort_type cohort(phys_i, rb_bra, rb_ket, rs_bra, rs_ket, 0, 0, mpo.col_dim());
 
             for (unsigned s = 0; s < phys_i.size(); ++s)
             {
@@ -163,7 +163,7 @@ namespace common {
             } // phys_out
 
             cohort.finalize();
-            if (cohort.n_tasks()) mpsb[rc_bra] = cohort;
+            if (cohort.n_tasks()) mpsb.push_back(cohort);
 
         } // rb_bra
     }

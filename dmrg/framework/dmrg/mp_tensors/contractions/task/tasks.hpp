@@ -375,12 +375,11 @@ private:
 
 
 template <class Matrix, class SymmGroup>
-class MPSBlock : public std::map<typename SymmGroup::charge, Cohort<Matrix, SymmGroup> >
+class MPSBlock : public std::vector<Cohort<Matrix, SymmGroup>>
 {
     typedef typename Matrix::value_type value_type;
 public:
-    typedef std::map<typename SymmGroup::charge, Cohort<Matrix, SymmGroup> > base;
-    typedef typename base::mapped_type mapped_type;
+    typedef Cohort<Matrix, SymmGroup> cohort_type;
 
     template <class DefaultMatrix, class OtherMatrix>
     std::vector<std::vector<value_type>>
@@ -545,8 +544,6 @@ struct BoundarySchedule : public std::vector<MPSBlock<
 template <class Matrix, class SymmGroup>
 struct Schedule_
 {
-    typedef boost::tuple<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t> stats_t;
-
     Schedule_() : cpu_time(0), gpu_time(0) {}
     Schedule_(std::size_t dim, std::size_t nphys) : cpu_time(0), gpu_time(0) {}
 
@@ -588,10 +585,9 @@ struct ScheduleNew : public std::vector<MPSBlock<
     typedef typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, ALIGNMENT>::type AlignedMatrix;
     typedef std::vector<MPSBlock<AlignedMatrix, SymmGroup> > base;
     typedef MPSBlock<AlignedMatrix, SymmGroup> block_type;
-    typedef boost::tuple<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t> stats_t;
 
     ScheduleNew() {}
-    ScheduleNew(std::size_t dim) : base(dim), load_balance(dim), cpu_time(0), gpu_time(0) {}
+    ScheduleNew(std::size_t dim) : base(dim), cpu_time(0), gpu_time(0) {}
 
     double mflops(double time) const { return total_flops*niter / time / 1e6; }
     double bandwidth(double time) const { return total_mem*niter / time / 1e6; }
@@ -619,9 +615,8 @@ struct ScheduleNew : public std::vector<MPSBlock<
     size_t cpu_flops, gpu_flops;
     mutable double cpu_time, gpu_time;
 
-    std::vector<std::vector<unsigned>> load_balance;
-    std::vector<boost::tuple<unsigned, unsigned, unsigned>> enumeration;
-    std::vector<boost::tuple<unsigned, unsigned, unsigned>> enumeration_gpu;
+    std::vector<unsigned> enumeration;
+    std::vector<unsigned> enumeration_gpu;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
