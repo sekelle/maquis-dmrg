@@ -109,26 +109,6 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
         else                         tasks.enumeration.push_back(mps_block);
     }
 
-    //index_type inner_loop_max = physical_i.size();
-    //for (index_type task_block = 0; task_block < loop_max; ++task_block)
-    //{
-    //    index_type mps_block = idx[task_block];
-
-    //    std::vector<index_type> cg_sizes(inner_loop_max);
-    //    for (index_type s = 0; s < inner_loop_max; ++s)
-    //        cg_sizes[s] = tasks[mps_block][s].size();
-
-    //    index_type max_cgi = *std::max_element(cg_sizes.begin(), cg_sizes.end());
-
-    //    for (index_type cgi = 0; cgi < max_cgi; ++cgi)
-    //        for (index_type s = 0; s < inner_loop_max; ++s)
-    //            if (cgi < tasks[mps_block][s].size())
-    //                if (tasks[mps_block][s][cgi].on_gpu)
-    //                    tasks.enumeration_gpu.push_back(boost::make_tuple(mps_block, s, cgi, tasks[mps_block][s][cgi].buffer_size));
-    //                else
-    //                    tasks.enumeration.push_back(boost::make_tuple(mps_block, s, cgi));
-    //}
-
     //tasks.assign_streams();
 
     if (std::max(mpo.row_dim(), mpo.col_dim()) > 10)
