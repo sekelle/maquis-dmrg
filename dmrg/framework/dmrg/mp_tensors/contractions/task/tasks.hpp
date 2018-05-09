@@ -280,6 +280,9 @@ public:
     std::vector<long int>      & get_offsets()       { return mpo_offsets; }
     std::vector<long int> const& get_offsets() const { return mpo_offsets; }
 
+    index_type get_lb() const { return lb; }
+    index_type get_rb() const { return rb; }
+
 private:
     index_type lb, rb, ls, rs, ci, ci_eff;
 

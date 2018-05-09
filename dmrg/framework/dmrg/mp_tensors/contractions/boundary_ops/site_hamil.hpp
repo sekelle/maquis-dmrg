@@ -172,10 +172,7 @@ namespace common {
                     #pragma omp task
                     #endif
                     for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
-                    {
-                        charge lc_out = it->first;
-                        it->second.contract(left, T, ret.data()(lc_out, lc_out));
-                    }
+                        it->second.contract(left, T, ret.data()[it->second.get_rb()]);
                 }
             }
         }

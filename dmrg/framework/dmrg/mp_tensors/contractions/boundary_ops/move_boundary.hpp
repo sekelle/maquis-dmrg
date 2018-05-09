@@ -81,7 +81,7 @@ namespace contraction {
 
                 for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
                 {
-                    charge rc_bra = it->first;
+                    charge rc_bra = right_i[it->second.get_lb()].first;
                     it->second.lbtm(T, dm_out[right_i.position(rc_bra)], alpha);
                 }
             });
@@ -130,7 +130,7 @@ namespace contraction {
 
                 for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it)
                 {
-                    charge lc_ket = it->first;
+                    charge lc_ket = left_i[it->second.get_rb()].first;
                     it->second.rbtm(T, dm_out[left_i.position(lc_ket)], alpha);
                 }
             });
@@ -209,7 +209,7 @@ namespace contraction {
                         #endif
                         for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
                         {
-                            charge rc_bra = it->first;
+                            charge rc_bra = bra_right_i[it->second.get_lb()].first;
                             ret.allocate(rc_bra, rc_ket);
                             it->second.prop_l(bra_tensor, T, ret.index().cohort_index(rc_bra, rc_ket), ret);
                         }
@@ -257,7 +257,8 @@ namespace contraction {
             unsigned loop_max = ket_left_i.size();
             schedule_t tasks(loop_max);
             omp_for(unsigned lb_ket, parallel::range<unsigned>(0,loop_max), {
-                rshtm_t_tasks(   right.index(), bra_left_i, bra_right_i, physical_i, bra_right_pb, lb_ket, tasks[lb_ket]); // should pass ket indices
+                // should pass ket indices
+                rshtm_t_tasks(   right.index(), bra_left_i, bra_right_i, physical_i, bra_right_pb, lb_ket, tasks[lb_ket]);
                 rshtm_tasks(mpo, right.index(), bra_left_i, bra_right_i, physical_i, bra_right_pb, lb_ket, tasks[lb_ket], true);
             });
 
@@ -291,7 +292,7 @@ namespace contraction {
                         #endif
                         for (const_iterator it = tasks[lb_ket].begin(); it != tasks[lb_ket].end(); ++it) // lc_ket loop
                         {
-                            charge lc_bra = it->first;
+                            charge lc_bra = bra_left_i[it->second.get_rb()].first;
                             ret.allocate(lc_ket, lc_bra);
                             it->second.prop_r(bra_tensor, T, ret.index().cohort_index(lc_ket, lc_bra), ret);
                         }
