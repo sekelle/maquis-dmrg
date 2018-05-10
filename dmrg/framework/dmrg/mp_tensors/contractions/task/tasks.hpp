@@ -33,6 +33,9 @@
 #include <utility>
 #include <malloc.h>
 
+#include <thread>
+#include <mutex>
+
 #include "utils/sizeof.h"
 #include "dmrg/utils/aligned_allocator.hpp"
 
@@ -539,40 +542,6 @@ struct BoundarySchedule : public std::vector<MPSBlock<
     BoundarySchedule(std::size_t dim) : base(dim), load_balance(dim) {}
 
     std::vector<size_t> load_balance;
-}; 
-
-template <class Matrix, class SymmGroup>
-struct Schedule_
-{
-    Schedule_() : cpu_time(0), gpu_time(0) {}
-    Schedule_(std::size_t dim, std::size_t nphys) : cpu_time(0), gpu_time(0) {}
-
-    double mflops(double time) const { return total_flops*niter / time / 1e6; }
-    double bandwidth(double time) const { return total_mem*niter / time / 1e6; }
-    void print_stats(double time) const {
-        maquis::cout << total_flops*niter / time / 1e6
-                     << " CPU: " << cpu_flops*niter / cpu_time / 1e6;
-        if (gpu_flops)
-        maquis::cout << " GPU: " << gpu_flops*niter / gpu_time / 1e6;
-
-        maquis::cout << "  (MFLOPS)" << std::endl;
-    }
-
-    std::size_t n_tasks(std::size_t p) const
-    {
-        std::size_t ret = 0;
-        //for (const_iterator it = (*this)[p].begin(); it != (*this)[p].end(); ++it)
-        //    for (std::size_t i = 0; i < it->size(); ++i)
-        //        ret += (*it)[i].n_tasks();
-        return ret;
-    }
-
-    size_t niter;
-    size_t total_flops, total_mem;
-    size_t cpu_flops, gpu_flops;
-    mutable double cpu_time, gpu_time;
-
-    std::vector<boost::tuple<unsigned, unsigned, unsigned>> enumeration;
 }; 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
