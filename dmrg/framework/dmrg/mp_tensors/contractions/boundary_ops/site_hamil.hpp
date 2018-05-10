@@ -28,6 +28,11 @@
 #ifndef CONTRACTIONS_COMMON_SITE_HAMIL_HPP
 #define CONTRACTIONS_COMMON_SITE_HAMIL_HPP
 
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <atomic>
+
 namespace contraction {
 namespace common {
 
@@ -136,6 +141,62 @@ namespace common {
     }
 */
 
+    struct cpu_queue
+    {
+        std::atomic<unsigned> current_idx;
+        unsigned max_idx;
+    };
+
+    //template<class Matrix, class OtherMatrix, class SymmGroup>
+    //void
+    //cpu_work(cpu_queue& cq, unsigned tidx,
+    //         MPSTensor<Matrix, SymmGroup> & ret,
+    //         MPSTensor<Matrix, SymmGroup> & ket_tensor,
+    //         Boundary<OtherMatrix, SymmGroup> const & left,
+    //         Boundary<OtherMatrix, SymmGroup> const & right,
+    //         ScheduleNew<Matrix, SymmGroup> const & tasks)
+    //{
+    //    while(true)
+    //    {
+    //        unsigned idx = cq.current_idx+=1;
+    //        idx--;
+    //        if (idx >= cq.max_idx) return;
+
+    //        unsigned lb_in = tasks.enumeration[idx];
+    //        {
+    //            auto T = tasks[lb_in].create_T(right, ket_tensor);
+    //            for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
+    //                it->contract(left, T, ret.data()[it->get_rb()], tasks.mutexes[it->get_rb()]);
+    //        }
+    //    }
+    //}
+
+    //template<class Matrix, class OtherMatrix, class SymmGroup>
+    //void
+    //cpu_work(cpu_queue& cq, unsigned tidx,
+    //         MPSTensor<Matrix, SymmGroup> & ret,
+    //         MPSTensor<Matrix, SymmGroup> & ket_tensor,
+    //         Boundary<OtherMatrix, SymmGroup> const & left,
+    //         Boundary<OtherMatrix, SymmGroup> const & right,
+    //         ScheduleNew<Matrix, SymmGroup> const & tasks)
+    //{
+    //    bool active = true;
+    //    while(active)
+    //    {
+    //        for (unsigned idx = 0; idx < cq.max_idx; ++idx)
+    //        {
+    //            unsigned lb_in = tasks.enumeration[idx];
+    //            {
+    //                std::vector<std::vector<typename Matrix::value_type>> T(tasks[lb_in].t_schedule.size());
+    //                for (unsigned ti = 0; ti < T.size(); ++ti)
+    //                    tasks[lb_in].create_T(right, ket_tensor, T, ti);
+    //                for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
+    //                    it->contract(left, T, ret.data()[it->get_rb()], tasks.mutexes[it->get_rb()]);
+    //            }
+    //        }
+    //    }
+    //}
+
     template<class Matrix, class OtherMatrix, class SymmGroup>
     MPSTensor<Matrix, SymmGroup>
     site_hamil(MPSTensor<Matrix, SymmGroup> & ket_tensor,
@@ -155,12 +216,26 @@ namespace common {
         boost::chrono::high_resolution_clock::time_point now = boost::chrono::high_resolution_clock::now();
 
         #pragma omp parallel for schedule (dynamic,1)
-        for (unsigned lb_in = 0; lb_in < tasks.enumeration.size(); ++lb_in)
+        for (unsigned i = 0; i < tasks.enumeration.size(); ++i)
         {
+            unsigned lb_in = tasks.enumeration[i];
             auto T = tasks[lb_in].create_T(right, ket_tensor);
             for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
-                it->contract(left, T, ret.data()[it->get_rb()]);
+                it->contract(left, T, ret.data()[it->get_rb()], tasks.mutexes[it->get_rb()]);
         }
+
+        //cpu_queue cq;
+        //cq.current_idx = 0;
+        //cq.max_idx = tasks.enumeration.size();
+
+        //std::vector<std::thread> workers;
+        //for (unsigned i = 0; i < 6; ++i)
+        //    workers.push_back(std::thread(std::bind(cpu_work<Matrix, OtherMatrix, SymmGroup>, std::ref(cq), i,
+        //                                            std::ref(ret), std::ref(ket_tensor),
+        //                                            std::ref(left), std::ref(right),
+        //                                            std::ref(tasks))
+        //                                            ));
+        //for (std::thread& t : workers) t.join();
 
         boost::chrono::high_resolution_clock::time_point then = boost::chrono::high_resolution_clock::now();
         tasks.cpu_time += boost::chrono::duration<double>(then - now).count();

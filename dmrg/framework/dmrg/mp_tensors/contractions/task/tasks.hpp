@@ -193,7 +193,8 @@ public:
     void contract(
                   Boundary<OtherMatrix, SymmGroup> const & left,
                   std::vector<std::vector<value_type>> const & T,
-                  DefaultMatrix & output) const
+                  DefaultMatrix & output,
+                  std::mutex & out_mutex) const
     {
         int stripe = num_cols(output);
         std::vector<value_type> sloc = create_s_r(stripe, T);
@@ -219,6 +220,7 @@ public:
         Matrix buf(M,N);
         blas_gemm('N', 'N', M, N, K, value_type(1), luse, M, sloc.data(), K, value_type(0), buf.get_values().data(), M);
 
+        //std::lock_guard<std::mutex> lk(out_mutex);
         parallel_critical
         output += buf;
     }
@@ -485,13 +487,51 @@ public:
             //    size_t roff = b*K*N;
             //    size_t ooff = b*M*N;
             //    if (right.index().tr(ci))
-            //        blas_gemm('N', 'T', M, N, K, value_type(1), mpsdata, M, right.data()[ci_eff].data()+roff, N, value_type(0), ret[ti].data()+ooff, M);
+            //        blas_gemm('N', 'T', M, N, K, value_type(1), mpsdata, M,
+            //                  right.data()[ci_eff].data()+roff, N, value_type(0), ret[ti].data()+ooff, M);
             //    else
-            //        blas_gemm('N', 'N', M, N, K, value_type(1), mpsdata, M, right.data()[ci_eff].data()+roff, K, value_type(0), ret[ti].data()+ooff, M);
+            //        blas_gemm('N', 'N', M, N, K, value_type(1), mpsdata, M,
+            //                  right.data()[ci_eff].data()+roff, K, value_type(0), ret[ti].data()+ooff, M);
             //}
         }
 
         return ret;
+    }
+
+    template <class DefaultMatrix, class OtherMatrix>
+    void
+    create_T(Boundary<OtherMatrix, SymmGroup> const & right, MPSTensor<DefaultMatrix, SymmGroup> const & mps,
+             std::vector<std::vector<value_type>> & T, unsigned ti) const
+    {
+        unsigned mps_offset = boost::get<0>(t_schedule[ti]);
+        unsigned ci = boost::get<1>(t_schedule[ti]);
+        unsigned ci_eff = boost::get<2>(t_schedule[ti]);
+        unsigned lb_ket = boost::get<3>(t_schedule[ti]);
+
+        unsigned bls = right.index().left_size(ci);
+        unsigned brs = right.index().right_size(ci);
+
+        int M = num_rows(mps.data()[lb_ket]);
+        int N = right.index().n_blocks(ci_eff) * brs;
+        int K = bls;
+
+        std::vector<value_type> rbuf;
+        if (right.index().tr(ci))
+        {
+            rbuf = std::vector<value_type>(K * size_t(N));
+            for (size_t offset = 0; offset < K * size_t(N); offset += brs * bls)
+            {
+                for (unsigned c = 0; c < brs; ++c)
+                for (unsigned r = 0; r < bls; ++r)
+                    rbuf[offset + c*bls + r] = right.data()[ci_eff][offset + r*brs + c];
+            }
+        }
+
+        const value_type* r_use = (right.index().tr(ci)) ? rbuf.data() : right.data()[ci_eff].data();
+        const value_type* mpsdata = &mps.data()[lb_ket](0, mps_offset);
+
+        T[ti] = std::vector<value_type>(M * size_t(N));
+        blas_gemm('N', 'N', M, N, K, value_type(1), mpsdata, M, r_use, K, value_type(0), T[ti].data(), M);
     }
 
     unsigned get_ti(unsigned mps_offset, unsigned ci_virt) const
@@ -556,7 +596,7 @@ struct ScheduleNew : public std::vector<MPSBlock<
     typedef MPSBlock<AlignedMatrix, SymmGroup> block_type;
 
     ScheduleNew() {}
-    ScheduleNew(std::size_t dim) : base(dim), cpu_time(0), gpu_time(0) {}
+    ScheduleNew(std::size_t dim) : base(dim), mutexes(dim), cpu_time(0), gpu_time(0) {}
 
     double mflops(double time) const { return total_flops*niter / time / 1e6; }
     double bandwidth(double time) const { return total_mem*niter / time / 1e6; }
@@ -586,6 +626,8 @@ struct ScheduleNew : public std::vector<MPSBlock<
 
     std::vector<unsigned> enumeration;
     std::vector<unsigned> enumeration_gpu;
+
+    mutable std::vector<std::mutex> mutexes;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////

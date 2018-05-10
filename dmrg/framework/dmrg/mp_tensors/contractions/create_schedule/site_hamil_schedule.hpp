@@ -114,7 +114,7 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
     if (std::max(mpo.row_dim(), mpo.col_dim()) > 10)
     {
         maquis::cout << "Schedule size: " << tasks.size() << " blocks, " << tasks.enumeration_gpu.size()
-                         << " cgs_gpu, " << tasks.enumeration.size() << " cgs_cpu, "
+                         << " cgs_gpu, " << ncg << " cgs_cpu, "
                      << " R " << size_of(right) << "B, "
                      << " L " << size_of(left) << "B "
                      << " GPU " << gpu_flops / 1024 / 1024 << "MF, "
