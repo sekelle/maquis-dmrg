@@ -143,59 +143,64 @@ namespace common {
 
     struct cpu_queue
     {
+        cpu_queue(unsigned dim) : max_idx(dim), current_idx(0), T(dim),
+                                  tavail(dim), tdone(dim), slavail(dim), sldone(dim) {}
+
         std::atomic<unsigned> current_idx;
         unsigned max_idx;
+
+        std::vector<std::vector<std::vector<double>>> T;
+
+        std::vector<std::atomic<int>> tavail, tdone;
+        std::vector<std::atomic<int>> slavail, sldone;
     };
 
-    //template<class Matrix, class OtherMatrix, class SymmGroup>
-    //void
-    //cpu_work(cpu_queue& cq, unsigned tidx,
-    //         MPSTensor<Matrix, SymmGroup> & ret,
-    //         MPSTensor<Matrix, SymmGroup> & ket_tensor,
-    //         Boundary<OtherMatrix, SymmGroup> const & left,
-    //         Boundary<OtherMatrix, SymmGroup> const & right,
-    //         ScheduleNew<Matrix, SymmGroup> const & tasks)
-    //{
-    //    while(true)
-    //    {
-    //        unsigned idx = cq.current_idx+=1;
-    //        idx--;
-    //        if (idx >= cq.max_idx) return;
+    template<class Matrix, class OtherMatrix, class SymmGroup>
+    void
+    cpu_work(cpu_queue& cq, unsigned tidx,
+             MPSTensor<Matrix, SymmGroup> & ret,
+             MPSTensor<Matrix, SymmGroup> & ket_tensor,
+             Boundary<OtherMatrix, SymmGroup> const & left,
+             Boundary<OtherMatrix, SymmGroup> const & right,
+             ScheduleNew<Matrix, SymmGroup> const & tasks)
+    {
+        for (unsigned idx = 0; idx < tasks.enumeration.size(); )
+        {
+            unsigned lb_in = tasks.enumeration[idx];
 
-    //        unsigned lb_in = tasks.enumeration[idx];
-    //        {
-    //            auto T = tasks[lb_in].create_T(right, ket_tensor);
-    //            for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
-    //                it->contract(left, T, ret.data()[it->get_rb()], tasks.mutexes[it->get_rb()]);
-    //        }
-    //    }
-    //}
+            // check if lb_in has T jobs
+            int hasT = cq.tavail[lb_in] -= 1;
+            if (hasT >= 0)
+            {
+                tasks[lb_in].create_T(right, ket_tensor, cq.T[lb_in], hasT);
+                ++cq.tdone[lb_in];
 
-    //template<class Matrix, class OtherMatrix, class SymmGroup>
-    //void
-    //cpu_work(cpu_queue& cq, unsigned tidx,
-    //         MPSTensor<Matrix, SymmGroup> & ret,
-    //         MPSTensor<Matrix, SymmGroup> & ket_tensor,
-    //         Boundary<OtherMatrix, SymmGroup> const & left,
-    //         Boundary<OtherMatrix, SymmGroup> const & right,
-    //         ScheduleNew<Matrix, SymmGroup> const & tasks)
-    //{
-    //    bool active = true;
-    //    while(active)
-    //    {
-    //        for (unsigned idx = 0; idx < cq.max_idx; ++idx)
-    //        {
-    //            unsigned lb_in = tasks.enumeration[idx];
-    //            {
-    //                std::vector<std::vector<typename Matrix::value_type>> T(tasks[lb_in].t_schedule.size());
-    //                for (unsigned ti = 0; ti < T.size(); ++ti)
-    //                    tasks[lb_in].create_T(right, ket_tensor, T, ti);
-    //                for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
-    //                    it->contract(left, T, ret.data()[it->get_rb()], tasks.mutexes[it->get_rb()]);
-    //            }
-    //        }
-    //    }
-    //}
+                idx = 0;
+                continue;
+            }
+
+            // check if all T done in lb_in
+            int Tdone = cq.tdone[lb_in].load();
+            if (Tdone == tasks[lb_in].t_schedule.size())
+            {
+                // check if lb_in as LS jobs
+                int hasLS = cq.slavail[lb_in] -= 1;
+                if (hasLS >= 0)
+                {
+                    unsigned rb = tasks[lb_in][hasLS].get_rb();
+                    tasks[lb_in][hasLS].contract(left, cq.T[lb_in], ret.data()[rb], tasks.mutexes[rb]);
+                    unsigned sldone = cq.sldone[lb_in] += 1;
+
+                    if (sldone == tasks[lb_in].size())
+                        cq.T[lb_in] = std::vector<std::vector<typename Matrix::value_type>>();
+
+                    idx = 0;
+                    continue;
+                }
+            }
+            idx++;
+        }
+    }
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
     MPSTensor<Matrix, SymmGroup>
@@ -224,9 +229,16 @@ namespace common {
                 it->contract(left, T, ret.data()[it->get_rb()], tasks.mutexes[it->get_rb()]);
         }
 
-        //cpu_queue cq;
-        //cq.current_idx = 0;
-        //cq.max_idx = tasks.enumeration.size();
+        //cpu_queue cq(tasks.size());
+        //for (unsigned lb_in : tasks.enumeration)
+        //{
+        //    cq.T[lb_in] = std::vector<std::vector<value_type>>(tasks[lb_in].t_schedule.size());
+        //    cq.tavail[lb_in] = tasks[lb_in].t_schedule.size();
+        //    cq.tdone[lb_in] = 0;
+
+        //    cq.slavail[lb_in] = tasks[lb_in].size();
+        //    cq.sldone[lb_in] = 0;
+        //}
 
         //std::vector<std::thread> workers;
         //for (unsigned i = 0; i < 6; ++i)
