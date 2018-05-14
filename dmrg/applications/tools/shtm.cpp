@@ -38,6 +38,7 @@
 
 #include <alps/hdf5.hpp>
 
+#include "dmrg/utils/accelerator.h"
 #include "dmrg/utils/DmrgParameters.h"
 #include "dmrg/sim/matrix_types.h"
 #include "dmrg/mp_tensors/boundary.h"
