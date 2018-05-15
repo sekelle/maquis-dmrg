@@ -85,7 +85,6 @@ private:
 
         unsigned offset;
         unsigned ms=0;
-        unsigned s;
         std::vector<value_type> alpha;
         std::vector<index_type> b2s;
         std::vector<index_type> b1;
@@ -139,7 +138,6 @@ public:
         {
             suv[sfold[s] + i].offset = i * m_size + offset;
             suv[sfold[s] + i].ms = m_size;
-            suv[sfold[s] + i].s = s;
         }
     }
 
@@ -309,7 +307,7 @@ private:
             Matrix buf(x.ms, rs);
 
             index_type seeker = 0;
-            for (index_type b=0; b < x.b1.size(); ++b)
+            for (index_type b=0; b < x.b2s.size(); ++b)
             {
                 memset(&buf(0,0), 0, x.ms * rs * sizeof(value_type));
 
@@ -344,7 +342,7 @@ private:
             Matrix buf(ls, x.ms);
 
             index_type seeker = 0;
-            for (index_type b=0; b < x.b1.size(); ++b)
+            for (index_type b=0; b < x.b2s.size(); ++b)
             {
                 memset(&buf(0,0), 0, ls * x.ms * sizeof(value_type));
 
