@@ -85,11 +85,12 @@ private:
 
         unsigned offset;
         unsigned ms=0;
+        std::vector<index_type> tidx;
         std::vector<value_type> alpha;
         std::vector<index_type> b2s;
         std::vector<index_type> b1;
 
-        std::vector<index_type> tidx;
+        std::vector<index_type> b2s_new;
 
     private:
         unsigned b2count=0;
@@ -109,7 +110,7 @@ public:
            index_type ci_eff_,
            index_type mpodim
           )
-          : lb(l_block), rb(r_block), ls(l_size), rs(r_size), ci(ci_), ci_eff(ci_eff_), mpo_offsets(mpodim), sfold(phys_i.size())
+          : lb(l_block), rb(r_block), ls(l_size), rs(r_size), ci(ci_), ci_eff(ci_eff_), mpo_offsets(mpodim), nSrows(mpodim), sfold(phys_i.size())
           , suv(phys_i.sum_of_sizes())
     {
         unsigned ssum = 0;
@@ -144,12 +145,6 @@ public:
     void finalize()
     {
         compute_mpo_offsets();
-    }
-
-    template <class OtherMatrix>
-    void finalize(BoundaryIndex<OtherMatrix, SymmGroup> const& left)
-    {
-        compute_mpo_offsets(left);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -288,6 +283,7 @@ public:
 
 private:
     index_type lb, rb, ls, rs, ci, ci_eff;
+    index_type nSrows;
 
     std::vector<long int> mpo_offsets;
 
@@ -296,8 +292,7 @@ private:
 
     std::vector<value_type> create_s(int stripe, std::vector<std::vector<value_type>> const& T) const
     {
-        std::size_t count = std::count_if(mpo_offsets.begin(), mpo_offsets.end(), [](long int i) { return i >= 0; } );
-        std::size_t S_size = count * stripe * std::size_t(rs);
+        std::size_t S_size = nSrows * stripe * std::size_t(rs);
 
         std::vector<value_type> ret(S_size);
         for (auto const& x : suv)
@@ -316,11 +311,11 @@ private:
                                                         &T[x.tidx[2*ia]][x.tidx[2*ia+1] * rs] + x.ms * rs,
                                                         &buf(0,0), x.alpha[ia]);
 
-                unsigned ii = mpo_offsets[x.b1[b]] / (ls * rs);
+                unsigned bb = x.b1[b];
                 for (unsigned c = 0; c < rs; ++c)
                 {
-                    assert( stripe * (ii*rs + c) + x.offset <= ret.size() );
-                    std::copy(&buf(0,c), &buf(0,c) + x.ms, ret.data() + stripe * (ii*rs + c) + x.offset);
+                    assert( stripe * (bb*rs + c) + x.offset <= ret.size() );
+                    std::copy(&buf(0,c), &buf(0,c) + x.ms, ret.data() + stripe * (bb*rs + c) + x.offset);
                 }
 
                 seeker += x.b2s[b];
@@ -331,8 +326,7 @@ private:
 
     std::vector<value_type> create_s_r(int stripe, std::vector<std::vector<value_type>> const & T) const
     {
-        std::size_t count = std::count_if(mpo_offsets.begin(), mpo_offsets.end(), [](long int i) { return i >= 0; } );
-        std::size_t S_size = count * stripe * std::size_t(ls);
+        std::size_t S_size = nSrows * stripe * std::size_t(ls);
 
         std::vector<value_type> ret(S_size);
         for (auto const& x : suv)
@@ -351,9 +345,9 @@ private:
                                                         &T[x.tidx[2*ia]][x.tidx[2*ia+1] * ls] + x.ms * ls,
                                                         &buf(0,0), x.alpha[ia]);
 
-                unsigned ii = mpo_offsets[x.b1[b]] / (ls * rs);
+                unsigned bb = x.b1[b];
                 for (unsigned c = 0; c < x.ms; ++c)
-                    std::copy(buf.col(c).first, buf.col(c).second, ret.data() + count*ls * (x.offset+c) + ii*ls);
+                    std::copy(buf.col(c).first, buf.col(c).second, ret.data() + nSrows*ls * (x.offset+c) + bb*ls);
 
                 seeker += x.b2s[b];
             }
@@ -363,16 +357,22 @@ private:
 
     void compute_mpo_offsets()
     {
-        std::size_t block_size = ls * rs; // ALIGN
+        std::vector<long int> cpy = mpo_offsets;
+        index_type n_blocks = 0;
+        for(auto& b : cpy) if (b) b = n_blocks++;
 
+        nSrows = n_blocks;
+
+        for (auto & x : suv)
+            for (index_type b1i = 0; b1i < x.b1.size(); ++b1i)
+            {
+                index_type b = x.b1[b1i]; // b is the mpo index
+                x.b1[b1i] = cpy[b];
+            }
+
+        std::size_t block_size = ls * rs; // ALIGN
         index_type cnt = 0;
         for(auto& b : mpo_offsets) if (b) b = block_size * cnt++; else b = -1;
-    }
-
-    template <class OtherMatrix>
-    void compute_mpo_offsets(BoundaryIndex<OtherMatrix, SymmGroup> const& left)
-    {
-        for(index_type b = 0; b < mpo_offsets.size(); ++b) mpo_offsets[b] = left.offset(ci, b);
     }
 };
 

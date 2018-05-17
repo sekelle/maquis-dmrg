@@ -74,7 +74,7 @@ namespace common {
             unsigned ci = left.cohort_index(lc_out, lc_in); if (ci == left.n_cohorts()) continue;
             unsigned ci_eff = left.tr(ci) ? left.cohort_index(lc_in, lc_out) : ci;
 
-            typename block_type::cohort_type cohort(phys_i, lb_in, lb_out, ls_in, ls_out, ci, ci_eff, mpo.row_dim());
+            typename block_type::cohort_type cohort(phys_i, lb_in, lb_out, ls_in, ls_out, ci, ci_eff, left.n_blocks(ci_eff));
 
             for (unsigned s = 0; s < phys_i.size(); ++s)
             {
@@ -90,6 +90,8 @@ namespace common {
                 for (index_type b1 = 0; b1 < mpo.row_dim(); ++b1)
                 {
                     if (!left.has_block(ci, b1)) continue;
+                    unsigned left_idx = left.offset(ci, b1) / (ls_in * ls_out);
+
                     int A = mpo.left_spin(b1).get(); if (!::SU2::triangle<SymmGroup>(lc_in, A, lc_out)) continue;
 
                     for (auto row_it = mpo.row(b1).begin(); row_it != mpo.row(b1).end(); ++row_it) {
@@ -124,11 +126,10 @@ namespace common {
                         } //op_index
                     } // b2
 
-                    cohort.add_line(b1);
+                    cohort.add_line(left_idx);
                 } // b1
             } // phys_out
 
-            cohort.finalize(left);
             if (cohort.n_tasks()) mpsb.push_back(cohort);
 
         } // lb_out
