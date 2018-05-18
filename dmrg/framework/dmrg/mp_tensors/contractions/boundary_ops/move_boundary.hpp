@@ -44,7 +44,7 @@ namespace contraction {
         {
             typedef typename SymmGroup::charge charge;
             typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
-            typedef BoundarySchedule<Matrix, SymmGroup> schedule_t;
+            typedef ScheduleNew<Matrix, SymmGroup> schedule_t;
             typedef typename schedule_t::block_type::const_iterator const_iterator;
 
             if (!ket_tensor.is_right_paired())
@@ -96,7 +96,7 @@ namespace contraction {
         {
             typedef typename SymmGroup::charge charge;
             typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
-            typedef BoundarySchedule<Matrix, SymmGroup> schedule_t;
+            typedef ScheduleNew<Matrix, SymmGroup> schedule_t;
             typedef typename schedule_t::block_type::const_iterator const_iterator;
 
             if (!ket_tensor.is_right_paired())
@@ -146,7 +146,7 @@ namespace contraction {
         {
             typedef typename SymmGroup::charge charge;
             typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
-            typedef BoundarySchedule<Matrix, SymmGroup> schedule_t;
+            typedef ScheduleNew<Matrix, SymmGroup> schedule_t;
             typedef typename schedule_t::block_type::const_iterator const_iterator;
 
             MPSTensor<Matrix, SymmGroup> buffer; // holds the conjugate tensor if we deal with complex numbers
@@ -229,7 +229,7 @@ namespace contraction {
         {
             typedef typename SymmGroup::charge charge;
             typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
-            typedef BoundarySchedule<Matrix, SymmGroup> schedule_t;
+            typedef ScheduleNew<Matrix, SymmGroup> schedule_t;
             typedef typename schedule_t::block_type::const_iterator const_iterator;
 
             MPSTensor<Matrix, SymmGroup> buffer; // holds the conjugate tensor if we deal with complex numbers

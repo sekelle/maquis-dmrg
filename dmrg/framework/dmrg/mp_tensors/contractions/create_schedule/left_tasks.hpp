@@ -48,7 +48,7 @@ namespace common {
     {
         typedef typename SymmGroup::charge charge;
         typedef typename Matrix::value_type value_type;
-        typedef typename common::BoundarySchedule<Matrix, SymmGroup>::block_type block_type;
+        typedef typename common::ScheduleNew<Matrix, SymmGroup>::block_type block_type;
 
         charge rc_ket = right_i[rb_ket].first;
         unsigned rs_ket = right_i[rb_ket].second;
@@ -81,14 +81,14 @@ namespace common {
                      ProductBasis<SymmGroup> const & bra_left_pb,
                      ProductBasis<SymmGroup> const & ket_right_pb,
                      unsigned rb_ket,
-                     typename common::BoundarySchedule<Matrix, SymmGroup>::block_type & mpsb,
+                     typename common::ScheduleNew<Matrix, SymmGroup>::block_type & mpsb,
                      bool skip = true)
     {
         typedef typename SymmGroup::charge charge;
         typedef typename Matrix::value_type value_type;
         typedef typename MPOTensor<Matrix, SymmGroup>::col_proxy col_proxy;
         typedef MPOTensor_detail::index_type index_type;
-        typedef typename common::BoundarySchedule<Matrix, SymmGroup>::block_type block_type;
+        typedef typename common::ScheduleNew<Matrix, SymmGroup>::block_type block_type;
 
         Index<SymmGroup> const & ket_left_i = ket.row_dim();
         Index<SymmGroup> const & ket_right_i = ket.col_dim();
@@ -152,7 +152,7 @@ namespace common {
                                                                lc_bra, SymmGroup::fuse(rc_bra, -lc_bra), rc_bra,
                                                                scale, couplings);
 
-                                detail::op_iterate<Matrix, typename common::BoundarySchedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
+                                detail::op_iterate<Matrix, typename common::ScheduleNew<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
                                     (W, w_block, couplings, cohort, s, rs_ket, mpsb, ket_offset, ci, left_offset/ls_ket);
                             } // w_block
                         } //op_index

@@ -49,7 +49,7 @@ namespace common {
     {
         typedef typename SymmGroup::charge charge;
         typedef typename Matrix::value_type value_type;
-        typedef typename common::BoundarySchedule<Matrix, SymmGroup>::block_type block_type;
+        typedef typename common::ScheduleNew<Matrix, SymmGroup>::block_type block_type;
 
         charge lc_ket = left_i[lb_ket].first;
         for (unsigned s = 0; s < phys_i.size(); ++s)
@@ -80,13 +80,13 @@ namespace common {
                      Index<SymmGroup> const & phys_i,
                      ProductBasis<SymmGroup> const & right_pb,
                      unsigned lb_ket,
-                     typename common::BoundarySchedule<Matrix, SymmGroup>::block_type & mpsb,
+                     typename common::ScheduleNew<Matrix, SymmGroup>::block_type & mpsb,
                      bool skip = true)
     {
         typedef MPOTensor_detail::index_type index_type;
         typedef typename SymmGroup::charge charge;
         typedef typename Matrix::value_type value_type;
-        typedef typename common::BoundarySchedule<Matrix, SymmGroup>::block_type block_type;
+        typedef typename common::ScheduleNew<Matrix, SymmGroup>::block_type block_type;
 
         const int site_basis_max_diff = 2;
 
@@ -145,7 +145,7 @@ namespace common {
                                 value_type scale = right.conjugate_scale(ci, b2) * access.scale(op_index);
                                 w9j.set_scale(A, K, Ap, rc_ket, scale, couplings);
                                 
-                                detail::op_iterate<Matrix, typename common::BoundarySchedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
+                                detail::op_iterate<Matrix, typename common::ScheduleNew<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
                                     (W, w_block, couplings, cohort, s, rs_ket, mpsb, ket_offset, ci, right_offset/rs_ket);
                             } // w_block
                         } //op_index
