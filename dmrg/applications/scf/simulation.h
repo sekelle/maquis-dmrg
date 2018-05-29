@@ -27,7 +27,7 @@
 #ifndef MAQUIS_SIM_RUN_H
 #define MAQUIS_SIM_RUN_H
 
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 #include "dmrg/sim/matrix.fwd.h"
 #include "../dmrg/dmrg_sim.fwd.h"
@@ -57,12 +57,12 @@ public:
     parameters::proxy get_parm(std::string const& key);
 
 private:
-    boost::shared_ptr<dmrg_sim<matrix, SymmGroup> > sim_ptr_real;
-    boost::shared_ptr<dmrg_sim<cmatrix, SymmGroup> > sim_ptr_complex;
+    std::shared_ptr<dmrg_sim<matrix, SymmGroup> > sim_ptr_real;
+    std::shared_ptr<dmrg_sim<cmatrix, SymmGroup> > sim_ptr_complex;
 };
 
 struct simulation_traits {
-    typedef boost::shared_ptr<simulation_base> shared_ptr;
+    typedef std::shared_ptr<simulation_base> shared_ptr;
     template <class SymmGroup> struct F {
         typedef simulation<SymmGroup> type;
     };
