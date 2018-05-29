@@ -139,6 +139,7 @@ public:
         {
             suv[sfold[s] + i].offset = i * m_size + offset;
             suv[sfold[s] + i].ms = m_size;
+            stripe += m_size;
         }
     }
 
@@ -154,7 +155,7 @@ public:
                 Boundary<OtherMatrix, SymmGroup> & new_left) const
     {
         int stripe = num_rows(bra_mps.data()[lb]);
-        std::vector<value_type> sloc = create_s(stripe, T);
+        std::vector<value_type> sloc = create_s(T);
 
         int M = num_cols(bra_mps.data()[lb]);
         int N = new_left.index().n_blocks(ci) * new_left.index().right_size(ci);
@@ -169,7 +170,7 @@ public:
                 Boundary<OtherMatrix, SymmGroup> & new_right) const
     {
         int stripe = num_cols(bra_mps.data()[rb]);
-        std::vector<value_type> sloc = create_s_r(stripe, T);
+        std::vector<value_type> sloc = create_s_r(T);
 
         int M = new_right.index().n_blocks(ci) * ls;
         int N = rs;
@@ -190,11 +191,11 @@ public:
                   std::mutex & out_mutex) const
     {
         int stripe = num_cols(output);
-        std::vector<value_type> sloc = create_s_r(stripe, T);
+        std::vector<value_type> sloc = create_s_r(T);
 
         int M = rs;
         int N = stripe;
-        int K = sloc.size() / stripe;
+        int K = nSrows * ls;
 
         const value_type* luse = left.data()[ci_eff].data();
         std::vector<value_type> lbuf;
@@ -226,7 +227,7 @@ public:
              ) const
     {
         int stripe = num_rows(out);
-        std::vector<value_type> sloc = create_s(stripe, T);
+        std::vector<value_type> sloc = create_s(T);
 
         int M = stripe;
         int K = sloc.size() / M;
@@ -246,10 +247,10 @@ public:
              ) const
     {
         int stripe = num_rows(out);
-        std::vector<value_type> sloc = create_s_r(stripe, T);
+        std::vector<value_type> sloc = create_s_r(T);
 
         int M = stripe;
-        int K = sloc.size() / M;
+        int K = nSrows * ls;
 
         OtherMatrix tmp(M,M);
         blas_gemm('T', 'N', M, M, K, value_type(alpha), &sloc[0], K, &sloc[0], K, value_type(1), &tmp(0,0), M);
@@ -281,16 +282,19 @@ public:
     index_type get_lb() const { return lb; }
     index_type get_rb() const { return rb; }
 
+    std::size_t get_s_size() const { return nSrows * stripe * std::size_t(ls); }
+    std::size_t get_l_size() const { return nSrows * rs * std::size_t(ls); }
+
 private:
     index_type lb, rb, ls, rs, ci, ci_eff;
-    index_type nSrows;
+    index_type nSrows = 0, stripe = 0;
 
     std::vector<long int> mpo_offsets;
 
     std::vector<unsigned> sfold;
     std::vector<SUnit> suv;
 
-    std::vector<value_type> create_s(int stripe, std::vector<std::vector<value_type>> const& T) const
+    std::vector<value_type> create_s(std::vector<std::vector<value_type>> const& T) const
     {
         std::size_t S_size = nSrows * stripe * std::size_t(rs);
 
@@ -313,10 +317,7 @@ private:
 
                 unsigned bb = x.b1[b];
                 for (unsigned c = 0; c < rs; ++c)
-                {
-                    assert( stripe * (bb*rs + c) + x.offset <= ret.size() );
                     std::copy(&buf(0,c), &buf(0,c) + x.ms, ret.data() + stripe * (bb*rs + c) + x.offset);
-                }
 
                 seeker += x.b2s[b];
             }
@@ -324,7 +325,7 @@ private:
         return ret;
     }
 
-    std::vector<value_type> create_s_r(int stripe, std::vector<std::vector<value_type>> const & T) const
+    std::vector<value_type> create_s_r(std::vector<std::vector<value_type>> const & T) const
     {
         std::size_t S_size = nSrows * stripe * std::size_t(ls);
 
@@ -383,6 +384,35 @@ class MPSBlock : public std::vector<Cohort<Matrix, SymmGroup>>
     typedef typename Matrix::value_type value_type;
 public:
     typedef Cohort<Matrix, SymmGroup> cohort_type;
+
+    template <class OtherMatrix>
+    std::size_t max_r_size(BoundaryIndex<OtherMatrix, SymmGroup> const& right) const
+    {
+        std::size_t ret = 0;
+        for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
+        {
+            unsigned ci_eff = boost::get<2>(t_schedule[ti]);
+            ret = std::max(ret, right.n_blocks(ci_eff) * right.left_size(ci_eff) * right.right_size(ci_eff));
+        }
+        return ret;
+    }
+
+    template <class DefaultMatrix, class OtherMatrix>
+    std::size_t t_size(BoundaryIndex<OtherMatrix, SymmGroup> const& right, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
+    {
+        std::size_t ret = 0;
+        for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
+        {
+            unsigned ci = boost::get<1>(t_schedule[ti]);
+            unsigned ci_eff = boost::get<2>(t_schedule[ti]);
+            unsigned lb_ket = boost::get<3>(t_schedule[ti]);
+
+            unsigned brs = right.index().right_size(ci);
+
+            ret += num_rows(mps.data()[lb_ket]) * right.n_blocks(ci_eff) * brs;
+        }
+        return ret;
+    }
 
     template <class DefaultMatrix, class OtherMatrix>
     std::vector<std::vector<value_type>>
@@ -577,12 +607,13 @@ struct ScheduleNew : public std::vector<MPSBlock<
     typedef typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, ALIGNMENT>::type AlignedMatrix;
     typedef std::vector<MPSBlock<AlignedMatrix, SymmGroup> > base;
     typedef MPSBlock<AlignedMatrix, SymmGroup> block_type;
+    typedef typename Matrix::value_type value_type;
 
     ScheduleNew() {}
     ScheduleNew(std::size_t dim) : base(dim), mutexes(dim), cpu_time(0), gpu_time(0) {}
 
-    double mflops(double time) const { return total_flops*niter / time / 1e6; }
-    double bandwidth(double time) const { return total_mem*niter / time / 1e6; }
+    //double mflops(double time) const { return total_flops*niter / time / 1e6; }
+
     void print_stats(double time) const {
         maquis::cout << total_flops*niter / time / 1e6
                      << " CPU: " << cpu_flops*niter / cpu_time / 1e6;
@@ -592,25 +623,30 @@ struct ScheduleNew : public std::vector<MPSBlock<
         maquis::cout << "  (MFLOPS)" << std::endl;
     }
 
-    std::size_t n_tasks(std::size_t p) const
+
+    void init_gpu()
     {
-        //std::size_t ret = 0;
-        //for (const_iterator it = (*this)[p].begin(); it != (*this)[p].end(); ++it)
-        //    for (std::size_t i = 0; i < it->size(); ++i)
-        //        ret += (*it)[i].n_tasks();
-        //return ret;
-        return 0;
+
     }
 
+
     size_t niter;
-    size_t total_flops, total_mem;
-    size_t cpu_flops, gpu_flops;
+    size_t total_flops;
+    size_t cpu_flops=0, gpu_flops=0;
     mutable double cpu_time, gpu_time;
 
     std::vector<unsigned> enumeration;
     std::vector<unsigned> enumeration_gpu;
 
     mutable std::vector<std::mutex> mutexes;
+
+    struct GPUconfig
+    {
+        value_type* dev_tl_buffer;
+        value_type* dev_sr_buffer;
+    };
+
+    GPUconfig gpu;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////

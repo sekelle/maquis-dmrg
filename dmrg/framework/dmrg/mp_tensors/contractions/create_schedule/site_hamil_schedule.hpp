@@ -98,7 +98,6 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
     std::transform(fb.begin(), fb.end(), idx.begin(), boost::bind(&std::pair<size_t, size_t>::second, boost::lambda::_1));
 
     tasks.total_flops = cpu_flops + gpu_flops;
-    //tasks.total_mem = memops;
     tasks.cpu_flops = cpu_flops;
     tasks.gpu_flops = gpu_flops;
 
