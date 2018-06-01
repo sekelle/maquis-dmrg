@@ -12,5 +12,9 @@ target_link_libraries(maquis ${PYTHON_APP_LIBRARIES})
 set_property(TARGET maquis PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 #set_target_properties(maquis PROPERTIES PREFIX "")
 
+add_library(cpp_maquis SHARED cpp_maquis.cpp)
+target_link_libraries(cpp_maquis dmrg_simulation)
+set_property(TARGET cpp_maquis PROPERTY POSITION_INDEPENDENT_CODE TRUE)
+
 # *** Install
 install(TARGETS maquis COMPONENT libraries DESTINATION lib/python/maquis)

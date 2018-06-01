@@ -151,8 +151,8 @@ namespace accelerator {
         ~gpu()
         {
             cudaFree(pbuffer); cudaFreeHost(sbuffer); cudaFree(dev_buffer);
-            for (size_t i=0; i < streams.size(); ++i)
-                cudaStreamDestroy(streams[i]);
+            //for (size_t i=0; i < streams.size(); ++i)
+            //    cudaStreamDestroy(streams[i]);
         }
 
         bool active;
