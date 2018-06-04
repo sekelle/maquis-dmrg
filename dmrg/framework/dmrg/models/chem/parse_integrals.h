@@ -61,7 +61,7 @@ namespace chem {
             }
         }
 
-        inline void parse_buffer(std::vector<double> & M, std::vector<int> & I, std::string& buffer)
+        inline void parse_buffer(std::vector<double> & M, std::vector<int> & I, std::string buffer)
         {
             std::size_t line_size = (sizeof(double) + 4*sizeof(int));
             if (buffer.size() % line_size) throw std::runtime_error("integral buffer parsing failed\n");
