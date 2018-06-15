@@ -144,7 +144,10 @@ void dmrg_sim<Matrix, SymmGroup>::measure_observable(std::string const & name_, 
         if (it->name() == name_)
         {
             maquis::cout << "Measuring " << it->name() << std::endl;
-            it->evaluate(mps, boost::none, bra);
+            if (bra_ptr)
+                it->evaluate(mps, boost::none, bra, dynamic_cast<dmrg_sim<Matrix, SymmGroup>*>(bra_ptr.get())->mps);
+            else
+                it->evaluate(mps, boost::none, bra);
             it->extract(results, labels);
 
             if (parms["keep_files"])

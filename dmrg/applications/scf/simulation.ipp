@@ -45,7 +45,7 @@ simulation<SymmGroup>::simulation(DmrgParameters & parms)
 template <class SymmGroup>
 void simulation<SymmGroup>::run()
 {
-    if (sim_ptr_complex.get())
+    if (sim_ptr_complex)
         sim_ptr_complex->run();
     else
         sim_ptr_real->run();
@@ -58,13 +58,13 @@ void simulation<SymmGroup>::add_ortho(simulation_base* os)
     //std::shared_ptr<simulation<SymmGroup>> os_up = std::dynamic_pointer_cast<simulation<SymmGroup>>(os);
     simulation<SymmGroup>* os_up = dynamic_cast<simulation<SymmGroup>*>(os);
 
-    if (sim_ptr_complex.get())
+    if (sim_ptr_complex)
     #ifdef HAVE_COMPLEX
         sim_ptr_complex->add_ortho(os_up->sim_ptr_complex);
     #else
         throw std::runtime_error("compilation of complex numbers not enabled, check your compile options\n");
     #endif
-    if (sim_ptr_real.get())
+    if (sim_ptr_real)
         sim_ptr_real->add_ortho(os_up->sim_ptr_real);
 }
 
@@ -78,7 +78,7 @@ void simulation<SymmGroup>::measure_observable(std::string name,
     if (sim_ptr_complex.get())
         throw std::runtime_error("extraction of complex observables not implemented\n");
 
-    if (bra_ptr.get())
+    if (bra_ptr)
         sim_ptr_real->measure_observable(name, results, labels, bra, std::dynamic_pointer_cast<simulation<SymmGroup>>(bra_ptr)->sim_ptr_real);
     else
         sim_ptr_real->measure_observable(name, results, labels, bra);
