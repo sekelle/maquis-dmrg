@@ -136,6 +136,58 @@ std::vector<double> Interface::opdm(int bra, int ket)
     return ret;
 }
 
+std::size_t idx4d(int i, int j, int k, int l)
+{
+    int L = detail::parms["L"];
+    return i*L*L*L + j*L*L + k*L + l;
+}
+
+std::vector<double> Interface::tpdm(int bra, int ket)
+{
+    int L = detail::parms["L"];
+    std::vector<double> ret(L*L*L*L);
+
+    if (bra >= simv.size() || ket >= simv.size())
+        throw std::runtime_error("State index specified is out of range (corresponding excited state has not been computed)\n");
+
+    std::vector<double> val;
+    std::vector<std::vector<int>> lab;
+    simv[ket]->measure_observable("twoptdm", val, lab, "", simv[bra]);
+
+    // read labels and arrange data
+    for (int i = 0; i < lab.size(); ++i)
+    {
+        int I = lab[i][0];
+        int J = lab[i][1];
+        int K = lab[i][2];
+        int L = lab[i][3];
+
+        std::swap(J,L); // adapt to lightspeed ordering
+        double value = 0.5 * val[i];
+
+        if (bra == ket) {
+            ret[idx4d(I,J,K,L)] = value;
+
+            if (L != K || I != J)
+                ret[idx4d(J,I,L,K)] = value;
+
+            if (std::min(I,J) != std::min(L,K) || std::max(I,J) != std::max(L,K))
+            {
+                ret[idx4d(K,L,I,J)] = value;
+                if (L != K || I != J)
+                    ret[idx4d(L,K,J,I)] = value;
+            }
+        }
+        // transition 2-rdms have fewer degrees of freedom
+        else {
+            ret[idx4d(I,J,K,L)] = value;
+            ret[idx4d(L,K,J,I)] = value;
+        }
+    }
+
+    return ret;
+}
+
 void prepare_integrals(double **Hfrz, double **Vtuvw, double Ecore, int acti, int clsd, std::map<std::string, std::string> & opts)
 {
     std::vector<double> integrals;

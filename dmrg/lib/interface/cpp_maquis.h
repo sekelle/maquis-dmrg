@@ -112,6 +112,7 @@ public:
     std::vector<std::vector<int> > getLabels(std::string name);
 
     std::vector<double> opdm(int bra=0, int ket=0);
+    std::vector<double> tpdm(int bra=0, int ket=0);
 
 private:
     std::map<std::string, std::vector<double> > observables;
