@@ -54,7 +54,10 @@ public:
     virtual void run() =0;
     virtual void measure_observable(std::string name,
                                     std::vector<double> & results, std::vector<std::vector<int> > & labels,
-                                    std::string bra) =0;
+                                    std::string bra, std::shared_ptr<simulation_base> bra_ptr = NULL) =0;
+
+    //virtual void add_ortho(std::shared_ptr<simulation_base> os) =0;
+    virtual void add_ortho(simulation_base* os) =0;
 
     //virtual parameters::proxy get_parm(std::string const& key) =0;
 };
@@ -68,9 +71,13 @@ public:
 
     void measure_observable(std::string name,
                             std::vector<double> & results, std::vector<std::vector<int> > & labels,
-                            std::string bra);
+                            std::string bra,
+                            std::shared_ptr<simulation_base> bra_ptr = NULL);
 
     //parameters::proxy get_parm(std::string const& key);
+
+    //void add_ortho(std::shared_ptr<simulation_base> os);
+    void add_ortho(simulation_base* os);
 
 private:
     std::shared_ptr<dmrg_sim<matrix, SymmGroup> > sim_ptr_real;
@@ -96,18 +103,21 @@ public:
     //std::string value(std::string key);
 
     void optimize();
+    void excite();
 
-    void measure(std::string name, std::string bra = "");
+    void measure(std::string name, int bra, int ket);
 
     std::vector<double> getObservable(std::string name);
 
     std::vector<std::vector<int> > getLabels(std::string name);
 
+    std::vector<double> opdm(int bra=0, int ket=0);
+
 private:
     std::map<std::string, std::vector<double> > observables;
     std::map<std::string, std::vector<std::vector<int> > > labels;
 
-    simulation_traits::shared_ptr sim;
+    std::vector<simulation_traits::shared_ptr> simv;
 };
 
 void prepare_integrals(double **, double **, double, int, int, std::map<std::string, std::string> &);

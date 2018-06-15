@@ -52,23 +52,44 @@ void simulation<SymmGroup>::run()
 }
 
 template <class SymmGroup>
+//void simulation<SymmGroup>::add_ortho(std::shared_ptr<simulation_base> os)
+void simulation<SymmGroup>::add_ortho(simulation_base* os)
+{
+    //std::shared_ptr<simulation<SymmGroup>> os_up = std::dynamic_pointer_cast<simulation<SymmGroup>>(os);
+    simulation<SymmGroup>* os_up = dynamic_cast<simulation<SymmGroup>*>(os);
+
+    if (sim_ptr_complex.get())
+    #ifdef HAVE_COMPLEX
+        sim_ptr_complex->add_ortho(os_up->sim_ptr_complex);
+    #else
+        throw std::runtime_error("compilation of complex numbers not enabled, check your compile options\n");
+    #endif
+    if (sim_ptr_real.get())
+        sim_ptr_real->add_ortho(os_up->sim_ptr_real);
+}
+
+template <class SymmGroup>
 void simulation<SymmGroup>::measure_observable(std::string name,
                                                std::vector<double> & results,
                                                std::vector<std::vector<Lattice::pos_t> > & labels,
-                                               std::string bra)
+                                               std::string bra,
+                                               std::shared_ptr<simulation_base> bra_ptr)
 {
     if (sim_ptr_complex.get())
         throw std::runtime_error("extraction of complex observables not implemented\n");
 
-    sim_ptr_real->measure_observable(name, results, labels, bra);
-}
-
-
-template <class SymmGroup>
-parameters::proxy simulation<SymmGroup>::get_parm(std::string const& key)
-{
-    if (sim_ptr_complex.get())
-        sim_ptr_complex->get_parm(key);
+    if (bra_ptr.get())
+        sim_ptr_real->measure_observable(name, results, labels, bra, std::dynamic_pointer_cast<simulation<SymmGroup>>(bra_ptr)->sim_ptr_real);
     else
-        return sim_ptr_real->get_parm(key);
+        sim_ptr_real->measure_observable(name, results, labels, bra);
 }
+
+
+//template <class SymmGroup>
+//parameters::proxy simulation<SymmGroup>::get_parm(std::string const& key)
+//{
+//    if (sim_ptr_complex.get())
+//        sim_ptr_complex->get_parm(key);
+//    else
+//        return sim_ptr_real->get_parm(key);
+//}

@@ -52,12 +52,12 @@ void dmrg_sim<Matrix, SymmGroup>::run()
     if (parms["optimization"] == "singlesite")
     {
         optimizer.reset( new ss_optimize<Matrix, SymmGroup, storage::Controller>
-                        (mps, mpoc, parms, stop_callback, init_site) );
+                        (mps, mpoc, base::ortho_mps, parms, stop_callback, init_site) );
     }
     else if(parms["optimization"] == "twosite")
     {
         optimizer.reset( new ts_optimize<Matrix, SymmGroup, storage::Controller>
-                        (mps, mpoc, parms, stop_callback, init_site) );
+                        (mps, mpoc, base::ortho_mps, parms, stop_callback, init_site) );
     }
     else {
         throw std::runtime_error("Don't know this optimizer");
@@ -135,7 +135,8 @@ dmrg_sim<Matrix, SymmGroup>::~dmrg_sim()
 template <class Matrix, class SymmGroup>
 void dmrg_sim<Matrix, SymmGroup>::measure_observable(std::string const & name_, std::vector<typename Matrix::value_type> & results,
                                                      std::vector<std::vector<Lattice::pos_t> > & labels,
-                                                     std::string const & bra)
+                                                     std::string const & bra,
+                                                     std::shared_ptr<sim<Matrix, SymmGroup>> bra_ptr)
 {
     mps.normalize_left();
     for (typename measurements_type::iterator it = all_measurements.begin(); it != all_measurements.end(); ++it)

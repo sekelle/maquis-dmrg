@@ -38,9 +38,12 @@ public:
     virtual void run() =0;
     virtual void measure_observable(std::string name,
                                     std::vector<double> & results, std::vector<std::vector<int> > & labels,
-                                    std::string bra) =0;
+                                    std::string bra, std::shared_ptr<simulation_base> bra_ptr = NULL) =0;
 
-    virtual parameters::proxy get_parm(std::string const& key) =0;
+    //virtual parameters::proxy get_parm(std::string const& key) =0;
+
+    //virtual void add_ortho(std::shared_ptr<simulation_base> os) {}
+    virtual void add_ortho(simulation_base* os) {}
 };
 
 template <class SymmGroup>
@@ -52,9 +55,13 @@ public:
 
     void measure_observable(std::string name,
                             std::vector<double> & results, std::vector<std::vector<int> > & labels,
-                            std::string bra);
+                            std::string bra,
+                            std::shared_ptr<simulation_base> bra_ptr = NULL);
 
-    parameters::proxy get_parm(std::string const& key);
+    //parameters::proxy get_parm(std::string const& key);
+
+    //void add_ortho(std::shared_ptr<simulation_base> os);
+    void add_ortho(simulation_base* os);
 
 private:
     std::shared_ptr<dmrg_sim<matrix, SymmGroup> > sim_ptr_real;

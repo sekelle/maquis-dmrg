@@ -83,6 +83,7 @@ public:
 
     optimizer_base(MPS<Matrix, SymmGroup> & mps_,
                    MPO<Matrix, SymmGroup> const & mpo_,
+                   std::vector<MPS<Matrix,SymmGroup>*> const & ortho_mps_ptrs,
                    BaseParameters & parms_,
                    boost::function<bool ()> stop_callback_,
                    int site=0)
@@ -115,6 +116,10 @@ public:
             maquis::checks::right_end_check(files[n], ortho_mps[n], mps[mps.length()-1].col_dim()[0].first);
 
             maquis::cout << "Right end: " << ortho_mps[n][mps.length()-1].col_dim() << std::endl;
+        }
+        for (int n = 0; n < ortho_mps_ptrs.size(); ++n) {
+            ortho_mps.push_back( *ortho_mps_ptrs[n] );
+            northo++;
         }
         
         init_left_right(mpo, site);

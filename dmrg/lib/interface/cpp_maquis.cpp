@@ -35,15 +35,18 @@
 
 #include "cpp_maquis.h"
 
+namespace detail {
+    DmrgParameters parms;
+}
+
 Interface::Interface() {}
 
 Interface::Interface(std::map<std::string, std::string> & input)
 {
-    DmrgParameters parms;
     for(auto kv : input)
-        parms.set(kv.first, kv.second);
+        detail::parms.set(kv.first, kv.second);
 
-    sim = dmrg::symmetry_factory<simulation_traits>(parms);
+    simv.push_back(dmrg::symmetry_factory<simulation_traits>(detail::parms));
 }
 
 //std::string Interface::value(std::string key) { return sim->get_parm(key); }
@@ -56,7 +59,7 @@ void Interface::optimize()
     gettimeofday(&now, NULL);
 
     try {
-        sim->run();
+        (*simv.rbegin())->run();
 
     } catch (std::exception & e) {
         maquis::cerr << "Exception thrown!" << std::endl;
@@ -70,9 +73,34 @@ void Interface::optimize()
     maquis::cout << "Task took " << elapsed << " seconds." << std::endl;
 }
 
-void Interface::measure(std::string name, std::string bra)
+void Interface::excite()
 {
-    sim->measure_observable(name, observables["name"], labels["name"], bra);
+    std::string chkpfile = detail::parms["chkpfile"];
+    std::string resultfile = detail::parms["resultfile"];
+
+    if (chkpfile.find("_ex") != std::string::npos)
+    {
+        chkpfile.erase(chkpfile.end()-7, chkpfile.end());
+        resultfile.erase(resultfile.end()-7, resultfile.end());
+    }
+
+    detail::parms["chkpfile"] = chkpfile + "_ex" + std::to_string(simv.size()) + ".h5";
+    detail::parms["resultfile"] = resultfile + "_ex" + std::to_string(simv.size()) + ".h5";
+    simv.push_back(dmrg::symmetry_factory<simulation_traits>(detail::parms));
+
+    for (int i = 0; i < simv.size()-1; ++i)
+       //(*simv.rbegin())->add_ortho(simv[i]);
+       (*simv.rbegin())->add_ortho(simv[i].get());
+
+    optimize();
+}
+
+void Interface::measure(std::string name, int bra, int ket)
+{
+    if (bra >= simv.size() || ket >= simv.size())
+        throw std::runtime_error("State index specified is out of range (corresponding excited state has not been computed)\n");
+
+    simv[ket]->measure_observable(name, observables["name"], labels["name"], "");
 } 
 
 std::vector<double> Interface::getObservable(std::string name)
@@ -83,6 +111,29 @@ std::vector<double> Interface::getObservable(std::string name)
 std::vector<std::vector<int> > Interface::getLabels(std::string name)
 {
     return labels["name"];
+}
+
+std::vector<double> Interface::opdm(int bra, int ket)
+{
+    int L = detail::parms["L"];
+    std::vector<double> ret(L*L);
+
+    if (bra >= simv.size() || ket >= simv.size())
+        throw std::runtime_error("State index specified is out of range (corresponding excited state has not been computed)\n");
+
+    std::vector<double> val;
+    std::vector<std::vector<int>> lab;
+    simv[ket]->measure_observable("oneptdm", val, lab, "", simv[bra]);
+
+    // read labels and arrange data
+    for (int i = 0; i < lab.size(); ++i)
+    {
+        ret[lab[i][0] * L + lab[i][1]] = val[i];
+        // fill lower triangle if we're not dealing with a transition rdm
+        if (bra == ket) ret[lab[i][1] * L + lab[i][0]] = val[i];
+    }
+
+    return ret;
 }
 
 void prepare_integrals(double **Hfrz, double **Vtuvw, double Ecore, int acti, int clsd, std::map<std::string, std::string> & opts)
