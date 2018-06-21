@@ -113,6 +113,8 @@ public:
 
     std::vector<double> opdm(int bra=0, int ket=0);
     std::vector<double> tpdm(int bra=0, int ket=0);
+    void opdm(double **Gij, int bra=0, int ket=0);
+    void tpdm(double **Gijkl, int bra=0, int ket=0);
 
 private:
     std::map<std::string, std::vector<double> > observables;

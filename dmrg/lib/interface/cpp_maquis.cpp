@@ -123,7 +123,7 @@ std::vector<double> Interface::opdm(int bra, int ket)
 
     std::vector<double> val;
     std::vector<std::vector<int>> lab;
-    simv[ket]->measure_observable("oneptdm", val, lab, "", simv[bra]);
+    simv[bra]->measure_observable("oneptdm", val, lab, "", (bra==ket) ? NULL : simv[ket]);
 
     // read labels and arrange data
     for (int i = 0; i < lab.size(); ++i)
@@ -136,6 +136,24 @@ std::vector<double> Interface::opdm(int bra, int ket)
     return ret;
 }
 
+void Interface::opdm(double **ret, int bra, int ket)
+{
+    if (bra >= simv.size() || ket >= simv.size())
+        throw std::runtime_error("State index specified is out of range (corresponding excited state has not been computed)\n");
+
+    std::vector<double> val;
+    std::vector<std::vector<int>> lab;
+    simv[bra]->measure_observable("oneptdm", val, lab, "", (bra==ket) ? NULL : simv[ket]);
+
+    // read labels and arrange data
+    for (int i = 0; i < lab.size(); ++i)
+    {
+        ret[lab[i][0]][lab[i][1]] = val[i];
+        // fill lower triangle if we're not dealing with a transition rdm
+        if (bra == ket) ret[lab[i][1]][lab[i][0]] = val[i];
+    }
+}
+
 std::size_t idx4d(int i, int j, int k, int l)
 {
     int L = detail::parms["L"];
@@ -144,15 +162,15 @@ std::size_t idx4d(int i, int j, int k, int l)
 
 std::vector<double> Interface::tpdm(int bra, int ket)
 {
-    int L = detail::parms["L"];
-    std::vector<double> ret(L*L*L*L);
+    int acti = detail::parms["L"];
+    std::vector<double> ret(acti*acti*acti*acti);
 
     if (bra >= simv.size() || ket >= simv.size())
         throw std::runtime_error("State index specified is out of range (corresponding excited state has not been computed)\n");
 
     std::vector<double> val;
     std::vector<std::vector<int>> lab;
-    simv[ket]->measure_observable("twoptdm", val, lab, "", simv[bra]);
+    simv[bra]->measure_observable("twoptdm", val, lab, "", (bra==ket) ? NULL : simv[ket]);
 
     // read labels and arrange data
     for (int i = 0; i < lab.size(); ++i)
@@ -163,6 +181,7 @@ std::vector<double> Interface::tpdm(int bra, int ket)
         int L = lab[i][3];
 
         std::swap(J,L); // adapt to lightspeed ordering
+        std::swap(K,L); // adapt to lightspeed ordering
         double value = 0.5 * val[i];
 
         if (bra == ket) {
@@ -181,11 +200,56 @@ std::vector<double> Interface::tpdm(int bra, int ket)
         // transition 2-rdms have fewer degrees of freedom
         else {
             ret[idx4d(I,J,K,L)] = value;
-            ret[idx4d(L,K,J,I)] = value;
+            //ret[idx4d(L,K,J,I)] = value; // symmetry for swap(J,L)
+            ret[idx4d(K,L,I,J)] = value; // symmetry for swap(J,L), swap(K,L)
         }
     }
 
     return ret;
+}
+
+void Interface::tpdm(double** ret, int bra, int ket)
+{
+    int acti = detail::parms["L"];
+
+    if (bra >= simv.size() || ket >= simv.size())
+        throw std::runtime_error("State index specified is out of range (corresponding excited state has not been computed)\n");
+
+    std::vector<double> val;
+    std::vector<std::vector<int>> lab;
+    simv[bra]->measure_observable("twoptdm", val, lab, "", (bra==ket) ? NULL : simv[ket]);
+
+    // read labels and arrange data
+    for (int i = 0; i < lab.size(); ++i)
+    {
+        int I = lab[i][0];
+        int J = lab[i][1];
+        int K = lab[i][2];
+        int L = lab[i][3];
+
+        std::swap(J,L); // adapt to lightspeed ordering
+        std::swap(K,L); // adapt to lightspeed ordering
+        double value = 0.5 * val[i];
+
+        if (bra == ket) {
+            ret[I*acti+J][K*acti+L] = value;
+
+            if (L != K || I != J)
+                ret[J*acti+I][L*acti+K] = value;
+
+            if (std::min(I,J) != std::min(L,K) || std::max(I,J) != std::max(L,K))
+            {
+                ret[K*acti+L][I*acti+J] = value;
+                if (L != K || I != J)
+                    ret[L*acti+K][J*acti+I] = value;
+            }
+        }
+        // transition 2-rdms have fewer degrees of freedom
+        else {
+            ret[I*acti+J][K*acti+L] = value;
+            ret[K*acti+L][I*acti+J] = value; // symmetry for swap(J,L), swap(K,L)
+        }
+    }
 }
 
 void prepare_integrals(double **Hfrz, double **Vtuvw, double Ecore, int acti, int clsd, std::map<std::string, std::string> & opts)
