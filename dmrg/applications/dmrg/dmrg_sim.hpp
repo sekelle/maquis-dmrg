@@ -96,6 +96,8 @@ void dmrg_sim<Matrix, SymmGroup>::run()
                         real_type emin_prev = *std::min_element(energies.begin(), energies.end());
                         real_type e_diff = std::abs(emin - emin_prev);
 
+                        ar["/spectrum/results/Energy/mean/value"] << emin;
+
                         if (e_diff < parms["conv_thresh"])
                             converged = true;
                     }
@@ -157,6 +159,15 @@ void dmrg_sim<Matrix, SymmGroup>::measure_observable(std::string const & name_, 
             }
         }
     }
+}
+
+template <class Matrix, class SymmGroup>
+double dmrg_sim<Matrix, SymmGroup>::get_energy()
+{
+    storage::archive ar(rfile, "r");
+    double ret;
+    ar["/spectrum/results/Energy/mean/value"] >> ret;
+    return ret;
 }
 
 template <class Matrix, class SymmGroup>

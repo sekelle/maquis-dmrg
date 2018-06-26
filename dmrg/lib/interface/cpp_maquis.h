@@ -56,6 +56,8 @@ public:
                                     std::vector<double> & results, std::vector<std::vector<int> > & labels,
                                     std::string bra, std::shared_ptr<simulation_base> bra_ptr = NULL) =0;
 
+    virtual double get_energy() =0;
+
     //virtual void add_ortho(std::shared_ptr<simulation_base> os) =0;
     virtual void add_ortho(simulation_base* os) =0;
 
@@ -73,6 +75,8 @@ public:
                             std::vector<double> & results, std::vector<std::vector<int> > & labels,
                             std::string bra,
                             std::shared_ptr<simulation_base> bra_ptr = NULL);
+
+    double get_energy();
 
     //parameters::proxy get_parm(std::string const& key);
 
@@ -115,6 +119,8 @@ public:
     std::vector<double> tpdm(int bra=0, int ket=0);
     void opdm(double **Gij, int bra=0, int ket=0);
     void tpdm(double **Gijkl, int bra=0, int ket=0);
+
+    double energy(int state);
 
 private:
     std::map<std::string, std::vector<double> > observables;

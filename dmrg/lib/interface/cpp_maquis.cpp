@@ -113,6 +113,11 @@ std::vector<std::vector<int> > Interface::getLabels(std::string name)
     return labels["name"];
 }
 
+double Interface::energy(int state)
+{
+    return simv[state]->get_energy();
+}
+
 std::vector<double> Interface::opdm(int bra, int ket)
 {
     int L = detail::parms["L"];

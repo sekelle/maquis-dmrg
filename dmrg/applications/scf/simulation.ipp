@@ -84,6 +84,18 @@ void simulation<SymmGroup>::measure_observable(std::string name,
         sim_ptr_real->measure_observable(name, results, labels, bra);
 }
 
+template <class SymmGroup>
+double simulation<SymmGroup>::get_energy()
+{
+    if (sim_ptr_complex)
+    #ifdef HAVE_COMPLEX
+        return sim_ptr_complex->get_energy();
+    #else
+        throw std::runtime_error("compilation of complex numbers not enabled, check your compile options\n");
+    #endif
+    if (sim_ptr_real)
+        return sim_ptr_real->get_energy();
+}
 
 //template <class SymmGroup>
 //parameters::proxy simulation<SymmGroup>::get_parm(std::string const& key)

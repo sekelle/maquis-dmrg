@@ -73,6 +73,8 @@ public:
                             std::shared_ptr<sim<Matrix, SymmGroup>> bra_ptr = NULL
                            );
 
+    double get_energy();
+
 private:
     std::string results_archive_path(int sweep) const;
     void checkpoint_simulation(MPS<Matrix, SymmGroup> const& state, int sweep, int site);

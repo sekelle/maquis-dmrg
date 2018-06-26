@@ -40,6 +40,8 @@ public:
                                     std::vector<double> & results, std::vector<std::vector<int> > & labels,
                                     std::string bra, std::shared_ptr<simulation_base> bra_ptr = NULL) =0;
 
+    virtual double get_energy() =0;
+
     //virtual parameters::proxy get_parm(std::string const& key) =0;
 
     //virtual void add_ortho(std::shared_ptr<simulation_base> os) {}
@@ -57,6 +59,8 @@ public:
                             std::vector<double> & results, std::vector<std::vector<int> > & labels,
                             std::string bra,
                             std::shared_ptr<simulation_base> bra_ptr = NULL);
+
+    double get_energy();
 
     //parameters::proxy get_parm(std::string const& key);
 
