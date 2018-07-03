@@ -30,15 +30,15 @@ endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 
 set(AMBIENT_SOURCES_DIR "../ambient" CACHE STRINGS "Location of the ambient source tree")
 
-set(BUILD_SYMMETRIES "U1;TwoU1;TwoU1PG;NONE" CACHE STRINGS "List of symmetry
+set(BUILD_SYMMETRIES "SU2U1;SU2U1PG" CACHE STRINGS "List of symmetry
 to include in the build objects. U1, TwoU1, TwoU1PG, NU1, Z2, SU2U1, SU2U1PG and NONE are currently available.")
 set(DMRG_NUMSYMM 6 CACHE INT "Maximum number of U1 symmetries.")
 
 option(BUILD_INTERFACE_LIBS "Build libraries for interfacing DMRG to C++ and python" ON)
-option(COMPLEX "compile dmrg for complex numbers" ON)
+option(COMPLEX "compile dmrg for complex numbers" OFF)
 
 option(ENABLE_ALPS_MODELS "Enable binding with ALPS lattices and models" ON)
-option(ENABLE_OMP "Enable OpenMP" OFF)
+option(ENABLE_OMP "Enable OpenMP" ON)
 option(USE_AMBIENT "Enable Ambient" OFF)
 option(BUILD_AMBIENT "Build Ambient inside this build tree" OFF)
 
@@ -51,7 +51,7 @@ option(REGRESSION_PERFORMANCE_TESTS "Run application benchmarks"            OFF)
 
 mark_as_advanced(ENABLE_COLLECTOR)
 
-set(BLAS_LAPACK_SELECTOR "mkl_sequential" CACHE STRINGS "auto, manual, mkl_sequential, mkl_parallel, veclib, alps")
+set(BLAS_LAPACK_SELECTOR "mkl_parallel" CACHE STRINGS "auto, manual, mkl_sequential, mkl_parallel, veclib, alps")
 
 
 ######################################################################
@@ -62,6 +62,7 @@ if(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
 endif(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Type of build" FORCE)
+  set(CMAKE_CXX_FLAGS "-std=c++11")
   set(CMAKE_CXX_FLAGS_RELEASE "-Wno-unknown-pragmas ${CMAKE_CXX_FLAGS_RELEASE}" CACHE STRING "CMAKE_CXX_FLAGS_RELEASE: Flags used by the compiler during release builds" FORCE)
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-Wno-unknown-pragmas ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}" CACHE STRING "CMAKE_CXX_FLAGS_RELWITHDEBINFO: Flags used by the compiler during Release with Debug Info builds." FORCE)
   set(CMAKE_C_FLAGS_RELEASE " ${CMAKE_C_FLAGS_RELEASE}" CACHE STRING "CMAKE_C_FLAGS_RELEASE: Flags used by the compiler during release builds" FORCE)
