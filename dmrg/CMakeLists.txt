@@ -57,12 +57,12 @@ set(BLAS_LAPACK_SELECTOR "mkl_parallel" CACHE STRINGS "auto, manual, mkl_sequent
 ######################################################################
 # How to build
 ######################################################################
+set(CMAKE_CXX_FLAGS "-std=c++11")
 if(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
   include("config/clang_fixes.cmake")
 endif(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Type of build" FORCE)
-  set(CMAKE_CXX_FLAGS "-std=c++11")
   set(CMAKE_CXX_FLAGS_RELEASE "-Wno-unknown-pragmas ${CMAKE_CXX_FLAGS_RELEASE}" CACHE STRING "CMAKE_CXX_FLAGS_RELEASE: Flags used by the compiler during release builds" FORCE)
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-Wno-unknown-pragmas ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}" CACHE STRING "CMAKE_CXX_FLAGS_RELWITHDEBINFO: Flags used by the compiler during Release with Debug Info builds." FORCE)
   set(CMAKE_C_FLAGS_RELEASE " ${CMAKE_C_FLAGS_RELEASE}" CACHE STRING "CMAKE_C_FLAGS_RELEASE: Flags used by the compiler during release builds" FORCE)
