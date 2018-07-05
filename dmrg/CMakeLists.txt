@@ -57,7 +57,6 @@ set(BLAS_LAPACK_SELECTOR "mkl_parallel" CACHE STRINGS "auto, manual, mkl_sequent
 ######################################################################
 # How to build
 ######################################################################
-set(CMAKE_CXX_FLAGS "-std=c++11")
 if(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
   include("config/clang_fixes.cmake")
 endif(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
