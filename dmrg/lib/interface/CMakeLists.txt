@@ -18,3 +18,4 @@ set_property(TARGET cpp_maquis PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 
 # *** Install
 install(TARGETS maquis COMPONENT libraries DESTINATION lib/python/maquis)
+install(TARGETS cpp_maquis COMPONENT libraries DESTINATION lib)
