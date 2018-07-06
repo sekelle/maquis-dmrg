@@ -353,13 +353,12 @@ public:
 
     ScheduleGpuExtension(size_t nphys_) : nphys(nphys_) { }
 
-
     void assign_streams()
     {
         std::sort(enumeration_gpu.begin(), enumeration_gpu.end(),
                   [](
-                     boost::tuple<unsigned, unsigned, unsigned, size_t>& p1,
-                     boost::tuple<unsigned, unsigned, unsigned, size_t>& p2
+                     boost::tuple<unsigned, unsigned, unsigned, size_t> p1,
+                     boost::tuple<unsigned, unsigned, unsigned, size_t> p2
                     )
                     { return boost::get<3>(p1) > boost::get<3>(p2); }
                   );
