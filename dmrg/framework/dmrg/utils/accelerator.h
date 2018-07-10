@@ -84,7 +84,7 @@ namespace accelerator {
             instance().pbuffer_size = instance().prop.totalGlobalMem/5;
             cudaMalloc( &instance().pbuffer, instance().pbuffer_size );
 
-            instance().sbuffer_size = 150000000; // 50 MiB
+            instance().sbuffer_size = 50000000; // 50 MiB
             cudaMallocHost(&instance().sbuffer, instance().sbuffer_size);
             cudaMalloc(&instance().dev_buffer, instance().sbuffer_size);
 
@@ -116,9 +116,28 @@ namespace accelerator {
             size_t sz_aligned = bit_twiddling::round_up<64>(sz);
             size_t updated = (instance().sposition += sz_aligned); // read out current value and perform atomic update
             if (instance().sposition > instance().sbuffer_size)
-                throw std::runtime_error("GPU schedule buffer exhausted\n");
+                throw std::out_of_range("GPU schedule buffer exhausted\n");
 
             return std::make_pair((char*)instance().sbuffer + updated-sz_aligned, (char*)instance().dev_buffer + updated-sz_aligned);
+        }
+
+        static void reallocate_staging_buffer()
+        {
+            std::size_t new_size = std::max(instance().sposition.load(), 2*instance().sbuffer_size);
+            std::cout << "increasing GPU schedule buffer size to " << new_size << " bytes" << std::endl;
+            instance().sbuffer_size = new_size;
+
+            void* new_sbuffer;
+            HANDLE_ERROR(cudaFreeHost(instance().sbuffer));
+            HANDLE_ERROR(cudaMallocHost(&new_sbuffer, new_size));
+            instance().sbuffer = new_sbuffer;
+
+            void* new_dev_buffer;
+            HANDLE_ERROR(cudaMalloc(&new_dev_buffer, new_size));
+            HANDLE_ERROR(cudaFree(instance().dev_buffer));
+            instance().dev_buffer = new_dev_buffer;
+
+            instance().sposition = 0;
         }
 
         static void update_schedule_buffer()
@@ -175,7 +194,7 @@ namespace accelerator {
 
     inline static void setup(BaseParameters& parms){
 
-        if(parms["GPU"])
+        if(parms["GPU"] && !gpu::instance().active)
             gpu::init(parms["GPU"]);
     }
 
