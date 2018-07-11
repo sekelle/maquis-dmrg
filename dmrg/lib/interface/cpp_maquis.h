@@ -123,10 +123,16 @@ public:
     double energy(int state);
 
 private:
+
+    void set_threads();
+    void restore_threads();
+
     std::map<std::string, std::vector<double> > observables;
     std::map<std::string, std::vector<std::vector<int> > > labels;
 
     std::vector<simulation_traits::shared_ptr> simv;
+
+    int tc_num_threads;
 };
 
 void prepare_integrals(double **, double **, double, int, int, std::map<std::string, std::string> &);

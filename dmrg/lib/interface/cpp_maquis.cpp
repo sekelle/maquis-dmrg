@@ -28,6 +28,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <omp.h>
 
 #include "dmrg/utils/DmrgParameters.h"
 #include "dmrg/sim/symmetry_factory.h"
@@ -51,6 +52,22 @@ Interface::Interface(std::map<std::string, std::string> & input)
 
 //std::string Interface::value(std::string key) { return sim->get_parm(key); }
 
+void Interface::set_threads()
+{
+    #ifdef MAQUIS_OPENMP
+    tc_num_threads = omp_get_num_threads();
+    int dmrg_num_threads = std::stoi(getenv("OMP_NUM_THREADS"));
+    omp_set_num_threads(dmrg_num_threads);
+    #endif
+}
+
+void Interface::restore_threads()
+{
+    #ifdef MAQUIS_OPENMP
+    omp_set_num_threads(tc_num_threads);
+    #endif
+}
+
 void Interface::optimize()
 {
     maquis::cout.precision(10);
@@ -59,7 +76,9 @@ void Interface::optimize()
     gettimeofday(&now, NULL);
 
     try {
+        set_threads();
         (*simv.rbegin())->run();
+        restore_threads();
 
     } catch (std::exception & e) {
         maquis::cerr << "Exception thrown!" << std::endl;
@@ -92,7 +111,9 @@ void Interface::excite()
        //(*simv.rbegin())->add_ortho(simv[i]);
        (*simv.rbegin())->add_ortho(simv[i].get());
 
+    set_threads();
     optimize();
+    restore_threads();
 }
 
 void Interface::measure(std::string name, int bra, int ket)
@@ -100,7 +121,9 @@ void Interface::measure(std::string name, int bra, int ket)
     if (bra >= simv.size() || ket >= simv.size())
         throw std::runtime_error("State index specified is out of range (corresponding excited state has not been computed)\n");
 
+    set_threads();
     simv[ket]->measure_observable(name, observables["name"], labels["name"], "");
+    restore_threads();
 } 
 
 std::vector<double> Interface::getObservable(std::string name)
@@ -128,7 +151,9 @@ std::vector<double> Interface::opdm(int bra, int ket)
 
     std::vector<double> val;
     std::vector<std::vector<int>> lab;
+    set_threads();
     simv[bra]->measure_observable("oneptdm", val, lab, "", (bra==ket) ? NULL : simv[ket]);
+    restore_threads();
 
     // read labels and arrange data
     for (int i = 0; i < lab.size(); ++i)
@@ -148,7 +173,9 @@ void Interface::opdm(double **ret, int bra, int ket)
 
     std::vector<double> val;
     std::vector<std::vector<int>> lab;
+    set_threads();
     simv[bra]->measure_observable("oneptdm", val, lab, "", (bra==ket) ? NULL : simv[ket]);
+    restore_threads();
 
     // read labels and arrange data
     for (int i = 0; i < lab.size(); ++i)
@@ -175,7 +202,9 @@ std::vector<double> Interface::tpdm(int bra, int ket)
 
     std::vector<double> val;
     std::vector<std::vector<int>> lab;
+    set_threads();
     simv[bra]->measure_observable("twoptdm", val, lab, "", (bra==ket) ? NULL : simv[ket]);
+    restore_threads();
 
     // read labels and arrange data
     for (int i = 0; i < lab.size(); ++i)
@@ -222,7 +251,9 @@ void Interface::tpdm(double** ret, int bra, int ket)
 
     std::vector<double> val;
     std::vector<std::vector<int>> lab;
+    set_threads();
     simv[bra]->measure_observable("twoptdm", val, lab, "", (bra==ket) ? NULL : simv[ket]);
+    restore_threads();
 
     // read labels and arrange data
     for (int i = 0; i < lab.size(); ++i)
