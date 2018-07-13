@@ -561,7 +561,11 @@ namespace storage {
             else if (gpu::enabled()) detail::as_gpu(t).drop();
         }
 
-        template<class T> static void pin(T& t)     { }
+        template<class T> static void pin(T& t)
+        {
+            if(disk::enabled()) detail::as_disk(t).pin();
+            else if (gpu::enabled()) detail::as_gpu(t).pin();
+        }
 
         template<class Matrix, class SymmGroup> 
         static void evict(MPSTensor<Matrix, SymmGroup>& t){ }

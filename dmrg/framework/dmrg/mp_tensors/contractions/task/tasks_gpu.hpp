@@ -363,9 +363,23 @@ public:
                     { return boost::get<3>(p1) > boost::get<3>(p2); }
                   );
 
+        {
+            // resize the GPU pipeline buffer if needed
+            size_t pipeline_size = 0;
+            std::vector<size_t> psz(accelerator::gpu::nstreams());
+            for (size_t tn = 0; tn < std::min(accelerator::gpu::nstreams(), enumeration_gpu.size()); ++tn)
+                psz[tn] = bit_twiddling::round_up<4*BUFFER_ALIGNMENT>(
+                                    boost::get<3>(enumeration_gpu[0]) * sizeof(v_type) + 2*BUFFER_ALIGNMENT
+                                 );
+
+            accelerator::gpu::adjust_pipeline_buffer(psz);
+        }
+
         for (size_t tn = 0; tn < std::min(accelerator::gpu::nstreams(), enumeration_gpu.size()); ++tn)
         {
-            size_t buffer_size = boost::get<3>(enumeration_gpu[0]) * sizeof(v_type) + 2*BUFFER_ALIGNMENT;
+            size_t buffer_size = bit_twiddling::round_up<4*BUFFER_ALIGNMENT>(
+                                    boost::get<3>(enumeration_gpu[0]) * sizeof(v_type) + 2*BUFFER_ALIGNMENT
+                                 );
             v_type* buffer = (v_type*)accelerator::gpu::get_pipeline_buffer(buffer_size);
             if (buffer)
                 pipeline.push_back(MaquisStream<v_type>(buffer, buffer_size));
