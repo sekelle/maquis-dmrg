@@ -177,11 +177,12 @@ namespace storage {
             ~serializable(){
                 impl()->cleanup();
             }
-            void fetch(){
+            template <class Obj>
+            void fetch(Obj o){
                 if(impl()->state == D::core) return;
                 else if(impl()->state == D::prefetching) impl()->join();
+                else if(impl()->state == D::uncore) o();
                 assert(impl()->state != D::storing); // isn't prefetched prior load
-                assert(impl()->state != D::uncore);  // isn't prefetched prior load
                 impl()->state = D::core;
             }
             template <class Obj>
@@ -283,6 +284,7 @@ namespace storage {
                 return *this;
             }
 
+            void fetch()    { ((base*)this)->fetch(fetch_request<T>(disk::fp(sid), (T*)this)); }
             void prefetch() { ((base*)this)->prefetch(fetch_request<T>(disk::fp(sid), (T*)this)); }
             void evict()    { ((base*)this)->evict(evict_request<T>(disk::fp(sid), (T*)this)); }
             void drop()     { ((base*)this)->drop(drop_request<T>(disk::fp(sid), (T*)this)); }
@@ -500,6 +502,7 @@ namespace storage {
                 return *this;
             }
 
+            void fetch()    { ((base*)this)->fetch(gpu_prefetch_request<T>((T*)this)); }
             void prefetch() { ((base*)this)->prefetch(gpu_prefetch_request<T>((T*)this)); }
             void evict()    { ((base*)this)->evict(gpu_evict_request<T>((T*)this)); }
             void drop()     { ((base*)this)->drop(gpu_drop_request<T>((T*)this)); }
