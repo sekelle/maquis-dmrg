@@ -45,10 +45,11 @@ public:
 
     ss_optimize(MPS<Matrix, SymmGroup> & mps_,
                 MPO<Matrix, SymmGroup> const & mpo_,
+                std::vector<MPS<Matrix, SymmGroup>*> omps_ptr,
                 BaseParameters & parms_,
                 boost::function<bool ()> stop_callback_,
                 int initial_site_ = 0)
-    : base(mps_, mpo_, parms_, stop_callback_, to_site(mps_.length(), initial_site_))
+    : base(mps_, mpo_, omps_ptr, parms_, stop_callback_, to_site(mps_.length(), initial_site_))
     , initial_site((initial_site_ < 0) ? 0 : initial_site_)
     { }
     

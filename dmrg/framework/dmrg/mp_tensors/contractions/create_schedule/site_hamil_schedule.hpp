@@ -61,10 +61,27 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
     typename Schedule<Matrix, SymmGroup>::schedule_t tasks(left_i.size(), physical_i.size());
 
     unsigned loop_max = left_i.size();
-    omp_for(index_type mb, parallel::range<index_type>(0,loop_max), {
-        shtm_tasks(mpo, left, right, left_i,
-                  right_i, physical_i, out_right_pb, mb, tasks[mb]);
-    });
+
+    std::atomic<int> redo;
+    do {
+        redo.exchange(0);
+
+        omp_for(index_type mb, parallel::range<index_type>(0,loop_max), {
+            try {
+                if (redo.load() == 0)
+                    shtm_tasks(mpo, left, right, left_i, right_i, physical_i, out_right_pb, mb, tasks[mb]);
+            }
+            catch (const std::out_of_range& e) {
+                redo++;
+            }
+        });
+
+        if (redo.load() > 0) {
+            tasks = typename Schedule<Matrix, SymmGroup>::schedule_t(left_i.size(), physical_i.size());
+            accelerator::gpu::reallocate_staging_buffer();
+        }
+    }
+    while (redo.load() > 0);
 
     accelerator::gpu::update_schedule_buffer();
 

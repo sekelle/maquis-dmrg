@@ -2,8 +2,8 @@
  *
  * ALPS MPS DMRG Project
  *
- * Copyright (C) 2017 Stanford University Department of Chemistry
- *               2017-2017 by Sebastian Keller <sebkelle@phys.ethz.ch>
+ * Copyright (C) 2017 Stanford University Departement of Chemistry
+ *               2017-2018 by Sebastian Keller <sebkelle@phys.ethz.ch>
  *
  * This software is part of the ALPS Applications, published under the ALPS
  * Application License; you can use, redistribute it and/or modify it under
@@ -24,13 +24,29 @@
  *
  *****************************************************************************/
 
-#ifndef MAQUIS_SIM_RUN_H
-#define MAQUIS_SIM_RUN_H
-
+#include <iostream>
+#include <string>
+#include <complex>
+#include <vector>
+#include <map>
 #include <memory>
 
-#include "dmrg/sim/matrix.fwd.h"
-#include "../dmrg/dmrg_sim.fwd.h"
+namespace alps
+{
+    namespace numeric
+    {
+        template <class T, class MemoryBlock> class matrix;
+    }
+}
+
+// Forward declaration for matrix, need to specifiy the Memory Block default argument
+// Ideally, ALPS should provide a forward declaration header with the default template argument
+typedef alps::numeric::matrix<double, std::vector<double> >                              matrix;
+typedef alps::numeric::matrix<std::complex<double>, std::vector<std::complex<double> > > cmatrix;
+
+template <class Matrix, class SymmGroup> class dmrg_sim;
+
+class DmrgParameters;
 
 class simulation_base {
 public:
@@ -42,10 +58,10 @@ public:
 
     virtual double get_energy() =0;
 
-    //virtual parameters::proxy get_parm(std::string const& key) =0;
+    //virtual void add_ortho(std::shared_ptr<simulation_base> os) =0;
+    virtual void add_ortho(simulation_base* os) =0;
 
-    //virtual void add_ortho(std::shared_ptr<simulation_base> os) {}
-    virtual void add_ortho(simulation_base* os) {}
+    //virtual parameters::proxy get_parm(std::string const& key) =0;
 };
 
 template <class SymmGroup>
@@ -79,4 +95,44 @@ struct simulation_traits {
     };
 };
 
-#endif
+
+class Interface
+{
+public:
+    Interface();
+    Interface(std::map<std::string, std::string> & parms);
+
+    //void SetParameters(DmrgParameters & p) { /*parms = p;*/ }
+
+    //std::string value(std::string key);
+
+    void optimize();
+    void excite();
+
+    void measure(std::string name, int bra, int ket);
+
+    std::vector<double> getObservable(std::string name);
+
+    std::vector<std::vector<int> > getLabels(std::string name);
+
+    std::vector<double> opdm(int bra=0, int ket=0);
+    std::vector<double> tpdm(int bra=0, int ket=0);
+    void opdm(double **Gij, int bra=0, int ket=0);
+    void tpdm(double **Gijkl, int bra=0, int ket=0);
+
+    double energy(int state);
+
+private:
+
+    void set_threads();
+    void restore_threads();
+
+    std::map<std::string, std::vector<double> > observables;
+    std::map<std::string, std::vector<std::vector<int> > > labels;
+
+    std::vector<simulation_traits::shared_ptr> simv;
+
+    int tc_num_threads;
+};
+
+void prepare_integrals(double **, double **, double, int, int, std::map<std::string, std::string> &);

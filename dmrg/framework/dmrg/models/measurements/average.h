@@ -95,7 +95,8 @@ namespace measurements {
         }
 
         void evaluate(MPS<Matrix, SymmGroup> const& mps, boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none
-                                                       , boost::optional<std::string const&> on_the_fly_bra = boost::none)
+                                                       , boost::optional<std::string const&> on_the_fly_bra = boost::none
+                                                       , boost::optional<MPS<Matrix, SymmGroup> const&> bra_mps = boost::none)
         {
             if (!this->is_super_meas){
                 this->result = (this->cast_to_real) ? maquis::real(expval(mps, mpo)) : expval(mps, mpo);
