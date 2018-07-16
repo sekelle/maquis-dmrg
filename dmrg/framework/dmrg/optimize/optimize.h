@@ -83,6 +83,7 @@ public:
 
     optimizer_base(MPS<Matrix, SymmGroup> & mps_,
                    MPO<Matrix, SymmGroup> const & mpo_,
+                   std::vector<MPS<Matrix,SymmGroup>*> const & ortho_mps_ptrs,
                    BaseParameters & parms_,
                    boost::function<bool ()> stop_callback_,
                    int site=0)
@@ -116,6 +117,10 @@ public:
 
             maquis::cout << "Right end: " << ortho_mps[n][mps.length()-1].col_dim() << std::endl;
         }
+        for (int n = 0; n < ortho_mps_ptrs.size(); ++n) {
+            ortho_mps.push_back( *ortho_mps_ptrs[n] );
+            northo++;
+        }
         
         init_left_right(mpo, site);
         maquis::cout << "Done init_left_right" << std::endl;
@@ -132,7 +137,6 @@ protected:
     inline void boundary_left_step(MPO<Matrix, SymmGroup> const & mpo, int site)
     {
         left_[site+1] = contr::overlap_mpo_left_step(mps[site], mps[site], left_[site], mpo[site], true);
-        Storage::pin(left_[site+1]);
         
         for (int n = 0; n < northo; ++n)
             ortho_left_[n][site+1] = mps_detail::overlap_left_step(mps[site], ortho_mps[n][site], ortho_left_[n][site]);
@@ -141,7 +145,6 @@ protected:
     inline void boundary_right_step(MPO<Matrix, SymmGroup> const & mpo, int site)
     {
         right_[site] = contr::overlap_mpo_right_step(mps[site], mps[site], right_[site+1], mpo[site]);
-        Storage::pin(right_[site]);
         
         for (int n = 0; n < northo; ++n)
             ortho_right_[n][site] = mps_detail::overlap_right_step(mps[site], ortho_mps[n][site], ortho_right_[n][site+1]);
@@ -164,33 +167,35 @@ protected:
             ortho_right_[n][L] = mps.right_boundary_bm();
         }
         
-        Storage::drop(left_[0]);
         left_[0] = mps.left_boundary();
-        Storage::pin(left_[0]);
         
         for (int i = 0; i < site; ++i) {
-            Storage::drop(left_[i+1]);
             boundary_left_step(mpo, i);
             Storage::sync(); // avoid overstressing the disk
             Storage::evict(left_[i]);
         }
-        Storage::evict(left_[site]);
 
         maquis::cout << "Boundaries are partially initialized...\n";
         
         Storage::drop(right_[L]);
         right_[L] = mps.right_boundary();
-        Storage::pin(right_[L]);
 
         for (int i = L-1; i >= site; --i) {
-            Storage::drop(right_[i]);
             boundary_right_step(mpo, i);
             Storage::sync(); // avoid overstressing the disk
             Storage::evict(right_[i+1]);
         }
-        Storage::evict(right_[site]);
 
         maquis::cout << "Boundaries are fully initialized...\n";
+    }
+
+    void print_boundary_stats()
+    {
+        for (int i = 0; i < left_.size(); ++i)
+        {
+            std::cout << i << " L " << storage::detail::as_gpu(left_[i]).state << " " << size_of(left_[i])/1024/1024
+                         << "   R " << storage::detail::as_gpu(right_[i]).state << " " << size_of(right_[i])/1024/1024 << std::endl;
+        }
     }
     
     double get_cutoff(int sweep) const

@@ -166,6 +166,12 @@ sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_, bool measure_on_mps)
 }
 
 template <class Matrix, class SymmGroup>
+void sim<Matrix, SymmGroup>::add_ortho(std::shared_ptr<sim<Matrix, SymmGroup>> os)
+{
+    ortho_mps.push_back(&os->mps);
+}
+
+template <class Matrix, class SymmGroup>
 parameters::proxy sim<Matrix, SymmGroup>::get_parm(std::string const& key)
 {
     return parms[key];

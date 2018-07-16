@@ -48,10 +48,11 @@ public:
     
     ts_optimize(MPS<Matrix, SymmGroup> & mps_,
                 MPO<Matrix, SymmGroup> const & mpo_,
+                std::vector<MPS<Matrix, SymmGroup>*> const & omps_ptr,
                 BaseParameters & parms_,
                 boost::function<bool ()> stop_callback_,
                 int initial_site_ = 0)
-    : base(mps_, mpo_, parms_, stop_callback_, to_site(mps_.length(), initial_site_))
+    : base(mps_, mpo_, omps_ptr, parms_, stop_callback_, to_site(mps_.length(), initial_site_))
     , initial_site((initial_site_ < 0) ? 0 : initial_site_)
     {
         make_ts_cache_mpo(mpo, ts_cache_mpo, mps);
@@ -123,14 +124,6 @@ public:
             site = to_site(L, _site);
         }
         
-        if (_site < L-1) {
-            Storage::prefetch(left_[site]);
-            Storage::prefetch(right_[site+2]);
-        } else {
-            Storage::prefetch(left_[site-1]);
-            Storage::prefetch(right_[site+1]);
-        }
-        
         for (; _site < 2*L-2; ++_site) {
 	/* (0,1), (1,2), ... , (L-1,L), (L-1,L), (L-2, L-1), ... , (0,1)
 	    | |                        |
@@ -160,24 +153,22 @@ public:
                 Storage::fetch(right_[site2+1]);
             }
 
-            if (lr == +1) {
-                if (site2+2 < right_.size()){
-                    Storage::prefetch(right_[site2+2]);
-                }
-            } else {
-                if (site1 > 0){
-                    Storage::prefetch(left_[site1-1]);
-                }
-            }
-
             boost::chrono::high_resolution_clock::time_point now, then;
-            
+
     	    // Create TwoSite objects
     	    TwoSiteTensor<Matrix, SymmGroup> tst(mps[site1], mps[site2]);
     	    MPSTensor<Matrix, SymmGroup> twin_mps = tst.make_mps();
             tst.clear();
             SiteProblem<Matrix, BoundaryMatrix, SymmGroup>
                 sp(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1]);
+
+            if (lr == +1) {
+                if (site1 > 0)                  Storage::pin(left_[site1-1]);
+                if (site2+2 < right_.size())    Storage::prefetch(right_[site2+2]);
+            } else {
+                if (site2+2 < right_.size())    Storage::pin(right_[site2+2]);
+                if (site1 > 0)                  Storage::prefetch(left_[site1-1]);
+            }
 
             if (parms.is_set("snapshot"))
             {
@@ -211,7 +202,6 @@ public:
                                                                     base::ortho_left_[n][site1], base::ortho_right_[n][site2+1]);
             }
 
-            //std::pair<typename maquis::traits::real_type<value_type>::type, MPSTensor<Matrix, SymmGroup> > res;
             std::pair<double, MPSTensor<Matrix, SymmGroup> > res;
             double jcd_time;
 
@@ -291,8 +281,6 @@ public:
         		//mps[site2].divide_by_scalar(mps[site2].scalar_norm());	
 
         		t = mps[site2].normalize_left(DefaultSolver());
-                // MD: DEBUGGING OUTPUT
-                maquis::cout << "Propagating t with norm " << t.norm() << std::endl;
         		if (site2 < L-1) mps[site2+1].multiply_from_left(t);
 
                 if (site1 != L-2)
@@ -324,8 +312,6 @@ public:
         		//mps[site1].divide_by_scalar(mps[site1].scalar_norm());	
 
         		t = mps[site1].normalize_right(DefaultSolver());
-                // MD: DEBUGGING OUTPUT
-                maquis::cout << "Propagating t with norm " << t.norm() << std::endl;
         		if (site1 > 0) mps[site1-1].multiply_from_right(t);
 
                 if(site1 != 0)
