@@ -28,12 +28,13 @@
 #ifndef STORAGE_H
 #define STORAGE_H
 
+#include <iostream>
+#include <fstream>
+#include <exception>
+
 #include <boost/shared_ptr.hpp>
 #include <boost/thread.hpp>
 #include <boost/filesystem.hpp>
-
-#include <iostream>
-#include <fstream>
 
 #include <cuda_runtime.h>
 
@@ -80,66 +81,6 @@ namespace storage {
         static void sync(){}
     };
 
-    template<class T> class evict_request {};
-    template<class T> class fetch_request {};
-    template<class T> class drop_request {};
-
-    template<class Matrix, class SymmGroup>
-    class evict_request< Boundary<Matrix, SymmGroup> > {
-    public:
-        evict_request(std::string fp, Boundary<Matrix, SymmGroup>* ptr) : fp(fp), ptr(ptr) { }
-        void operator()(){
-            std::ofstream ofs(fp.c_str(), std::ofstream::binary);
-            Boundary<Matrix, SymmGroup>& o = *ptr;
-            for (auto& v : o.data())
-            {
-                ofs.write((char*)(&v[0]), v.size() * sizeof(typename Matrix::value_type)/sizeof(char));
-                v.clear();
-                v.shrink_to_fit();
-            }
-
-            ofs.close();
-        }
-    private:
-        std::string fp;
-        Boundary<Matrix, SymmGroup>* ptr;
-    };
-
-    template<class Matrix, class SymmGroup>
-    class fetch_request< Boundary<Matrix, SymmGroup> > {
-    public:
-        fetch_request(std::string fp, Boundary<Matrix, SymmGroup>* ptr) : fp(fp), ptr(ptr) { }
-        void operator()(){
-            std::ifstream ifs(fp.c_str(), std::ifstream::binary);
-            Boundary<Matrix, SymmGroup>& o = *ptr;
-            for (size_t ci = 0; ci < o.index().n_cohorts(); ++ci)
-            {
-                size_t cohort_size = o.index().n_blocks(ci) * o.index().block_size(ci);
-                o.data()[ci].resize(cohort_size);
-                ifs.read((char*)(&o.data()[ci][0]), cohort_size * sizeof(typename Matrix::value_type)/sizeof(char));
-            }
-
-            ifs.close();
-        }
-    private:
-        std::string fp;
-        Boundary<Matrix, SymmGroup>* ptr;
-    };
-
-    template<class Matrix, class SymmGroup>
-    class drop_request< Boundary<Matrix, SymmGroup> > {
-    public:
-        drop_request(std::string fp, Boundary<Matrix, SymmGroup>* ptr) : fp(fp), ptr(ptr) { }
-        void operator()(){
-            Boundary<Matrix, SymmGroup>& o = *ptr;
-            o.data().clear();
-            o.data().shrink_to_fit();
-        }
-    private:
-        std::string fp;
-        Boundary<Matrix, SymmGroup>* ptr;
-    };
-
     template <class Resource>
     class controller
     {
@@ -181,8 +122,13 @@ namespace storage {
             void fetch(Obj o){
                 if(impl()->state == D::core) return;
                 else if(impl()->state == D::prefetching) impl()->join();
-                else if(impl()->state == D::uncore) o();
-                assert(impl()->state != D::storing); // isn't prefetched prior load
+                else if(impl()->state == D::storing) {
+                    impl()->join();
+                    impl()->state = D::uncore;
+                }
+
+                if(impl()->state == D::uncore) o(true); // force fetch (blocking)
+
                 impl()->state = D::core;
             }
             template <class Obj>
@@ -250,6 +196,81 @@ namespace storage {
         bool active;
     };
 
+    class disk;
+
+    template<class T> class evict_request {};
+    template<class T> class fetch_request {};
+    template<class T> class drop_request {};
+
+    template<class Matrix, class SymmGroup>
+    class evict_request< Boundary<Matrix, SymmGroup> > {
+    public:
+        evict_request(std::string fp, Boundary<Matrix, SymmGroup>* ptr) : fp(fp), ptr(ptr) { }
+        void operator()(){
+            std::ofstream ofs(fp.c_str(), std::ofstream::binary);
+            Boundary<Matrix, SymmGroup>& o = *ptr;
+            for (auto& v : o.data())
+            {
+                ofs.write((char*)(&v[0]), v.size() * sizeof(typename Matrix::value_type)/sizeof(char));
+                v.clear();
+                v.shrink_to_fit();
+            }
+
+            ofs.close();
+        }
+    private:
+        std::string fp;
+        Boundary<Matrix, SymmGroup>* ptr;
+    };
+
+    template<class Matrix, class SymmGroup>
+    class fetch_request< Boundary<Matrix, SymmGroup> > {
+    public:
+        fetch_request(std::string fp, Boundary<Matrix, SymmGroup>* ptr) : fp(fp), ptr(ptr) { }
+        void operator()(bool force = false){
+            std::ifstream ifs(fp.c_str(), std::ifstream::binary);
+            Boundary<Matrix, SymmGroup>& o = *ptr;
+
+            try {
+                for (size_t ci = 0; ci < o.index().n_cohorts(); ++ci)
+                {
+                    size_t cohort_size = o.index().n_blocks(ci) * o.index().block_size(ci);
+                    o.data()[ci].resize(cohort_size);
+                    ifs.read((char*)(&o.data()[ci][0]), cohort_size * sizeof(typename Matrix::value_type)/sizeof(char));
+                }
+            }
+            catch (std::bad_alloc const & e) {
+                if (force) throw;
+                for (auto& v : o.data())
+                {
+                    v.clear();
+                    v.shrink_to_fit();
+                }
+                ((controller<disk>::transfer&)o).state = controller<disk>::transfer::uncore;
+                std::cout << "prefetch aborted" << std::endl;
+            }
+
+            ifs.close();
+        }
+    private:
+        std::string fp;
+        Boundary<Matrix, SymmGroup>* ptr;
+    };
+
+    template<class Matrix, class SymmGroup>
+    class drop_request< Boundary<Matrix, SymmGroup> > {
+    public:
+        drop_request(std::string fp, Boundary<Matrix, SymmGroup>* ptr) : fp(fp), ptr(ptr) { }
+        void operator()(){
+            Boundary<Matrix, SymmGroup>& o = *ptr;
+            o.data().clear();
+            o.data().shrink_to_fit();
+        }
+    private:
+        std::string fp;
+        Boundary<Matrix, SymmGroup>* ptr;
+    };
+
     class disk : public controller<disk> {
 
         typedef controller<disk> cbase;
@@ -315,6 +336,8 @@ namespace storage {
         size_t sid;
     };
 
+    class gpu;
+
     template<class T> class gpu_prefetch_request {};
     template<class T> class gpu_evict_request {};
     template<class T> class gpu_drop_request {};
@@ -324,7 +347,7 @@ namespace storage {
     class gpu_prefetch_request< Boundary<Matrix, SymmGroup> > {
     public:
         gpu_prefetch_request(Boundary<Matrix, SymmGroup>* ptr) : ptr(ptr) { }
-        void operator()(){
+        void operator()(bool force = false){
             Boundary<Matrix, SymmGroup>& o = *ptr;
 
             o.device_ptr.resize(o.index().n_cohorts());
@@ -332,7 +355,18 @@ namespace storage {
             for (size_t ci = 0; ci < o.index().n_cohorts(); ++ci)
             {
                 size_t cohort_size = o.data()[ci].size();
-                cudaMalloc( (void**)(&(o.device_ptr[ci])), cohort_size * sizeof(typename Matrix::value_type) );
+
+                cudaError_t err = cudaMalloc( (void**)(&(o.device_ptr[ci])), cohort_size * sizeof(typename Matrix::value_type) );
+                if (err != cudaSuccess)
+                {
+                    if (force) HANDLE_ERROR(err);
+                    for (size_t I = 0; I < o.index().n_cohorts(); ++I)
+                        cudaFree(o.device_ptr[I]);
+                    ((controller<gpu>::transfer&)o).state = controller<gpu>::transfer::uncore;
+                    //std::cout << "prefetch aborted" << std::endl;
+                    return;
+                }
+
                 cudaMemcpy( o.device_ptr[ci], &o.data()[ci][0], cohort_size * sizeof(typename Matrix::value_type), cudaMemcpyHostToDevice );
             }
         }
@@ -387,7 +421,7 @@ namespace storage {
     class gpu_prefetch_request< MPSTensor<Matrix, SymmGroup> > {
     public:
         gpu_prefetch_request(MPSTensor<Matrix, SymmGroup>* ptr) : ptr(ptr) { }
-        void operator()(){
+        void operator()(bool force = false){
             MPSTensor<Matrix, SymmGroup>& o = *ptr;
 
             //o.device_ptr.resize(1);
