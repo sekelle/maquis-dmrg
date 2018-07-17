@@ -36,16 +36,21 @@
 #include <thread>
 #include <mutex>
 
+#include "dmrg/utils/accelerator.h"
+
 #include "utils/sizeof.h"
 #include "dmrg/utils/aligned_allocator.hpp"
 
 #include "dmrg/mp_tensors/contractions/numeric/numeric.h"
 #include "dmrg/mp_tensors/contractions/numeric/gemm_template.h"
+#include "dmrg/mp_tensors/contractions/numeric/gpu.h"
 
 namespace contraction {
 namespace common {
 
 using boost::get; 
+
+template <class T> class WorkSet;
 
 template <class Matrix, class SymmGroup>
 class Cohort
@@ -282,7 +287,7 @@ public:
     index_type get_lb() const { return lb; }
     index_type get_rb() const { return rb; }
 
-    std::size_t get_s_size() const { return nSrows * stripe * std::size_t(ls); }
+    std::size_t get_sr_size() const { return nSrows * stripe * std::size_t(ls); }
     std::size_t get_l_size() const { return nSrows * rs * std::size_t(ls); }
 
 private:
@@ -384,35 +389,6 @@ class MPSBlock : public std::vector<Cohort<Matrix, SymmGroup>>
     typedef typename Matrix::value_type value_type;
 public:
     typedef Cohort<Matrix, SymmGroup> cohort_type;
-
-    template <class OtherMatrix>
-    std::size_t max_r_size(BoundaryIndex<OtherMatrix, SymmGroup> const& right) const
-    {
-        std::size_t ret = 0;
-        for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
-        {
-            unsigned ci_eff = boost::get<2>(t_schedule[ti]);
-            ret = std::max(ret, right.n_blocks(ci_eff) * right.left_size(ci_eff) * right.right_size(ci_eff));
-        }
-        return ret;
-    }
-
-    template <class DefaultMatrix, class OtherMatrix>
-    std::size_t t_size(BoundaryIndex<OtherMatrix, SymmGroup> const& right, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
-    {
-        std::size_t ret = 0;
-        for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
-        {
-            unsigned ci = boost::get<1>(t_schedule[ti]);
-            unsigned ci_eff = boost::get<2>(t_schedule[ti]);
-            unsigned lb_ket = boost::get<3>(t_schedule[ti]);
-
-            unsigned brs = right.index().right_size(ci);
-
-            ret += num_rows(mps.data()[lb_ket]) * right.n_blocks(ci_eff) * brs;
-        }
-        return ret;
-    }
 
     template <class DefaultMatrix, class OtherMatrix>
     std::vector<std::vector<value_type>>
@@ -527,39 +503,90 @@ public:
     }
 
     template <class DefaultMatrix, class OtherMatrix>
-    void
-    create_T(Boundary<OtherMatrix, SymmGroup> const & right, MPSTensor<DefaultMatrix, SymmGroup> const & mps,
-             std::vector<std::vector<value_type>> & T, unsigned ti) const
+    std::vector<std::vector<value_type>>
+    create_T_gpu(Boundary<OtherMatrix, SymmGroup> const & right, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
     {
-        unsigned mps_offset = boost::get<0>(t_schedule[ti]);
-        unsigned ci = boost::get<1>(t_schedule[ti]);
-        unsigned ci_eff = boost::get<2>(t_schedule[ti]);
-        unsigned lb_ket = boost::get<3>(t_schedule[ti]);
+        std::vector<std::vector<value_type>> ret(t_schedule.size());
 
-        unsigned bls = right.index().left_size(ci);
-        unsigned brs = right.index().right_size(ci);
-
-        int M = num_rows(mps.data()[lb_ket]);
-        int N = right.index().n_blocks(ci_eff) * brs;
-        int K = bls;
-
-        std::vector<value_type> rbuf;
-        if (right.index().tr(ci))
+        value_type* dev_t = ws->t_buffer;
+        value_type* dev_r = ws->rsl_buffer;
+        for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
         {
-            rbuf = std::vector<value_type>(K * size_t(N));
-            for (size_t offset = 0; offset < K * size_t(N); offset += brs * bls)
-            {
-                for (unsigned c = 0; c < brs; ++c)
-                for (unsigned r = 0; r < bls; ++r)
-                    rbuf[offset + c*bls + r] = right.data()[ci_eff][offset + r*brs + c];
-            }
+            unsigned mps_offset = boost::get<0>(t_schedule[ti]);
+            unsigned ci = boost::get<1>(t_schedule[ti]);
+            unsigned ci_eff = boost::get<2>(t_schedule[ti]);
+            unsigned lb_ket = boost::get<3>(t_schedule[ti]);
+
+            unsigned bls = right.index().left_size(ci);
+            unsigned brs = right.index().right_size(ci);
+
+            int M = num_rows(mps.data()[lb_ket]);
+            int N = right.index().n_blocks(ci_eff) * brs;
+            int K = bls;
+
+            if (right.index().tr(ci))
+                transpose_v(ws->stream, brs, bls, right.index().n_blocks(ci_eff), (value_type*)right.device_ptr[ci_eff], dev_r);
+
+            const value_type* r_use = (right.index().tr(ci)) ? dev_r : (value_type*)right.device_ptr[ci_eff];
+            const value_type* mpsdata = (value_type*)mps.device_ptr[lb_ket] + mps_offset * M;
+
+            value_type one(1.0), zero(0.);
+
+            cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
+            cublasDgemm(accelerator::gpu::instance().handle,
+                        cuop[0], cuop[0], M, N, K, &one, mpsdata, M, r_use, K, &zero, dev_t, M);
+
+            ret[ti] = std::vector<value_type>(M * size_t(N));
+            cudaMemcpy( &ret[ti][0], dev_t, M*size_t(N) * sizeof(value_type), cudaMemcpyDeviceToHost );
+
+            dev_t += bit_twiddling::round_up<BUFFER_ALIGNMENT>(M * size_t(N));
         }
 
-        const value_type* r_use = (right.index().tr(ci)) ? rbuf.data() : right.data()[ci_eff].data();
-        const value_type* mpsdata = &mps.data()[lb_ket](0, mps_offset);
+        return ret;
+    }
 
-        T[ti] = std::vector<value_type>(M * size_t(N));
-        blas_gemm('N', 'N', M, N, K, value_type(1), mpsdata, M, r_use, K, value_type(0), T[ti].data(), M);
+    std::size_t max_sl_size() const
+    {
+        std::size_t ret = 0;
+        for (auto& cohort : *this)
+        {
+            ret = std::max(ret, bit_twiddling::round_up<BUFFER_ALIGNMENT>(cohort.get_sr_size()) +
+                                bit_twiddling::round_up<BUFFER_ALIGNMENT>(cohort.get_l_size()));
+        }
+        return ret;
+    }
+
+    template <class OtherMatrix>
+    std::size_t max_r_size(BoundaryIndex<OtherMatrix, SymmGroup> const& right) const
+    {
+        std::size_t ret = 0;
+        for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
+        {
+            unsigned ci = boost::get<1>(t_schedule[ti]);
+            if (right.tr(ci))
+            {
+                unsigned ci_eff = boost::get<2>(t_schedule[ti]);
+                ret = std::max(ret, right.n_blocks(ci_eff) * right.left_size(ci) * right.right_size(ci));
+            }
+        }
+        return ret;
+    }
+
+    template <class DefaultMatrix, class OtherMatrix>
+    std::size_t t_size(Boundary<OtherMatrix, SymmGroup> const& right, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
+    {
+        std::size_t ret = 0;
+        for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
+        {
+            unsigned ci = boost::get<1>(t_schedule[ti]);
+            unsigned ci_eff = boost::get<2>(t_schedule[ti]);
+            unsigned lb_ket = boost::get<3>(t_schedule[ti]);
+
+            unsigned brs = right.index().right_size(ci);
+
+            ret += bit_twiddling::round_up<BUFFER_ALIGNMENT>(num_rows(mps.data()[lb_ket]) * right.index().n_blocks(ci_eff) * brs);
+        }
+        return ret;
     }
 
     unsigned get_ti(unsigned mps_offset, unsigned ci_virt) const
@@ -595,6 +622,21 @@ public:
     std::vector<boost::tuple<unsigned, unsigned, unsigned, unsigned>> t_schedule;
 
     bool on_gpu = false;
+    WorkSet<value_type>* ws;
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////
+
+template <class T>
+class WorkSet
+{
+public:
+
+    WorkSet(T* t_, T* rsl_) : t_buffer(t_), rsl_buffer(rsl_), stream(accelerator::gpu::next_stream()) {}
+
+    T* t_buffer;
+    T* rsl_buffer;
+    cudaStream_t stream;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -624,11 +666,43 @@ struct ScheduleNew : public std::vector<MPSBlock<
     }
 
 
-    void init_gpu()
+    template <class OtherMatrix>
+    void init_gpu(Boundary<OtherMatrix, SymmGroup> const & right, MPSTensor<Matrix, SymmGroup> const & mps)
     {
+        std::vector<std::size_t> buffer_sizes;
+
+        for (auto& mpsb : *this)
+            buffer_sizes.push_back(mpsb.t_size(right, mps) + std::max(mpsb.max_r_size(right.index()), mpsb.max_sl_size()));
+
+        // (*this)[mpsb_sorted[0]] = MPSBlock with biggest buffer
+        std::vector<std::size_t> mpsb_sorted = sort_invert(buffer_sizes);
+        //pv(buffer_sizes);
+        //pv(mpsb_sorted);
+
+        {
+            // resize the GPU pipeline buffer if needed
+            std::vector<size_t> psz(accelerator::gpu::nstreams());
+            for (size_t tn = 0; tn < std::min(accelerator::gpu::nstreams(), buffer_sizes.size()); ++tn)
+                psz[tn] = buffer_sizes[mpsb_sorted[tn]] * sizeof(value_type);
+
+            accelerator::gpu::adjust_pipeline_buffer(psz);
+        }
+
+
+        std::size_t hi = mpsb_sorted[0];
+
+        value_type* buffer = (value_type*)accelerator::gpu::get_pipeline_buffer(buffer_sizes[hi]);
+        pipeline.push_back(WorkSet<value_type>(buffer, buffer + (*this)[hi].t_size(right, mps)));
+
+        for (size_t i : mpsb_sorted)
+        {
+            auto& mpsb = (*this)[i];
+            //if (!accelerator::gpu::use_gpu(mpsb.n_flops())) break;
+
+            mpsb.ws = &pipeline[0];
+        }
 
     }
-
 
     size_t niter;
     size_t total_flops;
@@ -639,6 +713,10 @@ struct ScheduleNew : public std::vector<MPSBlock<
     std::vector<unsigned> enumeration_gpu;
 
     mutable std::vector<std::mutex> mutexes;
+
+private:
+
+    std::vector<WorkSet<value_type>> pipeline;
 
     struct GPUconfig
     {
