@@ -222,3 +222,60 @@ void vgemm(cublasHandle_t handle, cudaStream_t stream, BatchGemmData<double> & b
    coalesced_gemm_tpl(handle, stream, batch, M, N, t_size, mpsdata, dev_t, r_buf);
    //batched_gemm_tpl(handle, batch, M, N, t_size, mpsdata, dev_t);
 }
+
+
+template <class T>
+__global__ void cuda_tr_v(unsigned N, unsigned M, unsigned cnt, T* dev_a, T* dev_tra)
+{
+    __shared__ T tile[TILE_DIM][TILE_DIM+1];
+
+    unsigned x = threadIdx.x + blockIdx.x * TILE_DIM;
+    unsigned y = threadIdx.y + blockIdx.y * TILE_DIM;
+
+    for (unsigned my = y; my < M + TILE_DIM; my += gridDim.y * TILE_DIM)
+    {
+        for (unsigned mx = x; mx < N + TILE_DIM; mx += gridDim.x * TILE_DIM)
+        {
+            for (unsigned mz = blockIdx.z; mz < cnt; mz += gridDim.z)
+            {
+                size_t out = mz * N * M;
+                #pragma unroll
+                for (unsigned j = 0; j < TILE_DIM; j+=BLOCK_ROWS)
+                {
+                    size_t offset = mx + (my+j) * N;
+                    if (mx < N && (my+j) < M)
+                    {
+                       tile[threadIdx.y+j][threadIdx.x] = dev_a[out + offset];
+                    }
+                }
+
+                __syncthreads();
+
+                #pragma unroll
+                for (unsigned j = 0; j < TILE_DIM; j+=BLOCK_ROWS)
+                {
+                    unsigned tx = my-threadIdx.y + threadIdx.x;
+                    unsigned ty = mx-threadIdx.x + threadIdx.y + j;
+                    size_t tr_offset = tx + ty * M;
+                    //size_t tr_offset = my+j + mx * M;
+                    if (tx < M && ty < N)
+                    //if ((my+j) < M && mx < N)
+                       dev_tra[out + tr_offset] = tile[threadIdx.x][threadIdx.y+j];
+                }
+
+                __syncthreads();
+            }
+        }
+    }
+}
+
+void transpose_v(cudaStream_t stream, int N, int M, int cnt, double* dev_in, double* dev_out)
+{
+    int nb = std::min( (N+TILE_DIM-1)/TILE_DIM, 1024);
+    int mb = std::min( (M+TILE_DIM-1)/TILE_DIM, 1024);
+
+    dim3 threads(TILE_DIM, BLOCK_ROWS);
+    dim3 blocks3d_t(nb, mb, std::min(cnt, 65535));
+
+    cuda_tr_v<<<blocks3d_t, threads, 0, stream>>>(N, M, cnt, dev_in, dev_out);
+}

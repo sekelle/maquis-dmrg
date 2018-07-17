@@ -50,4 +50,6 @@ void dgemm_gpu(cublasHandle_t handle,
 
 void vgemm(cublasHandle_t handle, cudaStream_t stream, BatchGemmData<double> & batch, int, int, size_t, double*, double*, double*);
 
+void transpose_v(cudaStream_t stream, int, int, int, double*, double*);
+
 #endif
