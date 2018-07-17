@@ -30,6 +30,11 @@
 #include <cstddef>
 #include <complex>
 #include <limits>
+#include <vector>
+#include <utility>
+#include <algorithm>
+#include <boost/lambda/construct.hpp>
+
 #include <boost/static_assert.hpp>
 
 #include <cuda_runtime.h>
@@ -115,6 +120,34 @@ struct compare_pair_inverse
             return i.first < j.first;
     }
 };
+
+template <class Int>
+std::vector<Int> sort_invert(std::vector<Int> const & input)
+{
+    std::size_t sz = input.size();
+
+    std::vector<Int> idx(sz);
+    Int i = 0;
+    std::for_each(idx.begin(), idx.end(), [&i](Int& e) { e = i++; });
+
+    std::vector<std::pair<Int, Int>> input_idx(sz);
+    std::transform(input.begin(), input.end(), idx.begin(), input_idx.begin(),
+                   boost::lambda::constructor<std::pair<Int, Int>>());
+
+    std::sort(input_idx.begin(), input_idx.end(), greater_first<std::pair<Int, Int>>());
+
+    std::vector<Int> ret(sz);
+    std::transform(input_idx.begin(), input_idx.end(), ret.begin(), [](std::pair<Int, Int> p) { return p.second; } );
+
+    return ret;
+}
+
+template <class V>
+void pv(V const& vec)
+{
+    std::copy(vec.begin(), vec.end(), std::ostream_iterator<typename V::value_type>(std::cout, " "));
+    std::cout << std::endl;
+}
 
 template <typename T>
 bool check_align(T const* const p, unsigned int alignment) {
