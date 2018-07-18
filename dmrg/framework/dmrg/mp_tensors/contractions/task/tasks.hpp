@@ -506,9 +506,9 @@ public:
     std::vector<std::vector<value_type>>
     create_T_gpu(Boundary<OtherMatrix, SymmGroup> const & right, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
     {
+        cublasSetStream(accelerator::gpu::instance().handle, ws->stream);
         std::vector<std::vector<value_type>> ret(t_schedule.size());
 
-        value_type* dev_t = ws->t_buffer;
         value_type* dev_r = ws->rsl_buffer;
         for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
         {
@@ -534,12 +534,10 @@ public:
 
             cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
             cublasDgemm(accelerator::gpu::instance().handle,
-                        cuop[0], cuop[0], M, N, K, &one, mpsdata, M, r_use, K, &zero, dev_t, M);
+                        cuop[0], cuop[0], M, N, K, &one, mpsdata, M, r_use, K, &zero, gpu_data.t[ti], M);
 
             ret[ti] = std::vector<value_type>(M * size_t(N));
-            cudaMemcpy( &ret[ti][0], dev_t, M*size_t(N) * sizeof(value_type), cudaMemcpyDeviceToHost );
-
-            dev_t += bit_twiddling::round_up<BUFFER_ALIGNMENT>(M * size_t(N));
+            cudaMemcpy( &ret[ti][0], gpu_data.t[ti], M*size_t(N) * sizeof(value_type), cudaMemcpyDeviceToHost );
         }
 
         return ret;
@@ -618,11 +616,51 @@ public:
         return ret;
     }
 
+    template <class OtherMatrix, class DefaultMatrix>
+    void stage(WorkSet<value_type>* ws_, Boundary<OtherMatrix, SymmGroup> const & right, MPSTensor<DefaultMatrix, SymmGroup> const & mps)
+    {
+        ws = ws_;
+
+        gpu_data.t.resize(t_schedule.size());
+
+        value_type* dev_t_seek = ws->t_buffer;
+        for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
+        {
+            unsigned ci = boost::get<1>(t_schedule[ti]);
+            unsigned ci_eff = boost::get<2>(t_schedule[ti]);
+            unsigned lb_ket = boost::get<3>(t_schedule[ti]);
+
+            unsigned bls = right.index().left_size(ci);
+            unsigned brs = right.index().right_size(ci);
+
+            int M = num_rows(mps.data()[lb_ket]);
+            int N = right.index().n_blocks(ci_eff) * brs;
+
+            dev_t_seek += bit_twiddling::round_up<BUFFER_ALIGNMENT>(M * size_t(N));
+            gpu_data.t[ti] = dev_t_seek;
+        }
+        gpu_data.stage();
+    }
+
     unsigned rs_ket;
     std::vector<boost::tuple<unsigned, unsigned, unsigned, unsigned>> t_schedule;
 
     bool on_gpu = false;
+
+private:
     WorkSet<value_type>* ws;
+
+    struct gpuTransferable
+    {
+        std::vector<value_type*> t;
+        value_type** dev_t;
+
+        void stage() {
+            dev_t = (value_type**)accelerator::gpu::stage_vector(t);
+        }
+    };
+
+    gpuTransferable gpu_data;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -697,9 +735,7 @@ struct ScheduleNew : public std::vector<MPSBlock<
         for (size_t i : mpsb_sorted)
         {
             auto& mpsb = (*this)[i];
-            //if (!accelerator::gpu::use_gpu(mpsb.n_flops())) break;
-
-            mpsb.ws = &pipeline[0];
+            mpsb.stage(&pipeline[0], right, mps);
         }
 
     }

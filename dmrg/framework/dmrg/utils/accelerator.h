@@ -153,6 +153,16 @@ namespace accelerator {
             return std::make_pair((char*)instance().sbuffer + updated-sz_aligned, (char*)instance().dev_buffer + updated-sz_aligned);
         }
 
+        template <class Vector>
+        static void* stage_vector(Vector const & vec)
+        {
+            auto staging = get_staging_buffer(vec.size() * sizeof(typename Vector::value_type));
+            auto stage_host = (typename Vector::value_type*)staging.first;
+            memcpy( stage_host, vec.data(), vec.size() * sizeof(typename Vector::value_type));
+
+            return staging.second;
+        }
+
         static void reallocate_staging_buffer()
         {
             if (enabled())
