@@ -726,8 +726,10 @@ struct ScheduleNew : public std::vector<MPSBlock<
 
 
     template <class OtherMatrix>
-    void init_gpu(Boundary<OtherMatrix, SymmGroup> const & right, MPSTensor<Matrix, SymmGroup> const & mps)
+    void stage_gpu(Boundary<OtherMatrix, SymmGroup> const & right, MPSTensor<Matrix, SymmGroup> const & mps)
     {
+        accelerator::gpu::reset_buffers();
+
         std::vector<std::size_t> buffer_sizes;
 
         for (auto& mpsb : *this)
@@ -752,12 +754,24 @@ struct ScheduleNew : public std::vector<MPSBlock<
         value_type* buffer = (value_type*)accelerator::gpu::get_pipeline_buffer(buffer_sizes[hi]);
         pipeline.push_back(WorkSet<value_type>(buffer, buffer + (*this)[hi].t_size(right, mps)));
 
-        for (size_t i : mpsb_sorted)
-        {
-            auto& mpsb = (*this)[i];
-            mpsb.stage(&pipeline[0], right, mps);
+        int redo = 0;
+        do {
+            redo = 0;
+            try {
+                for (size_t i : mpsb_sorted)
+                {
+                    auto& mpsb = (*this)[i];
+                    mpsb.stage(&pipeline[0], right, mps);
+                }
+            }
+            catch (const std::out_of_range& e) {
+                redo++;
+                accelerator::gpu::reallocate_staging_buffer();
+            }
         }
+        while (redo > 0);
 
+        accelerator::gpu::update_schedule_buffer();
     }
 
     size_t niter;

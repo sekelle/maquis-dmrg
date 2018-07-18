@@ -47,7 +47,7 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
 
     boost::chrono::high_resolution_clock::time_point now = boost::chrono::high_resolution_clock::now();
 
-    //accelerator::gpu::reset_buffers();
+    accelerator::gpu::reset_buffers();
 
     // MPS indices
     Index<SymmGroup> const & physical_i = initial.site_dim(),
@@ -57,36 +57,15 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
     ProductBasis<SymmGroup> out_right_pb(physical_i, right_i,
                                          boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
                                                              -boost::lambda::_1, boost::lambda::_2));
-
     initial.make_right_paired();
     ScheduleNew<Matrix, SymmGroup> tasks(left_i.size());
 
     unsigned loop_max = left_i.size();
 
-    std::atomic<int> redo;
-    do {
-        redo.exchange(0);
-
-        omp_for(index_type mb, parallel::range<index_type>(0,loop_max), {
-            try {
-                if (redo.load() == 0) {
-                    rshtm_t_tasks(right.index(), left_i, right_i, physical_i, out_right_pb, mb, tasks[mb]);
-                    shtm_tasks(mpo, left, right, left_i, right_i, physical_i, out_right_pb, mb, tasks[mb]);
-                }
-            }
-            catch (const std::out_of_range& e) {
-                redo++;
-            }
-        });
-
-        if (redo.load() > 0) {
-            tasks = ScheduleNew<Matrix, SymmGroup>(left_i.size());
-            accelerator::gpu::reallocate_staging_buffer();
-        }
-    }
-    while (redo.load() > 0);
-
-    //accelerator::gpu::update_schedule_buffer();
+    omp_for(index_type mb, parallel::range<index_type>(0,loop_max), {
+                rshtm_t_tasks(right.index(), left_i, right_i, physical_i, out_right_pb, mb, tasks[mb]);
+                shtm_tasks(mpo, left, right, left_i, right_i, physical_i, out_right_pb, mb, tasks[mb]);
+    });
 
     std::vector<size_t> flops_per_block(loop_max, 0);
     size_t ncg = 0;
@@ -128,8 +107,7 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
         else                         tasks.enumeration.push_back(mps_block);
     }
 
-    //tasks.assign_streams();
-    tasks.init_gpu(right, initial);
+    tasks.stage_gpu(right, initial);
 
     if (std::max(mpo.row_dim(), mpo.col_dim()) > 10)
     {
