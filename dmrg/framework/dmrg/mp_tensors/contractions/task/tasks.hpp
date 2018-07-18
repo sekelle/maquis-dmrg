@@ -95,7 +95,18 @@ private:
         std::vector<index_type> b2s;
         std::vector<index_type> b1;
 
-        std::vector<index_type> b2s_new;
+        index_type* dev_tidx;
+        value_type* dev_alpha;
+        index_type* dev_b2s;
+        index_type* dev_b1;
+
+        void stage()
+        {
+            dev_tidx = (index_type*)accelerator::gpu::stage_vector(tidx);
+            dev_alpha = (value_type*)accelerator::gpu::stage_vector(alpha);
+            dev_b2s = (index_type*)accelerator::gpu::stage_vector(b2s);
+            dev_b1  = (index_type*)accelerator::gpu::stage_vector(b1);
+        }
 
     private:
         unsigned b2count=0;
@@ -281,6 +292,12 @@ public:
         return ret;
     }
 
+    void stage(WorkSet<value_type>* ws_)
+    {
+        ws = ws_;
+        for (auto& su : suv) su.stage();
+    }
+
     std::vector<long int>      & get_offsets()       { return mpo_offsets; }
     std::vector<long int> const& get_offsets() const { return mpo_offsets; }
 
@@ -297,7 +314,9 @@ private:
     std::vector<long int> mpo_offsets;
 
     std::vector<unsigned> sfold;
+
     std::vector<SUnit> suv;
+    WorkSet<value_type>* ws;
 
     std::vector<value_type> create_s(std::vector<std::vector<value_type>> const& T) const
     {
@@ -640,6 +659,8 @@ public:
             gpu_data.t[ti] = dev_t_seek;
         }
         gpu_data.stage();
+
+        for (auto& coh : *this) coh.stage(ws);
     }
 
     unsigned rs_ket;
@@ -726,7 +747,6 @@ struct ScheduleNew : public std::vector<MPSBlock<
             accelerator::gpu::adjust_pipeline_buffer(psz);
         }
 
-
         std::size_t hi = mpsb_sorted[0];
 
         value_type* buffer = (value_type*)accelerator::gpu::get_pipeline_buffer(buffer_sizes[hi]);
@@ -751,16 +771,8 @@ struct ScheduleNew : public std::vector<MPSBlock<
     mutable std::vector<std::mutex> mutexes;
 
 private:
-
     std::vector<WorkSet<value_type>> pipeline;
 
-    struct GPUconfig
-    {
-        value_type* dev_tl_buffer;
-        value_type* dev_sr_buffer;
-    };
-
-    GPUconfig gpu;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
