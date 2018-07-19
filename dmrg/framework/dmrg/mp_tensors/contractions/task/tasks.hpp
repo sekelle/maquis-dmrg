@@ -648,8 +648,10 @@ public:
         return std::numeric_limits<unsigned>::max();
     }
 
-    template <class OtherMatrix>
-    size_t n_flops(Index<SymmGroup> const& left_i, BoundaryIndex<OtherMatrix, SymmGroup> const& right) const
+    template <class DefaultMatrix, class OtherMatrix>
+    size_t n_flops(MPSTensor<DefaultMatrix, SymmGroup> const& mps,
+                   BoundaryIndex<OtherMatrix, SymmGroup> const& left,
+                   BoundaryIndex<OtherMatrix, SymmGroup> const& right) const
     {
         std::size_t ret = 0;
         for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
@@ -661,8 +663,10 @@ public:
             unsigned bls = right.left_size(ci);
             unsigned brs = right.right_size(ci);
 
-            ret += 2 * left_i[lb_ket].second * right.left_size(ci) * right.right_size(ci) * right.n_blocks(ci_eff);
+            ret += 2 * mps.row_dim()[lb_ket].second * right.left_size(ci) * right.right_size(ci) * right.n_blocks(ci_eff);
         }
+
+        for (auto& coh : *this) ret += coh.n_flops(mps, left);
 
         return ret;
     }
@@ -770,15 +774,15 @@ struct ScheduleNew : public std::vector<MPSBlock<
         for (auto& mpsb : *this)
             buffer_sizes.push_back(mpsb.t_size(right, mps) + std::max(mpsb.max_r_size(right.index()), mpsb.max_sl_size()));
 
-        // (*this)[mpsb_sorted[0]] = MPSBlock with biggest buffer
+        // Index of MPSBlock with biggest buffer = mpsb_sorted[0]
         std::vector<std::size_t> mpsb_sorted = sort_invert(buffer_sizes);
-        {
-            // resize the GPU pipeline buffer if needed
-            std::vector<size_t> psz(accelerator::gpu::nstreams());
-            for (size_t tn = 0; tn < std::min(accelerator::gpu::nstreams(), buffer_sizes.size()); ++tn)
-                psz[tn] = buffer_sizes[mpsb_sorted[tn]] * sizeof(value_type);
 
-            accelerator::gpu::adjust_pipeline_buffer(psz);
+        { // resize the GPU pipeline buffer if needed
+        std::vector<size_t> psz(accelerator::gpu::nstreams());
+        for (size_t tn = 0; tn < std::min(accelerator::gpu::nstreams(), buffer_sizes.size()); ++tn)
+            psz[tn] = buffer_sizes[mpsb_sorted[tn]] * sizeof(value_type);
+
+        accelerator::gpu::adjust_pipeline_buffer(psz);
         }
 
         std::size_t hi = mpsb_sorted[0];

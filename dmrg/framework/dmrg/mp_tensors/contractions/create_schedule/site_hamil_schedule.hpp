@@ -72,19 +72,12 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
     size_t cpu_flops = 0, gpu_flops = 0;
     for (size_t block = 0; block < loop_max; ++block)
     {
-        size_t tflops = tasks[block].n_flops(initial.row_dim(), right.index());
-        flops_per_block[block] += tflops;
-        if (tasks[block].on_gpu) gpu_flops += tflops;
-        else                     cpu_flops += tflops;
+        size_t flops = tasks[block].n_flops(initial, left.index(), right.index());
+        flops_per_block[block] += flops;
+        if (tasks[block].on_gpu) gpu_flops += flops;
+        else                     cpu_flops += flops;
 
         ncg += tasks[block].size();
-        for (auto& cohort : tasks[block])
-        {
-            size_t lsflops = cohort.n_flops(initial, left.index());
-            flops_per_block[block] += lsflops;
-            if (tasks[block].on_gpu) gpu_flops += lsflops;
-            else                     cpu_flops += lsflops;
-        }
     }
 
     std::vector<std::pair<size_t, size_t> > fb(loop_max);
