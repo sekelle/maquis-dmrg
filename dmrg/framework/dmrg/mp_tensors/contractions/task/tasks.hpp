@@ -170,7 +170,6 @@ public:
                 unsigned ci,
                 Boundary<OtherMatrix, SymmGroup> & new_left) const
     {
-        int stripe = num_rows(bra_mps.data()[lb]);
         std::vector<value_type> sloc = create_s(T);
 
         int M = num_cols(bra_mps.data()[lb]);
@@ -185,7 +184,6 @@ public:
                 unsigned ci,
                 Boundary<OtherMatrix, SymmGroup> & new_right) const
     {
-        int stripe = num_cols(bra_mps.data()[rb]);
         std::vector<value_type> sloc = create_s_r(T);
 
         int M = new_right.index().n_blocks(ci) * ls;
@@ -206,7 +204,6 @@ public:
                   DefaultMatrix & output,
                   std::mutex & out_mutex) const
     {
-        int stripe = num_cols(output);
         std::vector<value_type> sloc = create_s_r(T);
 
         int M = rs;
@@ -265,7 +262,6 @@ public:
               double alpha
              ) const
     {
-        int stripe = num_rows(out);
         std::vector<value_type> sloc = create_s(T);
 
         int M = stripe;
@@ -285,7 +281,6 @@ public:
               double alpha
              ) const
     {
-        int stripe = num_rows(out);
         std::vector<value_type> sloc = create_s_r(T);
 
         int M = stripe;
