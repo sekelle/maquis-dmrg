@@ -329,6 +329,54 @@ __global__ void atomic_add(unsigned N, T* in, T* out)
 }
 
 template <class T>
+__global__ void compute_s_stacked3(unsigned nS, unsigned ls, unsigned ms, unsigned nb1,
+                                   unsigned* b1, unsigned* b2s, T* alpha, unsigned* tidx, T** t_buf, T* s_buf)
+{
+    unsigned b = blockIdx.x;
+    unsigned lda = nS * ls;
+    size_t t_size = ls * ms;
+
+    while (b < nb1) {
+
+        unsigned seeker = 0;
+        for (unsigned sk = 0; sk < b; ++sk) seeker += b2s[sk];
+
+        unsigned tid = threadIdx.x;
+        while (tid < t_size)
+        {
+            unsigned sx = b1[b] * ls + tid%ls;
+            unsigned sy = tid/ls;
+            size_t offset = sx + lda*sy;
+
+            T acc = 0;
+            for (unsigned ia = seeker; ia < seeker + b2s[b]; ++ia)
+                acc += alpha[ia] * t_buf[tidx[2*ia]][tidx[2*ia+1] * ls + tid];
+
+            s_buf[offset] = acc;
+
+            tid += blockDim.x;
+        }
+        b += gridDim.x;
+    }
+}
+
+template <class T>
+void dsacc_gpu2_tpl(cudaStream_t stream,
+                unsigned nS, unsigned ls, unsigned ms, unsigned nb1,
+                unsigned* b1, unsigned* b2s, T* alpha, unsigned* tidx, T** tbuf, T* sbuf)
+{
+    unsigned nth = std::min(round_up<TILE_DIM>(ls*ms), 1024u);
+    compute_s_stacked3<<<std::min(nb1, 1024u), nth, 0, stream>>>(nS, ls, ms, nb1, b1, b2s, alpha, tidx, tbuf, sbuf);
+}
+
+void dsacc_gpu2(cudaStream_t stream,
+                unsigned nS, unsigned ls, unsigned ms, unsigned nb1,
+                unsigned* b1, unsigned* b2s, double* alpha, unsigned* tidx, double** tbuf, double* sbuf)
+{
+    return dsacc_gpu2_tpl(stream,nS,ls,ms,nb1,b1,b2s,alpha,tidx,tbuf,sbuf);
+}
+
+template <class T>
 void dsacc_gpu_tpl(cublasHandle_t handle,
                    cudaStream_t stream,
                    unsigned ls, unsigned ms, unsigned rs,

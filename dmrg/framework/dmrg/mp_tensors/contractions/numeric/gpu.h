@@ -42,6 +42,10 @@ void dsacc_gpu(cublasHandle_t handle, cudaStream_t stream,
                const unsigned* b2sz, const double* t, double* s_buf, double* out,
                GemmDotData<double> & gdd);
 
+void dsacc_gpu2(cudaStream_t stream,
+                unsigned nS, unsigned ls, unsigned ms, unsigned nb1,
+                unsigned* b1, unsigned* b2s, double* alpha, unsigned* tidx, double** tbuf, double* sbuf);
+
 void dgemm_gpu(cublasHandle_t handle,
                cudaStream_t stream,
                unsigned ls, unsigned ms, unsigned rs,

@@ -218,9 +218,11 @@ namespace common {
         MPSTensor<Matrix, SymmGroup> ret(ket_tensor.site_dim(), ket_tensor.row_dim(), ket_tensor.col_dim(),
                                          ket_tensor.data().basis(), RightPaired);
 
+        MPSTensor<Matrix, SymmGroup> ret_gpu = ret;
         boost::chrono::high_resolution_clock::time_point now = boost::chrono::high_resolution_clock::now();
 
         storage::gpu::fetch(ket_tensor);
+        storage::gpu::zero(ret_gpu);
 
         #pragma omp parallel for schedule (dynamic,1)
         for (unsigned i = 0; i < tasks.enumeration.size(); ++i)
@@ -234,10 +236,18 @@ namespace common {
             T = tasks[lb_in].create_T_gpu(right, ket_tensor);
 
             for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
-                it->contract(left, T, ret.data()[it->get_rb()], tasks.mutexes[it->get_rb()]);
+            {
+                //it->contract(left, T, ret.data()[it->get_rb()], tasks.mutexes[it->get_rb()]);
+                it->contract_gpu(left, T, tasks[lb_in].gpu_data.dev_t, num_cols(ret_gpu.data()[it->get_rb()]),
+                                 (value_type*)ret_gpu.device_ptr[it->get_rb()], tasks.mutexes[it->get_rb()]);
+                                 //ret_gpu.data()[it->get_rb()].get_values().data(), tasks.mutexes[it->get_rb()]);
+            }
         }
 
         storage::gpu::drop(ket_tensor);
+        storage::gpu::evict(ret_gpu);
+        storage::gpu::pin(ret_gpu);
+        ret = ret_gpu;
 
         //cpu_queue cq(tasks.size());
         //for (unsigned lb_in : tasks.enumeration)
