@@ -35,7 +35,6 @@
 #include <malloc.h>
 #include <stdint.h>
 #include <iostream>
-//#include <boost/static_assert.hpp>
 // BLAS declarations
 //#include <boost/numeric/bindings/blas/detail/blas.h>
 
@@ -101,128 +100,6 @@ void batched_gemm_tpl(cublasHandle_t handle, BatchGemmData<T> & batch, int M, in
 
 #define TILE_DIM 32
 #define BLOCK_ROWS 8
-
-template <class T>
-__global__ void cuda_copy_v(unsigned N, unsigned M, unsigned cnt, T** dev_a, T* dev_tra)
-{
-    unsigned x = threadIdx.x + blockIdx.x * TILE_DIM;
-    unsigned y = threadIdx.y + blockIdx.y * TILE_DIM;
-
-    size_t mz = blockIdx.z;
-    while (mz < cnt)
-    {
-        size_t out = mz * N * M; 
-        for (unsigned my = y; my < M + TILE_DIM; my += gridDim.y * TILE_DIM)
-        {
-            for (unsigned mx = x; mx < N + TILE_DIM; mx += gridDim.x * TILE_DIM)
-            {
-                #pragma unroll
-                for (unsigned j = 0; j < TILE_DIM; j+=BLOCK_ROWS)
-                {
-                    size_t offset = mx + (my+j) * N;
-                    if (mx < N && (my+j) < M)
-                       dev_tra[out + offset] = dev_a[mz][offset];
-                }
-            }
-        }
-        mz += gridDim.z;
-    }
-}
-
-template <class T>
-__global__ void cuda_transpose_v(unsigned N, unsigned M, unsigned cnt, T** dev_a, T* dev_tra)
-{
-    __shared__ T tile[TILE_DIM][TILE_DIM+1];
-
-    unsigned x = threadIdx.x + blockIdx.x * TILE_DIM;
-    unsigned y = threadIdx.y + blockIdx.y * TILE_DIM;
-
-    //size_t mz = blockIdx.z;
-    //while (mz < cnt)
-    //{
-        //size_t out = mz * N * M; 
-        for (unsigned my = y; my < M + TILE_DIM; my += gridDim.y * TILE_DIM)
-        {
-            for (unsigned mx = x; mx < N + TILE_DIM; mx += gridDim.x * TILE_DIM)
-            {
-                for (unsigned mz = blockIdx.z; mz < cnt; mz += gridDim.z)
-                {
-                    size_t out = mz * N * M;
-                    #pragma unroll
-                    for (unsigned j = 0; j < TILE_DIM; j+=BLOCK_ROWS)
-                    {
-                        size_t offset = mx + (my+j) * N;
-                        if (mx < N && (my+j) < M)
-                        {
-                           tile[threadIdx.y+j][threadIdx.x] = dev_a[mz][offset];
-                        }
-                    }
-
-                    __syncthreads();
-
-                    #pragma unroll
-                    for (unsigned j = 0; j < TILE_DIM; j+=BLOCK_ROWS)
-                    {
-                        unsigned tx = my-threadIdx.y + threadIdx.x;
-                        unsigned ty = mx-threadIdx.x + threadIdx.y + j;
-                        size_t tr_offset = tx + ty * M;
-                        if (tx < M && ty < N)
-                           dev_tra[out + tr_offset] = tile[threadIdx.x][threadIdx.y+j];
-                    }
-
-                    __syncthreads();
-                }
-            }
-        }
-        //mz += gridDim.z;
-    //}
-}
-
-
-template <class T>
-void coalesced_gemm_tpl(cublasHandle_t handle, cudaStream_t stream,
-                        BatchGemmData<T> & batch, int M, int N, size_t t_size, T* mpsdata, T* dev_t, T* r_buf)
-{
-    cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
-    T one = 1.0;
-    T zero = 0.0;
-    cublasSetStream(handle, stream);
-
-    size_t b_size = batch.K * N;
-
-    int nb = std::min( (N+TILE_DIM-1)/TILE_DIM, 1024);
-    int kb = std::min( (batch.K+TILE_DIM-1)/TILE_DIM, 1024);
-
-    dim3 threads(TILE_DIM, BLOCK_ROWS);
-    dim3 blocks3d(kb, nb, std::min(batch.size, 65535lu));
-    dim3 blocks3d_t(nb, kb, std::min(batch.size, 65535lu));
-
-    if (batch.trans)
-        //for (size_t k = 0; k < batch.b.size(); ++k)
-        //    cublasDgeam(handle, cuop[1], cuop[0], batch.K, N,
-        //                &one, batch.b[k], batch.LDB,
-        //                &zero, batch.b[k], batch.K,
-        //                r_buf + k*b_size, batch.K);
-        cuda_transpose_v<<<blocks3d_t, threads, 0, stream>>>(N, batch.K, batch.size, batch.dev_b + batch.size, r_buf);
-    else
-        //for (size_t k = 0; k < batch.b.size(); ++k)
-        //    cudaMemcpy( r_buf + k * b_size, batch.b[k], b_size* sizeof(T), cudaMemcpyDeviceToDevice);
-        cuda_copy_v<<<blocks3d, threads, 0, stream>>>(batch.K, N, batch.size, batch.dev_b + batch.size, r_buf);
-
-
-    cublasDgemm(handle, cuop[0], cuop[0], M, N * batch.b.size(), batch.K, &one,
-                mpsdata + batch.in_offset * M, M,
-                r_buf, batch.K, &zero, dev_t + batch.tstart * t_size, M);
-}
-
-
-void vgemm(cublasHandle_t handle, cudaStream_t stream, BatchGemmData<double> & batch,
-           int M, int N, size_t t_size, double* mpsdata, double* dev_t, double* r_buf)
-{
-   coalesced_gemm_tpl(handle, stream, batch, M, N, t_size, mpsdata, dev_t, r_buf);
-   //batched_gemm_tpl(handle, batch, M, N, t_size, mpsdata, dev_t);
-}
-
 
 template <class T>
 __global__ void cuda_tr_v(unsigned N, unsigned M, unsigned cnt, T* dev_a, T* dev_tra)

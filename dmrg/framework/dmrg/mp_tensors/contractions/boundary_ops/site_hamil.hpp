@@ -231,16 +231,12 @@ namespace common {
 
             //auto T = tasks[lb_in].create_T(right, ket_tensor);
 
-            std::vector<std::vector<value_type>> T;
-            parallel_critical
-            T = tasks[lb_in].create_T_gpu(right, ket_tensor);
+            value_type** dev_T = tasks[lb_in].create_T_gpu(right, ket_tensor);
 
             for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
             {
                 //it->contract(left, T, ret.data()[it->get_rb()], tasks.mutexes[it->get_rb()]);
-                it->contract_gpu(left, T, tasks[lb_in].gpu_data.dev_t, num_cols(ret_gpu.data()[it->get_rb()]),
-                                 (value_type*)ret_gpu.device_ptr[it->get_rb()], tasks.mutexes[it->get_rb()]);
-                                 //ret_gpu.data()[it->get_rb()].get_values().data(), tasks.mutexes[it->get_rb()]);
+                it->contract_gpu(left, dev_T, (value_type*)ret_gpu.device_ptr[it->get_rb()]);
             }
         }
 

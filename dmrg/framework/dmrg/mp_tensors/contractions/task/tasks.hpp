@@ -236,39 +236,15 @@ public:
     }
 
     template <class OtherMatrix>
-    void contract_gpu(
-                      Boundary<OtherMatrix, SymmGroup> const & left,
-                      std::vector<std::vector<value_type>> const & T,
+    void contract_gpu(Boundary<OtherMatrix, SymmGroup> const & left,
                       value_type** dev_T,
-                      unsigned stripe,
-                      value_type* dev_out,
-                      std::mutex & out_mutex) const
+                      value_type* dev_out) const
     {
-        //int stripe = num_cols(output);
-        std::vector<value_type> sloc = create_s_r_gpu(dev_T, T);
-
-        //std::vector<value_type> sloc_ref = create_s_r(T);
-        //for (size_t i = 0; i < sloc.size(); ++i)
-        //    if (std::abs(sloc[i] - sloc_ref[i]) > 1e-6)
-        //        maquis::cout << nSrows * ls << "x" << stripe << " " << i << " " << sloc[i] << " " << sloc_ref[i] << std::endl;
+        create_s_r_gpu(dev_T);
 
         int M = rs;
         int N = stripe;
         int K = nSrows * ls;
-
-        const value_type* luse = left.data()[ci_eff].data();
-        std::vector<value_type> lbuf;
-        if (ci != ci_eff)
-        {
-            lbuf = std::vector<value_type>(M * size_t(K));
-            for (size_t offset = 0; offset < M * size_t(K); offset += rs * ls)
-            {
-                for (unsigned c = 0; c < rs; ++c)
-                for (unsigned r = 0; r < ls; ++r)
-                    lbuf[offset + r*rs + c] = left.data()[ci_eff][offset + c*ls + r];
-            }
-            luse = lbuf.data();
-        }
 
         value_type* dev_l = (ci != ci_eff) ? dev_S + bit_twiddling::round_up<BUFFER_ALIGNMENT>(K * size_t(N)) : (value_type*)left.device_ptr[ci_eff];
         if (ci != ci_eff)
@@ -276,18 +252,10 @@ public:
 
         value_type one(1.0), zero(0.);
 
+        cublasSetStream(accelerator::gpu::instance().handle, ws->stream);
         cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
         cublasDgemm(accelerator::gpu::instance().handle,
                     cuop[0], cuop[0], M, N, K, &one, dev_l, M, dev_S, K, &one, dev_out, M);
-
-        //blas_gemm('N', 'N', M, N, K, value_type(1), luse, M, sloc.data(), K, value_type(1), dev_out, M);
-
-        //Matrix buf(M,N);
-        //blas_gemm('N', 'N', M, N, K, value_type(1), luse, M, sloc.data(), K, value_type(0), buf.get_values().data(), M);
-
-        //std::lock_guard<std::mutex> lk(out_mutex);
-        //parallel_critical
-        //output += buf;
     }
 
     template <class OtherMatrix>
@@ -438,13 +406,7 @@ private:
         return ret;
     }
 
-    template <class T>
-    static void download(std::vector<T>& v, T* dev_ptr)
-    {
-        cudaMemcpy(&v[0], dev_ptr, v.size() * sizeof(T), cudaMemcpyDeviceToHost);
-    }
-
-    std::vector<value_type> create_s_r_gpu(value_type** dev_T, std::vector<std::vector<value_type>> const& T) const
+    void create_s_r_gpu(value_type** dev_T) const
     {
         std::size_t S_size = nSrows * stripe * std::size_t(ls);
 
@@ -454,44 +416,9 @@ private:
         {
             if (!x.alpha.size()) continue;
 
-            //std::cout << "ls " << ls << " ms " << x.ms << " off " << x.offset << std::endl;
-
-            //std::vector<unsigned> b1_cpy(x.b1.size());
-            //std::vector<unsigned> b2s_cpy(x.b2s.size());
-            //std::vector<value_type> alpha_cpy(x.alpha.size());
-            //std::vector<unsigned> tidx_cpy(x.tidx.size());
-
-            //download(b1_cpy, x.dev_b1);
-            //download(b2s_cpy, x.dev_b2s);
-            //download(alpha_cpy, x.dev_alpha);
-            //download(tidx_cpy, x.dev_tidx);
-
-            //assert (b1_cpy == x.b1);
-            //assert (b2s_cpy == x.b2s);
-            //assert (alpha_cpy == x.alpha);
-            //assert (tidx_cpy == x.tidx);
-
-            //std::vector<value_type*> Tptr(T.size());
-            //download(Tptr, dev_T);
-            //for (int ti = 0; ti < T.size(); ++ti)
-            //{
-            //    std::vector<value_type> Tti(T[ti].size());
-
-            //    download(Tti, Tptr[ti]);
-            //    //pv(Tti);
-            //    //pv(T[ti]);
-            //    assert(Tti == T[ti]);
-            //}
-
-            dsacc_gpu2(ws->stream, nSrows, ls, x.ms, x.b2s.size(),
-                       x.dev_b1, x.dev_b2s, x.dev_alpha, x.dev_tidx, dev_T, dev_S + nSrows*ls * x.offset);
+            dsacc_gpu(ws->stream, nSrows, ls, x.ms, x.b2s.size(),
+                      x.dev_b1, x.dev_b2s, x.dev_alpha, x.dev_tidx, dev_T, dev_S + nSrows*ls * x.offset);
         }
-
-        //std::vector<value_type> ret(S_size);
-        //cudaMemcpy(&ret[0], dev_S, S_size * sizeof(value_type), cudaMemcpyDeviceToHost);
-        std::vector<value_type> ret;
-
-        return ret;
     }
 
     void compute_mpo_offsets()
@@ -636,11 +563,9 @@ public:
     }
 
     template <class DefaultMatrix, class OtherMatrix>
-    std::vector<std::vector<value_type>>
-    create_T_gpu(Boundary<OtherMatrix, SymmGroup> const & right, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
+    value_type** create_T_gpu(Boundary<OtherMatrix, SymmGroup> const & right, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
     {
         cublasSetStream(accelerator::gpu::instance().handle, ws->stream);
-        std::vector<std::vector<value_type>> ret(t_schedule.size());
 
         value_type* dev_r = gpu_data.dev_rsl;
         for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
@@ -666,16 +591,12 @@ public:
             assert( gpu_data.t[ti] + M * size_t(N)  <= dev_r);
 
             value_type one(1.0), zero(0.);
-
             cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
             cublasDgemm(accelerator::gpu::instance().handle,
                         cuop[0], cuop[0], M, N, K, &one, mpsdata, M, r_use, K, &zero, gpu_data.t[ti], M);
-
-            //ret[ti] = std::vector<value_type>(M * size_t(N));
-            //cudaMemcpy( &ret[ti][0], gpu_data.t[ti], M*size_t(N) * sizeof(value_type), cudaMemcpyDeviceToHost );
         }
 
-        return ret;
+        return gpu_data.dev_t;
     }
 
     std::size_t max_sl_size() const
@@ -786,7 +707,7 @@ public:
 
     bool on_gpu = false;
 
-//private:
+private:
     WorkSet<value_type>* ws;
 
     struct gpuTransferable // staging data
