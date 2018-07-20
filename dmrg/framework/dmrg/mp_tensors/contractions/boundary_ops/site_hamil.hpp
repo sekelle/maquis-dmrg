@@ -219,31 +219,41 @@ namespace common {
                                          ket_tensor.data().basis(), RightPaired);
 
         MPSTensor<Matrix, SymmGroup> ret_gpu = ret;
-        boost::chrono::high_resolution_clock::time_point now = boost::chrono::high_resolution_clock::now();
 
         storage::gpu::fetch(ket_tensor);
         storage::gpu::zero(ret_gpu);
+
+        auto now = boost::chrono::high_resolution_clock::now();
 
         #pragma omp parallel for schedule (dynamic,1)
         for (unsigned i = 0; i < tasks.enumeration.size(); ++i)
         {
             unsigned lb_in = tasks.enumeration[i];
 
-            //auto T = tasks[lb_in].create_T(right, ket_tensor);
+            auto T = tasks[lb_in].create_T(right, ket_tensor);
+            for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
+                it->contract(left, T, ret.data()[it->get_rb()], tasks.mutexes[it->get_rb()]);
+        }
 
+        auto then = boost::chrono::high_resolution_clock::now();
+        tasks.cpu_time += boost::chrono::duration<double>(then - now).count();
+
+        now = boost::chrono::high_resolution_clock::now();
+        for (unsigned i = 0; i < tasks.enumeration_gpu.size(); ++i)
+        {
+            unsigned lb_in = tasks.enumeration_gpu[i];
             value_type** dev_T = tasks[lb_in].create_T_gpu(right, ket_tensor);
 
             for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
-            {
-                //it->contract(left, T, ret.data()[it->get_rb()], tasks.mutexes[it->get_rb()]);
                 it->contract_gpu(left, dev_T, (value_type*)ret_gpu.device_ptr[it->get_rb()]);
-            }
         }
+        then = boost::chrono::high_resolution_clock::now();
+        tasks.gpu_time += boost::chrono::duration<double>(then - now).count();
 
         storage::gpu::drop(ket_tensor);
         storage::gpu::evict(ret_gpu);
         storage::gpu::pin(ret_gpu);
-        ret = ret_gpu;
+        ret += ret_gpu;
 
         //cpu_queue cq(tasks.size());
         //for (unsigned lb_in : tasks.enumeration)
@@ -264,9 +274,6 @@ namespace common {
         //                                            std::ref(tasks))
         //                                            ));
         //for (std::thread& t : workers) t.join();
-
-        boost::chrono::high_resolution_clock::time_point then = boost::chrono::high_resolution_clock::now();
-        tasks.cpu_time += boost::chrono::duration<double>(then - now).count();
 
         ret.make_left_paired();
         return ret;

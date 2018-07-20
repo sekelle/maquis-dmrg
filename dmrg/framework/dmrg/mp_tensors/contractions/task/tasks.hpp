@@ -763,6 +763,38 @@ struct ScheduleNew : public std::vector<MPSBlock<
         maquis::cout << "  (MFLOPS)" << std::endl;
     }
 
+    template <class OtherMatrix>
+    void compute_workload(MPSTensor<Matrix, SymmGroup> const & mps, BoundaryIndex<OtherMatrix, SymmGroup> const& left,
+                          BoundaryIndex<OtherMatrix, SymmGroup> const& right)
+    {
+        std::vector<std::size_t> flops_list;
+        for (auto& mpsb : *this)
+            flops_list.push_back( mpsb.n_flops(mps, left, right) );
+
+        total_flops = std::accumulate(flops_list.begin(), flops_list.end(), 0lu);
+
+        std::vector<size_t> mpsb_sorted = sort_invert(flops_list);
+
+        std::size_t ninety = 0, cut = 0;
+        for ( ; cut < mpsb_sorted.size(); ++cut) {
+            ninety += flops_list[mpsb_sorted[cut]];
+            if ( double(ninety)/total_flops > 0.9) break; // send at most 90% of the workload to the GPU
+        }
+
+        for (std::size_t b = 0; b < mpsb_sorted.size(); ++b) {
+            std::size_t idx = mpsb_sorted[b];
+            if (accelerator::gpu::use_gpu(flops_list[idx]) && b <= cut) {
+                (*this)[idx].on_gpu = true;
+                gpu_flops += flops_list[idx];
+                enumeration_gpu.push_back(idx);
+            }
+            else {
+                std::size_t idx = mpsb_sorted[b];
+                cpu_flops += flops_list[idx];
+                enumeration.push_back(idx);
+            }
+        }
+    }
 
     template <class OtherMatrix>
     void stage_gpu(Boundary<OtherMatrix, SymmGroup> const & right, MPSTensor<Matrix, SymmGroup> const & mps)
@@ -778,8 +810,8 @@ struct ScheduleNew : public std::vector<MPSBlock<
         std::vector<std::size_t> mpsb_sorted = sort_invert(buffer_sizes);
 
         { // resize the GPU pipeline buffer if needed
-        std::vector<size_t> psz(accelerator::gpu::nstreams());
-        for (size_t tn = 0; tn < std::min(accelerator::gpu::nstreams(), buffer_sizes.size()); ++tn)
+        std::vector<std::size_t> psz(accelerator::gpu::nstreams());
+        for (std::size_t tn = 0; tn < std::min(accelerator::gpu::nstreams(), buffer_sizes.size()); ++tn)
             psz[tn] = buffer_sizes[mpsb_sorted[tn]] * sizeof(value_type);
 
         accelerator::gpu::adjust_pipeline_buffer(psz);
@@ -794,10 +826,10 @@ struct ScheduleNew : public std::vector<MPSBlock<
         do {
             redo = 0;
             try {
-                for (size_t i : mpsb_sorted)
+                for (std::size_t i : mpsb_sorted)
                 {
                     auto& mpsb = (*this)[i];
-                    mpsb.stage(&pipeline[0], right, mps);
+                    if(mpsb.on_gpu) mpsb.stage(&pipeline[0], right, mps);
                 }
             }
             catch (const std::out_of_range& e) {
@@ -810,9 +842,9 @@ struct ScheduleNew : public std::vector<MPSBlock<
         accelerator::gpu::update_schedule_buffer();
     }
 
-    size_t niter;
-    size_t total_flops;
-    size_t cpu_flops=0, gpu_flops=0;
+    std::size_t niter;
+    std::size_t total_flops=0;
+    std::size_t cpu_flops=0, gpu_flops=0;
     mutable double cpu_time, gpu_time;
 
     std::vector<unsigned> enumeration;

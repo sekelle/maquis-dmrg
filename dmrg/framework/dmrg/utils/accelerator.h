@@ -82,7 +82,7 @@ namespace accelerator {
                 cudaStreamCreate(&instance().streams[i]);
         }
 
-        static bool use_gpu(size_t flops) { return enabled() && (flops > (1<<24)); }
+        static bool use_gpu(size_t flops) { return enabled() && (flops > (1<<27)); }
 
         static size_t nstreams() { return instance().streams.size(); }
 

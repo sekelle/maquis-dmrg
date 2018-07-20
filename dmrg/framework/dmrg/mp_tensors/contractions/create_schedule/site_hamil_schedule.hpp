@@ -67,49 +67,17 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
                 shtm_tasks(mpo, left, right, left_i, right_i, physical_i, out_right_pb, mb, tasks[mb]);
     });
 
-    std::vector<size_t> flops_per_block(loop_max, 0);
-    size_t ncg = 0;
-    size_t cpu_flops = 0, gpu_flops = 0;
-    for (size_t block = 0; block < loop_max; ++block)
-    {
-        size_t flops = tasks[block].n_flops(initial, left.index(), right.index());
-        flops_per_block[block] += flops;
-        if (tasks[block].on_gpu) gpu_flops += flops;
-        else                     cpu_flops += flops;
-
-        ncg += tasks[block].size();
-    }
-
-    std::vector<std::pair<size_t, size_t> > fb(loop_max);
-    std::vector<size_t> idx(loop_max);
-    size_t i = 0;
-    std::for_each(idx.begin(), idx.end(), boost::lambda::_1 = boost::lambda::var(i)++);
-    std::transform(flops_per_block.begin(), flops_per_block.end(), idx.begin(), fb.begin(),
-                   boost::lambda::constructor<std::pair<size_t, size_t> >());
-    std::sort(fb.begin(), fb.end(), greater_first<std::pair<size_t, size_t> >());
-    std::transform(fb.begin(), fb.end(), idx.begin(), boost::bind(&std::pair<size_t, size_t>::second, boost::lambda::_1));
-
-    tasks.total_flops = cpu_flops + gpu_flops;
-    tasks.cpu_flops = cpu_flops;
-    tasks.gpu_flops = gpu_flops;
-
-    for (index_type task_block = 0; task_block < loop_max; ++task_block)
-    {
-        index_type mps_block = idx[task_block];
-        if (tasks[mps_block].on_gpu) tasks.enumeration_gpu.push_back(mps_block);
-        else                         tasks.enumeration.push_back(mps_block);
-    }
-
+    tasks.compute_workload(initial, left.index(), right.index());
     tasks.stage_gpu(right, initial);
 
     if (std::max(mpo.row_dim(), mpo.col_dim()) > 10)
     {
-        maquis::cout << "Schedule size: " << tasks.size() << " blocks, " << tasks.enumeration_gpu.size()
-                         << " cgs_gpu, " << ncg << " cgs_cpu, "
+        maquis::cout << "Schedule size: " << tasks.size() << " blocks, " //<< tasks.enumeration_gpu.size()
+                         //<< " cgs_gpu, " << ncg << " cgs_cpu, "
                      << " R " << size_of(right) << "B, "
                      << " L " << size_of(left) << "B "
-                     << " GPU " << gpu_flops / 1024 / 1024 << "MF, "
-                     << " CPU " << cpu_flops / 1024 / 1024 << "MF, "
+                     << " GPU " << tasks.gpu_flops / 1024 / 1024 << "MF, "
+                     << " CPU " << tasks.cpu_flops / 1024 / 1024 << "MF, "
                      //<< " B " << memops / 1024 / 1024 << "MB, "
                      << std::endl;
 
