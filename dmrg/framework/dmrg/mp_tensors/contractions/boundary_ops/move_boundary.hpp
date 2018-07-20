@@ -188,32 +188,48 @@ namespace contraction {
             Boundary<OtherMatrix, SymmGroup> ret(b_index);
 
             // Contraction
+            //#ifdef MAQUIS_OPENMP
+            //#pragma omp parallel
+            //#endif
+            //{
+            //    #ifdef MAQUIS_OPENMP
+            //    #pragma omp single
+            //    #endif
+            //    for(index_type rb_ket = 0; rb_ket < loop_max; ++rb_ket) {
+            //        charge rc_ket = ket_right_i[rb_ket].first;
+
+            //        #ifdef MAQUIS_OPENMP
+            //        #pragma omp task
+            //        #endif
+            //        {
+            //            auto T = tasks[rb_ket].create_T_left(left, ket_tensor);
+
+            //            #ifdef MAQUIS_OPENMP
+            //            #pragma omp task
+            //            #endif
+            //            for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
+            //            {
+            //                charge rc_bra = bra_right_i[it->get_lb()].first;
+            //                ret.allocate(rc_bra, rc_ket);
+            //                it->prop_l(bra_tensor, T, ret.index().cohort_index(rc_bra, rc_ket), ret);
+            //            }
+            //        }
+            //    }
+            //}
+
             #ifdef MAQUIS_OPENMP
-            #pragma omp parallel
+            #pragma omp parallel for schedule (dynamic,1)
             #endif
-            {
-                #ifdef MAQUIS_OPENMP
-                #pragma omp single
-                #endif
-                for(index_type rb_ket = 0; rb_ket < loop_max; ++rb_ket) {
-                    charge rc_ket = ket_right_i[rb_ket].first;
+            for(index_type rb_ket = 0; rb_ket < loop_max; ++rb_ket) {
+                charge rc_ket = ket_right_i[rb_ket].first;
 
-                    #ifdef MAQUIS_OPENMP
-                    #pragma omp task
-                    #endif
-                    {
-                        auto T = tasks[rb_ket].create_T_left(left, ket_tensor);
+                auto T = tasks[rb_ket].create_T_left(left, ket_tensor);
 
-                        #ifdef MAQUIS_OPENMP
-                        #pragma omp task
-                        #endif
-                        for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
-                        {
-                            charge rc_bra = bra_right_i[it->get_lb()].first;
-                            ret.allocate(rc_bra, rc_ket);
-                            it->prop_l(bra_tensor, T, ret.index().cohort_index(rc_bra, rc_ket), ret);
-                        }
-                    }
+                for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
+                {
+                    charge rc_bra = bra_right_i[it->get_lb()].first;
+                    ret.allocate(rc_bra, rc_ket);
+                    it->prop_l(bra_tensor, T, ret.index().cohort_index(rc_bra, rc_ket), ret);
                 }
             }
 
@@ -271,32 +287,48 @@ namespace contraction {
             Boundary<OtherMatrix, SymmGroup> ret(b_index);
 
             // Contraction
+            //#ifdef MAQUIS_OPENMP
+            //#pragma omp parallel
+            //#endif
+            //{
+            //    #ifdef MAQUIS_OPENMP
+            //    #pragma omp single
+            //    #endif
+            //    for(index_type lb_ket = 0; lb_ket < loop_max; ++lb_ket) {
+            //        charge lc_ket = ket_left_i[lb_ket].first;
+
+            //        #ifdef MAQUIS_OPENMP
+            //        #pragma omp task
+            //        #endif
+            //        {
+            //            auto T = tasks[lb_ket].create_T(right, ket_tensor);
+
+            //            #ifdef MAQUIS_OPENMP
+            //            #pragma omp task
+            //            #endif
+            //            for (const_iterator it = tasks[lb_ket].begin(); it != tasks[lb_ket].end(); ++it) // lc_ket loop
+            //            {
+            //                charge lc_bra = bra_left_i[it->get_rb()].first;
+            //                ret.allocate(lc_ket, lc_bra);
+            //                it->prop_r(bra_tensor, T, ret.index().cohort_index(lc_ket, lc_bra), ret);
+            //            }
+            //        }
+            //    }
+            //}
+
             #ifdef MAQUIS_OPENMP
-            #pragma omp parallel
+            #pragma omp parallel for schedule (dynamic,1)
             #endif
-            {
-                #ifdef MAQUIS_OPENMP
-                #pragma omp single
-                #endif
-                for(index_type lb_ket = 0; lb_ket < loop_max; ++lb_ket) {
-                    charge lc_ket = ket_left_i[lb_ket].first;
+            for(index_type lb_ket = 0; lb_ket < loop_max; ++lb_ket) {
+                charge lc_ket = ket_left_i[lb_ket].first;
 
-                    #ifdef MAQUIS_OPENMP
-                    #pragma omp task
-                    #endif
-                    {
-                        auto T = tasks[lb_ket].create_T(right, ket_tensor);
+                auto T = tasks[lb_ket].create_T(right, ket_tensor);
 
-                        #ifdef MAQUIS_OPENMP
-                        #pragma omp task
-                        #endif
-                        for (const_iterator it = tasks[lb_ket].begin(); it != tasks[lb_ket].end(); ++it) // lc_ket loop
-                        {
-                            charge lc_bra = bra_left_i[it->get_rb()].first;
-                            ret.allocate(lc_ket, lc_bra);
-                            it->prop_r(bra_tensor, T, ret.index().cohort_index(lc_ket, lc_bra), ret);
-                        }
-                    }
+                for (const_iterator it = tasks[lb_ket].begin(); it != tasks[lb_ket].end(); ++it) // lc_ket loop
+                {
+                    charge lc_bra = bra_left_i[it->get_rb()].first;
+                    ret.allocate(lc_ket, lc_bra);
+                    it->prop_r(bra_tensor, T, ret.index().cohort_index(lc_ket, lc_bra), ret);
                 }
             }
 
