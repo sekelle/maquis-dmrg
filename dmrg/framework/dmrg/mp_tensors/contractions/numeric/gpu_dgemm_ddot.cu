@@ -195,26 +195,32 @@ __global__ void cuda_transpose(unsigned N, unsigned M, const T* dev_a, T* dev_tr
 }
 
 static __inline__ __device__ double myatomicAdd(double *address, double val) {
-unsigned long long int* address_as_ull = (unsigned long long int*)address;
-unsigned long long int old = *address_as_ull, assumed;
-if (val==0.0)
-  return __longlong_as_double(old);
-do {
-  assumed = old;
-  old = atomicCAS(address_as_ull, assumed, __double_as_longlong(val +__longlong_as_double(assumed)));
-} while (assumed != old);
-return __longlong_as_double(old);
+    unsigned long long int* address_as_ull = (unsigned long long int*)address;
+    unsigned long long int old = *address_as_ull, assumed;
+    if (val==0.0)
+      return __longlong_as_double(old);
+    do {
+      assumed = old;
+      old = atomicCAS(address_as_ull, assumed, __double_as_longlong(val +__longlong_as_double(assumed)));
+    } while (assumed != old);
+    return __longlong_as_double(old);
 }
 
 template <class T>
-__global__ void atomic_add(unsigned N, T* in, T* out)
+__global__ void atomic_add_tpl(size_t N, T* in, T* out)
 {
-    unsigned tid = threadIdx.x + blockIdx.x * blockDim.x;
+    size_t tid = threadIdx.x + blockIdx.x * blockDim.x;
     while (tid < N)
     {
         myatomicAdd(&out[tid], in[tid]);
         tid += blockDim.x * gridDim.x;
     }
+}
+
+void atomic_add(cudaStream_t stream, size_t N, double* in, double* out)
+{
+    unsigned nblocks = round_up<256>(N) / 256;
+    atomic_add_tpl<<<nblocks, 256, 0, stream>>>(N, in, out);
 }
 
 template <class T>

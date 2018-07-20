@@ -252,7 +252,11 @@ public:
         cublasSetStream(accelerator::gpu::instance().handle, ws->stream);
         cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
         cublasDgemm(accelerator::gpu::instance().handle,
-                    cuop[0], cuop[0], M, N, K, &one, dev_l, M, dev_S, K, &one, dev_out, M);
+                    //cuop[0], cuop[0], M, N, K, &one, dev_l, M, dev_S, K, &one, dev_out, M);
+                    cuop[0], cuop[0], M, N, K, &one, dev_l, M, dev_S, K, &zero, ws->mps_buffer, M);
+
+        atomic_add(ws->stream, M*std::size_t(N), ws->mps_buffer, dev_out);
+        //atomic_add(ws->stream, M*std::size_t(N), tmp, dev_out);
     }
 
     template <class OtherMatrix>
@@ -618,7 +622,7 @@ public:
                 ret = std::max(ret, right.n_blocks(ci_eff) * right.left_size(ci) * right.right_size(ci));
             }
         }
-        return ret;
+        return bit_twiddling::round_up<BUFFER_ALIGNMENT>(ret);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -731,9 +735,10 @@ class WorkSet
 {
 public:
 
-    WorkSet(T* t_) : buffer(t_), stream(accelerator::gpu::next_stream()) {}
+    WorkSet(T* t_, T* mps_) : buffer(t_), mps_buffer(mps_), stream(accelerator::gpu::next_stream()) {}
 
     T* buffer;
+    T* mps_buffer;
     cudaStream_t stream;
 };
 
@@ -801,10 +806,14 @@ struct ScheduleNew : public std::vector<MPSBlock<
     {
         accelerator::gpu::reset_buffers();
 
-        std::vector<std::size_t> buffer_sizes;
+        std::size_t mps_maxblock = 0;
+        for (std::size_t k = 0; k < mps.data().basis().size(); ++k)
+            mps_maxblock = bit_twiddling::round_up<BUFFER_ALIGNMENT>(
+                            std::max( mps.data().basis().left_size(k) * mps.data().basis().right_size(k), mps_maxblock) );
 
+        std::vector<std::size_t> buffer_sizes;
         for (auto& mpsb : *this)
-            buffer_sizes.push_back(mpsb.t_size(right, mps) + std::max(mpsb.max_r_size(right.index()), mpsb.max_sl_size()));
+            buffer_sizes.push_back(mpsb.t_size(right, mps) + std::max(mpsb.max_r_size(right.index()), mpsb.max_sl_size()) + mps_maxblock);
 
         // Index of MPSBlock with biggest buffer = mpsb_sorted[0]
         std::vector<std::size_t> mpsb_sorted = sort_invert(buffer_sizes);
@@ -817,19 +826,26 @@ struct ScheduleNew : public std::vector<MPSBlock<
         accelerator::gpu::adjust_pipeline_buffer(psz);
         }
 
-        std::size_t hi = mpsb_sorted[0];
+        for (size_t tn = 0; tn < std::min(accelerator::gpu::nstreams(), enumeration_gpu.size()); ++tn)
+        {
+            std::size_t idx = mpsb_sorted[tn];
 
-        value_type* buffer = (value_type*)accelerator::gpu::get_pipeline_buffer(buffer_sizes[hi]);
-        pipeline.push_back(WorkSet<value_type>(buffer));
+            value_type* buffer = (value_type*)accelerator::gpu::get_pipeline_buffer(buffer_sizes[idx] * sizeof(value_type));
+            if (buffer)
+                pipeline.push_back(WorkSet<value_type>(buffer, buffer + buffer_sizes[idx] - mps_maxblock));
+            else
+                break;
+        }
 
         int redo = 0;
         do {
             redo = 0;
             try {
-                for (std::size_t i : mpsb_sorted)
+                for (std::size_t tn = 0; tn < mpsb_sorted.size(); ++tn)
                 {
+                    size_t i = mpsb_sorted[tn];
                     auto& mpsb = (*this)[i];
-                    if(mpsb.on_gpu) mpsb.stage(&pipeline[0], right, mps);
+                    if(mpsb.on_gpu) mpsb.stage(&pipeline[tn%pipeline.size()], right, mps);
                 }
             }
             catch (const std::out_of_range& e) {

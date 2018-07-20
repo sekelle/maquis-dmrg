@@ -45,4 +45,6 @@ void dgemm_gpu(cublasHandle_t handle,
 
 void transpose_v(cudaStream_t stream, int, int, int, double*, double*);
 
+void atomic_add(cudaStream_t stream, size_t, double*, double*);
+
 #endif
