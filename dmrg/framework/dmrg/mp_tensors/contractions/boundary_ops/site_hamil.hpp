@@ -36,7 +36,6 @@
 namespace contraction {
 namespace common {
 
-/*
     template <class Matrix, class OtherMatrix, class SymmGroup>
     class gpu_work
     {
@@ -63,12 +62,13 @@ namespace common {
             HANDLE_ERROR( cudaEventCreate(&stop) );
             HANDLE_ERROR( cudaEventRecord(start,0) );
 
-            for (unsigned tn = 0; tn < tasks.enumeration_gpu.size(); ++tn)
+            for (unsigned i = 0; i < tasks.enumeration_gpu.size(); ++i)
             {
-                tasks[ boost::get<0>(tasks.enumeration_gpu[tn]) ]
-                     [ boost::get<1>(tasks.enumeration_gpu[tn]) ]
-                     [ boost::get<2>(tasks.enumeration_gpu[tn]) ]
-                    .contract_gpu(ket_tensor, left, right, (value_type*)ret_gpu.device_ptr[boost::get<0>(tasks.enumeration_gpu[tn])]);
+                unsigned lb_in = tasks.enumeration_gpu[i];
+                value_type** dev_T = tasks[lb_in].create_T_gpu(right, ket_tensor);
+
+                for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
+                    it->contract_gpu(left, dev_T, (value_type*)ret_gpu.device_ptr[it->get_rb()]);
             }
 
             HANDLE_ERROR( cudaEventRecord(stop,0) );
@@ -94,17 +94,15 @@ namespace common {
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
     MPSTensor<Matrix, SymmGroup>
-    site_hamil2(MPSTensor<Matrix, SymmGroup> & ket_tensor,
-                Boundary<OtherMatrix, SymmGroup> const & left,
-                Boundary<OtherMatrix, SymmGroup> const & right,
-                MPOTensor<Matrix, SymmGroup> const & mpo,
-                typename common::Schedule<Matrix, SymmGroup>::schedule_t const & tasks) 
+    site_hamil(MPSTensor<Matrix, SymmGroup> & ket_tensor,
+               Boundary<OtherMatrix, SymmGroup> const & left,
+               Boundary<OtherMatrix, SymmGroup> const & right,
+               MPOTensor<Matrix, SymmGroup> const & mpo,
+               typename common::Schedule<Matrix, SymmGroup>::schedule_t const & tasks) 
     {
         typedef typename SymmGroup::charge charge;
         typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
         typedef typename Matrix::value_type value_type;
-
-        typedef typename common::Schedule<Matrix, SymmGroup>::block_type::const_iterator const_iterator;
 
         ket_tensor.make_right_paired();
         MPSTensor<Matrix, SymmGroup> ret(ket_tensor.site_dim(), ket_tensor.row_dim(), ket_tensor.col_dim(),
@@ -119,11 +117,14 @@ namespace common {
         #ifdef MAQUIS_OPENMP
         #pragma omp parallel for schedule (dynamic,1)
         #endif
-        for (index_type tn = 0; tn < tasks.enumeration.size(); ++tn)
-            tasks[ boost::get<0>(tasks.enumeration[tn]) ]
-                 [ boost::get<1>(tasks.enumeration[tn]) ]
-                 [ boost::get<2>(tasks.enumeration[tn]) ]
-                 .contract(ket_tensor, left, right, &ret.data()[boost::get<0>(tasks.enumeration[tn])](0,0));
+        for (unsigned i = 0; i < tasks.enumeration.size(); ++i)
+        {
+            unsigned lb_in = tasks.enumeration[i];
+
+            auto T = tasks[lb_in].create_T(right, ket_tensor);
+            for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
+                it->contract(left, T, ret.data()[it->get_rb()], tasks.mutexes[it->get_rb()]);
+        }
 
         boost::chrono::high_resolution_clock::time_point then = boost::chrono::high_resolution_clock::now();
         tasks.cpu_time += boost::chrono::duration<double>(then - now).count();
@@ -139,7 +140,6 @@ namespace common {
         ret.make_left_paired();
         return ret;
     }
-*/
 
     struct cpu_queue
     {
@@ -204,7 +204,7 @@ namespace common {
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
     MPSTensor<Matrix, SymmGroup>
-    site_hamil(MPSTensor<Matrix, SymmGroup> & ket_tensor,
+    site_hamil2(MPSTensor<Matrix, SymmGroup> & ket_tensor,
                Boundary<OtherMatrix, SymmGroup> const & left,
                Boundary<OtherMatrix, SymmGroup> const & right,
                MPOTensor<Matrix, SymmGroup> const & mpo,
