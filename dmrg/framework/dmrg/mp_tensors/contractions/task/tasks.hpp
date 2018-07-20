@@ -524,38 +524,38 @@ public:
             int N = right.index().n_blocks(ci_eff) * brs;
             int K = bls;
 
-            std::vector<value_type> rbuf;
-            if (right.index().tr(ci))
-            {
-                rbuf = std::vector<value_type>(K * size_t(N));
-                for (size_t offset = 0; offset < K * size_t(N); offset += brs * bls)
-                {
-                    for (unsigned c = 0; c < brs; ++c)
-                    for (unsigned r = 0; r < bls; ++r)
-                        rbuf[offset + c*bls + r] = right.data()[ci_eff][offset + r*brs + c];
-                }
-            }
+            //std::vector<value_type> rbuf;
+            //if (right.index().tr(ci))
+            //{
+            //    rbuf = std::vector<value_type>(K * size_t(N));
+            //    for (size_t offset = 0; offset < K * size_t(N); offset += brs * bls)
+            //    {
+            //        for (unsigned c = 0; c < brs; ++c)
+            //        for (unsigned r = 0; r < bls; ++r)
+            //            rbuf[offset + c*bls + r] = right.data()[ci_eff][offset + r*brs + c];
+            //    }
+            //}
 
-            const value_type* r_use = (right.index().tr(ci)) ? rbuf.data() : right.data()[ci_eff].data();
-            const value_type* mpsdata = &mps.data()[lb_ket](0, mps_offset);
-            ret[ti] = std::vector<value_type>(M * size_t(N));
-
-            blas_gemm('N', 'N', M, N, K, value_type(1), mpsdata, M, r_use, K, value_type(0), ret[ti].data(), M);
-
+            //const value_type* r_use = (right.index().tr(ci)) ? rbuf.data() : right.data()[ci_eff].data();
             //const value_type* mpsdata = &mps.data()[lb_ket](0, mps_offset);
             //ret[ti] = std::vector<value_type>(M * size_t(N));
-            //for (unsigned b = 0; b < right.index().n_blocks(ci_eff); ++b)
-            //{
-            //    int N = brs;
-            //    size_t roff = b*K*N;
-            //    size_t ooff = b*M*N;
-            //    if (right.index().tr(ci))
-            //        blas_gemm('N', 'T', M, N, K, value_type(1), mpsdata, M,
-            //                  right.data()[ci_eff].data()+roff, N, value_type(0), ret[ti].data()+ooff, M);
-            //    else
-            //        blas_gemm('N', 'N', M, N, K, value_type(1), mpsdata, M,
-            //                  right.data()[ci_eff].data()+roff, K, value_type(0), ret[ti].data()+ooff, M);
-            //}
+
+            //blas_gemm('N', 'N', M, N, K, value_type(1), mpsdata, M, r_use, K, value_type(0), ret[ti].data(), M);
+
+            const value_type* mpsdata = &mps.data()[lb_ket](0, mps_offset);
+            ret[ti] = std::vector<value_type>(M * size_t(N));
+            for (unsigned b = 0; b < right.index().n_blocks(ci_eff); ++b)
+            {
+                int N = brs;
+                size_t roff = b*K*N;
+                size_t ooff = b*M*N;
+                if (right.index().tr(ci))
+                    blas_gemm('N', 'T', M, N, K, value_type(1), mpsdata, M,
+                              right.data()[ci_eff].data()+roff, N, value_type(0), ret[ti].data()+ooff, M);
+                else
+                    blas_gemm('N', 'N', M, N, K, value_type(1), mpsdata, M,
+                              right.data()[ci_eff].data()+roff, K, value_type(0), ret[ti].data()+ooff, M);
+            }
         }
 
         return ret;
