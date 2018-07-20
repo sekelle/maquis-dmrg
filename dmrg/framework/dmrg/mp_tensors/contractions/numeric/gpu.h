@@ -38,6 +38,10 @@ void dsacc_gpu(cudaStream_t stream,
                unsigned nS, unsigned ls, unsigned ms, unsigned nb1,
                unsigned* b1, unsigned* b2s, double* alpha, unsigned* tidx, double** tbuf, double* sbuf);
 
+void dsaccv_gpu(cudaStream_t stream, unsigned nms,
+                unsigned nS, unsigned ls, unsigned* ms, unsigned* nb1,
+                unsigned** b1, unsigned** b2s, double** alpha, unsigned** tidx, double** tbuf, double* sbuf, unsigned* offsets);
+
 void dgemm_gpu(cublasHandle_t handle,
                cudaStream_t stream,
                unsigned ls, unsigned ms, unsigned rs,

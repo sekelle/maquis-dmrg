@@ -112,6 +112,53 @@ private:
         unsigned b2count=0;
     };
 
+    class SUnitVectorStage
+    {
+    public:
+
+        index_type*  dev_offset;
+        index_type*  dev_ms;
+        index_type*  dev_nb1;
+
+        index_type** dev_vtidx;
+        index_type** dev_vb2s;
+        index_type** dev_vb1;
+        value_type** dev_valpha;
+
+        void stage(std::vector<SUnit> const & suv)
+        {
+            for (auto& x : suv)
+            {
+                offset.push_back(x.offset);
+                ms.push_back(x.ms);
+                nb1.push_back(x.b2s.size());
+
+                vtidx.push_back(x.dev_tidx);
+                vb2s.push_back(x.dev_b2s);
+                vb1.push_back(x.dev_b1);
+                valpha.push_back(x.dev_alpha);            
+            }
+
+            dev_offset = (index_type*)accelerator::gpu::stage_vector(offset);
+            dev_ms = (index_type*)accelerator::gpu::stage_vector(ms);
+            dev_nb1 = (index_type*)accelerator::gpu::stage_vector(nb1);
+
+            dev_vtidx = (index_type**)accelerator::gpu::stage_vector(vtidx);
+            dev_vb2s  = (index_type**)accelerator::gpu::stage_vector(vb2s);
+            dev_vb1   = (index_type**)accelerator::gpu::stage_vector(vb1);
+            dev_valpha = (value_type**)accelerator::gpu::stage_vector(valpha);
+        }
+
+    //private:
+        std::vector<unsigned> offset;
+        std::vector<unsigned> ms;
+        std::vector<unsigned> nb1;
+        std::vector<index_type*> vtidx;
+        std::vector<index_type*> vb2s;
+        std::vector<index_type*> vb1;
+        std::vector<value_type*> valpha;
+    };
+
 public:
 
     Cohort() {}
@@ -319,6 +366,8 @@ public:
         ws = ws_;
         dev_S = s;
         for (auto& su : suv) su.stage();
+
+        suv_stage.stage(suv);
     }
 
     std::vector<long int>      & get_offsets()       { return mpo_offsets; }
@@ -340,6 +389,7 @@ private:
 
     // gpu staging data
     std::vector<SUnit> suv;
+    SUnitVectorStage suv_stage;
     WorkSet<value_type>* ws;
     value_type* dev_S;
 
@@ -411,13 +461,15 @@ private:
 
         cudaMemsetAsync(dev_S, 0, S_size * sizeof(value_type), ws->stream);
 
-        for (auto const& x : suv)
-        {
-            if (!x.alpha.size()) continue;
+        //for (auto const& x : suv)
+        //{
+        //    if (!x.alpha.size()) continue;
+        //    dsacc_gpu(ws->stream, nSrows, ls, x.ms, x.b2s.size(),
+        //              x.dev_b1, x.dev_b2s, x.dev_alpha, x.dev_tidx, dev_T, dev_S + nSrows*ls * x.offset);
+        //}
 
-            dsacc_gpu(ws->stream, nSrows, ls, x.ms, x.b2s.size(),
-                      x.dev_b1, x.dev_b2s, x.dev_alpha, x.dev_tidx, dev_T, dev_S + nSrows*ls * x.offset);
-        }
+        dsaccv_gpu(ws->stream, suv.size(), nSrows, ls, suv_stage.dev_ms, suv_stage.dev_nb1,
+                   suv_stage.dev_vb1, suv_stage.dev_vb2s, suv_stage.dev_valpha, suv_stage.dev_vtidx, dev_T, dev_S, suv_stage.dev_offset);
     }
 
     void compute_mpo_offsets()
