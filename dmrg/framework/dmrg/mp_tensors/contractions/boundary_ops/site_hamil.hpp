@@ -28,10 +28,10 @@
 #ifndef CONTRACTIONS_COMMON_SITE_HAMIL_HPP
 #define CONTRACTIONS_COMMON_SITE_HAMIL_HPP
 
-#include <thread>
-#include <mutex>
-#include <condition_variable>
-#include <atomic>
+//#include <thread>
+//#include <mutex>
+//#include <condition_variable>
+//#include <atomic>
 
 namespace contraction {
 namespace common {
@@ -141,6 +141,7 @@ namespace common {
         return ret;
     }
 
+/*
     struct cpu_queue
     {
         cpu_queue(unsigned dim) : max_idx(dim), current_idx(0), T(dim),
@@ -201,6 +202,7 @@ namespace common {
             idx++;
         }
     }
+*/
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
     MPSTensor<Matrix, SymmGroup>
