@@ -127,16 +127,24 @@ private:
 
         void stage(std::vector<SUnit> const & suv)
         {
-            for (auto& x : suv)
-            {
-                offset.push_back(x.offset);
-                ms.push_back(x.ms);
-                nb1.push_back(x.b2s.size());
+            offset.resize(suv.size());
+            ms.resize(suv.size());
+            nb1.resize(suv.size());
+            vtidx.resize(suv.size());
+            vb2s.resize(suv.size());
+            vb1.resize(suv.size());
+            valpha.resize(suv.size());
 
-                vtidx.push_back(x.dev_tidx);
-                vb2s.push_back(x.dev_b2s);
-                vb1.push_back(x.dev_b1);
-                valpha.push_back(x.dev_alpha);            
+            for (unsigned x = 0; x < suv.size(); ++x)
+            {
+                offset[x] = suv[x].offset;
+                ms[x] = suv[x].ms;
+                nb1[x] = suv[x].b2s.size();
+
+                vtidx[x] = suv[x].dev_tidx;
+                vb2s[x] = suv[x].dev_b2s;
+                vb1[x]  = suv[x].dev_b1;
+                valpha[x] = suv[x].dev_alpha;
             }
 
             dev_offset = (index_type*)accelerator::gpu::stage_vector(offset);
@@ -149,7 +157,7 @@ private:
             dev_valpha = (value_type**)accelerator::gpu::stage_vector(valpha);
         }
 
-    //private:
+    private:
         std::vector<unsigned> offset;
         std::vector<unsigned> ms;
         std::vector<unsigned> nb1;
@@ -299,11 +307,9 @@ public:
         cublasSetStream(accelerator::gpu::instance().handle, ws->stream);
         cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
         cublasDgemm(accelerator::gpu::instance().handle,
-                    //cuop[0], cuop[0], M, N, K, &one, dev_l, M, dev_S, K, &one, dev_out, M);
                     cuop[0], cuop[0], M, N, K, &one, dev_l, M, dev_S, K, &zero, ws->mps_buffer, M);
 
         atomic_add(ws->stream, M*std::size_t(N), ws->mps_buffer, dev_out);
-        //atomic_add(ws->stream, M*std::size_t(N), tmp, dev_out);
     }
 
     template <class OtherMatrix>
