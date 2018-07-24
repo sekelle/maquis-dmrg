@@ -42,6 +42,7 @@ struct mps_initializer;
 template<class Matrix, class SymmGroup>
 class MPS
 {
+    typedef typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, ALIGNMENT>::type AlignedMatrix;
     typedef std::vector<MPSTensor<Matrix, SymmGroup> > data_t;
 public:
     typedef std::size_t size_t;
@@ -89,8 +90,8 @@ public:
     
     std::string description() const;
    
-    Boundary<Matrix, SymmGroup> left_boundary() const;
-    Boundary<Matrix, SymmGroup> right_boundary() const;
+    Boundary<AlignedMatrix, SymmGroup> left_boundary() const;
+    Boundary<AlignedMatrix, SymmGroup> right_boundary() const;
     block_matrix<Matrix, SymmGroup> left_boundary_bm() const;
     block_matrix<Matrix, SymmGroup> right_boundary_bm() const;
     

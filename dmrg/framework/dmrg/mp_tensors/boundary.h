@@ -354,11 +354,28 @@ public:
         }
     }
 
-    Boundary(BoundaryIndex<Matrix, SymmGroup> const & idx) : index_(idx), data2(idx.n_cohorts()) {}
+    Boundary(BoundaryIndex<Matrix, SymmGroup> const & idx) : index_(idx), data2(idx.n_cohorts())
+    {
+        //std::cout << "BI CTOR " << storage::detail::as_gpu(*this).state << std::endl;
+    }
+
+    ///////////////////////////////////////////////////////////////
+
+    Boundary(Boundary<Matrix, SymmGroup> const& rhs) : index_(rhs.index()), data2(rhs.data())
+    {
+        //std::cout << "COPY CTOR" << std::endl;
+    }
     
-    template <class OtherMatrix>
-    Boundary(Boundary<OtherMatrix, SymmGroup> const& rhs) : index_(rhs.index()), data2(rhs.data())
-    {}
+    //template <class OtherMatrix>
+    //Boundary(Boundary<Matrix, SymmGroup> && rhs) : index_(rhs.index()), data2(std::move(rhs.data()))
+    //                                                  , storage::gpu::serializable<Boundary<Matrix, SymmGroup>>(std::move(rhs))
+    //{
+    //    std::cout << "MOVE CTOR" << std::endl;
+    //}
+
+    //Boundary<Matrix, SymmGroup>& operator=(Boundary<Matrix, SymmGroup> && rhs) = default;
+
+    ///////////////////////////////////////////////////////////////
 
     BoundaryIndex<Matrix, SymmGroup> const& index() const
     {
@@ -436,8 +453,20 @@ public:
         ar["/data"] << data_;
     }
 
-    //block_matrix<Matrix, SymmGroup> & operator[](std::size_t k) { return data_[k]; }
-    //block_matrix<Matrix, SymmGroup> const & operator[](std::size_t k) const { return data_[k]; }
+    void test()
+    {
+        assert(data().size() == index_.n_cohorts());
+        for (int ci = 0; ci < index_.n_cohorts(); ++ci)
+        {
+            std::vector<value_type> buf(data()[ci].size());
+            cudaMemcpy( buf.data(), this->device_ptr[ci], data()[ci].size() * sizeof(value_type), cudaMemcpyDeviceToHost );
+            for (size_t k =0; k < data()[ci].size(); ++k)
+            {
+                if ( std::abs(data()[ci][k] - buf[k]) > 1e-8)
+                    throw std::runtime_error("boundary not syncd\n");
+            }
+        }
+    }
 
     data_t const& data() const { return data2; }
     data_t      & data()       { return data2; }
