@@ -354,26 +354,12 @@ public:
         }
     }
 
-    Boundary(BoundaryIndex<Matrix, SymmGroup> const & idx) : index_(idx), data2(idx.n_cohorts())
-    {
-        //std::cout << "BI CTOR " << storage::detail::as_gpu(*this).state << std::endl;
-    }
+    Boundary(BoundaryIndex<Matrix, SymmGroup> const & idx) : index_(idx), data2(idx.n_cohorts()) { }
 
-    ///////////////////////////////////////////////////////////////
+    Boundary(Boundary<Matrix, SymmGroup> const& rhs) = delete;
 
-    Boundary(Boundary<Matrix, SymmGroup> const& rhs) : index_(rhs.index()), data2(rhs.data())
-    {
-        //std::cout << "COPY CTOR" << std::endl;
-    }
-    
-    //template <class OtherMatrix>
-    //Boundary(Boundary<Matrix, SymmGroup> && rhs) : index_(rhs.index()), data2(std::move(rhs.data()))
-    //                                                  , storage::gpu::serializable<Boundary<Matrix, SymmGroup>>(std::move(rhs))
-    //{
-    //    std::cout << "MOVE CTOR" << std::endl;
-    //}
-
-    //Boundary<Matrix, SymmGroup>& operator=(Boundary<Matrix, SymmGroup> && rhs) = default;
+    Boundary(Boundary<Matrix, SymmGroup> && rhs) = default;
+    Boundary<Matrix, SymmGroup>& operator=(Boundary<Matrix, SymmGroup> && rhs) = default;
 
     ///////////////////////////////////////////////////////////////
 

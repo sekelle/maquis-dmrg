@@ -342,6 +342,28 @@ namespace storage {
     template<class T> class gpu_evict_request {};
     template<class T> class gpu_drop_request {};
     template<class T> class gpu_zero_request {};
+    template<class T> class gpu_upload_request {};
+
+    template<class Matrix, class SymmGroup>
+    class gpu_zero_request< Boundary<Matrix, SymmGroup> > {
+    public:
+        gpu_zero_request(Boundary<Matrix, SymmGroup>* ptr) : ptr(ptr) { }
+        void operator()(){
+            Boundary<Matrix, SymmGroup>& o = *ptr;
+
+            o.device_ptr.resize(o.index().n_cohorts());
+
+            for (size_t ci = 0; ci < o.index().n_cohorts(); ++ci)
+            {
+                size_t cohort_size = o.data()[ci].size();
+
+                HANDLE_ERROR(cudaMalloc( (void**)(&(o.device_ptr[ci])), cohort_size * sizeof(typename Matrix::value_type)));
+                cudaMemset( o.device_ptr[ci], 0, cohort_size * sizeof(typename Matrix::value_type));
+            }
+        }
+    private:
+        Boundary<Matrix, SymmGroup>* ptr;
+    };
 
     template<class Matrix, class SymmGroup>
     class gpu_prefetch_request< Boundary<Matrix, SymmGroup> > {
@@ -367,6 +389,23 @@ namespace storage {
                     return;
                 }
 
+                cudaMemcpy( o.device_ptr[ci], &o.data()[ci][0], cohort_size * sizeof(typename Matrix::value_type), cudaMemcpyHostToDevice );
+            }
+        }
+    private:
+        Boundary<Matrix, SymmGroup>* ptr;
+    };
+
+    template<class Matrix, class SymmGroup>
+    class gpu_upload_request< Boundary<Matrix, SymmGroup> > {
+    public:
+        gpu_upload_request(Boundary<Matrix, SymmGroup>* ptr) : ptr(ptr) { }
+        void operator()(){
+            Boundary<Matrix, SymmGroup>& o = *ptr;
+
+            for (size_t ci = 0; ci < o.index().n_cohorts(); ++ci)
+            {
+                size_t cohort_size = o.data()[ci].size();
                 cudaMemcpy( o.device_ptr[ci], &o.data()[ci][0], cohort_size * sizeof(typename Matrix::value_type), cudaMemcpyHostToDevice );
             }
         }
@@ -509,6 +548,22 @@ namespace storage {
         class deviceMemory : public cbase::transfer {
         public:
             deviceMemory() { state = uncore; }
+
+            deviceMemory(deviceMemory const& rhs) : device_ptr(rhs.device_ptr), cbase::transfer(rhs) {
+                for (size_t k = 0; k < device_ptr.size(); ++k)
+                    if (device_ptr[k] != NULL)
+                        throw std::runtime_error(
+            "copying of serializable objects with memory allocated on GPU is not allowed for performance reasons");
+            }
+
+            deviceMemory& operator=(deviceMemory rhs) {
+                swap(device_ptr, rhs.device_ptr);
+                cbase::transfer::operator=(std::move(rhs));
+                return *this;
+            }
+
+            deviceMemory(deviceMemory && rhs) = default;
+
             ~deviceMemory() {
                 this->join();
                 for (size_t k = 0; k < device_ptr.size(); ++k)
@@ -530,9 +585,14 @@ namespace storage {
         public: 
             ~serializable(){
             }
-            serializable& operator = (const serializable& rhs){
+
+            serializable() {}
+            serializable(serializable const& rhs) = default;
+            serializable(serializable && rhs) = default;
+
+            serializable& operator = (serializable rhs){
                 this->join();
-                deviceMemory::operator=(rhs);
+                deviceMemory::operator=(std::move(rhs));
                 return *this;
             }
 
@@ -547,6 +607,18 @@ namespace storage {
                 gpu_zero_request<T>((T*)this)();
                 this->state = core;
             }
+
+            void upload()
+            {
+                assert(this->state != storing);
+                assert(this->state != uncore);
+                if (this->state == prefetching) {
+                    this->join();
+                    this->state == core;
+                }
+
+                gpu_upload_request<T>((T*)this)();
+            }
         };
 
         template<class T> static void fetch(serializable<T>& t)          { if(enabled()) t.fetch();    }
@@ -555,6 +627,7 @@ namespace storage {
         template<class T> static void evict(serializable<T>& t)          { if(enabled()) t.evict();    }
         template<class T> static void drop(serializable<T>& t)           { if(enabled()) t.drop();     }
         template<class T> static void zero(serializable<T>& t)           { if(enabled()) t.zero();     }
+        template<class T> static void upload(serializable<T>& t)         { if(enabled()) t.upload();   }
 
         static void init(size_t n){
             maquis::cout << n << " GPUs enabled\n";

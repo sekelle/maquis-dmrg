@@ -286,35 +286,16 @@ namespace contraction {
             b_index.complement_transpose(mpo.herm_left, false);
             Boundary<OtherMatrix, SymmGroup> ret(b_index);
 
-            // Contraction
-            //#ifdef MAQUIS_OPENMP
-            //#pragma omp parallel
-            //#endif
-            //{
-            //    #ifdef MAQUIS_OPENMP
-            //    #pragma omp single
-            //    #endif
-            //    for(index_type lb_ket = 0; lb_ket < loop_max; ++lb_ket) {
-            //        charge lc_ket = ket_left_i[lb_ket].first;
+            for(index_type lb_ket = 0; lb_ket < loop_max; ++lb_ket) {
+                charge lc_ket = ket_left_i[lb_ket].first;
+                for (const_iterator it = tasks[lb_ket].begin(); it != tasks[lb_ket].end(); ++it)
+                {
+                    charge lc_bra = bra_left_i[it->get_rb()].first;
+                    ret.allocate(lc_ket, lc_bra);
+                }
+            }
 
-            //        #ifdef MAQUIS_OPENMP
-            //        #pragma omp task
-            //        #endif
-            //        {
-            //            auto T = tasks[lb_ket].create_T(right, ket_tensor);
-
-            //            #ifdef MAQUIS_OPENMP
-            //            #pragma omp task
-            //            #endif
-            //            for (const_iterator it = tasks[lb_ket].begin(); it != tasks[lb_ket].end(); ++it) // lc_ket loop
-            //            {
-            //                charge lc_bra = bra_left_i[it->get_rb()].first;
-            //                ret.allocate(lc_ket, lc_bra);
-            //                it->prop_r(bra_tensor, T, ret.index().cohort_index(lc_ket, lc_bra), ret);
-            //            }
-            //        }
-            //    }
-            //}
+            storage::gpu::zero(ret); // allocate on gpu and init to 0
 
             #ifdef MAQUIS_OPENMP
             #pragma omp parallel for schedule (dynamic,1)
@@ -327,10 +308,12 @@ namespace contraction {
                 for (const_iterator it = tasks[lb_ket].begin(); it != tasks[lb_ket].end(); ++it) // lc_ket loop
                 {
                     charge lc_bra = bra_left_i[it->get_rb()].first;
-                    ret.allocate(lc_ket, lc_bra);
+                    //ret.allocate(lc_ket, lc_bra);
                     it->prop_r(bra_tensor, T, ret.index().cohort_index(lc_ket, lc_bra), ret);
                 }
             }
+
+            storage::gpu::upload(ret);
 
             return ret;
         }
