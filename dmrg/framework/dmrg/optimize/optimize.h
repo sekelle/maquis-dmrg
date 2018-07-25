@@ -144,7 +144,8 @@ protected:
     
     inline void boundary_right_step(MPO<Matrix, SymmGroup> const & mpo, int site)
     {
-        right_[site] = contr::overlap_mpo_right_step(mps[site], mps[site], right_[site+1], mpo[site]);
+        //right_[site] = contr::overlap_mpo_right_step(mps[site], mps[site], right_[site+1], mpo[site]);
+        right_[site] = contraction::common::overlap_mpo_right_step_gpu(mps[site], mps[site], right_[site+1], mpo[site]);
         
         for (int n = 0; n < northo; ++n)
             ortho_right_[n][site] = mps_detail::overlap_right_step(mps[site], ortho_mps[n][site], ortho_right_[n][site+1]);

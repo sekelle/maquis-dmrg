@@ -253,6 +253,31 @@ public:
     }
 
     template <class DefaultMatrix, class OtherMatrix>
+    void prop_r_gpu(MPSTensor<DefaultMatrix, SymmGroup> const & bra_mps,
+                    value_type** dev_T,
+                    unsigned ci,
+                    Boundary<OtherMatrix, SymmGroup> & new_right) const
+    {
+        create_s_r_gpu(dev_T);
+
+        int M = new_right.index().n_blocks(ci) * ls;
+        int N = rs;
+        int K = stripe;
+
+        value_type* dev_r = dev_S + bit_twiddling::round_up<BUFFER_ALIGNMENT>(M * size_t(K));
+
+        value_type one(1.0), zero(0.);
+        cublasSetStream(accelerator::gpu::instance().handle, ws->stream);
+        cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
+        cublasDgemm(accelerator::gpu::instance().handle,
+                    cuop[0], cuop[1], M, N, K, &one, dev_S, M, (value_type*)bra_mps.device_ptr[rb], N, &zero, dev_r, M);
+
+        copy_v(ws->stream, ls, rs, new_right.index().n_blocks(ci), dev_r, (value_type*)new_right.device_ptr[ci]);
+
+        cudaMemcpy( new_right.data()[ci].data(), (value_type*)new_right.device_ptr[ci], M*N * sizeof(value_type), cudaMemcpyDeviceToHost);
+    }
+
+    template <class DefaultMatrix, class OtherMatrix>
     void contract(
                   Boundary<OtherMatrix, SymmGroup> const & left,
                   std::vector<std::vector<value_type>> const & T,
@@ -466,13 +491,6 @@ private:
         std::size_t S_size = nSrows * stripe * std::size_t(ls);
 
         cudaMemsetAsync(dev_S, 0, S_size * sizeof(value_type), ws->stream);
-
-        //for (auto const& x : suv)
-        //{
-        //    if (!x.alpha.size()) continue;
-        //    dsacc_gpu(ws->stream, nSrows, ls, x.ms, x.b2s.size(),
-        //              x.dev_b1, x.dev_b2s, x.dev_alpha, x.dev_tidx, dev_T, dev_S + nSrows*ls * x.offset);
-        //}
 
         dsaccv_gpu(ws->stream, suv.size(), nSrows, ls, suv_stage.dev_ms, suv_stage.dev_nb1,
                    suv_stage.dev_vb1, suv_stage.dev_vb2s, suv_stage.dev_valpha, suv_stage.dev_vtidx, dev_T, dev_S, suv_stage.dev_offset);

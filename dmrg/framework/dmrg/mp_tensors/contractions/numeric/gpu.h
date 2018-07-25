@@ -47,6 +47,7 @@ void dgemm_gpu(cublasHandle_t handle,
                unsigned ls, unsigned ms, unsigned rs,
                double* s_buffer, double* dev_out, GemmDotData<double> & gdd, double* l_buffer);
 
+void copy_v(cudaStream_t stream, int, int, int, double*, double*);
 void transpose_v(cudaStream_t stream, int, int, int, double*, double*);
 
 void atomic_add(cudaStream_t stream, size_t, double*, double*);

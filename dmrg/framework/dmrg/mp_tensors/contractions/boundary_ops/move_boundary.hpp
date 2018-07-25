@@ -244,6 +244,7 @@ namespace contraction {
                                MPOTensor<Matrix, SymmGroup> const & mpo)
         {
             typedef typename SymmGroup::charge charge;
+            typedef typename Matrix::value_type value_type;
             typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
             typedef ScheduleNew<Matrix, SymmGroup> schedule_t;
             typedef typename schedule_t::block_type::const_iterator const_iterator;
@@ -286,17 +287,6 @@ namespace contraction {
             b_index.complement_transpose(mpo.herm_left, false);
             Boundary<OtherMatrix, SymmGroup> ret(b_index);
 
-            for(index_type lb_ket = 0; lb_ket < loop_max; ++lb_ket) {
-                charge lc_ket = ket_left_i[lb_ket].first;
-                for (const_iterator it = tasks[lb_ket].begin(); it != tasks[lb_ket].end(); ++it)
-                {
-                    charge lc_bra = bra_left_i[it->get_rb()].first;
-                    ret.allocate(lc_ket, lc_bra);
-                }
-            }
-
-            storage::gpu::zero(ret); // allocate on gpu and init to 0
-
             #ifdef MAQUIS_OPENMP
             #pragma omp parallel for schedule (dynamic,1)
             #endif
@@ -308,12 +298,102 @@ namespace contraction {
                 for (const_iterator it = tasks[lb_ket].begin(); it != tasks[lb_ket].end(); ++it) // lc_ket loop
                 {
                     charge lc_bra = bra_left_i[it->get_rb()].first;
-                    //ret.allocate(lc_ket, lc_bra);
+                    ret.allocate(lc_ket, lc_bra);
                     it->prop_r(bra_tensor, T, ret.index().cohort_index(lc_ket, lc_bra), ret);
                 }
             }
 
-            storage::gpu::upload(ret);
+            return ret;
+        }
+
+        template<class Matrix, class OtherMatrix, class SymmGroup>
+        static Boundary<OtherMatrix, SymmGroup>
+        overlap_mpo_right_step_gpu(MPSTensor<Matrix, SymmGroup> const & bra_tensor_in,
+                                   MPSTensor<Matrix, SymmGroup> const & ket_tensor,
+                                   Boundary<OtherMatrix, SymmGroup> const & right,
+                                   MPOTensor<Matrix, SymmGroup> const & mpo)
+        {
+            typedef typename SymmGroup::charge charge;
+            typedef typename Matrix::value_type value_type;
+            typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
+            typedef ScheduleNew<Matrix, SymmGroup> schedule_t;
+            typedef typename schedule_t::block_type::const_iterator const_iterator;
+
+            MPSTensor<Matrix, SymmGroup> buffer; // holds the conjugate tensor if we deal with complex numbers
+            MPSTensor<Matrix, SymmGroup> const & bra_tensor = set_conjugate(bra_tensor_in, buffer);
+
+            if (!ket_tensor.is_right_paired() || !bra_tensor.is_right_paired())
+            {
+                parallel_critical {
+                ket_tensor.make_right_paired();
+                bra_tensor.make_right_paired();
+                }
+            }
+
+            storage::gpu::prefetch(ket_tensor);
+            storage::gpu::fetch(right);
+
+            // MPS indices
+            Index<SymmGroup> const & physical_i = bra_tensor.site_dim(),
+                                     bra_left_i = bra_tensor.row_dim(),
+                                     bra_right_i = bra_tensor.col_dim(),
+                                     ket_left_i = ket_tensor.row_dim();
+
+            ProductBasis<SymmGroup> bra_right_pb(physical_i, bra_right_i,
+                    boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
+                                    -boost::lambda::_1, boost::lambda::_2));
+
+            // Schedule
+            unsigned loop_max = ket_left_i.size();
+            schedule_t tasks(loop_max);
+            omp_for(unsigned lb_ket, parallel::range<unsigned>(0,loop_max), {
+                // should pass ket indices
+                rshtm_t_tasks(   right.index(), bra_left_i, bra_right_i, physical_i, bra_right_pb, lb_ket, tasks[lb_ket]);
+                rshtm_tasks(mpo, right.index(), bra_left_i, bra_right_i, physical_i, bra_right_pb, lb_ket, tasks[lb_ket], true);
+            });
+
+            BoundaryIndex<Matrix, SymmGroup> b_index(ket_left_i, bra_left_i);
+            for(unsigned lb_ket = 0; lb_ket < loop_max; ++lb_ket)
+                for (auto& e : tasks[lb_ket])
+                    b_index.add_cohort(lb_ket, e.get_rb(), e.get_offsets());
+
+            b_index.complement_transpose(mpo.herm_left, false);
+            Boundary<OtherMatrix, SymmGroup> ret(b_index);
+
+            for(index_type lb_ket = 0; lb_ket < loop_max; ++lb_ket) {
+                charge lc_ket = ket_left_i[lb_ket].first;
+                for (const_iterator it = tasks[lb_ket].begin(); it != tasks[lb_ket].end(); ++it)
+                {
+                    charge lc_bra = bra_left_i[it->get_rb()].first;
+                    ret.allocate(lc_ket, lc_bra);
+                }
+            }
+
+            for(index_type lb_ket = 0; lb_ket < loop_max; ++lb_ket)
+            {
+                tasks.enumeration_gpu.push_back(lb_ket);
+                tasks[lb_ket].on_gpu = true;
+            }
+
+            tasks.stage_gpu(right, ket_tensor);
+
+            storage::gpu::zero(ret); // allocate on gpu and init to 0
+            storage::gpu::fetch(ket_tensor);
+
+            for(index_type lb_ket = 0; lb_ket < loop_max; ++lb_ket) {
+                charge lc_ket = ket_left_i[lb_ket].first;
+
+                value_type** dev_T = tasks[lb_ket].create_T_gpu(right, ket_tensor);
+
+                for (const_iterator it = tasks[lb_ket].begin(); it != tasks[lb_ket].end(); ++it) // lc_ket loop
+                {
+                    charge lc_bra = bra_left_i[it->get_rb()].first;
+                    it->prop_r_gpu(bra_tensor, dev_T, ret.index().cohort_index(lc_ket, lc_bra), ret);
+                }
+            }
+
+            storage::gpu::drop(ket_tensor);
+            //storage::gpu::upload(ret);
 
             return ret;
         }

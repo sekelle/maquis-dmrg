@@ -102,6 +102,59 @@ void batched_gemm_tpl(cublasHandle_t handle, BatchGemmData<T> & batch, int M, in
 #define BLOCK_ROWS 8
 
 template <class T>
+__global__ void cuda_copy_v(unsigned N, unsigned M, unsigned cnt, T* dev_a, T* dev_out)
+{
+    __shared__ T tile[TILE_DIM][TILE_DIM+1];
+
+    unsigned x = threadIdx.x + blockIdx.x * TILE_DIM;
+    unsigned y = threadIdx.y + blockIdx.y * TILE_DIM;
+
+    for (unsigned my = y; my < M + TILE_DIM; my += gridDim.y * TILE_DIM)
+    {
+        for (unsigned mx = x; mx < N + TILE_DIM; mx += gridDim.x * TILE_DIM)
+        {
+            for (unsigned mz = blockIdx.z; mz < cnt; mz += gridDim.z)
+            {
+                #pragma unroll
+                for (unsigned j = 0; j < TILE_DIM; j+=BLOCK_ROWS)
+                {
+                    unsigned gx = mz * N + mx;
+                    size_t offset = gx + (my+j) * cnt*N;
+                    if (mx < N && (my+j) < M)
+                    {
+                       tile[threadIdx.y+j][threadIdx.x] = dev_a[offset];
+                    }
+                }
+
+                __syncthreads();
+
+                size_t out = mz * N * M;
+                #pragma unroll
+                for (unsigned j = 0; j < TILE_DIM; j+=BLOCK_ROWS)
+                {
+                    unsigned offset = mx + (my+j) * N;
+                    if (mx < N && (my+j) < M)
+                       dev_out[out + offset] = tile[threadIdx.y+j][threadIdx.x];
+                }
+
+                __syncthreads();
+            }
+        }
+    }
+}
+
+void copy_v(cudaStream_t stream, int N, int M, int cnt, double* dev_in, double* dev_out)
+{
+    int nb = std::min( (N+TILE_DIM-1)/TILE_DIM, 1024);
+    int mb = std::min( (M+TILE_DIM-1)/TILE_DIM, 1024);
+
+    dim3 threads(TILE_DIM, BLOCK_ROWS);
+    dim3 blocks3d_t(nb, mb, std::min(cnt, 65535));
+
+    cuda_copy_v<<<blocks3d_t, threads, 0, stream>>>(N, M, cnt, dev_in, dev_out);
+}
+
+template <class T>
 __global__ void cuda_tr_v(unsigned N, unsigned M, unsigned cnt, T* dev_a, T* dev_tra)
 {
     __shared__ T tile[TILE_DIM][TILE_DIM+1];
