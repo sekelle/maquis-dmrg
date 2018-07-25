@@ -643,7 +643,8 @@ namespace storage {
 
     namespace detail {
         template <class T> disk::serializable<T>& as_disk(T& t) { return t; }
-        template <class T> gpu::serializable<T>& as_gpu(T& t) { return t; }
+        template <class T> gpu::serializable<T> & as_gpu(T& t) { return t; }
+        template <class T> gpu::serializable<T> const & as_gpu(T const& t) { return t; }
     }
 
     class Controller {
