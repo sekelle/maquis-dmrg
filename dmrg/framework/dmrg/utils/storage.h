@@ -621,13 +621,15 @@ namespace storage {
             }
         };
 
-        template<class T> static void fetch(serializable<T>& t)          { if(enabled()) t.fetch();    }
-        template<class T> static void prefetch(serializable<T>& t)       { if(enabled()) t.prefetch(); }
-        template<class T> static void pin(serializable<T>& t)            { if(enabled()) t.pin();      }
-        template<class T> static void evict(serializable<T>& t)          { if(enabled()) t.evict();    }
-        template<class T> static void drop(serializable<T>& t)           { if(enabled()) t.drop();     }
-        template<class T> static void zero(serializable<T>& t)           { if(enabled()) t.zero();     }
-        template<class T> static void upload(serializable<T>& t)         { if(enabled()) t.upload();   }
+        template<class T> static serializable<T>& cv(serializable<T> const& t) { return const_cast<serializable<T>&>(t); }
+
+        template<class T> static void fetch(serializable<T> const& t)          { if(enabled()) cv(t).fetch();    }
+        template<class T> static void prefetch(serializable<T> const& t)       { if(enabled()) cv(t).prefetch(); }
+        template<class T> static void pin(serializable<T> const& t)            { if(enabled()) cv(t).pin();      }
+        template<class T> static void evict(serializable<T> const& t)          { if(enabled()) cv(t).evict();    }
+        template<class T> static void drop(serializable<T> const& t)           { if(enabled()) cv(t).drop();     }
+        template<class T> static void zero(serializable<T> const& t)           { if(enabled()) cv(t).zero();     }
+        template<class T> static void upload(serializable<T> const& t)         { if(enabled()) cv(t).upload();   }
 
         static void init(size_t n){
             maquis::cout << n << " GPUs enabled\n";

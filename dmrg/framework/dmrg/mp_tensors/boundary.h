@@ -439,7 +439,7 @@ public:
         ar["/data"] << data_;
     }
 
-    void test()
+    void test() const
     {
         assert(data().size() == index_.n_cohorts());
         for (int ci = 0; ci < index_.n_cohorts(); ++ci)
