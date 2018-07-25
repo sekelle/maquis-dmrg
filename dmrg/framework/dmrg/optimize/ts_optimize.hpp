@@ -264,15 +264,12 @@ public:
     	    if (lr == +1)
     	    {
         		// Write back result from optimization
-                BEGIN_TIMING("TRUNC")
                 if (parms["twosite_truncation"] == "svd")
                     boost::tie(mps[site1], mps[site2], trunc) = tst.split_mps_l2r(Mmax, cutoff);
                 else
                     boost::tie(mps[site1], mps[site2], trunc) = contraction::Engine<Matrix, BoundaryMatrix, SymmGroup>::
                         predict_split_l2r(tst, Mmax, cutoff, alpha, left_[site1], mpo[site1]);
-                END_TIMING("TRUNC")
                 tst.clear();
-
 
         		block_matrix<Matrix, SymmGroup> t;
 		
@@ -296,13 +293,11 @@ public:
     	    }
     	    if (lr == -1){
         		// Write back result from optimization
-                BEGIN_TIMING("TRUNC")
                 if (parms["twosite_truncation"] == "svd")
                     boost::tie(mps[site1], mps[site2], trunc) = tst.split_mps_r2l(Mmax, cutoff);
                 else
                     boost::tie(mps[site1], mps[site2], trunc) = contraction::Engine<Matrix, BoundaryMatrix, SymmGroup>::
                         predict_split_r2l(tst, Mmax, cutoff, alpha, right_[site2+1], mpo[site2]);
-                END_TIMING("TRUNC")
                 tst.clear();
 
         		block_matrix<Matrix, SymmGroup> t;
@@ -330,8 +325,6 @@ public:
             iteration_results_["TruncatedWeight"]   << trunc.truncated_weight;
             iteration_results_["TruncatedFraction"] << trunc.truncated_fraction;
             iteration_results_["SmallestEV"]        << trunc.smallest_ev;
-            
-            parallel::meminfo();
             
             boost::chrono::high_resolution_clock::time_point sweep_then = boost::chrono::high_resolution_clock::now();
             double elapsed = boost::chrono::duration<double>(sweep_then - sweep_now).count();
