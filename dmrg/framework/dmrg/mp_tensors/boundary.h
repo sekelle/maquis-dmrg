@@ -332,8 +332,7 @@ public:
     Boundary(Index<SymmGroup> const & ud = Index<SymmGroup>(),
              Index<SymmGroup> const & ld = Index<SymmGroup>(),
              std::size_t ad = 1)
-    : data_(ad, block_matrix<Matrix, SymmGroup>(ud, ld))
-    , index_(ud, ld)
+    : index_(ud, ld)
     {
         assert(ud.size() == ld.size());
 
@@ -376,10 +375,6 @@ public:
         return index_;
     }
 
-    std::size_t aux_dim() const { 
-        return data_.size(); 
-    }
-
     void allocate(charge rc, charge lc)
     {
         unsigned ci = index_.cohort_index(rc, lc);
@@ -402,15 +397,6 @@ public:
         }
     }
 
-    void resize(size_t n)
-    {
-        if(n < data_.size()) 
-            return data_.resize(n);
-        data_.reserve(n);
-        for(int i = data_.size(); i < n; ++i)
-            data_.push_back(block_matrix<Matrix, SymmGroup>());
-    }
-    
     std::vector<scalar_type> traces() const
     {
         if (!index_.n_cohorts())
@@ -437,26 +423,6 @@ public:
         return ret;
     }
 
-    bool reasonable() const {
-        for(size_t i = 0; i < data_.size(); ++i)
-            if(!data_[i].reasonable()) return false;
-        return true;
-    }
-   
-    template<class Archive> 
-    void load(Archive & ar){
-        std::vector<std::string> children = ar.list_children("/data");
-        data_.resize(children.size());
-        for(size_t i = 0; i < children.size(); ++i){
-             ar["/data/"+children[i]] >> data_[alps::cast<std::size_t>(children[i])];
-        }
-    }
-    
-    template<class Archive> 
-    void save(Archive & ar) const {
-        ar["/data"] << data_;
-    }
-
     void test() const
     {
         assert(data().size() == index_.n_cohorts());
@@ -479,32 +445,8 @@ private:
 
     BoundaryIndex<Matrix, SymmGroup> index_;
     data_t data2;
-
-    std::vector<block_matrix<Matrix, SymmGroup> > data_;
 };
 
-
-template<class Matrix, class SymmGroup>
-Boundary<Matrix, SymmGroup> simplify(Boundary<Matrix, SymmGroup> b)
-{
-    typedef typename alps::numeric::associated_real_diagonal_matrix<Matrix>::type dmt;
-    
-    for (std::size_t k = 0; k < b.aux_dim(); ++k)
-    {
-        block_matrix<Matrix, SymmGroup> U, V, t;
-        block_matrix<dmt, SymmGroup> S;
-        
-        if (b[k].basis().sum_of_left_sizes() == 0)
-            continue;
-        
-        svd_truncate(b[k], U, V, S, 1e-4, 1, false);
-        
-        gemm(U, S, t);
-        gemm(t, V, b[k]);
-    }
-    
-    return b;
-}
 
 template<class Matrix, class SymmGroup>
 std::size_t size_of(Boundary<Matrix, SymmGroup> const & m)
