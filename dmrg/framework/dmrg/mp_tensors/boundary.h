@@ -390,12 +390,12 @@ public:
         return index_;
     }
 
-    void allocate(charge rc, charge lc)
-    {
-        unsigned ci = index_.cohort_index(rc, lc);
-        assert(ci < data().size());
-        data()[ci].resize(index_.cohort_size(ci)); // ALIGN
-    }
+    //void allocate(charge rc, charge lc)
+    //{
+    //    unsigned ci = index_.cohort_index(rc, lc);
+    //    assert(ci < data().size());
+    //    data()[ci].resize(index_.cohort_size(ci)); // ALIGN
+    //}
 
     void allocate_all()
     {
