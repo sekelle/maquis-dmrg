@@ -243,7 +243,7 @@ public:
 
         int M = new_right.index().n_blocks(ci) * ls;
         int N = rs;
-        Matrix buf(M,N);
+        DefaultMatrix buf(M,N);
         blas_gemm('N', 'T', M, N, stripe, value_type(1),
                    &sloc[0], M, &bra_mps.data()[rb](0,0), rs, value_type(0), &buf(0,0), M);
 
