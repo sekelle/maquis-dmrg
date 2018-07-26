@@ -304,7 +304,7 @@ public:
             luse = lbuf.data();
         }
 
-        Matrix buf(M,N);
+        DefaultMatrix buf(M,N);
         blas_gemm('N', 'N', M, N, K, value_type(1), luse, M, sloc.data(), K, value_type(0), buf.get_values().data(), M);
 
         //std::lock_guard<std::mutex> lk(out_mutex);
@@ -433,7 +433,7 @@ private:
         {
             if (!x.alpha.size()) continue;
 
-            Matrix buf(x.ms, rs);
+            alps::numeric::matrix<value_type> buf(x.ms, rs);
 
             index_type seeker = 0;
             for (index_type b=0; b < x.b2s.size(); ++b)
@@ -464,7 +464,7 @@ private:
         {
             if (!x.alpha.size()) continue;
 
-            Matrix buf(ls, x.ms);
+            alps::numeric::matrix<value_type> buf(ls, x.ms);
 
             index_type seeker = 0;
             for (index_type b=0; b < x.b2s.size(); ++b)
