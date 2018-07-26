@@ -349,7 +349,7 @@ namespace storage {
 
             for (size_t ci = 0; ci < o.index().n_cohorts(); ++ci)
             {
-                size_t cohort_size = o.index().block_size(ci) * o.index().n_blocks(ci);
+                size_t cohort_size = o.index().cohort_size(ci);
 
                 HANDLE_ERROR(cudaMalloc( (void**)(&(o.device_ptr[ci])), cohort_size * sizeof(typename Matrix::value_type)));
                 cudaMemset( o.device_ptr[ci], 0, cohort_size * sizeof(typename Matrix::value_type));
@@ -370,7 +370,7 @@ namespace storage {
 
             for (size_t ci = 0; ci < o.index().n_cohorts(); ++ci)
             {
-                size_t cohort_size = o.index().block_size(ci) * o.index().n_blocks(ci);
+                size_t cohort_size = o.index().cohort_size(ci);
 
                 cudaError_t err = cudaMalloc( (void**)(&(o.device_ptr[ci])), cohort_size * sizeof(typename Matrix::value_type) );
                 if (err != cudaSuccess)
@@ -398,7 +398,7 @@ namespace storage {
 
             for (size_t ci = 0; ci < o.index().n_cohorts(); ++ci)
             {
-                size_t cohort_size = o.index().block_size(ci) * o.index().n_blocks(ci);
+                size_t cohort_size = o.index().cohort_size(ci);
                 cudaMemcpy( o.device_ptr[ci], o[ci], cohort_size * sizeof(typename Matrix::value_type), cudaMemcpyHostToDevice );
             }
         }
@@ -418,9 +418,8 @@ namespace storage {
             {
                 if (o.device_ptr[ci] != NULL)
                 {
-                    size_t cohort_size = o.index().block_size(ci) * o.index().n_blocks(ci);
-                    cudaMemcpy( o[ci], o.device_ptr[ci], cohort_size
-                                                                      * sizeof(typename Matrix::value_type), cudaMemcpyDeviceToHost );
+                    size_t cohort_size = o.index().cohort_size(ci);
+                    cudaMemcpy( o[ci], o.device_ptr[ci], cohort_size * sizeof(typename Matrix::value_type), cudaMemcpyDeviceToHost );
                     cudaFree(o.device_ptr[ci]);
                 }
             }

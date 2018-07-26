@@ -79,6 +79,8 @@ class BoundaryIndex
 
     template <class, class> friend class BoundaryIndex;
 
+    constexpr static unsigned A = 128 / sizeof(value_type);
+
 public:
 
     BoundaryIndex(Index<SymmGroup> const & bra, Index<SymmGroup> const & ket)
@@ -119,6 +121,15 @@ public:
 
     size_t     block_size     (unsigned ci)             const {
         return bit_twiddling::round_up<1>(left_sizes[ci] * right_sizes[ci]); // ALIGN
+    }
+    size_t     cohort_size    (unsigned ci)             const { return n_blocks_[ci] * block_size(ci); }
+
+    size_t     total_size() const
+    {
+        size_t ret =0;
+        for (unsigned ci=0; ci < n_cohorts(); ++ci)
+            ret += bit_twiddling::round_up<A>(cohort_size(ci));
+        return ret;
     }
 
     bool       tr             (unsigned ci) const { return tr_[ci]; }
@@ -354,10 +365,7 @@ public:
         allocate_all();
 
         for (unsigned ci = 0; ci < index_.n_cohorts(); ++ci)
-        {
-            std::size_t cohort_size = index_.block_size(ci) * index_.n_blocks(ci);
-            std::fill((*this)[ci], (*this)[ci] + cohort_size, value_type(1.));
-        }
+            std::fill((*this)[ci], (*this)[ci] + index_.cohort_size(ci), value_type(1.));
     }
 
     Boundary(BoundaryIndex<Matrix, SymmGroup> const & idx) : index_(idx), data_(idx.n_cohorts()) { }
@@ -386,13 +394,13 @@ public:
     {
         unsigned ci = index_.cohort_index(rc, lc);
         assert(ci < data().size());
-        data()[ci].resize(index_.block_size(ci) * index_.n_blocks(ci)); // ALIGN
+        data()[ci].resize(index_.cohort_size(ci)); // ALIGN
     }
 
     void allocate_all()
     {
         for (unsigned ci = 0; ci < index_.n_cohorts(); ++ci)
-            data()[ci].resize(index_.block_size(ci) * index_.n_blocks(ci));
+            data()[ci].resize(index_.cohort_size(ci));
     }
 
     void deallocate()
@@ -410,11 +418,11 @@ public:
             throw std::runtime_error("Could not carry out multi_expval because resulting boundary was empty");
 
         std::vector<scalar_type> ret(index_.aux_dim(), scalar_type(0));
-        for (size_t ci = 0; ci < data().size(); ++ci)
+        for (size_t ci = 0; ci < index_.n_cohorts(); ++ci)
             for (size_t b = 0; b < index_.aux_dim(); ++b)
                 if (index_.has_block(ci, b))
-                    ret[b] += std::accumulate(&data()[ci][index_.offset(ci, b)],
-                                              &data()[ci][index_.offset(ci, b)] + index_.block_size(ci), scalar_type(0));
+                    ret[b] += std::accumulate((*this)[ci] + index_.offset(ci, b),
+                                              (*this)[ci] + index_.offset(ci, b) + index_.block_size(ci), scalar_type(0));
 
         return ret;
     }
@@ -424,8 +432,8 @@ public:
         assert(index_.aux_dim() <= 1);
 
         scalar_type ret(0);
-        for (auto& v : data())
-            ret += std::accumulate(v.begin(), v.end(), scalar_type(0));
+        for (size_t ci = 0; ci < index_.n_cohorts(); ++ci)
+            ret += std::accumulate((*this)[ci], (*this)[ci] + index_.block_size(ci) * index_.n_blocks(ci), scalar_type(0));
 
         return ret;
     }
