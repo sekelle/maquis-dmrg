@@ -360,17 +360,9 @@ namespace contraction {
             b_index.complement_transpose(mpo.herm_left, false);
             Boundary<OtherMatrix, SymmGroup> ret(b_index);
 
-            for(index_type lb_ket = 0; lb_ket < loop_max; ++lb_ket) {
-                charge lc_ket = ket_left_i[lb_ket].first;
-                for (const_iterator it = tasks[lb_ket].begin(); it != tasks[lb_ket].end(); ++it)
-                {
-                    charge lc_bra = bra_left_i[it->get_rb()].first;
-                    ret.allocate(lc_ket, lc_bra);
-                }
-            }
+            ret.allocate_all();
 
-            for(index_type lb_ket = 0; lb_ket < loop_max; ++lb_ket)
-            {
+            for(index_type lb_ket = 0; lb_ket < loop_max; ++lb_ket) {
                 tasks.enumeration_gpu.push_back(lb_ket);
                 tasks[lb_ket].on_gpu = true;
             }

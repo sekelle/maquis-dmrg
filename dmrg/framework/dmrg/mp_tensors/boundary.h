@@ -384,6 +384,12 @@ public:
         data()[ci].resize(index_.block_size(ci) * index_.n_blocks(ci)); // ALIGN
     }
 
+    void allocate_all()
+    {
+        for (unsigned ci = 0; ci < index_.n_cohorts(); ++ci)
+            data()[ci].resize(index_.block_size(ci) * index_.n_blocks(ci));
+    }
+
     void resize(size_t n)
     {
         if(n < data_.size()) 
