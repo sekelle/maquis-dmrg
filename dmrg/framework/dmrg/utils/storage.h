@@ -209,12 +209,12 @@ namespace storage {
         void operator()(){
             std::ofstream ofs(fp.c_str(), std::ofstream::binary);
             Boundary<Matrix, SymmGroup>& o = *ptr;
-            for (auto& v : o.data())
+            for (size_t ci = 0; ci < o.index().n_cohorts(); ++ci)
             {
-                ofs.write((char*)(&v[0]), v.size() * sizeof(typename Matrix::value_type)/sizeof(char));
-                v.clear();
-                v.shrink_to_fit();
+                size_t cohort_size = o.index().n_blocks(ci) * o.index().block_size(ci);
+                ofs.write((char*)(o[ci]), cohort_size * sizeof(typename Matrix::value_type)/sizeof(char));
             }
+            o.deallocate();
 
             ofs.close();
         }
@@ -232,22 +232,17 @@ namespace storage {
             Boundary<Matrix, SymmGroup>& o = *ptr;
 
             try {
+                o.allocate_all();
                 for (size_t ci = 0; ci < o.index().n_cohorts(); ++ci)
                 {
                     size_t cohort_size = o.index().n_blocks(ci) * o.index().block_size(ci);
-                    o.data()[ci].resize(cohort_size);
                     ifs.read((char*)(o[ci]), cohort_size * sizeof(typename Matrix::value_type)/sizeof(char));
                 }
             }
             catch (std::bad_alloc const & e) {
                 if (force) throw;
-                for (auto& v : o.data())
-                {
-                    v.clear();
-                    v.shrink_to_fit();
-                }
+                o.deallocate();
                 ((controller<disk>::transfer&)o).state = controller<disk>::transfer::uncore;
-                std::cout << "prefetch aborted" << std::endl;
             }
 
             ifs.close();
@@ -263,8 +258,7 @@ namespace storage {
         drop_request(std::string fp, Boundary<Matrix, SymmGroup>* ptr) : fp(fp), ptr(ptr) { }
         void operator()(){
             Boundary<Matrix, SymmGroup>& o = *ptr;
-            o.data().clear();
-            o.data().shrink_to_fit();
+            o.deallocate();
         }
     private:
         std::string fp;
@@ -385,7 +379,6 @@ namespace storage {
                     for (size_t I = 0; I < o.index().n_cohorts(); ++I)
                         cudaFree(o.device_ptr[I]);
                     ((controller<gpu>::transfer&)o).state = controller<gpu>::transfer::uncore;
-                    //std::cout << "prefetch aborted" << std::endl;
                     return;
                 }
 

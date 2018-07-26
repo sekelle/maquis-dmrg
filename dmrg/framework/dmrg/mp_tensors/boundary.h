@@ -393,6 +393,15 @@ public:
             data()[ci].resize(index_.block_size(ci) * index_.n_blocks(ci));
     }
 
+    void deallocate()
+    {
+        for (unsigned ci = 0; ci < index_.n_cohorts(); ++ci)
+        {
+            data()[ci].clear();
+            data()[ci].shrink_to_fit();
+        }
+    }
+
     void resize(size_t n)
     {
         if(n < data_.size()) 
@@ -463,10 +472,10 @@ public:
         }
     }
 
+private:
+
     data_t const& data() const { return data2; }
     data_t      & data()       { return data2; }
-
-private:
 
     BoundaryIndex<Matrix, SymmGroup> index_;
     data_t data2;
