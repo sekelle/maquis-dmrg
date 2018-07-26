@@ -320,13 +320,14 @@ public:
     typedef typename Matrix::value_type value_type;
     typedef std::pair<typename SymmGroup::charge, std::size_t> access_type;
 
-    typedef std::vector<std::vector<value_type, maquis::aligned_allocator<value_type, ALIGNMENT>>> data_t;
+    typedef std::vector<value_type, maquis::aligned_allocator<value_type, ALIGNMENT>> inner_data_t;
+    typedef std::vector<inner_data_t> data_t;
 
     friend class boost::serialization::access;
 
     template<class Archive>
     void serialize(Archive &ar, const unsigned int version){
-        ar & data2 & index_;
+        ar & data_ & index_;
     }
     
     Boundary(Index<SymmGroup> const & ud = Index<SymmGroup>(),
@@ -344,16 +345,22 @@ public:
 
             std::size_t ls = ud[i].second, rs = ld[i].second;
             std::size_t block_size = bit_twiddling::round_up<1>(ls*rs); // ALIGN
-            data()[i].resize(block_size * ad, value_type(0.));
-            std::fill(data()[i].begin(), data()[i].begin() + ls * rs, value_type(1.));
             std::vector<long int> offsets(ad);
             for (std::size_t b = 0; b < ad; ++b)
                 offsets[b] = b * block_size;
             index_.add_cohort(i, i, offsets);
         }
+
+        allocate_all();
+
+        for (unsigned ci = 0; ci < index_.n_cohorts(); ++ci)
+        {
+            std::size_t cohort_size = index_.block_size(ci) * index_.n_blocks(ci);
+            std::fill((*this)[ci], (*this)[ci] + cohort_size, value_type(1.));
+        }
     }
 
-    Boundary(BoundaryIndex<Matrix, SymmGroup> const & idx) : index_(idx), data2(idx.n_cohorts()) { }
+    Boundary(BoundaryIndex<Matrix, SymmGroup> const & idx) : index_(idx), data_(idx.n_cohorts()) { }
 
     Boundary(Boundary<Matrix, SymmGroup> const& rhs) = delete;
 
@@ -440,11 +447,11 @@ public:
 
 private:
 
-    data_t const& data() const { return data2; }
-    data_t      & data()       { return data2; }
+    data_t const& data() const { return data_; }
+    data_t      & data()       { return data_; }
 
     BoundaryIndex<Matrix, SymmGroup> index_;
-    data_t data2;
+    data_t data_;
 };
 
 
