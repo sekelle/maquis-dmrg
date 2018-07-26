@@ -236,7 +236,7 @@ namespace storage {
                 {
                     size_t cohort_size = o.index().n_blocks(ci) * o.index().block_size(ci);
                     o.data()[ci].resize(cohort_size);
-                    ifs.read((char*)(&o.data()[ci][0]), cohort_size * sizeof(typename Matrix::value_type)/sizeof(char));
+                    ifs.read((char*)(o[ci]), cohort_size * sizeof(typename Matrix::value_type)/sizeof(char));
                 }
             }
             catch (std::bad_alloc const & e) {
@@ -355,7 +355,7 @@ namespace storage {
 
             for (size_t ci = 0; ci < o.index().n_cohorts(); ++ci)
             {
-                size_t cohort_size = o.data()[ci].size();
+                size_t cohort_size = o.index().block_size(ci) * o.index().n_blocks(ci);
 
                 HANDLE_ERROR(cudaMalloc( (void**)(&(o.device_ptr[ci])), cohort_size * sizeof(typename Matrix::value_type)));
                 cudaMemset( o.device_ptr[ci], 0, cohort_size * sizeof(typename Matrix::value_type));
@@ -376,7 +376,7 @@ namespace storage {
 
             for (size_t ci = 0; ci < o.index().n_cohorts(); ++ci)
             {
-                size_t cohort_size = o.data()[ci].size();
+                size_t cohort_size = o.index().block_size(ci) * o.index().n_blocks(ci);
 
                 cudaError_t err = cudaMalloc( (void**)(&(o.device_ptr[ci])), cohort_size * sizeof(typename Matrix::value_type) );
                 if (err != cudaSuccess)
@@ -389,7 +389,7 @@ namespace storage {
                     return;
                 }
 
-                cudaMemcpy( o.device_ptr[ci], &o.data()[ci][0], cohort_size * sizeof(typename Matrix::value_type), cudaMemcpyHostToDevice );
+                cudaMemcpy( o.device_ptr[ci], o[ci], cohort_size * sizeof(typename Matrix::value_type), cudaMemcpyHostToDevice );
             }
         }
     private:
@@ -405,8 +405,8 @@ namespace storage {
 
             for (size_t ci = 0; ci < o.index().n_cohorts(); ++ci)
             {
-                size_t cohort_size = o.data()[ci].size();
-                cudaMemcpy( o.device_ptr[ci], &o.data()[ci][0], cohort_size * sizeof(typename Matrix::value_type), cudaMemcpyHostToDevice );
+                size_t cohort_size = o.index().block_size(ci) * o.index().n_blocks(ci);
+                cudaMemcpy( o.device_ptr[ci], o[ci], cohort_size * sizeof(typename Matrix::value_type), cudaMemcpyHostToDevice );
             }
         }
     private:
@@ -425,8 +425,8 @@ namespace storage {
             {
                 if (o.device_ptr[ci] != NULL)
                 {
-                    size_t cohort_size = o.data()[ci].size();
-                    cudaMemcpy( &(o.data()[ci][0]), o.device_ptr[ci], cohort_size
+                    size_t cohort_size = o.index().block_size(ci) * o.index().n_blocks(ci);
+                    cudaMemcpy( o[ci], o.device_ptr[ci], cohort_size
                                                                       * sizeof(typename Matrix::value_type), cudaMemcpyDeviceToHost );
                     cudaFree(o.device_ptr[ci]);
                 }

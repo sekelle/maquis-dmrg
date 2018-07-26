@@ -363,6 +363,9 @@ public:
 
     ///////////////////////////////////////////////////////////////
 
+    value_type* operator[](unsigned ci)             { return data()[ci].data(); }
+    const value_type* operator[](unsigned ci) const { return data()[ci].data(); }
+
     BoundaryIndex<Matrix, SymmGroup> const& index() const
     {
         return index_;
@@ -464,6 +467,7 @@ public:
     data_t      & data()       { return data2; }
 
 private:
+
     BoundaryIndex<Matrix, SymmGroup> index_;
     data_t data2;
 
@@ -497,8 +501,11 @@ template<class Matrix, class SymmGroup>
 std::size_t size_of(Boundary<Matrix, SymmGroup> const & m)
 {
     size_t r = 0;
-    for (auto const & v : m.data())
-        r += v.size() * sizeof(typename Matrix::value_type);
+    for (unsigned ci = 0; ci < m.index().n_cohorts(); ++ci)
+    {
+        size_t cohort_size = m.index().block_size(ci) * m.index().n_blocks(ci);
+        r += cohort_size * sizeof(typename Matrix::value_type);
+    }
 
     return r;
 }

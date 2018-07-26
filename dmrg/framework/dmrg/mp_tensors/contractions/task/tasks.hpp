@@ -230,7 +230,7 @@ public:
         int M = num_cols(bra_mps.data()[lb]);
         int N = new_left.index().n_blocks(ci) * new_left.index().right_size(ci);
         blas_gemm('T', 'N', M, N, stripe, value_type(1),
-                  &bra_mps.data()[lb](0,0), stripe, &sloc[0], stripe, value_type(0), &new_left.data()[ci][0], M);
+                  &bra_mps.data()[lb](0,0), stripe, &sloc[0], stripe, value_type(0), new_left[ci], M);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -249,7 +249,7 @@ public:
 
         for (unsigned b = 0; b < new_right.index().n_blocks(ci); ++b)
             for (unsigned col = 0; col < rs; ++col)
-                std::copy(&buf(ls*b,col), &buf(ls*b,col) + ls, &new_right.data()[ci][(b*rs + col)*ls]);
+                std::copy(&buf(ls*b,col), &buf(ls*b,col) + ls, new_right[ci] + (b*rs + col)*ls);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -274,7 +274,7 @@ public:
 
         copy_v(ws->stream, ls, rs, new_right.index().n_blocks(ci), dev_r, (value_type*)new_right.device_ptr[ci]);
 
-        cudaMemcpy( new_right.data()[ci].data(), (value_type*)new_right.device_ptr[ci], M*N * sizeof(value_type), cudaMemcpyDeviceToHost);
+        cudaMemcpy( new_right[ci], (value_type*)new_right.device_ptr[ci], M*N * sizeof(value_type), cudaMemcpyDeviceToHost);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -290,7 +290,7 @@ public:
         int N = stripe;
         int K = nSrows * ls;
 
-        const value_type* luse = left.data()[ci_eff].data();
+        const value_type* luse = left[ci_eff];
         std::vector<value_type> lbuf;
         if (ci != ci_eff)
         {
@@ -299,7 +299,7 @@ public:
             {
                 for (unsigned c = 0; c < rs; ++c)
                 for (unsigned r = 0; r < ls; ++r)
-                    lbuf[offset + r*rs + c] = left.data()[ci_eff][offset + c*ls + r];
+                    lbuf[offset + r*rs + c] = *(left[ci_eff] + offset + c*ls + r);
             }
             luse = lbuf.data();
         }
@@ -552,11 +552,11 @@ public:
             //    {
             //        for (unsigned c = 0; c < brs; ++c)
             //        for (unsigned r = 0; r < bls; ++r)
-            //            rbuf[offset + c*bls + r] = left.data()[ci_eff][offset + r*brs + c];
+            //            rbuf[offset + c*bls + r] = left[ci_eff] + offset + r*brs + c;
             //    }
             //}
 
-            //const value_type* r_use = (left.index().tr(ci)) ? rbuf.data() : left.data()[ci_eff].data();
+            //const value_type* r_use = (left.index().tr(ci)) ? rbuf.data() : left[ci_eff];
             //const value_type* mpsdata = &mps.data()[lb_ket](0, mps_offset);
             //ret[ti] = std::vector<value_type>(M * size_t(N));
 
@@ -570,10 +570,10 @@ public:
                 size_t ooff = b*M*size_t(N);
 
                 if (left.index().tr(ci))
-                    blas_gemm('T', 'N', M, N, K, value_type(1), left.data()[ci_eff].data()+loff, K,
+                    blas_gemm('T', 'N', M, N, K, value_type(1), left[ci_eff] + loff, K,
                               mpsdata, K, value_type(0), ret[ti].data()+ooff, M);
                 else
-                    blas_gemm('N', 'N', M, N, K, value_type(1), left.data()[ci_eff].data()+loff, M,
+                    blas_gemm('N', 'N', M, N, K, value_type(1), left[ci_eff] + loff, M,
                               mpsdata, K, value_type(0), ret[ti].data()+ooff, M);
             }
         }
@@ -608,11 +608,11 @@ public:
             //    {
             //        for (unsigned c = 0; c < brs; ++c)
             //        for (unsigned r = 0; r < bls; ++r)
-            //            rbuf[offset + c*bls + r] = right.data()[ci_eff][offset + r*brs + c];
+            //            rbuf[offset + c*bls + r] = right[ci_eff] + offset + r*brs + c;
             //    }
             //}
 
-            //const value_type* r_use = (right.index().tr(ci)) ? rbuf.data() : right.data()[ci_eff].data();
+            //const value_type* r_use = (right.index().tr(ci)) ? rbuf.data() : right[ci_eff];
             //const value_type* mpsdata = &mps.data()[lb_ket](0, mps_offset);
             //ret[ti] = std::vector<value_type>(M * size_t(N));
 
@@ -627,10 +627,10 @@ public:
                 size_t ooff = b*M*N;
                 if (right.index().tr(ci))
                     blas_gemm('N', 'T', M, N, K, value_type(1), mpsdata, M,
-                              right.data()[ci_eff].data()+roff, N, value_type(0), ret[ti].data()+ooff, M);
+                              right[ci_eff] + roff, N, value_type(0), ret[ti].data()+ooff, M);
                 else
                     blas_gemm('N', 'N', M, N, K, value_type(1), mpsdata, M,
-                              right.data()[ci_eff].data()+roff, K, value_type(0), ret[ti].data()+ooff, M);
+                              right[ci_eff] + roff, K, value_type(0), ret[ti].data()+ooff, M);
             }
         }
 

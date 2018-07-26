@@ -187,36 +187,6 @@ namespace contraction {
             if (symmetric) b_index.complement_transpose(mpo.herm_right, true);
             Boundary<OtherMatrix, SymmGroup> ret(b_index);
 
-            // Contraction
-            //#ifdef MAQUIS_OPENMP
-            //#pragma omp parallel
-            //#endif
-            //{
-            //    #ifdef MAQUIS_OPENMP
-            //    #pragma omp single
-            //    #endif
-            //    for(index_type rb_ket = 0; rb_ket < loop_max; ++rb_ket) {
-            //        charge rc_ket = ket_right_i[rb_ket].first;
-
-            //        #ifdef MAQUIS_OPENMP
-            //        #pragma omp task
-            //        #endif
-            //        {
-            //            auto T = tasks[rb_ket].create_T_left(left, ket_tensor);
-
-            //            #ifdef MAQUIS_OPENMP
-            //            #pragma omp task
-            //            #endif
-            //            for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
-            //            {
-            //                charge rc_bra = bra_right_i[it->get_lb()].first;
-            //                ret.allocate(rc_bra, rc_ket);
-            //                it->prop_l(bra_tensor, T, ret.index().cohort_index(rc_bra, rc_ket), ret);
-            //            }
-            //        }
-            //    }
-            //}
-
             #ifdef MAQUIS_OPENMP
             #pragma omp parallel for schedule (dynamic,1)
             #endif
