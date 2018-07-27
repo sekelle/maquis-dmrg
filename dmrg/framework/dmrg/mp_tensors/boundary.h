@@ -124,11 +124,13 @@ public:
     }
     size_t     cohort_size    (unsigned ci)             const { return n_blocks_[ci] * block_size(ci); }
 
+    size_t     cohort_size_a  (unsigned ci)             const { return bit_twiddling::round_up<A>(cohort_size(ci)); }
+
     size_t     total_size() const
     {
         size_t ret =0;
         for (unsigned ci=0; ci < n_cohorts(); ++ci)
-            ret += bit_twiddling::round_up<A>(cohort_size(ci));
+            ret += cohort_size_a(ci);
         return ret;
     }
 
@@ -331,8 +333,9 @@ public:
     typedef typename Matrix::value_type value_type;
     typedef std::pair<typename SymmGroup::charge, std::size_t> access_type;
 
-    typedef std::vector<value_type, maquis::aligned_allocator<value_type, ALIGNMENT>> inner_data_t;
-    typedef std::vector<inner_data_t> data_t;
+    typedef std::vector<value_type, maquis::aligned_allocator<value_type, ALIGNMENT>> idata_t;
+    typedef std::vector<idata_t> data_t;
+    //typedef std::vector<value_type, maquis::aligned_allocator<value_type, ALIGNMENT>> data_t;
 
     friend class boost::serialization::access;
 
@@ -369,6 +372,7 @@ public:
     }
 
     Boundary(BoundaryIndex<Matrix, SymmGroup> const & idx) : index_(idx), data_(idx.n_cohorts()) { }
+    //Boundary(BoundaryIndex<Matrix, SymmGroup> const & idx) : index_(idx), data_view(idx.n_cohorts()) { }
 
     Boundary(Boundary<Matrix, SymmGroup> const& rhs) = delete;
 
@@ -379,6 +383,8 @@ public:
 
     value_type* operator[](unsigned ci)             { return data()[ci].data(); }
     const value_type* operator[](unsigned ci) const { return data()[ci].data(); }
+    //value_type* operator[](unsigned ci)             { return data()[ci]; }
+    //const value_type* operator[](unsigned ci) const { return data()[ci]; }
 
     BoundaryIndex<Matrix, SymmGroup> const& index() const
     {
@@ -399,12 +405,23 @@ public:
 
     void allocate_all()
     {
+        //data_.resize(index_.total_size());
+
+        //value_type* seek = data_.data();
+        //for (unsigned ci = 0; ci < index_.n_cohorts(); ++ci)
+        //{
+        //    data()[ci] = seek; 
+        //    seek += index_.cohort_size_a(ci);
+        //}
+
         for (unsigned ci = 0; ci < index_.n_cohorts(); ++ci)
             data()[ci].resize(index_.cohort_size(ci));
     }
 
     void deallocate()
     {
+        //data_.clear();
+        //data_.shrink_to_fit();
         for (unsigned ci = 0; ci < index_.n_cohorts(); ++ci)
         {
             data()[ci].clear();
@@ -438,27 +455,31 @@ public:
         return ret;
     }
 
-    void test() const
-    {
-        assert(data().size() == index_.n_cohorts());
-        for (int ci = 0; ci < index_.n_cohorts(); ++ci)
-        {
-            std::vector<value_type> buf(data()[ci].size());
-            cudaMemcpy( buf.data(), this->device_ptr[ci], data()[ci].size() * sizeof(value_type), cudaMemcpyDeviceToHost );
-            for (size_t k =0; k < data()[ci].size(); ++k)
-            {
-                if ( std::abs(data()[ci][k] - buf[k]) > 1e-8)
-                    throw std::runtime_error("boundary not syncd\n");
-            }
-        }
-    }
+    //void test() const
+    //{
+    //    assert(data().size() == index_.n_cohorts());
+    //    for (int ci = 0; ci < index_.n_cohorts(); ++ci)
+    //    {
+    //        std::vector<value_type> buf(data()[ci].size());
+    //        cudaMemcpy( buf.data(), this->device_ptr[ci], data()[ci].size() * sizeof(value_type), cudaMemcpyDeviceToHost );
+    //        for (size_t k =0; k < data()[ci].size(); ++k)
+    //        {
+    //            if ( std::abs(data()[ci][k] - buf[k]) > 1e-8)
+    //                throw std::runtime_error("boundary not syncd\n");
+    //        }
+    //    }
+    //}
 
 private:
 
     data_t const& data() const { return data_; }
     data_t      & data()       { return data_; }
+    //std::vector<value_type*> const& data() const { return data_view; }
+    //std::vector<value_type*>      & data()       { return data_view; }
 
     BoundaryIndex<Matrix, SymmGroup> index_;
+
+    //std::vector<value_type*> data_view;
     data_t data_;
 };
 
