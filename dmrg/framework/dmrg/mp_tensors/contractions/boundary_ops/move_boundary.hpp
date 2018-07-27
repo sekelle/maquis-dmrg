@@ -344,6 +344,11 @@ namespace contraction {
             storage::gpu::zero(ret); // allocate on gpu and init to 0
             storage::gpu::fetch(ket_tensor);
 
+            cudaEvent_t start, stop;
+            HANDLE_ERROR( cudaEventCreate(&start) );
+            HANDLE_ERROR( cudaEventCreate(&stop) );
+            HANDLE_ERROR( cudaEventRecord(start,0) );
+
             for(index_type lb_ket = 0; lb_ket < loop_max; ++lb_ket) {
                 charge lc_ket = ket_left_i[lb_ket].first;
 
@@ -355,6 +360,14 @@ namespace contraction {
                     it->prop_r_gpu(bra_tensor, dev_T, ret.index().cohort_index(lc_ket, lc_bra), ret);
                 }
             }
+
+            HANDLE_ERROR( cudaEventRecord(stop,0) );
+            HANDLE_ERROR( cudaEventSynchronize(stop) );
+            float gpu_time;
+            HANDLE_ERROR( cudaEventElapsedTime( &gpu_time, start, stop ) );
+            HANDLE_ERROR( cudaEventDestroy(start) );
+            HANDLE_ERROR( cudaEventDestroy(stop) );
+            std::cout << "Time elapsed in RBGPU: " << gpu_time/1000 << std::endl;
 
             storage::gpu::drop(ket_tensor);
             //storage::gpu::upload(ret);

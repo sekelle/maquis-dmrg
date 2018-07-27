@@ -274,7 +274,8 @@ public:
 
         copy_v(ws->stream, ls, rs, new_right.index().n_blocks(ci), dev_r, (value_type*)new_right.device_ptr[ci]);
 
-        cudaMemcpy( new_right[ci], (value_type*)new_right.device_ptr[ci], M*N * sizeof(value_type), cudaMemcpyDeviceToHost);
+        cudaMemcpyAsync( new_right[ci], (value_type*)new_right.device_ptr[ci], M*N * sizeof(value_type), cudaMemcpyDeviceToHost,
+                         ws->stream);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
@@ -932,6 +933,12 @@ struct ScheduleNew : public std::vector<MPSBlock<
         while (redo > 0);
 
         accelerator::gpu::update_schedule_buffer();
+    }
+
+    void sync() const
+    {
+        for (WorkSet<value_type> const & ws : pipeline)
+            cudaStreamSynchronize(ws.stream);
     }
 
     std::size_t niter;

@@ -136,7 +136,11 @@ protected:
 
     inline void boundary_left_step(MPO<Matrix, SymmGroup> const & mpo, int site)
     {
+        boost::chrono::high_resolution_clock::time_point now, then;
+
+        BEGIN_TIMING("LSTEP")
         left_[site+1] = contr::overlap_mpo_left_step(mps[site], mps[site], left_[site], mpo[site], true);
+        END_TIMING("LSTEP")
         
         for (int n = 0; n < northo; ++n)
             ortho_left_[n][site+1] = mps_detail::overlap_left_step(mps[site], ortho_mps[n][site], ortho_left_[n][site]);
@@ -144,8 +148,12 @@ protected:
     
     inline void boundary_right_step(MPO<Matrix, SymmGroup> const & mpo, int site)
     {
+        boost::chrono::high_resolution_clock::time_point now, then;
+
+        BEGIN_TIMING("RSTEP")
         right_[site] = contr::overlap_mpo_right_step(mps[site], mps[site], right_[site+1], mpo[site]);
         //right_[site] = contraction::common::overlap_mpo_right_step_gpu(mps[site], mps[site], right_[site+1], mpo[site]);
+        END_TIMING("RSTEP")
         
         for (int n = 0; n < northo; ++n)
             ortho_right_[n][site] = mps_detail::overlap_right_step(mps[site], ortho_mps[n][site], ortho_right_[n][site+1]);

@@ -72,13 +72,16 @@ namespace common {
             }
 
             HANDLE_ERROR( cudaEventRecord(stop,0) );
+            HANDLE_ERROR( cudaEventSynchronize(stop) );
 
             storage::gpu::evict(ret_gpu);
 
-            HANDLE_ERROR( cudaEventSynchronize(stop) );
             float gpu_time;
             HANDLE_ERROR( cudaEventElapsedTime( &gpu_time, start, stop ) );
             tasks.gpu_time += gpu_time/1000;
+
+            HANDLE_ERROR( cudaEventDestroy(start) );
+            HANDLE_ERROR( cudaEventDestroy(stop) );
 
             storage::gpu::drop(ket_tensor);
             storage::gpu::pin(ret_gpu);
