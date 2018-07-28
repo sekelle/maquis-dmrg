@@ -668,7 +668,8 @@ namespace storage {
         template<class T> static void evict(T& t)
         {
             if(disk::enabled()) detail::as_disk(t).evict();
-            else if (gpu::enabled()) detail::as_gpu(t).evict();
+            //else if (gpu::enabled()) detail::as_gpu(t).evict();
+            else if (gpu::enabled()) detail::as_gpu(t).drop();
         }
 
         template<class T> static void drop(T& t)
