@@ -31,6 +31,7 @@
 #include <iostream>
 #include <fstream>
 #include <exception>
+#include <thread>
 
 #include <boost/shared_ptr.hpp>
 #include <boost/thread.hpp>
@@ -492,17 +493,34 @@ namespace storage {
             template<class T> static void upload(multiDeviceSerializable<T> const& t)         { if(enabled()) cv(t).b_upload_();   }
         };
 
-        static void init(size_t n){
+        struct init_request
+        {
+            void operator()(int ID, cudaStream_t* stream)
+            {
+                cudaSetDevice(ID);
+                cudaStreamCreate(stream);
+            }
+        };
+
+        static void init(size_t n) {
             maquis::cout << n << " GPUs enabled\n";
             instance().nGPU = n;
             instance().active = true;
-            cudaStreamCreate(&instance().storage_stream);
+
+            std::vector<std::thread> pool(n);
+
+            for (int i = 0; i < n; ++i)
+                pool[i] = std::thread(init_request(), i, &instance().storage_stream[i]);
+
+            for (std::thread& t : pool) t.join();
         }
+
+        static cudaStream_t getStorageStream(int ID) { return instance().storage_stream[ID]; }
 
         gpu() : nGPU(0) {}
         size_t nGPU;
 
-        cudaStream_t storage_stream;
+        cudaStream_t storage_stream[MAX_N_GPUS];
     };
 
     template<class T> class gpu_prefetch_request {};
@@ -525,9 +543,9 @@ namespace storage {
                 HANDLE_ERROR(cudaMalloc( (void**)(&(o.device_data(d)[ci])), o.index().cohort_size(ci) * sizeof(typename Matrix::value_type)));
             for (size_t ci = 0; ci < o.index().n_cohorts(); ++ci)
                 cudaMemsetAsync( o.device_data(d)[ci], 0, o.index().cohort_size(ci) * sizeof(typename Matrix::value_type),
-                                 gpu::instance().storage_stream);
+                                 gpu::getStorageStream(d));
 
-            cudaStreamSynchronize(gpu::instance().storage_stream);
+            cudaStreamSynchronize(gpu::getStorageStream(d));
         }
     private:
         Boundary<Matrix, SymmGroup>* ptr;
@@ -559,9 +577,9 @@ namespace storage {
 
             for (size_t ci = 0; ci < o.index().n_cohorts(); ++ci)
                 cudaMemcpyAsync( o.device_data(d)[ci], o[ci], o.index().cohort_size(ci) * sizeof(typename Matrix::value_type),
-                                 cudaMemcpyHostToDevice, gpu::instance().storage_stream);
+                                 cudaMemcpyHostToDevice, gpu::getStorageStream(d));
 
-            cudaStreamSynchronize(gpu::instance().storage_stream);
+            cudaStreamSynchronize(gpu::getStorageStream(d));
         }
     private:
         Boundary<Matrix, SymmGroup>* ptr;
@@ -580,9 +598,9 @@ namespace storage {
             {
                 size_t cohort_size = o.index().cohort_size(ci);
                 cudaMemcpyAsync( o.device_data(d)[ci], o[ci], cohort_size * sizeof(typename Matrix::value_type), cudaMemcpyHostToDevice,
-                                 gpu::instance().storage_stream);
+                                 gpu::getStorageStream(d));
             }
-            cudaStreamSynchronize(gpu::instance().storage_stream);
+            cudaStreamSynchronize(gpu::getStorageStream(d));
         }
     private:
         Boundary<Matrix, SymmGroup>* ptr;
@@ -604,7 +622,7 @@ namespace storage {
                 {
                     size_t cohort_size = o.index().cohort_size(ci);
                     cudaMemcpyAsync( o[ci], o.device_data(d)[ci], cohort_size * sizeof(typename Matrix::value_type), cudaMemcpyDeviceToHost,
-                                     gpu::instance().storage_stream);
+                                     gpu::getStorageStream(d));
                     cudaFree(o.device_data(d)[ci]);
                 }
             }
