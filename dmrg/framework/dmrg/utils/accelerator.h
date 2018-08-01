@@ -37,10 +37,6 @@
 #include "dmrg/utils/utils.hpp"
 
 
-template<class Matrix, class SymmGroup> class Boundary;
-template<class Matrix, class SymmGroup> class MPSTensor;
-
-
 namespace accelerator {
 
     class gpu
