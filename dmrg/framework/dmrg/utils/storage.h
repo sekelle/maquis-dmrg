@@ -406,20 +406,20 @@ namespace storage {
                 return *this;
             }
 
-            void fetch()    { ((base*)this)->fetch(gpu_prefetch_request<T>((T*)this, this->deviceID)); }
-            void prefetch() { ((base*)this)->prefetch(gpu_prefetch_request<T>((T*)this, this->deviceID)); }
-            void evict()    { ((base*)this)->evict(gpu_evict_request<T>((T*)this, this->deviceID)); }
-            void drop()     { ((base*)this)->drop(gpu_drop_request<T>((T*)this, this->deviceID)); }
+            void fetch(T* obj)    { ((base*)this)->fetch(gpu_prefetch_request<T>(obj, this->deviceID)); }
+            void prefetch(T* obj) { ((base*)this)->prefetch(gpu_prefetch_request<T>(obj, this->deviceID)); }
+            void evict(T* obj)    { ((base*)this)->evict(gpu_evict_request<T>(obj, this->deviceID)); }
+            void drop(T* obj)     { ((base*)this)->drop(gpu_drop_request<T>(obj, this->deviceID)); }
 
-            void zero()
+            void zero(T* obj)
             {
                 assert (this->state == uncore);
-                this->thread(new boost::thread(gpu_zero_request<T>((T*)this, this->deviceID)));
+                this->thread(new boost::thread(gpu_zero_request<T>(obj, this->deviceID)));
                 this->join();
                 this->state = core;
             }
 
-            void upload()
+            void upload(T* obj)
             {
                 assert(this->state != storing);
                 assert(this->state != uncore);
@@ -428,7 +428,7 @@ namespace storage {
                     this->state == core;
                 }
 
-                this->thread(new boost::thread(gpu_upload_request<T>((T*)this, this->deviceID)));
+                this->thread(new boost::thread(gpu_upload_request<T>(obj, this->deviceID)));
                 this->join();
             }
         };
@@ -439,20 +439,20 @@ namespace storage {
         public:
             multiDeviceSerializable() { for (int d = 0; d < MAX_N_GPUS; ++d)      dev_data[d].deviceID = d; }
 
-            void b_fetch_()    { for (int d = 0; d < gpu::instance().nGPU; ++d)      dev_data[d].fetch(); }
-            void b_prefetch_() { for (int d = 0; d < gpu::instance().nGPU; ++d)      dev_data[d].prefetch(); }
-            void b_evict_()    { for (int d = 0; d < gpu::instance().nGPU; ++d)      dev_data[d].evict(); }
-            void b_drop_()     { for (int d = 0; d < gpu::instance().nGPU; ++d)      dev_data[d].drop(); }
-            void b_zero_()     { for (int d = 0; d < gpu::instance().nGPU; ++d)      dev_data[d].zero(); }
-            void b_upload_()   { for (int d = 0; d < gpu::instance().nGPU; ++d)      dev_data[d].upload(); }
+            void b_fetch_()    { for (int d = 0; d < gpu::instance().nGPU; ++d)      dev_data[d].fetch((T*)this); }
+            void b_prefetch_() { for (int d = 0; d < gpu::instance().nGPU; ++d)      dev_data[d].prefetch((T*)this); }
+            void b_evict_()    { for (int d = 0; d < gpu::instance().nGPU; ++d)      dev_data[d].evict((T*)this); }
+            void b_drop_()     { for (int d = 0; d < gpu::instance().nGPU; ++d)      dev_data[d].drop((T*)this); }
+            void b_zero_()     { for (int d = 0; d < gpu::instance().nGPU; ++d)      dev_data[d].zero((T*)this); }
+            void b_upload_()   { for (int d = 0; d < gpu::instance().nGPU; ++d)      dev_data[d].upload((T*)this); }
             void b_pin_()      { for (int d = 0; d < gpu::instance().nGPU; ++d)      dev_data[d].pin(); }
 
-            void fetch_()    { int d; cudaGetDevice(&d);      dev_data[d].fetch(); }
-            void prefetch_() { int d; cudaGetDevice(&d);      dev_data[d].prefetch(); }
-            void evict_()    { int d; cudaGetDevice(&d);      dev_data[d].evict(); }
-            void drop_()     { int d; cudaGetDevice(&d);      dev_data[d].drop(); }
-            void zero_()     { int d; cudaGetDevice(&d);      dev_data[d].zero(); }
-            void upload_()   { int d; cudaGetDevice(&d);      dev_data[d].upload(); }
+            void fetch_()    { int d; cudaGetDevice(&d);      dev_data[d].fetch((T*)this); }
+            void prefetch_() { int d; cudaGetDevice(&d);      dev_data[d].prefetch((T*)this); }
+            void evict_()    { int d; cudaGetDevice(&d);      dev_data[d].evict((T*)this); }
+            void drop_()     { int d; cudaGetDevice(&d);      dev_data[d].drop((T*)this); }
+            void zero_()     { int d; cudaGetDevice(&d);      dev_data[d].zero((T*)this); }
+            void upload_()   { int d; cudaGetDevice(&d);      dev_data[d].upload((T*)this); }
             void pin_()      { int d; cudaGetDevice(&d);      dev_data[d].pin(); }
 
 
@@ -470,26 +470,16 @@ namespace storage {
             serializable<T> dev_data[MAX_N_GPUS];
         };
 
-        template<class T> static serializable<T>& cv(serializable<T> const& t) { return const_cast<serializable<T>&>(t); }
-
         template<class T> static multiDeviceSerializable<T>& cv(multiDeviceSerializable<T> const& t)
             { return const_cast<multiDeviceSerializable<T>&>(t); }
 
-        template<class T> static void fetch(serializable<T> const& t)          { if(enabled()) cv(t).fetch();    }
-        template<class T> static void prefetch(serializable<T> const& t)       { if(enabled()) cv(t).prefetch(); }
-        template<class T> static void pin(serializable<T> const& t)            { if(enabled()) cv(t).pin();      }
-        template<class T> static void evict(serializable<T> const& t)          { if(enabled()) cv(t).evict();    }
-        template<class T> static void drop(serializable<T> const& t)           { if(enabled()) cv(t).drop();     }
-        template<class T> static void zero(serializable<T> const& t)           { if(enabled()) cv(t).zero();     }
-        template<class T> static void upload(serializable<T> const& t)         { if(enabled()) cv(t).upload();   }
-
-            //template<class T> static void fetch(multiDeviceSerializable<T> const& t)          { if(enabled()) cv(t).fetch_();    }
-            //template<class T> static void prefetch(multiDeviceSerializable<T> const& t)       { if(enabled()) cv(t).prefetch_(); }
-            //template<class T> static void pin(multiDeviceSerializable<T> const& t)            { if(enabled()) cv(t).pin_();      }
-            //template<class T> static void evict(multiDeviceSerializable<T> const& t)          { if(enabled()) cv(t).evict_();    }
-            //template<class T> static void drop(multiDeviceSerializable<T> const& t)           { if(enabled()) cv(t).drop_();     }
-            //template<class T> static void zero(multiDeviceSerializable<T> const& t)           { if(enabled()) cv(t).zero_();     }
-            //template<class T> static void upload(multiDeviceSerializable<T> const& t)         { if(enabled()) cv(t).upload_();   }
+            template<class T> static void fetch(multiDeviceSerializable<T> const& t)          { if(enabled()) cv(t).fetch_();    }
+            template<class T> static void prefetch(multiDeviceSerializable<T> const& t)       { if(enabled()) cv(t).prefetch_(); }
+            template<class T> static void pin(multiDeviceSerializable<T> const& t)            { if(enabled()) cv(t).pin_();      }
+            template<class T> static void evict(multiDeviceSerializable<T> const& t)          { if(enabled()) cv(t).evict_();    }
+            template<class T> static void drop(multiDeviceSerializable<T> const& t)           { if(enabled()) cv(t).drop_();     }
+            template<class T> static void zero(multiDeviceSerializable<T> const& t)           { if(enabled()) cv(t).zero_();     }
+            template<class T> static void upload(multiDeviceSerializable<T> const& t)         { if(enabled()) cv(t).upload_();   }
 
         struct broadcast {
 
@@ -556,7 +546,6 @@ namespace storage {
 
             for (size_t ci = 0; ci < o.index().n_cohorts(); ++ci)
             {
-                //std::cout << "d=" << d << " size " << o.index().cohort_size(ci) << std::endl;
                 cudaError_t err = cudaMalloc( (void**)(&(o.device_data(d)[ci])), o.index().cohort_size(ci) * sizeof(typename Matrix::value_type) );
                 if (err != cudaSuccess)
                 {

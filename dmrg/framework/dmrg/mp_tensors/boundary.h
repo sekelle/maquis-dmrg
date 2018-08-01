@@ -325,7 +325,7 @@ private:
 
 template<class Matrix, class SymmGroup>
 class Boundary : public storage::disk::serializable<Boundary<Matrix, SymmGroup> >
-               , public storage::gpu::serializable<Boundary<Matrix, SymmGroup> >
+               , public storage::gpu::multiDeviceSerializable<Boundary<Matrix, SymmGroup> >
 {
 public:
     typedef typename SymmGroup::charge charge;
