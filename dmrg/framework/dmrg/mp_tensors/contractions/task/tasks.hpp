@@ -270,11 +270,11 @@ public:
         cublasSetStream(accelerator::gpu::instance().handle, ws->stream);
         cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
         cublasDgemm(accelerator::gpu::instance().handle,
-                    cuop[0], cuop[1], M, N, K, &one, dev_S, M, (value_type*)bra_mps.device_ptr[rb], N, &zero, dev_r, M);
+                    cuop[0], cuop[1], M, N, K, &one, dev_S, M, (value_type*)bra_mps.device_data()[rb], N, &zero, dev_r, M);
 
-        copy_v(ws->stream, ls, rs, new_right.index().n_blocks(ci), dev_r, (value_type*)new_right.device_ptr[ci]);
+        copy_v(ws->stream, ls, rs, new_right.index().n_blocks(ci), dev_r, (value_type*)new_right.device_data()[ci]);
 
-        cudaMemcpyAsync( new_right[ci], (value_type*)new_right.device_ptr[ci], M*N * sizeof(value_type), cudaMemcpyDeviceToHost,
+        cudaMemcpyAsync( new_right[ci], (value_type*)new_right.device_data()[ci], M*N * sizeof(value_type), cudaMemcpyDeviceToHost,
                          ws->stream);
     }
 
@@ -324,9 +324,9 @@ public:
         int N = stripe;
         int K = nSrows * ls;
 
-        value_type* dev_l = (ci != ci_eff) ? dev_S + bit_twiddling::round_up<BUFFER_ALIGNMENT>(K * size_t(N)) : (value_type*)left.device_ptr[ci_eff];
+        value_type* dev_l = (ci != ci_eff) ? dev_S + bit_twiddling::round_up<BUFFER_ALIGNMENT>(K * size_t(N)) : (value_type*)left.device_data()[ci_eff];
         if (ci != ci_eff)
-            transpose_v(ws->stream, ls, rs, left.index().n_blocks(ci_eff), (value_type*)left.device_ptr[ci_eff], dev_l);
+            transpose_v(ws->stream, ls, rs, left.index().n_blocks(ci_eff), (value_type*)left.device_data()[ci_eff], dev_l);
 
         value_type one(1.0), zero(0.);
 
@@ -659,10 +659,10 @@ public:
             int K = bls;
 
             if (right.index().tr(ci))
-                transpose_v(ws->stream, brs, bls, right.index().n_blocks(ci_eff), (value_type*)right.device_ptr[ci_eff], dev_r);
+                transpose_v(ws->stream, brs, bls, right.index().n_blocks(ci_eff), (value_type*)right.device_data()[ci_eff], dev_r);
 
-            const value_type* r_use = (right.index().tr(ci)) ? dev_r : (value_type*)right.device_ptr[ci_eff];
-            const value_type* mpsdata = (value_type*)mps.device_ptr[lb_ket] + mps_offset * M;
+            const value_type* r_use = (right.index().tr(ci)) ? dev_r : (value_type*)right.device_data()[ci_eff];
+            const value_type* mpsdata = (value_type*)mps.device_data()[lb_ket] + mps_offset * M;
 
             assert( gpu_data.t[ti] + M * size_t(N)  <= dev_r);
 

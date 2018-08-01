@@ -68,7 +68,7 @@ namespace common {
                 value_type** dev_T = tasks[lb_in].create_T_gpu(right, ket_tensor);
 
                 for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
-                    it->contract_gpu(left, dev_T, (value_type*)ret_gpu.device_ptr[it->get_rb()]);
+                    it->contract_gpu(left, dev_T, (value_type*)ret_gpu.device_data()[it->get_rb()]);
             }
 
             HANDLE_ERROR( cudaEventRecord(stop,0) );
@@ -250,7 +250,7 @@ namespace common {
             value_type** dev_T = tasks[lb_in].create_T_gpu(right, ket_tensor);
 
             for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
-                it->contract_gpu(left, dev_T, (value_type*)ret_gpu.device_ptr[it->get_rb()]);
+                it->contract_gpu(left, dev_T, (value_type*)ret_gpu.device_data()[it->get_rb()]);
         }
         then = boost::chrono::high_resolution_clock::now();
         tasks.gpu_time += boost::chrono::duration<double>(then - now).count();
