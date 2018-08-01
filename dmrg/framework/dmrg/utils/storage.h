@@ -502,7 +502,7 @@ namespace storage {
             }
         };
 
-        static void init(size_t n) {
+        static void init(int n) {
             maquis::cout << n << " GPUs enabled\n";
             instance().nGPU = n;
             instance().active = true;
@@ -749,8 +749,6 @@ namespace storage {
 
     namespace detail {
         template <class T> disk::serializable<T>& as_disk(T& t) { return t; }
-        //template <class T> gpu::serializable<T> & as_gpu(T& t) { return t; }
-        //template <class T> gpu::serializable<T> const & as_gpu(T const& t) { return t; }
         template <class T> gpu::multiDeviceSerializable<T> & as_gpu(T& t) { return t; }
         template <class T> gpu::multiDeviceSerializable<T> const & as_gpu(T const& t) { return t; }
     }
@@ -796,6 +794,42 @@ namespace storage {
             if (disk::enabled()) disk::sync();
             else if (gpu::enabled()) gpu::sync();
         }
+
+        struct broadcast {
+    
+            template<class T> static void fetch(T& t) 
+            {
+                if(disk::enabled()) detail::as_disk(t).fetch();
+                else if (gpu::enabled()) gpu::broadcast::fetch(t);
+            }
+
+            template<class T> static void prefetch(T& t)
+            {
+                if(disk::enabled())      detail::as_disk(t).prefetch();
+                else if (gpu::enabled()) gpu::broadcast::prefetch(t);
+            }
+
+            template<class T> static void evict(T& t)
+            {
+                if(disk::enabled()) detail::as_disk(t).evict();
+                else if (gpu::enabled()) gpu::broadcast::drop(t);
+            }
+
+            template<class T> static void drop(T& t)
+            {
+                if(disk::enabled()) detail::as_disk(t).drop();
+                else if (gpu::enabled()) gpu::broadcast::drop(t);
+            }
+
+            template<class T> static void pin(T& t)
+            {
+                if(disk::enabled()) detail::as_disk(t).pin();
+                else if (gpu::enabled()) gpu::broadcast::pin(t);
+            }
+
+            template<class Matrix, class SymmGroup> 
+            static void evict(MPSTensor<Matrix, SymmGroup>& t){ }
+        };
     };
 
     inline static void setup(BaseParameters& parms){
@@ -812,8 +846,10 @@ namespace storage {
         }else{
             maquis::cout << "Temporary storage is disabled\n"; }
 
-        if(parms["GPU"])
-            gpu::init(parms["GPU"]);
+        
+        int nGPU = parms["GPU"];
+        if(nGPU)
+            gpu::init(nGPU);
     }
 
 } // namespace storage

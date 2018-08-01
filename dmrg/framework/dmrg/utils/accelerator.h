@@ -239,8 +239,9 @@ namespace accelerator {
 
     inline static void setup(BaseParameters& parms){
 
-        if(parms["GPU"] && !gpu::instance().active)
-            gpu::init(parms["GPU"]);
+        int nGPU = parms["GPU"];
+        if(nGPU && !gpu::instance().active)
+            gpu::init(nGPU);
     }
 
 } // namespace storage

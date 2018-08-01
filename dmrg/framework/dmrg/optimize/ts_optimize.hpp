@@ -149,8 +149,8 @@ public:
 
             if (_site != L-1)
             { 
-                Storage::fetch(left_[site1]);
-                Storage::fetch(right_[site2+1]);
+                Storage::broadcast::fetch(left_[site1]);
+                Storage::broadcast::fetch(right_[site2+1]);
             }
 
             boost::chrono::high_resolution_clock::time_point now, then;
@@ -163,11 +163,11 @@ public:
                 sp(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1]);
 
             if (lr == +1) {
-                if (site1 > 0)                  Storage::pin(left_[site1-1]);
-                if (site2+2 < right_.size())    Storage::prefetch(right_[site2+2]);
+                if (site1 > 0)                  Storage::broadcast::pin(left_[site1-1]);
+                if (site2+2 < right_.size())    Storage::broadcast::prefetch(right_[site2+2]);
             } else {
-                if (site2+2 < right_.size())    Storage::pin(right_[site2+2]);
-                if (site1 > 0)                  Storage::prefetch(left_[site1-1]);
+                if (site2+2 < right_.size())    Storage::broadcast::pin(right_[site2+2]);
+                if (site1 > 0)                  Storage::broadcast::prefetch(left_[site1-1]);
             }
 
             if (parms.is_set("snapshot"))
@@ -281,14 +281,14 @@ public:
         		if (site2 < L-1) mps[site2+1].multiply_from_left(t);
 
                 if (site1 != L-2)
-                    Storage::drop(right_[site2+1]);
+                    Storage::broadcast::drop(right_[site2+1]);
 
                 this->boundary_left_step(mpo, site1); // creating left_[site2]
-                Storage::prefetch(left_[site2]);
+                Storage::broadcast::prefetch(left_[site2]);
 
                 if (site1 != L-2){ 
-                    Storage::evict(mps[site1]);
-                    Storage::evict(left_[site1]);
+                    Storage::broadcast::evict(mps[site1]);
+                    Storage::broadcast::evict(left_[site1]);
                 }
     	    }
     	    if (lr == -1){
@@ -310,14 +310,14 @@ public:
         		if (site1 > 0) mps[site1-1].multiply_from_right(t);
 
                 if(site1 != 0)
-                    Storage::drop(left_[site1]);
+                    Storage::broadcast::drop(left_[site1]);
 
                 this->boundary_right_step(mpo, site2); // creating right_[site2]
-                Storage::prefetch(right_[site2]);
+                Storage::broadcast::prefetch(right_[site2]);
 
                 if(site1 != 0){
-                    Storage::evict(mps[site2]);
-                    Storage::evict(right_[site2+1]); 
+                    Storage::broadcast::evict(mps[site2]);
+                    Storage::broadcast::evict(right_[site2+1]); 
                 }
     	    }
             
