@@ -313,7 +313,7 @@ public:
                     Storage::drop(left_[site1]);
 
                 this->boundary_right_step(mpo, site2); // creating right_[site2]
-                //Storage::prefetch(right_[site2]);
+                Storage::prefetch(right_[site2]);
 
                 if(site1 != 0){
                     Storage::evict(mps[site2]);
