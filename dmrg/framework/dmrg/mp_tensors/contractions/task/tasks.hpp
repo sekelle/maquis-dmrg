@@ -267,9 +267,9 @@ public:
         value_type* dev_r = dev_S + bit_twiddling::round_up<BUFFER_ALIGNMENT>(M * size_t(K));
 
         value_type one(1.0), zero(0.);
-        cublasSetStream(accelerator::gpu::instance().handle, ws->stream);
+        cublasSetStream(accelerator::gpu::get_handle(), ws->stream);
         cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
-        cublasDgemm(accelerator::gpu::instance().handle,
+        cublasDgemm(accelerator::gpu::get_handle(),
                     cuop[0], cuop[1], M, N, K, &one, dev_S, M, (value_type*)bra_mps.device_data()[rb], N, &zero, dev_r, M);
 
         copy_v(ws->stream, ls, rs, new_right.index().n_blocks(ci), dev_r, (value_type*)new_right.device_data()[ci]);
@@ -330,9 +330,9 @@ public:
 
         value_type one(1.0), zero(0.);
 
-        cublasSetStream(accelerator::gpu::instance().handle, ws->stream);
+        cublasSetStream(accelerator::gpu::get_handle(), ws->stream);
         cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
-        cublasDgemm(accelerator::gpu::instance().handle,
+        cublasDgemm(accelerator::gpu::get_handle(),
                     cuop[0], cuop[0], M, N, K, &one, dev_l, M, dev_S, K, &zero, ws->mps_buffer, M);
 
         atomic_add(ws->stream, M*std::size_t(N), ws->mps_buffer, dev_out);
@@ -641,7 +641,7 @@ public:
     template <class DefaultMatrix, class OtherMatrix>
     value_type** create_T_gpu(Boundary<OtherMatrix, SymmGroup> const & right, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
     {
-        cublasSetStream(accelerator::gpu::instance().handle, ws->stream);
+        cublasSetStream(accelerator::gpu::get_handle(), ws->stream);
 
         value_type* dev_r = gpu_data.dev_rsl;
         for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
@@ -668,7 +668,7 @@ public:
 
             value_type one(1.0), zero(0.);
             cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
-            cublasDgemm(accelerator::gpu::instance().handle,
+            cublasDgemm(accelerator::gpu::get_handle(),
                         cuop[0], cuop[0], M, N, K, &one, mpsdata, M, r_use, K, &zero, gpu_data.t[ti], M);
         }
 
@@ -896,14 +896,14 @@ struct ScheduleNew : public std::vector<MPSBlock<
         std::vector<std::size_t> mpsb_sorted = sort_invert(buffer_sizes);
 
         { // resize the GPU pipeline buffer if needed
-        std::vector<std::size_t> psz(accelerator::gpu::nstreams());
-        for (std::size_t tn = 0; tn < std::min(accelerator::gpu::nstreams(), buffer_sizes.size()); ++tn)
+        std::vector<std::size_t> psz(accelerator::gpu::max_nstreams());
+        for (int tn = 0; tn < std::min(accelerator::gpu::max_nstreams(), (int)buffer_sizes.size()); ++tn)
             psz[tn] = buffer_sizes[mpsb_sorted[tn]] * sizeof(value_type);
 
         accelerator::gpu::adjust_pipeline_buffer(psz);
         }
 
-        for (size_t tn = 0; tn < std::min(accelerator::gpu::nstreams(), enumeration_gpu.size()); ++tn)
+        for (int tn = 0; tn < std::min(accelerator::gpu::max_nstreams(), (int)enumeration_gpu.size()); ++tn)
         {
             std::size_t idx = mpsb_sorted[tn];
 
