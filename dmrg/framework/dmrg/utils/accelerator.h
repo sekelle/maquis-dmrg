@@ -237,11 +237,15 @@ namespace accelerator {
 
         static bool use_gpu(size_t flops) { return enabled() && (flops > (1<<27)); }
 
-
         static int max_nstreams() { return instance().max_nstreams_; }
+
+
+        static device* get_device(int id) { return &instance().dev_[id]; }
+
 
         static cudaStream_t next_stream(int d = 0) { return instance().dev_[d].next_stream(); }
 
+        ////////////////////////////////////////////////////////////////////
         static cublasHandle_t get_handle()
         {
             int d;
@@ -271,11 +275,6 @@ namespace accelerator {
             return instance().dev_[d].stage_vector(vec);
         }
 
-        static std::pair<void*,void*> get_staging_buffer(size_t sz, int d=0)
-        {
-            return instance().dev_[d].get_staging_buffer(sz);
-        }
-
         static void adjust_pipeline_buffer(std::vector<size_t> const & psz, int d=0)
         {
             if (enabled())
@@ -289,6 +288,7 @@ namespace accelerator {
         {
             return instance().dev_[d].get_pipeline_buffer(sz);
         }
+        ////////////////////////////////////////////////////////////////////
 
         static void update_schedule_buffer()
         {

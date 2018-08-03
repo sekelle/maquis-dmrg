@@ -28,7 +28,7 @@
 #ifndef CONTRACTIONS_COMMON_SITE_HAMIL_HPP
 #define CONTRACTIONS_COMMON_SITE_HAMIL_HPP
 
-//#include <thread>
+#include <thread>
 //#include <mutex>
 //#include <condition_variable>
 //#include <atomic>
@@ -51,8 +51,10 @@ namespace common {
                  :  tasks(tasks_), left(left_), right(right_), ket_tensor(ket_tensor_), ret_gpu(ret_gpu_)
                  {} 
 
-        void operator()()
+        void operator()(int id)
         {
+            HANDLE_ERROR(cudaSetDevice(id));
+
             storage::gpu::prefetch(ket_tensor);
             storage::gpu::zero(ret_gpu);
             storage::gpu::fetch(ket_tensor);
@@ -65,6 +67,9 @@ namespace common {
             for (unsigned i = 0; i < tasks.enumeration_gpu.size(); ++i)
             {
                 unsigned lb_in = tasks.enumeration_gpu[i];
+
+                if (tasks[lb_in].deviceID != id) continue;
+
                 value_type** dev_T = tasks[lb_in].create_T_gpu(right, ket_tensor);
 
                 for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
@@ -110,11 +115,12 @@ namespace common {
         ket_tensor.make_right_paired();
         MPSTensor<Matrix, SymmGroup> ret(ket_tensor.site_dim(), ket_tensor.row_dim(), ket_tensor.col_dim(),
                                          ket_tensor.data().basis(), RightPaired);
-        MPSTensor<Matrix, SymmGroup> ret_gpu = ret;
+        std::vector<MPSTensor<Matrix, SymmGroup>> ret_gpu(accelerator::gpu::nGPU(), ret);
 
-        boost::thread* gpu_worker;
+        std::vector<std::thread*> gpu_workers(accelerator::gpu::nGPU());
         if (tasks.enumeration_gpu.size())
-            gpu_worker = new boost::thread(gpu_work<Matrix, OtherMatrix, SymmGroup>(tasks, left, right, ket_tensor, ret_gpu));
+            for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
+                gpu_workers[d] = new std::thread(gpu_work<Matrix, OtherMatrix, SymmGroup>(tasks, left, right, ket_tensor, ret_gpu[d]), d);
 
         boost::chrono::high_resolution_clock::time_point now = boost::chrono::high_resolution_clock::now();
         #ifdef MAQUIS_OPENMP
@@ -134,10 +140,15 @@ namespace common {
 
         if (tasks.enumeration_gpu.size())
         {
-            gpu_worker->join();
-            ret.data() += ret_gpu.data();
+            for (std::thread* t: gpu_workers)
+            {
+                t->join();
+                delete t;
+            }
+            for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
+                ret.data() += ret_gpu[d].data();
 
-            storage::gpu::drop(ret_gpu);
+            //storage::gpu::drop(ret_gpu);
         }
 
         ret.make_left_paired();

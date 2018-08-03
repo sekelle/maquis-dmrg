@@ -100,12 +100,12 @@ private:
         index_type* dev_b2s;
         index_type* dev_b1;
 
-        void stage()
+        void stage(accelerator::device* dev)
         {
-            dev_tidx = (index_type*)accelerator::gpu::stage_vector(tidx);
-            dev_alpha = (value_type*)accelerator::gpu::stage_vector(alpha);
-            dev_b2s = (index_type*)accelerator::gpu::stage_vector(b2s);
-            dev_b1  = (index_type*)accelerator::gpu::stage_vector(b1);
+            dev_tidx = (index_type*)dev->stage_vector(tidx);
+            dev_alpha = (value_type*)dev->stage_vector(alpha);
+            dev_b2s = (index_type*)dev->stage_vector(b2s);
+            dev_b1  = (index_type*)dev->stage_vector(b1);
         }
 
     private:
@@ -125,7 +125,7 @@ private:
         index_type** dev_vb1;
         value_type** dev_valpha;
 
-        void stage(std::vector<SUnit> const & suv)
+        void stage(accelerator::device* dev, std::vector<SUnit> const & suv)
         {
             offset.resize(suv.size());
             ms.resize(suv.size());
@@ -147,14 +147,14 @@ private:
                 valpha[x] = suv[x].dev_alpha;
             }
 
-            dev_offset = (index_type*)accelerator::gpu::stage_vector(offset);
-            dev_ms = (index_type*)accelerator::gpu::stage_vector(ms);
-            dev_nb1 = (index_type*)accelerator::gpu::stage_vector(nb1);
+            dev_offset = (index_type*)dev->stage_vector(offset);
+            dev_ms = (index_type*)dev->stage_vector(ms);
+            dev_nb1 = (index_type*)dev->stage_vector(nb1);
 
-            dev_vtidx = (index_type**)accelerator::gpu::stage_vector(vtidx);
-            dev_vb2s  = (index_type**)accelerator::gpu::stage_vector(vb2s);
-            dev_vb1   = (index_type**)accelerator::gpu::stage_vector(vb1);
-            dev_valpha = (value_type**)accelerator::gpu::stage_vector(valpha);
+            dev_vtidx = (index_type**)dev->stage_vector(vtidx);
+            dev_vb2s  = (index_type**)dev->stage_vector(vb2s);
+            dev_vb1   = (index_type**)dev->stage_vector(vb1);
+            dev_valpha = (value_type**)dev->stage_vector(valpha);
         }
 
     private:
@@ -393,13 +393,13 @@ public:
         return ret;
     }
 
-    void stage(WorkSet<value_type>* ws_, value_type* s)
+    void stage(accelerator::device* dev, WorkSet<value_type>* ws_, value_type* s)
     {
         ws = ws_;
         dev_S = s;
-        for (auto& su : suv) su.stage();
+        for (auto& su : suv) su.stage(dev);
 
-        suv_stage.stage(suv);
+        suv_stage.stage(dev, suv);
     }
 
     std::vector<long int>      & get_offsets()       { return mpo_offsets; }
@@ -753,7 +753,8 @@ public:
     }
 
     template <class OtherMatrix, class DefaultMatrix>
-    void stage(WorkSet<value_type>* ws_, Boundary<OtherMatrix, SymmGroup> const & right, MPSTensor<DefaultMatrix, SymmGroup> const & mps)
+    void stage(accelerator::device* dev, WorkSet<value_type>* ws_,
+               Boundary<OtherMatrix, SymmGroup> const & right, MPSTensor<DefaultMatrix, SymmGroup> const & mps)
     {
         ws = ws_;
 
@@ -777,15 +778,16 @@ public:
         }
 
         gpu_data.dev_rsl = dev_t_seek;
-        gpu_data.stage();
+        gpu_data.stage(dev);
 
-        for (auto& coh : *this) coh.stage(ws, gpu_data.dev_rsl);
+        for (auto& coh : *this) coh.stage(dev, ws, gpu_data.dev_rsl);
     }
 
     unsigned rs_ket;
     std::vector<boost::tuple<unsigned, unsigned, unsigned, unsigned>> t_schedule;
 
     bool on_gpu = false;
+    int deviceID;
 
 private:
     WorkSet<value_type>* ws;
@@ -797,8 +799,8 @@ private:
 
         value_type* dev_rsl;
 
-        void stage() {
-            dev_t = (value_type**)accelerator::gpu::stage_vector(t);
+        void stage(accelerator::device* dev) {
+            dev_t = (value_type**)dev->stage_vector(t);
         }
     };
 
@@ -812,10 +814,11 @@ class WorkSet
 {
 public:
 
-    WorkSet(T* t_, T* mps_) : buffer(t_), mps_buffer(mps_), stream(accelerator::gpu::next_stream()) {}
+    WorkSet(T* t_, T* mps_, int id_) : buffer(t_), mps_buffer(mps_), id(id_), stream(accelerator::gpu::next_stream()) {}
 
     T* buffer;
     T* mps_buffer;
+    int id;
     cudaStream_t stream;
 };
 
@@ -867,6 +870,7 @@ struct ScheduleNew : public std::vector<MPSBlock<
             std::size_t idx = mpsb_sorted[b];
             if (accelerator::gpu::use_gpu(flops_list[idx]) && b <= cut) {
                 (*this)[idx].on_gpu = true;
+                (*this)[idx].deviceID = 0;      // TODO load balancing
                 gpu_flops += flops_list[idx];
                 enumeration_gpu.push_back(idx);
             }
@@ -890,47 +894,52 @@ struct ScheduleNew : public std::vector<MPSBlock<
 
         std::vector<std::size_t> buffer_sizes;
         for (auto& mpsb : *this)
+            //if (mpsb.deviceID == d)
             buffer_sizes.push_back(mpsb.t_size(right, mps) + std::max(mpsb.max_r_size(right.index()), mpsb.max_sl_size()) + mps_maxblock);
 
         // Index of MPSBlock with biggest buffer = mpsb_sorted[0]
         std::vector<std::size_t> mpsb_sorted = sort_invert(buffer_sizes);
 
-        { // resize the GPU pipeline buffer if needed
-        std::vector<std::size_t> psz(accelerator::gpu::max_nstreams());
-        for (int tn = 0; tn < std::min(accelerator::gpu::max_nstreams(), (int)buffer_sizes.size()); ++tn)
-            psz[tn] = buffer_sizes[mpsb_sorted[tn]] * sizeof(value_type);
-
-        accelerator::gpu::adjust_pipeline_buffer(psz);
-        }
-
-        for (int tn = 0; tn < std::min(accelerator::gpu::max_nstreams(), (int)enumeration_gpu.size()); ++tn)
+        pipeline.resize(accelerator::gpu::nGPU());
+        for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
         {
-            std::size_t idx = mpsb_sorted[tn];
+            { // resize the GPU pipeline buffer if needed
+                std::vector<std::size_t> psz(accelerator::gpu::max_nstreams());
+                for (int tn = 0; tn < std::min(accelerator::gpu::max_nstreams(), (int)buffer_sizes.size()); ++tn)
+                    psz[tn] = buffer_sizes[mpsb_sorted[tn]] * sizeof(value_type);
 
-            value_type* buffer = (value_type*)accelerator::gpu::get_pipeline_buffer(buffer_sizes[idx] * sizeof(value_type));
-            if (buffer)
-                pipeline.push_back(WorkSet<value_type>(buffer, buffer + buffer_sizes[idx] - mps_maxblock));
-            else
-                break;
-        }
+                accelerator::gpu::adjust_pipeline_buffer(psz, d);
+            }
 
-        int redo = 0;
-        do {
-            redo = 0;
-            try {
-                for (std::size_t tn = 0; tn < mpsb_sorted.size(); ++tn)
-                {
-                    size_t i = mpsb_sorted[tn];
-                    auto& mpsb = (*this)[i];
-                    if(mpsb.on_gpu) mpsb.stage(&pipeline[tn%pipeline.size()], right, mps);
+            for (int tn = 0; tn < std::min(accelerator::gpu::max_nstreams(), (int)enumeration_gpu.size()); ++tn)
+            {
+                std::size_t idx = mpsb_sorted[tn];
+
+                value_type* buffer = (value_type*)accelerator::gpu::get_pipeline_buffer(buffer_sizes[idx] * sizeof(value_type), d);
+                if (buffer)
+                    pipeline[d].push_back(WorkSet<value_type>(buffer, buffer + buffer_sizes[idx] - mps_maxblock, d));
+                else
+                    break;
+            }
+
+            int redo = 0;
+            do {
+                redo = 0;
+                try {
+                    for (std::size_t tn = 0; tn < mpsb_sorted.size(); ++tn)
+                    {
+                        size_t i = mpsb_sorted[tn];
+                        auto& mpsb = (*this)[i];
+                        if(mpsb.on_gpu) mpsb.stage(accelerator::gpu::get_device(d), &pipeline[d][tn%pipeline[d].size()], right, mps);
+                    }
+                }
+                catch (const std::out_of_range& e) {
+                    redo++;
+                    accelerator::gpu::reallocate_staging_buffer(d);
                 }
             }
-            catch (const std::out_of_range& e) {
-                redo++;
-                accelerator::gpu::reallocate_staging_buffer();
-            }
+            while (redo > 0);
         }
-        while (redo > 0);
 
         accelerator::gpu::update_schedule_buffer();
     }
@@ -952,7 +961,7 @@ struct ScheduleNew : public std::vector<MPSBlock<
     mutable std::vector<std::mutex> mutexes;
 
 private:
-    std::vector<WorkSet<value_type>> pipeline;
+    std::vector<std::vector<WorkSet<value_type>>> pipeline;
 
 };
 
