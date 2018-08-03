@@ -117,10 +117,10 @@ namespace common {
                                          ket_tensor.data().basis(), RightPaired);
         std::vector<MPSTensor<Matrix, SymmGroup>> ret_gpu(accelerator::gpu::nGPU(), ret);
 
-        std::vector<std::thread*> gpu_workers(accelerator::gpu::nGPU());
+        std::vector<std::thread> gpu_workers(accelerator::gpu::nGPU());
         if (tasks.enumeration_gpu.size())
             for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
-                gpu_workers[d] = new std::thread(gpu_work<Matrix, OtherMatrix, SymmGroup>(tasks, left, right, ket_tensor, ret_gpu[d]), d);
+                gpu_workers[d] = std::thread(gpu_work<Matrix, OtherMatrix, SymmGroup>(tasks, left, right, ket_tensor, ret_gpu[d]), d);
 
         boost::chrono::high_resolution_clock::time_point now = boost::chrono::high_resolution_clock::now();
         #ifdef MAQUIS_OPENMP
@@ -140,13 +140,12 @@ namespace common {
 
         if (tasks.enumeration_gpu.size())
         {
-            for (std::thread* t: gpu_workers)
-            {
-                t->join();
-                delete t;
-            }
+            for (std::thread& t: gpu_workers) t.join();
             for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
+            {
                 ret.data() += ret_gpu[d].data();
+                storage::gpu::drop(ret_gpu[d]);
+            }
         }
 
         ret.make_left_paired();
