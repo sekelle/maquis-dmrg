@@ -55,9 +55,9 @@ namespace common {
         {
             HANDLE_ERROR(cudaSetDevice(id));
 
-            storage::gpu::prefetch(ket_tensor);
-            storage::gpu::zero(ret_gpu);
-            storage::gpu::fetch(ket_tensor);
+            //storage::gpu::prefetch(ket_tensor);
+            storage::gpu::zero_sync(ret_gpu);
+            storage::gpu::fetch_sync(ket_tensor);
 
             cudaEvent_t start, stop;
             HANDLE_ERROR( cudaEventCreate(&start) );
@@ -79,7 +79,7 @@ namespace common {
             HANDLE_ERROR( cudaEventRecord(stop,0) );
             HANDLE_ERROR( cudaEventSynchronize(stop) );
 
-            storage::gpu::evict(ret_gpu);
+            //storage::gpu::evict(ret_gpu);
 
             float gpu_time;
             HANDLE_ERROR( cudaEventElapsedTime( &gpu_time, start, stop ) );
@@ -88,8 +88,9 @@ namespace common {
             HANDLE_ERROR( cudaEventDestroy(start) );
             HANDLE_ERROR( cudaEventDestroy(stop) );
 
-            storage::gpu::drop(ket_tensor);
-            storage::gpu::pin(ret_gpu);
+            storage::gpu::drop_sync(ket_tensor);
+            //storage::gpu::pin(ret_gpu);
+            storage::gpu::evict_sync(ret_gpu);
         }
 
     private:
@@ -142,10 +143,7 @@ namespace common {
         {
             for (std::thread& t: gpu_workers) t.join();
             for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
-            {
                 ret.data() += ret_gpu[d].data();
-                storage::gpu::drop(ret_gpu[d]);
-            }
         }
 
         ret.make_left_paired();
