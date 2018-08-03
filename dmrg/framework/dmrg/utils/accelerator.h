@@ -243,7 +243,7 @@ namespace accelerator {
         static device* get_device(int id) { return &instance().dev_[id]; }
 
 
-        static cudaStream_t next_stream(int d = 0) { return instance().dev_[d].next_stream(); }
+        static cudaStream_t next_stream(int d) { return instance().dev_[d].next_stream(); }
 
         ////////////////////////////////////////////////////////////////////
         static cublasHandle_t get_handle()
@@ -253,12 +253,12 @@ namespace accelerator {
             return instance().dev_[d].handle;
         }
 
-        static size_t get_schedule_position(int d=0)
+        static size_t get_schedule_position(int d)
         {
             return instance().dev_[d].get_schedule_position();
         }
 
-        static void reallocate_staging_buffer(int d=0)
+        static void reallocate_staging_buffer(int d)
         {
             if (enabled())
             {
@@ -269,13 +269,13 @@ namespace accelerator {
         }
 
         template <class Vector>
-        static void* stage_vector(Vector const & vec, int d=0)
+        static void* stage_vector(Vector const & vec, int d)
         {
             if (enabled())
             return instance().dev_[d].stage_vector(vec);
         }
 
-        static void adjust_pipeline_buffer(std::vector<size_t> const & psz, int d=0)
+        static void adjust_pipeline_buffer(std::vector<size_t> const & psz, int d)
         {
             if (enabled())
             {
@@ -284,7 +284,7 @@ namespace accelerator {
             }
         }
 
-        static void* get_pipeline_buffer(size_t sz, int d=0)
+        static void* get_pipeline_buffer(size_t sz, int d)
         {
             return instance().dev_[d].get_pipeline_buffer(sz);
         }

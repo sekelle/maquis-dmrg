@@ -814,7 +814,7 @@ class WorkSet
 {
 public:
 
-    WorkSet(T* t_, T* mps_, int id_) : buffer(t_), mps_buffer(mps_), id(id_), stream(accelerator::gpu::next_stream()) {}
+    WorkSet(T* t_, T* mps_, int id_) : buffer(t_), mps_buffer(mps_), id(id_), stream(accelerator::gpu::next_stream(id_)) {}
 
     T* buffer;
     T* mps_buffer;
@@ -870,7 +870,8 @@ struct ScheduleNew : public std::vector<MPSBlock<
             std::size_t idx = mpsb_sorted[b];
             if (accelerator::gpu::use_gpu(flops_list[idx]) && b <= cut) {
                 (*this)[idx].on_gpu = true;
-                (*this)[idx].deviceID = 0;      // TODO load balancing
+                (*this)[idx].deviceID = idx % accelerator::gpu::nGPU();      // TODO load balancing
+                //(*this)[idx].deviceID = 1;
                 gpu_flops += flops_list[idx];
                 enumeration_gpu.push_back(idx);
             }
@@ -894,7 +895,6 @@ struct ScheduleNew : public std::vector<MPSBlock<
 
         std::vector<std::size_t> buffer_sizes;
         for (auto& mpsb : *this)
-            //if (mpsb.deviceID == d)
             buffer_sizes.push_back(mpsb.t_size(right, mps) + std::max(mpsb.max_r_size(right.index()), mpsb.max_sl_size()) + mps_maxblock);
 
         // Index of MPSBlock with biggest buffer = mpsb_sorted[0]
@@ -926,11 +926,13 @@ struct ScheduleNew : public std::vector<MPSBlock<
             do {
                 redo = 0;
                 try {
+                    int counter = 0;
                     for (std::size_t tn = 0; tn < mpsb_sorted.size(); ++tn)
                     {
                         size_t i = mpsb_sorted[tn];
                         auto& mpsb = (*this)[i];
-                        if(mpsb.on_gpu) mpsb.stage(accelerator::gpu::get_device(d), &pipeline[d][tn%pipeline[d].size()], right, mps);
+                        if(mpsb.on_gpu && mpsb.deviceID == d)
+                            mpsb.stage(accelerator::gpu::get_device(d), &pipeline[d][counter++%pipeline[d].size()], right, mps);
                     }
                 }
                 catch (const std::out_of_range& e) {

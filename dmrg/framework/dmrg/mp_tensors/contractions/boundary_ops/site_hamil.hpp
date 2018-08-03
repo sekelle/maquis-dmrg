@@ -147,8 +147,6 @@ namespace common {
             }
             for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
                 ret.data() += ret_gpu[d].data();
-
-            //storage::gpu::drop(ret_gpu);
         }
 
         ret.make_left_paired();
