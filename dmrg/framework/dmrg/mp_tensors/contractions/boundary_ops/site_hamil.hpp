@@ -152,7 +152,6 @@ namespace common {
                 }
         }
 
-        ret.make_left_paired();
         return ret;
     }
 

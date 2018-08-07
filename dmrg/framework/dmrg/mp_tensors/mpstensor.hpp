@@ -372,8 +372,8 @@ template<class Matrix, class SymmGroup>
 typename MPSTensor<Matrix, SymmGroup>::scalar_type
 MPSTensor<Matrix, SymmGroup>::scalar_overlap(MPSTensor<Matrix, SymmGroup> const & rhs) const
 {
-    make_left_paired();
-    rhs.make_left_paired();
+    make_right_paired();
+    rhs.make_right_paired();
 
     // verbose_assert(left_i, rhs.left_i);
     // verbose_assert(right_i, rhs.right_i);
@@ -385,7 +385,8 @@ MPSTensor<Matrix, SymmGroup>::scalar_overlap(MPSTensor<Matrix, SymmGroup> const 
     // Bela says: this is a workaround for the very rare condition that site_hamil2 removes blocks
     // This shouldn't be necessary, but as of Rev. 1702, is necessary in some cases
     // If I haven't fixed this by the end of Feb 2012, remind me
-    Index<SymmGroup> i1 = data().left_basis(), i2 = rhs.data().left_basis();
+
+    Index<SymmGroup> i1 = data().right_basis(), i2 = rhs.data().right_basis();
     common_subset(i1, i2);
     std::vector<scalar_type> vt; vt.reserve(i1.size());
 
@@ -496,9 +497,9 @@ MPSTensor<Matrix, SymmGroup>::operator+=(MPSTensor<Matrix, SymmGroup> const & rh
     assert( weak_equal(right_i, rhs.right_i) );
     assert( phys_i == rhs.phys_i );
    
-    // what if both are right_paired?
-    make_left_paired();
-    rhs.make_left_paired();
+    // what if both are left_paired?
+    make_right_paired();
+    rhs.make_right_paired();
     
     cur_normalization = Unorm;
 
@@ -522,8 +523,8 @@ MPSTensor<Matrix, SymmGroup>::operator-=(MPSTensor<Matrix, SymmGroup> const & rh
     assert( weak_equal(right_i, rhs.right_i) );
     assert( phys_i == rhs.phys_i );
     
-    make_left_paired();
-    rhs.make_left_paired();
+    make_right_paired();
+    rhs.make_right_paired();
     
     cur_normalization = Unorm;
     
