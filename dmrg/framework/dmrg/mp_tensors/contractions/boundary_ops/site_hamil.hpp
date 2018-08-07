@@ -55,9 +55,10 @@ namespace common {
         {
             HANDLE_ERROR(cudaSetDevice(id));
 
-            //storage::gpu::prefetch(ket_tensor);
             storage::gpu::zero_sync(ret_gpu);
-            storage::gpu::fetch_sync(ket_tensor);
+            //storage::gpu::fetch_sync(ket_tensor);
+
+            tasks.mps_stage.upload(id);
 
             cudaEvent_t start, stop;
             HANDLE_ERROR( cudaEventCreate(&start) );
@@ -70,7 +71,7 @@ namespace common {
 
                 if (tasks[lb_in].deviceID != id) continue;
 
-                value_type** dev_T = tasks[lb_in].create_T_gpu(right, ket_tensor);
+                value_type** dev_T = tasks[lb_in].create_T_gpu(right, ket_tensor, tasks.mps_stage.device_ptr(id));
 
                 for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
                     it->contract_gpu(left, dev_T, (value_type*)ret_gpu.device_data()[it->get_rb()]);
@@ -79,8 +80,6 @@ namespace common {
             HANDLE_ERROR( cudaEventRecord(stop,0) );
             HANDLE_ERROR( cudaEventSynchronize(stop) );
 
-            //storage::gpu::evict(ret_gpu);
-
             float gpu_time;
             HANDLE_ERROR( cudaEventElapsedTime( &gpu_time, start, stop ) );
             tasks.gpu_time += gpu_time/1000;
@@ -88,8 +87,7 @@ namespace common {
             HANDLE_ERROR( cudaEventDestroy(start) );
             HANDLE_ERROR( cudaEventDestroy(stop) );
 
-            storage::gpu::drop_sync(ket_tensor);
-            //storage::gpu::pin(ret_gpu);
+            //storage::gpu::drop_sync(ket_tensor);
             storage::gpu::evict_sync(ret_gpu);
         }
 
@@ -117,6 +115,8 @@ namespace common {
         MPSTensor<Matrix, SymmGroup> ret(ket_tensor.site_dim(), ket_tensor.row_dim(), ket_tensor.col_dim(),
                                          ket_tensor.data().basis(), RightPaired);
         std::vector<MPSTensor<Matrix, SymmGroup>> ret_gpu(accelerator::gpu::nGPU(), ret);
+
+        tasks.mps_stage.stage(ket_tensor.data());
 
         std::vector<std::thread> gpu_workers(accelerator::gpu::nGPU());
         if (tasks.enumeration_gpu.size())

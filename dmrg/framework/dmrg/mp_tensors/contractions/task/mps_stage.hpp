@@ -44,66 +44,10 @@
 
 #include "../numeric/gpu.h"
 
-
-template <class T>
-class MPSTensorStage
+namespace mps_stage_detail
 {
-public:
-
-    std::vector<T*> const & device_ptr(int device) const { return dev_view[device]; }
-
-    template<class Index>
-    void allocate(Index const& index)
-    {
-        sz = 0;
-        for (size_t b = 0; b < index.size(); ++b)
-        {
-            size_t block_size = index.left_size(b) * index.right_size(b);
-            sz += bit_twiddling::round_up<BUFFER_ALIGNMENT>(block_size);
-        }
-
-        host_data = (T*)malloc(sz * sizeof(T));
-
-        create_view(host_data, view, index);
-
-        dev_view.resize(accelerator::gpu::nGPU()); 
-        dev_data.resize(accelerator::gpu::nGPU()); 
-
-        for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
-        {
-            cuda_alloc_request(d, &dev_data[d], sz * sizeof(T));
-            create_view(dev_data[d], dev_view[d], index);
-        }
-    }
-
-    void deallocate()
-    {
-        view.clear();
-        free(host_data);
-
-        dev_view.clear();
-        for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
-            cuda_dealloc_request(d, dev_data[d]);
-    }
-
-    template <class BlockMatrix>
-    void stage(BlockMatrix const& bm)
-    {
-        assert (bm.n_blocks() == view.size());
-        for (size_t b = 0; b < bm.n_blocks(); ++b)
-            memcpy( view[b], bm[b].get_values().data(), bm.basis().left_size(b) * bm.basis().right_size(b) * sizeof(T) );
-    }
-
-    void upload(int device)
-    {
-        cudaSetDevice(device);
-        cudaMemcpy(dev_data[device], host_data, sz * sizeof(T), cudaMemcpyHostToDevice);
-    }
-
-private:
-
-    template <class Index>
-    static void create_view(T* base_ptr, std::vector<T*> & view, Index const& index)
+    template <class T, class Index>
+    void create_view(T* base_ptr, std::vector<T*> & view, Index const& index)
     {
         view.resize(index.size());
         T* enumerator = base_ptr;
@@ -115,25 +59,105 @@ private:
         }
     }
 
-    static void cuda_alloc_request(int device, T** ptr, size_t sz)
+    template <class T>
+    void cuda_alloc_request(int device, T** ptr, size_t sz)
     {
         HANDLE_ERROR(cudaSetDevice(device));
         HANDLE_ERROR(cudaMalloc(ptr, sz));
     }
 
-    static void cuda_dealloc_request(int device, T* ptr)
+    template <class T>
+    void cuda_dealloc_request(int device, T* ptr)
     {
         HANDLE_ERROR( cudaSetDevice(device) );
         HANDLE_ERROR( cudaFree(ptr) );
     }
+}
 
-    std::vector<T*> view;
+template <class T>
+class MPSTensorStage
+{
+public:
 
-    size_t sz;
-    T* host_data;
+    std::vector<T*> const & device_ptr(int device) const { return device_input[device].get_view(); }
 
-    std::vector<std::vector<T*>> dev_view;
-    std::vector<T*> dev_data;
+    template<class Index>
+    void allocate(Index const& index)
+    {
+        size_t sz = 0;
+        for (size_t b = 0; b < index.size(); ++b)
+        {
+            size_t block_size = index.left_size(b) * index.right_size(b);
+            sz += bit_twiddling::round_up<BUFFER_ALIGNMENT>(block_size);
+        }
+
+        host_input.allocate(-1, sz, (T*)accelerator::gpu::get_mps_stage_buffer(sz * sizeof(T)), index);
+
+        device_input.resize(accelerator::gpu::nGPU());
+        for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
+        {
+            T* dev_ptr;
+            mps_stage_detail::cuda_alloc_request(d, &dev_ptr, sz * sizeof(T));
+            device_input[d].allocate(d, sz, dev_ptr, index);
+        }
+    }
+
+    void deallocate()
+    {
+        for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
+            device_input[d].deallocate();
+    }
+
+    template <class BlockMatrix>
+    void stage(BlockMatrix const& bm)
+    {
+        assert (bm.n_blocks() == host_input.get_view().size());
+        for (size_t b = 0; b < bm.n_blocks(); ++b)
+            memcpy( host_input.get_view()[b], bm[b].get_values().data(), bm.basis().left_size(b) * bm.basis().right_size(b) * sizeof(T) );
+    }
+
+    void upload(int device)
+    {
+        cudaSetDevice(device);
+        cudaMemcpyAsync(device_input[device].data(), host_input.data(), host_input.size() * sizeof(T), cudaMemcpyHostToDevice);
+    }
+
+private:
+
+    class storageUnit
+    {
+    public:
+        std::vector<T*> const& get_view() const { return view; }
+
+        T* data() { return data_; }
+        size_t size() const { return sz; }
+
+        template <class Index>
+        void allocate(int i, size_t s, T* d, Index const& index)
+        {
+            id = i;
+            sz = s;
+            data_ = d;
+            mps_stage_detail::create_view(data_, view, index);
+        }
+
+        void deallocate()
+        {
+            if (id >=0 ) mps_stage_detail::cuda_dealloc_request(id, data_);
+        }
+
+    private:
+        int id = -1;
+        size_t sz;
+        T* data_;
+        std::vector<T*> view;
+    };
+
+    // input mps host pinned staging area
+    storageUnit host_input;
+
+    // input mps device(s) storage
+    std::vector<storageUnit> device_input;
 };
 
 

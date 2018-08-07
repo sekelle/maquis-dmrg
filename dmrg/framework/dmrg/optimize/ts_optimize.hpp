@@ -232,6 +232,8 @@ public:
             }
             twin_mps.clear();
 
+            sp.contraction_schedule.mps_stage.deallocate();
+
 
 #ifndef NDEBUG
             // Caution: this is an O(L) operation, so it really should be done only in debug mode

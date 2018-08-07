@@ -45,6 +45,8 @@
 #include "dmrg/mp_tensors/contractions/numeric/gemm_template.h"
 #include "dmrg/mp_tensors/contractions/numeric/gpu.h"
 
+#include "dmrg/mp_tensors/contractions/task/mps_stage.hpp"
+
 namespace contraction {
 namespace common {
 
@@ -638,8 +640,9 @@ public:
         return ret;
     }
 
-    template <class DefaultMatrix, class OtherMatrix>
-    value_type** create_T_gpu(Boundary<OtherMatrix, SymmGroup> const & right, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
+    template <class DefaultMatrix, class OtherMatrix, class Pointer>
+    value_type** create_T_gpu(Boundary<OtherMatrix, SymmGroup> const & right, MPSTensor<DefaultMatrix, SymmGroup> const & mps,
+                              std::vector<Pointer> const & mps_dev_ptr) const
     {
         cublasSetStream(accelerator::gpu::get_handle(), ws->stream);
 
@@ -662,7 +665,8 @@ public:
                 transpose_v(ws->stream, brs, bls, right.index().n_blocks(ci_eff), (value_type*)right.device_data()[ci_eff], dev_r);
 
             const value_type* r_use = (right.index().tr(ci)) ? dev_r : (value_type*)right.device_data()[ci_eff];
-            const value_type* mpsdata = (value_type*)mps.device_data()[lb_ket] + mps_offset * M;
+            //const value_type* mpsdata = (value_type*)mps.device_data()[lb_ket] + mps_offset * M;
+            const value_type* mpsdata = (value_type*)mps_dev_ptr[lb_ket] + mps_offset * M;
 
             assert( gpu_data.t[ti] + M * size_t(N)  <= dev_r);
 
@@ -835,7 +839,7 @@ struct ScheduleNew : public std::vector<MPSBlock<
     typedef typename Matrix::value_type value_type;
 
     ScheduleNew() {}
-    ScheduleNew(std::size_t dim) : base(dim), mutexes(dim), cpu_time(0), gpu_time(0) {}
+    ScheduleNew(std::size_t dim) : base(dim), /*mutexes(dim),*/ cpu_time(0), gpu_time(0) {}
 
     //double mflops(double time) const { return total_flops*niter / time / 1e6; }
 
@@ -870,7 +874,7 @@ struct ScheduleNew : public std::vector<MPSBlock<
             std::size_t idx = mpsb_sorted[b];
             if (accelerator::gpu::use_gpu(flops_list[idx]) && b <= cut) {
                 (*this)[idx].on_gpu = true;
-                (*this)[idx].deviceID = idx % accelerator::gpu::nGPU();      // TODO load balancing
+                (*this)[idx].deviceID = enumeration_gpu.size() % accelerator::gpu::nGPU();      // TODO load balancing
                 //(*this)[idx].deviceID = 1;
                 gpu_flops += flops_list[idx];
                 enumeration_gpu.push_back(idx);
@@ -960,6 +964,7 @@ struct ScheduleNew : public std::vector<MPSBlock<
     std::vector<unsigned> enumeration;
     std::vector<unsigned> enumeration_gpu;
 
+    mutable MPSTensorStage<value_type> mps_stage;
     mutable std::vector<std::mutex> mutexes;
 
 private:

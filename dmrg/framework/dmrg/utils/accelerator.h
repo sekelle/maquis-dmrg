@@ -311,6 +311,17 @@ namespace accelerator {
             }
         }
 
+        static void* get_mps_stage_buffer(size_t sz)
+        {
+            if (sz > instance().mps_size)
+            {
+                cudaFreeHost(instance().mps_stage_buffer);
+                cudaHostAlloc( &instance().mps_stage_buffer, sz, cudaHostAllocPortable | cudaHostAllocWriteCombined);
+                instance().mps_size = sz;
+            }
+
+            return instance().mps_stage_buffer;
+        }
 
         static void init(int ngpu)
         {
@@ -322,14 +333,24 @@ namespace accelerator {
                 workers[d] = std::thread(&device::init, &instance().dev_[d], d, max_nstreams());
 
             for (std::thread& t : workers) t.join();
+
+            cudaHostAlloc( &instance().mps_stage_buffer, instance().mps_size, cudaHostAllocPortable | cudaHostAllocWriteCombined);
         }
 
         static int nGPU() { return instance().dev_.size(); }
+
+        ~gpu()
+        {
+            cudaFreeHost(mps_stage_buffer);
+        }
 
     private:
         bool active;
         int max_nstreams_;
         std::vector<device> dev_;
+
+        size_t mps_size = 100000000; // 100 MiB
+        void* mps_stage_buffer;
     };
 
     inline static void setup(BaseParameters& parms){
