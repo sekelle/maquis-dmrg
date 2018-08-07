@@ -867,7 +867,7 @@ struct ScheduleNew : public std::vector<MPSBlock<
         std::size_t ninety = 0, cut = 0;
         for ( ; cut < mpsb_sorted.size(); ++cut) {
             ninety += flops_list[mpsb_sorted[cut]];
-            if ( double(ninety)/total_flops > 0.8) break; // send at most 90% of the workload to the GPU
+            if ( double(ninety)/total_flops > 0.9) break; // send at most 90% of the workload to the GPU
         }
 
         for (std::size_t b = 0; b < mpsb_sorted.size(); ++b) {

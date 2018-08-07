@@ -81,6 +81,12 @@ public:
 
     std::vector<T*> const & device_ptr(int device) const { return device_input[device].get_view(); }
 
+    std::vector<T*> const & device_out_view(int device) const { return device_output[device].get_view(); }
+    T* device_out(int device) { return device_output[device].data(); }
+
+    std::vector<T*> const & host_out_view(int device) { return host_output[device].get_view(); }
+    T* host_out(int device) { return host_output[device].data(); }
+
     template<class Index>
     void allocate(Index const& index)
     {
@@ -100,12 +106,32 @@ public:
             mps_stage_detail::cuda_alloc_request(d, &dev_ptr, sz * sizeof(T));
             device_input[d].allocate(d, sz, dev_ptr, index);
         }
+
+        device_output.resize(accelerator::gpu::nGPU());
+        for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
+        {
+            T* dev_ptr;
+            mps_stage_detail::cuda_alloc_request(d, &dev_ptr, sz * sizeof(T));
+            device_output[d].allocate(d, sz, dev_ptr, index);
+        }
+
+        host_output.resize(accelerator::gpu::nGPU());
+        for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
+        {
+            T* ptr;
+            cudaHostAlloc(&ptr, sz * sizeof(T), cudaHostAllocPortable);
+            host_output[d].allocate(-1, sz, ptr, index);
+        }
     }
 
     void deallocate()
     {
         for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
+        {
             device_input[d].deallocate();
+            device_output[d].deallocate();
+            host_output[d].deallocate();
+        }
     }
 
     template <class BlockMatrix>
@@ -121,6 +147,8 @@ public:
         cudaSetDevice(device);
         cudaMemcpyAsync(device_input[device].data(), host_input.data(), host_input.size() * sizeof(T), cudaMemcpyHostToDevice);
     }
+
+    size_t size() const { return host_input.size(); }
 
 private:
 
@@ -144,6 +172,7 @@ private:
         void deallocate()
         {
             if (id >=0 ) mps_stage_detail::cuda_dealloc_request(id, data_);
+            else         cudaFreeHost(data_);
         }
 
     private:
@@ -158,6 +187,12 @@ private:
 
     // input mps device(s) storage
     std::vector<storageUnit> device_input;
+
+    // output mps device(s) storage
+    std::vector<storageUnit> device_output;
+
+    // output mps pinned host storage
+    std::vector<storageUnit> host_output;
 };
 
 

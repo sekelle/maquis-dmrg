@@ -55,8 +55,7 @@ namespace common {
         {
             HANDLE_ERROR(cudaSetDevice(id));
 
-            storage::gpu::zero_sync(ret_gpu);
-            //storage::gpu::fetch_sync(ket_tensor);
+            cudaMemset( tasks.mps_stage.device_out(id), 0, tasks.mps_stage.size() * sizeof(value_type) );
 
             tasks.mps_stage.upload(id);
 
@@ -74,7 +73,7 @@ namespace common {
                 value_type** dev_T = tasks[lb_in].create_T_gpu(right, ket_tensor, tasks.mps_stage.device_ptr(id));
 
                 for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
-                    it->contract_gpu(left, dev_T, (value_type*)ret_gpu.device_data()[it->get_rb()]);
+                    it->contract_gpu(left, dev_T, tasks.mps_stage.device_out_view(id)[it->get_rb()]);
             }
 
             HANDLE_ERROR( cudaEventRecord(stop,0) );
@@ -87,8 +86,8 @@ namespace common {
             HANDLE_ERROR( cudaEventDestroy(start) );
             HANDLE_ERROR( cudaEventDestroy(stop) );
 
-            //storage::gpu::drop_sync(ket_tensor);
-            storage::gpu::evict_sync(ret_gpu);
+            cudaMemcpy( tasks.mps_stage.host_out(id), tasks.mps_stage.device_out(id), tasks.mps_stage.size() * sizeof(value_type),
+                        cudaMemcpyDeviceToHost );
         }
 
     private:
@@ -114,14 +113,13 @@ namespace common {
         ket_tensor.make_right_paired();
         MPSTensor<Matrix, SymmGroup> ret(ket_tensor.site_dim(), ket_tensor.row_dim(), ket_tensor.col_dim(),
                                          ket_tensor.data().basis(), RightPaired);
-        std::vector<MPSTensor<Matrix, SymmGroup>> ret_gpu(accelerator::gpu::nGPU(), ret);
 
         tasks.mps_stage.stage(ket_tensor.data());
 
         std::vector<std::thread> gpu_workers(accelerator::gpu::nGPU());
         if (tasks.enumeration_gpu.size())
             for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
-                gpu_workers[d] = std::thread(gpu_work<Matrix, OtherMatrix, SymmGroup>(tasks, left, right, ket_tensor, ret_gpu[d]), d);
+                gpu_workers[d] = std::thread(gpu_work<Matrix, OtherMatrix, SymmGroup>(tasks, left, right, ket_tensor, ret), d);
 
         boost::chrono::high_resolution_clock::time_point now = boost::chrono::high_resolution_clock::now();
         #ifdef MAQUIS_OPENMP
@@ -142,8 +140,16 @@ namespace common {
         if (tasks.enumeration_gpu.size())
         {
             for (std::thread& t: gpu_workers) t.join();
-            for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
-                ret.data() += ret_gpu[d].data();
+
+            for (size_t b = 0; b < ret.data().n_blocks(); ++b)
+                for (size_t v = 0; v < ret.data()[b].get_values().size(); ++v)
+                {
+                    value_type sum = 0;
+                    for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
+                        sum += tasks.mps_stage.host_out_view(d)[b][v];
+
+                    ret.data()[b].get_values()[v] += sum;
+                }
         }
 
         ret.make_left_paired();
