@@ -130,10 +130,7 @@ namespace storage {
                     impl()->state = D::uncore;
                 }
 
-                if(impl()->state == D::uncore) {
-                    impl()->thread(new boost::thread(o, true)); // force fetch (blocking)
-                    impl()->join();
-                }
+                if(impl()->state == D::uncore) o(true);
 
                 impl()->state = D::core;
             }
@@ -165,8 +162,7 @@ namespace storage {
             template <class Obj>
             void drop(Obj o){
                 impl()->cleanup();
-                if(impl()->state == D::core) impl()->thread(new boost::thread(o));
-                impl()->join();
+                if(impl()->state == D::core) o();
                 assert(impl()->state != D::storing);     // drop of already stored data
                 //assert(impl()->state != D::uncore);      // drop of already stored data
                 assert(impl()->state != D::prefetching); // drop of prefetched data
@@ -415,8 +411,7 @@ namespace storage {
             void zero(T* obj)
             {
                 assert (this->state == uncore);
-                this->thread(new boost::thread(gpu_zero_request<T>(obj, this->deviceID)));
-                this->join();
+                gpu_zero_request<T>(obj, this->deviceID)();
                 this->state = core;
             }
 
@@ -429,25 +424,7 @@ namespace storage {
                     this->state == core;
                 }
 
-                this->thread(new boost::thread(gpu_upload_request<T>(obj, this->deviceID)));
-                this->join();
-            }
-
-            void zero_sync(T* obj)
-            {
-                assert (this->state == uncore);
-                gpu_zero_request<T>(obj, this->deviceID)();
-                this->state = core;
-            }
-
-            void fetch_sync(T* obj)
-            {
-                if(this->state == core) return;
-                assert(this->state != prefetching);
-                assert(this->state != storing);
-
-                gpu_prefetch_request<T>(obj, this->deviceID)();
-                this->state = core;
+                gpu_upload_request<T>(obj, this->deviceID)();
             }
 
             void evict_sync(T* obj){
@@ -457,14 +434,6 @@ namespace storage {
                     gpu_evict_request<T>(obj, this->deviceID)();
                     this->state = uncore;
                 }
-            }
-
-            void drop_sync(T* obj){
-                assert(this->state != storing);     // drop of already stored data
-                assert(this->state != uncore);      // drop of already stored data
-                assert(this->state != prefetching); // drop of prefetched data
-                gpu_drop_request<T>(obj, this->deviceID)();
-                this->state = uncore;
             }
         };
 
@@ -490,11 +459,7 @@ namespace storage {
             void upload_()   { int d; cudaGetDevice(&d);      dev_data[d].upload((T*)this); }
             void pin_()      { int d; cudaGetDevice(&d);      dev_data[d].pin(); }
 
-            void fetch_sync_()    { int d; cudaGetDevice(&d);      dev_data[d].fetch_sync((T*)this); }
-            void zero_sync_()     { int d; cudaGetDevice(&d);      dev_data[d].zero_sync((T*)this); }
             void evict_sync_()    { int d; cudaGetDevice(&d);      dev_data[d].evict_sync((T*)this); }
-            void drop_sync_()     { int d; cudaGetDevice(&d);      dev_data[d].drop_sync((T*)this); }
-
 
             std::vector<void*>& device_data(int d = -1)  {
                 if (d < 0) cudaGetDevice(&d);
@@ -521,10 +486,7 @@ namespace storage {
             template<class T> static void zero(multiDeviceSerializable<T> const& t)           { if(enabled()) cv(t).zero_();     }
             template<class T> static void upload(multiDeviceSerializable<T> const& t)         { if(enabled()) cv(t).upload_();   }
 
-            template<class T> static void zero_sync(multiDeviceSerializable<T> const& t)           { if(enabled()) cv(t).zero_sync_();  }
             template<class T> static void evict_sync(multiDeviceSerializable<T> const& t)          { if(enabled()) cv(t).evict_sync_(); }
-            template<class T> static void fetch_sync(multiDeviceSerializable<T> const& t)          { if(enabled()) cv(t).fetch_sync_(); }
-            template<class T> static void drop_sync(multiDeviceSerializable<T> const& t)           { if(enabled()) cv(t).drop_sync_();  }
 
         struct broadcast {
 
@@ -537,32 +499,22 @@ namespace storage {
             template<class T> static void upload(multiDeviceSerializable<T> const& t)         { if(enabled()) cv(t).b_upload_();   }
         };
 
-        struct init_request
-        {
-            void operator()(int ID, cudaStream_t* stream)
-            {
-                cudaSetDevice(ID);
-                cudaStreamCreate(stream);
-            }
-        };
-
         static void init(int n) {
             maquis::cout << n << " GPUs enabled\n";
             instance().nGPU = n;
             instance().active = true;
 
-            std::vector<std::thread> pool(n);
-
             for (int i = 0; i < n; ++i)
-                pool[i] = std::thread(init_request(), i, &instance().storage_stream[i]);
-
-            for (std::thread& t : pool) t.join();
+            {
+                cudaSetDevice(i);
+                cudaStreamCreate(&instance().storage_stream[i]);
+            }
         }
 
         static cudaStream_t getStorageStream(int ID) { return instance().storage_stream[ID]; }
 
         gpu() : nGPU(0) {}
-        size_t nGPU;
+        int nGPU;
 
         cudaStream_t storage_stream[MAX_N_GPUS];
     };
