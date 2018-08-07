@@ -56,15 +56,8 @@ namespace accelerator {
                 exit(EXIT_FAILURE);
             }
 
-            HANDLE_ERROR( cudaGetDeviceProperties(&prop, 0) );
-
-            //pbuffer_size = prop.totalGlobalMem/5;
-            pbuffer_size = 100000000; // 100 MiB
-            cudaMalloc( &pbuffer, pbuffer_size );
-
-            sbuffer_size = 50000000; // 50 MiB
-            cudaMallocHost(&sbuffer, sbuffer_size);
-            cudaMalloc(&dev_buffer, sbuffer_size);
+            sbuffer_size = 0;
+            pbuffer_size = 0;
 
             streams.resize(nstreams);
             for (int i=0; i < nstreams; ++i)
@@ -191,7 +184,7 @@ namespace accelerator {
         }
 
 
-        device() : sposition(0), pposition(0) {}
+        device() : sposition(0), pposition(0), sbuffer(NULL), pbuffer(NULL), dev_buffer(NULL) {}
 
         ~device()
         {
@@ -328,11 +321,7 @@ namespace accelerator {
             instance().active = true;
             instance().dev_ = std::vector<device>(ngpu);
 
-            std::vector<std::thread> workers(ngpu);
-            for (int d = 0; d < ngpu; ++d)
-                workers[d] = std::thread(&device::init, &instance().dev_[d], d, max_nstreams());
-
-            for (std::thread& t : workers) t.join();
+            for (int d = 0; d < ngpu; ++d) instance().dev_[d].init(d, max_nstreams());
 
             cudaHostAlloc( &instance().mps_stage_buffer, instance().mps_size, cudaHostAllocPortable | cudaHostAllocWriteCombined);
         }
