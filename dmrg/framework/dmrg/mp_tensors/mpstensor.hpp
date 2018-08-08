@@ -213,7 +213,6 @@ void MPSTensor<Matrix, SymmGroup>::make_left_paired() const
     if (cur_storage == LeftPaired)
         return;
     
-    std::cout << "make left paired" << std::endl;
     block_matrix<Matrix, SymmGroup> tmp;
     reshape_right_to_left_new<Matrix>(phys_i, left_i, right_i,
                                       data(), tmp);
@@ -229,7 +228,6 @@ void MPSTensor<Matrix, SymmGroup>::make_right_paired() const
     if (cur_storage == RightPaired)
         return;
     
-    std::cout << "make right paired" << std::endl;
     block_matrix<Matrix, SymmGroup> tmp;
     reshape_left_to_right_new<Matrix>(phys_i, left_i, right_i,
                                       data(), tmp);
