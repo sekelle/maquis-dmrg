@@ -88,6 +88,29 @@ MPSTensor<Matrix, SymmGroup>::MPSTensor(Index<SymmGroup> const& sd,
 , cur_storage(layout)
 , cur_normalization(normalization)
 {
+    normalize_indices();
+}
+
+template<class Matrix, class SymmGroup>
+MPSTensor<Matrix, SymmGroup>::MPSTensor(Index<SymmGroup> const& sd,
+                                        Index<SymmGroup> const& ld,
+                                        Index<SymmGroup> const& rd,
+                                        block_matrix<Matrix, SymmGroup> && block,
+                                        MPSStorageLayout layout,
+                                        Indicator normalization)
+: phys_i(sd)
+, left_i(ld)
+, right_i(rd)
+, cur_storage(layout)
+, cur_normalization(normalization)
+{
+    swap(block, data_);
+    normalize_indices();
+}
+
+template<class Matrix, class SymmGroup>
+void MPSTensor<Matrix, SymmGroup>::normalize_indices()
+{
     if (cur_storage == LeftPaired) {
         Index<SymmGroup> new_right_i = data_.right_basis();
         Index<SymmGroup> possible_left_i = adjoin(phys_i)*new_right_i;
@@ -190,6 +213,7 @@ void MPSTensor<Matrix, SymmGroup>::make_left_paired() const
     if (cur_storage == LeftPaired)
         return;
     
+    std::cout << "make left paired" << std::endl;
     block_matrix<Matrix, SymmGroup> tmp;
     reshape_right_to_left_new<Matrix>(phys_i, left_i, right_i,
                                       data(), tmp);
@@ -205,6 +229,7 @@ void MPSTensor<Matrix, SymmGroup>::make_right_paired() const
     if (cur_storage == RightPaired)
         return;
     
+    std::cout << "make right paired" << std::endl;
     block_matrix<Matrix, SymmGroup> tmp;
     reshape_left_to_right_new<Matrix>(phys_i, left_i, right_i,
                                       data(), tmp);

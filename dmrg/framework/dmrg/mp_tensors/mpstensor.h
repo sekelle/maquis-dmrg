@@ -64,6 +64,12 @@ public:
               block_matrix<Matrix, SymmGroup> const& block,
               MPSStorageLayout layout,
               Indicator = Unorm);
+    MPSTensor(Index<SymmGroup> const& sd,
+              Index<SymmGroup> const& ld,
+              Index<SymmGroup> const& rd,
+              block_matrix<Matrix, SymmGroup> && block,
+              MPSStorageLayout layout,
+              Indicator = Unorm);
 
     MPSTensor(Index<SymmGroup> const& sd,
               Index<SymmGroup> const& ld,
@@ -77,6 +83,8 @@ public:
     bool isobccompatible(Indicator) const;
     std::size_t num_elements() const;
     
+    void normalize_indices();
+
     void replace_right_paired(block_matrix<Matrix, SymmGroup> const &, Indicator =Unorm);
     void replace_left_paired(block_matrix<Matrix, SymmGroup> const &, Indicator =Unorm);
     
