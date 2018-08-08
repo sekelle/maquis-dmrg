@@ -114,7 +114,7 @@ namespace common {
         MPSTensor<Matrix, SymmGroup> ret(ket_tensor.site_dim(), ket_tensor.row_dim(), ket_tensor.col_dim(),
                                          ket_tensor.data().basis(), RightPaired);
 
-        tasks.mps_stage.stage(ket_tensor.data());
+        if (accelerator::gpu::enabled()) tasks.mps_stage.stage(ket_tensor.data());
 
         std::vector<std::thread> gpu_workers(accelerator::gpu::nGPU());
         if (tasks.enumeration_gpu.size())
