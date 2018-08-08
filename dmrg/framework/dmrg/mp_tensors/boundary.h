@@ -317,7 +317,8 @@ private:
     template <class Archive>
     void serialize(Archive & ar, const unsigned int version)
     {
-        ar & bra_index & ket_index & lb_rc_ci & lbrb_ci & offsets & conjugate_scales & transposes & left_sizes & right_sizes & n_blocks_;
+        ar & bra_index & ket_index & lb_rc_ci & lbrb_ci & offsets & conjugate_scales & transposes
+           & left_sizes & right_sizes & n_blocks_ & tr_;
     }
     
     std::vector<std::pair<charge, unsigned>> empty;
