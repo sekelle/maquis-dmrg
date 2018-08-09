@@ -967,10 +967,14 @@ struct ScheduleNew : public std::vector<MPSBlock<
     mutable MPSTensorStage<value_type> mps_stage;
     mutable std::vector<std::mutex> mutexes;
 
+    static Timer sh_timer;
+
 private:
     std::vector<std::vector<WorkSet<value_type>>> pipeline;
 
 };
+
+template <class Matrix, class SymmGroup> Timer ScheduleNew<Matrix, SymmGroup>::sh_timer = Timer("SITE_HAMIL");
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 

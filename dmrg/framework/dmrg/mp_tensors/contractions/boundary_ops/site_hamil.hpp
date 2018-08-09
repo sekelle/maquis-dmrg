@@ -110,6 +110,8 @@ namespace common {
         typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
         typedef typename Matrix::value_type value_type;
 
+        common::Schedule<Matrix, SymmGroup>::schedule_t::sh_timer.begin();
+
         ket_tensor.make_right_paired();
         MPSTensor<Matrix, SymmGroup> ret(ket_tensor.site_dim(), ket_tensor.row_dim(), ket_tensor.col_dim(),
                                          ket_tensor.data().basis(), RightPaired);
@@ -151,6 +153,8 @@ namespace common {
                     ret.data()[b].get_values()[v] += sum;
                 }
         }
+
+        common::Schedule<Matrix, SymmGroup>::schedule_t::sh_timer.end();
 
         return ret;
     }
