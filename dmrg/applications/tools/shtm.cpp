@@ -38,6 +38,8 @@
 
 #include <alps/hdf5.hpp>
 
+#define MAQUIS_OPENMP
+
 #include "dmrg/utils/accelerator.h"
 #include "dmrg/utils/DmrgParameters.h"
 #include "dmrg/sim/matrix_types.h"
@@ -132,16 +134,16 @@ int main(int argc, char ** argv)
         parms.set("ietl_jcd_tol", 1e-6);
         parms.set("ietl_jcd_maxiter", 9);
         parms.set("storagedir", "");
-        parms.set("GPU", 1);
+        parms.set("GPU", 2);
         std::vector<MPSTensor<matrix, symm>> ortho_vecs;
 
         storage::setup(parms);
         accelerator::setup(parms);
 
-        storage::gpu::prefetch(left);
-        storage::gpu::prefetch(right);
-        storage::gpu::fetch(left);
-        storage::gpu::fetch(right);
+        storage::gpu::broadcast::prefetch(left);
+        storage::gpu::broadcast::prefetch(right);
+        storage::gpu::broadcast::fetch(left);
+        storage::gpu::broadcast::fetch(right);
 
         SiteProblem<matrix, smatrix, symm> sp(initial, left, right, tsmpo);
         cudaProfilerStart(); 
