@@ -81,7 +81,7 @@ namespace common {
 
             float gpu_time;
             HANDLE_ERROR( cudaEventElapsedTime( &gpu_time, start, stop ) );
-            tasks.gpu_time += gpu_time/1000;
+            tasks.gpu_time[id] += gpu_time/1000;
 
             HANDLE_ERROR( cudaEventDestroy(start) );
             HANDLE_ERROR( cudaEventDestroy(stop) );

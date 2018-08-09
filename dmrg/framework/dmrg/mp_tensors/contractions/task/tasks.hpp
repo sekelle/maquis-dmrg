@@ -839,17 +839,24 @@ struct ScheduleNew : public std::vector<MPSBlock<
     typedef typename Matrix::value_type value_type;
 
     ScheduleNew() {}
-    ScheduleNew(std::size_t dim) : base(dim), /*mutexes(dim),*/ cpu_time(0), gpu_time(0) {}
+    ScheduleNew(std::size_t dim) : base(dim), /*mutexes(dim),*/ cpu_time(0) { std::fill(gpu_time, gpu_time + MAX_N_GPUS, 0); }
 
     //double mflops(double time) const { return total_flops*niter / time / 1e6; }
 
     void print_stats(double time) const {
         maquis::cout << total_flops*niter / time / 1e6
                      << " CPU: " << cpu_flops*niter / cpu_time / 1e6;
+        double gpu_t;
         if (gpu_flops)
-        maquis::cout << " GPU: " << gpu_flops*niter / gpu_time / 1e6;
+        {
+            gpu_t = *std::max_element(gpu_time, gpu_time + accelerator::gpu::nGPU());
+            maquis::cout << " GPU: " << gpu_flops*niter / gpu_t / 1e6;
+        }
 
         maquis::cout << "  (MFLOPS)" << std::endl;
+
+        if (gpu_flops)
+            maquis::cout << "GPU_TIME: "  << gpu_t << std::endl;
     }
 
     template <class OtherMatrix>
@@ -959,7 +966,7 @@ struct ScheduleNew : public std::vector<MPSBlock<
     std::size_t niter;
     std::size_t total_flops=0;
     std::size_t cpu_flops=0, gpu_flops=0;
-    mutable double cpu_time, gpu_time;
+    mutable double cpu_time, gpu_time[MAX_N_GPUS];
 
     std::vector<unsigned> enumeration;
     std::vector<unsigned> enumeration_gpu;
