@@ -24,6 +24,7 @@
  *
  *****************************************************************************/
 
+#include <cstdio>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -44,6 +45,9 @@ Interface::Interface() {}
 
 Interface::Interface(std::map<std::string, std::string> & input)
 {
+    std::string resultfile = input["resultfile"];
+    std::remove(resultfile.c_str());
+
     for(auto kv : input)
         detail::parms.set(kv.first, kv.second);
 
@@ -105,6 +109,10 @@ void Interface::excite()
 
     detail::parms["chkpfile"] = chkpfile + "_ex" + std::to_string(simv.size()) + ".h5";
     detail::parms["resultfile"] = resultfile + "_ex" + std::to_string(simv.size()) + ".h5";
+
+    std::string ex_resultfile = detail::parms["resultfile"];
+    std::remove(ex_resultfile.c_str());
+
     simv.push_back(dmrg::symmetry_factory<simulation_traits>(detail::parms));
 
     for (int i = 0; i < simv.size()-1; ++i)
