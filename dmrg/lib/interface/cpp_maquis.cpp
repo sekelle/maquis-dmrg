@@ -60,7 +60,12 @@ void Interface::set_threads()
 {
     #ifdef MAQUIS_OPENMP
     tc_num_threads = omp_get_num_threads();
-    int dmrg_num_threads = std::stoi(getenv("OMP_NUM_THREADS"));
+    char* omp_n_th = getenv("OMP_NUM_THREADS");
+    int dmrg_num_threads;
+    if (omp_n_th)
+        dmrg_num_threads = std::stoi(omp_n_th);
+    else
+        dmrg_num_threads = omp_get_num_procs();
     omp_set_num_threads(dmrg_num_threads);
     #endif
 }
