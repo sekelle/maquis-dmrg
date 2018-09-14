@@ -83,20 +83,26 @@ void dmrg_sim<Matrix, SymmGroup>::run()
                     ar[results_archive_path(sweep) + "/results"] << optimizer->iteration_results();
                     // ar[results_archive_path(sweep) + "/results/Runtime/mean/value"] << std::vector<double>(1, elapsed_sweep + elapsed_measure);
 
-                    // stop simulation if an energy threshold has been specified
+                    // record lowest energy from previous sweep
+                    {
+                        typedef typename maquis::traits::real_type<Matrix>::type real_type;
+                        std::vector<real_type> energies;
+
+                        ar[results_archive_path(sweep) + "/results/Energy/mean/value"] >> energies;
+                        emin = *std::min_element(energies.begin(), energies.end());
+                        ar["/spectrum/results/Energy/mean/value"] << emin;
+                    }
+
+                    // stop simulation if a specified energy threshold has been reached
                     int prev_sweep = sweep - meas_each;
                     if (prev_sweep >= 0 && parms["conv_thresh"] > 0.)
                     {
                         typedef typename maquis::traits::real_type<Matrix>::type real_type;
                         std::vector<real_type> energies;
 
-                        ar[results_archive_path(sweep) + "/results/Energy/mean/value"] >> energies;
-                        real_type emin = *std::min_element(energies.begin(), energies.end());
                         ar[results_archive_path(prev_sweep) + "/results/Energy/mean/value"] >> energies;
                         real_type emin_prev = *std::min_element(energies.begin(), energies.end());
                         real_type e_diff = std::abs(emin - emin_prev);
-
-                        ar["/spectrum/results/Energy/mean/value"] << emin;
 
                         if (e_diff < parms["conv_thresh"])
                             converged = true;
@@ -164,10 +170,7 @@ void dmrg_sim<Matrix, SymmGroup>::measure_observable(std::string const & name_, 
 template <class Matrix, class SymmGroup>
 double dmrg_sim<Matrix, SymmGroup>::get_energy()
 {
-    storage::archive ar(rfile, "r");
-    double ret;
-    ar["/spectrum/results/Energy/mean/value"] >> ret;
-    return ret;
+    return emin;
 }
 
 template <class Matrix, class SymmGroup>

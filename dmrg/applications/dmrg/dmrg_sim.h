@@ -78,6 +78,8 @@ public:
 private:
     std::string results_archive_path(int sweep) const;
     void checkpoint_simulation(MPS<Matrix, SymmGroup> const& state, int sweep, int site);
+
+    double emin;
 };
 
 #endif
