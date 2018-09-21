@@ -144,6 +144,17 @@ sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_, bool measure_on_mps)
         mps = MPS<Matrix, SymmGroup>(lat.size(), *(model.initializer(lat, parms)));
     }
 
+    /// resultfile management
+    if (!restore || ! restore_mpo)
+    {
+        if (boost::filesystem::exists(rfile))
+        {
+            boost::filesystem::remove(rfile);
+        }
+        init_sweep = 0;
+        init_site = -1;
+    }
+
     assert(mps.length() == lat.size());
     
     /// Update parameters - after checks have passed
