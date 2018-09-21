@@ -39,16 +39,21 @@
 
 namespace detail {
     DmrgParameters parms;
+    std::string chkp_base;
+    std::string result_base;
 }
 
 Interface::Interface() {}
 
-Interface::Interface(std::map<std::string, std::string> & input)
+Interface::Interface(DmrgParameters & parms, int spin_) : spin(spin_)
 {
-    for(auto kv : input)
-        detail::parms.set(kv.first, kv.second);
+    std::string chkpfile   = detail::chkp_base;
+    std::string resultfile = detail::result_base;
+    parms["chkpfile"]   = chkpfile   + ".s" + std::to_string(spin) + "_n" + std::to_string(simv.size()) + ".h5";
+    parms["resultfile"] = resultfile + ".s" + std::to_string(spin) + "_n" + std::to_string(simv.size()) + ".h5";
 
-    simv.push_back(dmrg::symmetry_factory<simulation_traits>(detail::parms));
+    parms["spin"] = spin;
+    simv.push_back(dmrg::symmetry_factory<simulation_traits>(parms));
 }
 
 //std::string Interface::value(std::string key) { return sim->get_parm(key); }
@@ -100,18 +105,12 @@ void Interface::optimize()
 
 void Interface::excite()
 {
-    std::string chkpfile = detail::parms["chkpfile"];
-    std::string resultfile = detail::parms["resultfile"];
+    std::string chkpfile   = detail::chkp_base;
+    std::string resultfile = detail::result_base;
+    detail::parms["chkpfile"]   = chkpfile   + ".s" + std::to_string(spin) + "_n" + std::to_string(simv.size()) + ".h5";
+    detail::parms["resultfile"] = resultfile + ".s" + std::to_string(spin) + "_n" + std::to_string(simv.size()) + ".h5";
 
-    if (chkpfile.find("_ex") != std::string::npos)
-    {
-        chkpfile.erase(chkpfile.end()-7, chkpfile.end());
-        resultfile.erase(resultfile.end()-7, resultfile.end());
-    }
-
-    detail::parms["chkpfile"] = chkpfile + "_ex" + std::to_string(simv.size()) + ".h5";
-    detail::parms["resultfile"] = resultfile + "_ex" + std::to_string(simv.size()) + ".h5";
-
+    detail::parms["spin"] = spin;
     simv.push_back(dmrg::symmetry_factory<simulation_traits>(detail::parms));
 
     for (int i = 0; i < simv.size()-1; ++i)
@@ -294,6 +293,102 @@ void Interface::tpdm(double** ret, int bra, int ket)
         }
     }
 }
+
+//////////////////////////////////////////////////
+// Super interface to manage total spin
+//////////////////////////////////////////////////
+
+DmrgInterface::DmrgInterface() {}
+
+DmrgInterface::DmrgInterface(std::map<std::string, std::string> & input,
+                             int nsing, int ndoub, int ntrip, int nquad, int nquint, int nsext, int nsept
+                             ) 
+{
+    for(auto kv : input)
+        detail::parms.set(kv.first, kv.second);
+
+    std::string chkpfile   = detail::parms["chkpfile"];
+    std::string resultfile = detail::parms["resultfile"];
+
+    if (chkpfile.find(".h5") != std::string::npos)
+    {
+        chkpfile.erase(chkpfile.end()-3, chkpfile.end());
+        resultfile.erase(resultfile.end()-3, resultfile.end());
+    }
+
+    detail::chkp_base = chkpfile;
+    detail::result_base = resultfile;
+
+    nstates[0] = nsing;
+    nstates[1] = ndoub;
+    nstates[2] = ntrip;
+    nstates[3] = nquad;
+    nstates[4] = nquint;
+    nstates[5] = nsext;
+    nstates[6] = nsept;
+
+    for (int s = 0; s < max_spin; ++s)
+        if (nstates[s]) iface_[s] = Interface(detail::parms, s);
+}
+
+void DmrgInterface::calc_states()
+{
+    for (int s = 0; s < max_spin; ++s)
+    {
+        if (nstates[s])
+        {
+            iface_[s].optimize();
+            for (int ex = 1; ex < nstates[s]; ++ex)
+                iface_[s].excite();
+        }
+    }
+}
+
+void                            DmrgInterface::measure(std::string name, int bra, int ket)  { return iface_[0].measure(name, bra, ket); }
+std::vector<double>             DmrgInterface::getObservable(std::string name)              { return iface_[0].getObservable(name); }
+std::vector<std::vector<int> >  DmrgInterface::getLabels(std::string name)                  { return iface_[0].getLabels(name); }
+
+void DmrgInterface::opdm(double **ret, int bra, int ket)
+{
+    auto bra_sn = state_to_s_n(bra);
+    auto ket_sn = state_to_s_n(ket);
+
+    // if bra and ket have different spin
+    if (bra_sn.first != ket_sn.first) return;
+
+    iface_[bra_sn.first].opdm(ret, bra_sn.second, ket_sn.second);
+}
+
+void DmrgInterface::tpdm(double** ret, int bra, int ket)
+{
+    auto bra_sn = state_to_s_n(bra);
+    auto ket_sn = state_to_s_n(ket);
+
+    // if bra and ket have different spin
+    if (bra_sn.first != ket_sn.first) return;
+
+    iface_[bra_sn.first].tpdm(ret, bra_sn.second, ket_sn.second);
+}
+
+double DmrgInterface::energy(int state)
+{
+    auto sn = state_to_s_n(state);
+    return iface_[sn.first].energy(sn.second);
+}
+
+std::pair<int, int> DmrgInterface::state_to_s_n(int state)
+{
+    int ret = state;
+    for (int s = 0; s < max_spin; ++s)
+    {
+        if (ret < nstates[s])
+            return std::make_pair(s, ret);
+        ret -= nstates[s];
+    }
+}
+
+
+//////////////////////////////////////////////////
 
 void prepare_integrals(double **Hfrz, double **Vtuvw, double Ecore, int acti, int clsd, std::map<std::string, std::string> & opts)
 {

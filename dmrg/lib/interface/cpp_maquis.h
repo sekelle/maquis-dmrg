@@ -30,6 +30,8 @@
 #include <vector>
 #include <map>
 #include <memory>
+#include <stdexcept>
+#include <utility>
 
 namespace alps
 {
@@ -100,10 +102,9 @@ class Interface
 {
 public:
     Interface();
-    Interface(std::map<std::string, std::string> & parms);
+    Interface(DmrgParameters & parms, int spin_);
 
     //void SetParameters(DmrgParameters & p) { /*parms = p;*/ }
-
     //std::string value(std::string key);
 
     void optimize();
@@ -133,6 +134,35 @@ private:
     std::vector<simulation_traits::shared_ptr> simv;
 
     int tc_num_threads;
+
+    int spin;
+};
+
+
+class DmrgInterface
+{
+public:
+    DmrgInterface();
+    DmrgInterface(std::map<std::string, std::string> & parms, int, int, int, int, int, int, int);
+
+    void calc_states();
+
+    void measure(std::string name, int bra, int ket);
+    std::vector<double> getObservable(std::string name);
+    std::vector<std::vector<int> > getLabels(std::string name);
+
+    void opdm(double **Gij, int bra=0, int ket=0);
+    void tpdm(double **Gijkl, int bra=0, int ket=0);
+
+    double energy(int state);
+
+private:
+    std::pair<int, int> state_to_s_n(int state);
+
+    constexpr static int max_spin = 7;
+
+    Interface iface_[max_spin];
+    int nstates[max_spin];
 };
 
 void prepare_integrals(double **, double **, double, int, int, std::map<std::string, std::string> &);
