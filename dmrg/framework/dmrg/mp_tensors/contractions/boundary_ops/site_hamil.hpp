@@ -81,7 +81,7 @@ namespace common {
 
             float gpu_time;
             HANDLE_ERROR( cudaEventElapsedTime( &gpu_time, start, stop ) );
-            tasks.gpu_time += gpu_time/1000;
+            tasks.gpu_time[id] += gpu_time/1000;
 
             HANDLE_ERROR( cudaEventDestroy(start) );
             HANDLE_ERROR( cudaEventDestroy(stop) );
@@ -109,6 +109,8 @@ namespace common {
         typedef typename SymmGroup::charge charge;
         typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
         typedef typename Matrix::value_type value_type;
+
+        common::Schedule<Matrix, SymmGroup>::schedule_t::sh_timer.begin();
 
         ket_tensor.make_right_paired();
         MPSTensor<Matrix, SymmGroup> ret(ket_tensor.site_dim(), ket_tensor.row_dim(), ket_tensor.col_dim(),
@@ -151,6 +153,8 @@ namespace common {
                     ret.data()[b].get_values()[v] += sum;
                 }
         }
+
+        common::Schedule<Matrix, SymmGroup>::schedule_t::sh_timer.end();
 
         return ret;
     }
