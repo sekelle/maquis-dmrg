@@ -106,13 +106,13 @@ namespace accelerator {
             }
 
             // decrease buffer if pbuffer_size > pbs_select && less than 30% free
-            if (pbs_select < pbuffer_size && gfree < size_t(gtot*0.3))
-            {
-                HANDLE_ERROR(cudaFree(pbuffer));
-                std::cout << "decreasing GPU pipeline buffer to " << pbs_select << " bytes" << std::endl;
-                HANDLE_ERROR(cudaMalloc(&pbuffer, pbs_select));
-                pbuffer_size = pbs_select;
-            }
+            //if (pbs_select < pbuffer_size && gfree < size_t(gtot*0.3))
+            //{
+            //    HANDLE_ERROR(cudaFree(pbuffer));
+            //    std::cout << "decreasing GPU pipeline buffer to " << pbs_select << " bytes" << std::endl;
+            //    HANDLE_ERROR(cudaMalloc(&pbuffer, pbs_select));
+            //    pbuffer_size = pbs_select;
+            //}
 
             // else leave buffer unchanged
         }
@@ -186,15 +186,15 @@ namespace accelerator {
 
         device() : sposition(0), pposition(0), sbuffer(NULL), pbuffer(NULL), dev_buffer(NULL) {}
 
-        ~device()
-        {
-            HANDLE_ERROR( cudaSetDevice(id) );
-            HANDLE_ERROR( cudaFree(pbuffer) );
-            HANDLE_ERROR( cudaFreeHost(sbuffer) );
-            HANDLE_ERROR( cudaFree(dev_buffer) );
+        //~device()
+        //{
+            //HANDLE_ERROR( cudaSetDevice(id) );
+            //HANDLE_ERROR( cudaFree(pbuffer) );
+            //HANDLE_ERROR( cudaFreeHost(sbuffer) );
+            //HANDLE_ERROR( cudaFree(dev_buffer) );
             //for (size_t i=0; i < streams.size(); ++i)
             //    cudaStreamDestroy(streams[i]);
-        }
+        //}
 
         cublasHandle_t handle;
 
