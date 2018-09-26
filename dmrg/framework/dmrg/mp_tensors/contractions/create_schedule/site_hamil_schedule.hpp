@@ -39,7 +39,8 @@ ScheduleNew<Matrix, SymmGroup>
 create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
                             Boundary<OtherMatrix, SymmGroup> const & left,
                             Boundary<OtherMatrix, SymmGroup> const & right,
-                            MPOTensor<Matrix, SymmGroup> const & mpo)
+                            MPOTensor<Matrix, SymmGroup> const & mpo,
+                            double cpu_gpu_ratio)
 {
     typedef typename SymmGroup::charge charge;
     typedef typename Matrix::value_type value_type;
@@ -67,7 +68,7 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
                 shtm_tasks(mpo, left, right, left_i, right_i, physical_i, out_right_pb, mb, tasks[mb]);
     });
 
-    tasks.compute_workload(initial, left.index(), right.index());
+    tasks.compute_workload(initial, left.index(), right.index(), cpu_gpu_ratio);
     tasks.stage_gpu(right, initial);
     tasks.mps_stage.allocate(initial.data().basis());
 

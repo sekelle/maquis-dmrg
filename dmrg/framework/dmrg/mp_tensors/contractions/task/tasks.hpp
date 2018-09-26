@@ -859,9 +859,21 @@ struct ScheduleNew : public std::vector<MPSBlock<
             maquis::cout << "GPU_TIME: "  << gpu_t << std::endl;
     }
 
+    double get_cpu_gpu_ratio()
+    {
+        if (!gpu_flops) return 0.9;
+
+        double gpu_t = *std::max_element(gpu_time, gpu_time + accelerator::gpu::nGPU());
+        double gpu_speed = gpu_flops / gpu_t;
+
+        double cpu_speed = cpu_flops / cpu_time;
+
+        return std::max(1.0 / (cpu_speed/gpu_speed + 1.0), 0.9) ;
+    }
+
     template <class OtherMatrix>
     void compute_workload(MPSTensor<Matrix, SymmGroup> const & mps, BoundaryIndex<OtherMatrix, SymmGroup> const& left,
-                          BoundaryIndex<OtherMatrix, SymmGroup> const& right)
+                          BoundaryIndex<OtherMatrix, SymmGroup> const& right, double cpu_gpu_ratio)
     {
         std::vector<std::size_t> flops_list;
         for (auto& mpsb : *this)
@@ -871,10 +883,10 @@ struct ScheduleNew : public std::vector<MPSBlock<
 
         std::vector<size_t> mpsb_sorted = sort_invert(flops_list);
 
-        std::size_t ninety = 0, cut = 0;
+        std::size_t nflops = 0, cut = 0;
         for ( ; cut < mpsb_sorted.size(); ++cut) {
-            ninety += flops_list[mpsb_sorted[cut]];
-            if ( double(ninety)/total_flops > 0.9) break; // send at most 90% of the workload to the GPU
+            nflops += flops_list[mpsb_sorted[cut]];
+            if ( double(nflops)/total_flops > cpu_gpu_ratio) break; // send at most cpu_gpu_ratio of the workload to the GPU
         }
 
         for (std::size_t b = 0; b < mpsb_sorted.size(); ++b) {

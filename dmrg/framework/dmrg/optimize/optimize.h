@@ -91,6 +91,7 @@ public:
     , mpo(mpo_)
     , parms(parms_)
     , stop_callback(stop_callback_)
+    , cpu_gpu_ratio(mps.length(), 0.9)
     {
         std::size_t L = mps.length();
         
@@ -246,6 +247,9 @@ protected:
     unsigned int northo;
     std::vector< std::vector<block_matrix<BoundaryMatrix, SymmGroup> > > ortho_left_, ortho_right_;
     std::vector<MPS<Matrix, SymmGroup> > ortho_mps;
+
+    // performance tuning
+    std::vector<double> cpu_gpu_ratio;
 };
 
 #include "ss_optimize.hpp"

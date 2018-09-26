@@ -45,6 +45,7 @@ public:
     using base::parms;
     using base::iteration_results_;
     using base::stop_callback;
+    using base::cpu_gpu_ratio;
     
     ts_optimize(MPS<Matrix, SymmGroup> & mps_,
                 MPO<Matrix, SymmGroup> const & mpo_,
@@ -160,7 +161,7 @@ public:
     	    MPSTensor<Matrix, SymmGroup> twin_mps = tst.make_mps();
             tst.clear();
             SiteProblem<Matrix, BoundaryMatrix, SymmGroup>
-                sp(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1]);
+                sp(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1], cpu_gpu_ratio[site1]);
 
             if (lr == +1) {
                 if (site1 > 0)                  Storage::broadcast::pin(left_[site1-1]);
@@ -227,6 +228,7 @@ public:
                     throw std::runtime_error("I don't know this eigensolver.");
                 }
 
+                cpu_gpu_ratio[site1] = sp.contraction_schedule.get_cpu_gpu_ratio();
         		tst << res.second;
                 res.second.clear();
             }

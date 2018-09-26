@@ -145,7 +145,7 @@ int main(int argc, char ** argv)
         storage::gpu::broadcast::fetch(left);
         storage::gpu::broadcast::fetch(right);
 
-        SiteProblem<matrix, smatrix, symm> sp(initial, left, right, tsmpo);
+        SiteProblem<matrix, smatrix, symm> sp(initial, left, right, tsmpo, 0.9);
         cudaProfilerStart(); 
         auto res = solve_ietl_jcd(sp, initial, parms, ortho_vecs);
         cudaProfilerStop();
