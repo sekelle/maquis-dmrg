@@ -456,20 +456,25 @@ public:
         return ret;
     }
 
-    //void test() const
-    //{
-    //    assert(data().size() == index_.n_cohorts());
-    //    for (int ci = 0; ci < index_.n_cohorts(); ++ci)
-    //    {
-    //        std::vector<value_type> buf(data()[ci].size());
-    //        cudaMemcpy( buf.data(), this->device_ptr[ci], data()[ci].size() * sizeof(value_type), cudaMemcpyDeviceToHost );
-    //        for (size_t k =0; k < data()[ci].size(); ++k)
-    //        {
-    //            if ( std::abs(data()[ci][k] - buf[k]) > 1e-8)
-    //                throw std::runtime_error("boundary not syncd\n");
-    //        }
-    //    }
-    //}
+    void test() const
+    {
+        assert(data().size() == index_.n_cohorts());
+        for (int ci = 0; ci < index_.n_cohorts(); ++ci)
+        {
+            std::vector<value_type> buf(data()[ci].size());
+            for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
+            {
+                cudaSetDevice(d);
+                HANDLE_ERROR(cudaMemcpy( buf.data(), this->device_data(d)[ci], data()[ci].size() * sizeof(value_type),
+                             cudaMemcpyDeviceToHost ));
+                for (size_t k =0; k < data()[ci].size(); ++k)
+                {
+                    if ( std::abs(data()[ci][k] - buf[k]) > 1e-8)
+                        throw std::runtime_error("boundary not syncd\n");
+                }
+            }
+        }
+    }
 
 private:
 
