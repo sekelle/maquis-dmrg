@@ -156,12 +156,25 @@ public:
 
             boost::chrono::high_resolution_clock::time_point now, then;
 
+            double ratio = cpu_gpu_ratio[site1];
+            double ratio_prev = 0.9;
+            if (lr == +1) {
+                if (site1 > 0) ratio_prev = cpu_gpu_ratio[site1-1];
+            } else {
+                if (site2 < L) ratio_prev = cpu_gpu_ratio[site2];
+            }
+            if (ratio <= 0.9 && ratio_prev > 0.9) ratio = ratio_prev;
+
+            //this->print_boundary_stats();
+            //left_[site1].test();
+            //right_[site2+1].test();
+
     	    // Create TwoSite objects
     	    TwoSiteTensor<Matrix, SymmGroup> tst(mps[site1], mps[site2]);
     	    MPSTensor<Matrix, SymmGroup> twin_mps = tst.make_mps();
             tst.clear();
             SiteProblem<Matrix, BoundaryMatrix, SymmGroup>
-                sp(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1], cpu_gpu_ratio[site1]);
+                sp(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1], 0.976);
 
             if (lr == +1) {
                 if (site1 > 0)                  Storage::broadcast::pin(left_[site1-1]);
@@ -171,27 +184,36 @@ public:
                 if (site1 > 0)                  Storage::broadcast::prefetch(left_[site1-1]);
             }
 
+            //bool preshot = false;
             if (parms.is_set("snapshot"))
             {
                 int twosweep = 2*sweep + (-lr + 1)/2;
                 std::vector<int> snapshots = parms["snapshot"];
                 for (int snapidx = 0; snapidx < snapshots.size(); snapidx+=2)
-                if (twosweep == snapshots[snapidx] && site1 == snapshots[snapidx+1])
                 {
-                    std::string sweep_str = boost::lexical_cast<std::string>(twosweep) + "_";
-                    std::string site1_str = boost::lexical_cast<std::string>(site1);
-                    std::string site2_str = boost::lexical_cast<std::string>(site2+1);
-                    save_boundary(left_[site1], "left_" + sweep_str + site1_str);
-                    save_boundary(right_[site2+1], "right_" + sweep_str + site2_str);
+                    //if (twosweep == snapshots[snapidx] && site1 == snapshots[snapidx+1] + 1)
+                    //{
+                    //    maquis::cout << "preshot" << std::endl;
+                    //    preshot = true;
+                    //}
 
-                    storage::archive ari("initial_" + sweep_str + site1_str, "w");
-                    twin_mps.save(ari);
+                    if (twosweep == snapshots[snapidx] && site1 == snapshots[snapidx+1])
+                    {
+                        std::string sweep_str = boost::lexical_cast<std::string>(twosweep) + "_";
+                        std::string site1_str = boost::lexical_cast<std::string>(site1);
+                        std::string site2_str = boost::lexical_cast<std::string>(site2+1);
+                        save_boundary(left_[site1], "left_" + sweep_str + site1_str);
+                        save_boundary(right_[site2+1], "right_" + sweep_str + site2_str);
 
-                    std::ofstream ofs(("tsmpo" + sweep_str + site1_str).c_str());
-                    boost::archive::binary_oarchive mpo_ar(ofs);
-                    mpo_ar << ts_cache_mpo[site1];
+                        storage::archive ari("initial_" + sweep_str + site1_str, "w");
+                        twin_mps.save(ari);
 
-                    maquis::cout << "saved snapshot\n";
+                        std::ofstream ofs(("tsmpo" + sweep_str + site1_str).c_str());
+                        boost::archive::binary_oarchive mpo_ar(ofs);
+                        mpo_ar << ts_cache_mpo[site1];
+
+                        maquis::cout << "saved snapshot\n";
+                    }
                 }
             }
 
@@ -335,6 +357,7 @@ public:
             maquis::cout << "Sweep has been running for " << elapsed << " seconds." << std::endl;
             
             if (stop_callback())
+            //if (stop_callback() || preshot)
                 throw dmrg::time_limit(sweep, _site+1);
 
     	} // for sites
