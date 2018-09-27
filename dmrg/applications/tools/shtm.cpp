@@ -33,6 +33,7 @@
 
 #include <cuda_profiler_api.h>
 
+#include <boost/chrono.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 
@@ -134,7 +135,7 @@ int main(int argc, char ** argv)
         parms.set("ietl_jcd_tol", 1e-6);
         parms.set("ietl_jcd_maxiter", 9);
         parms.set("storagedir", "");
-        parms.set("GPU", 2);
+        parms.set("GPU", 1);
         std::vector<MPSTensor<matrix, symm>> ortho_vecs;
 
         storage::setup(parms);
@@ -145,10 +146,17 @@ int main(int argc, char ** argv)
         storage::gpu::broadcast::fetch(left);
         storage::gpu::broadcast::fetch(right);
 
-        SiteProblem<matrix, smatrix, symm> sp(initial, left, right, tsmpo, 0.9);
+
+        SiteProblem<matrix, smatrix, symm> sp(initial, left, right, tsmpo, 0.97651);
+
+        auto now = boost::chrono::high_resolution_clock::now();
         cudaProfilerStart(); 
         auto res = solve_ietl_jcd(sp, initial, parms, ortho_vecs);
         cudaProfilerStop();
+        auto then = boost::chrono::high_resolution_clock::now();
+
+        double jcd_time = boost::chrono::duration<double>(then-now).count();
+        sp.contraction_schedule.print_stats(jcd_time);
 
         maquis::cout << "Energy " << res.first << std::endl;
         //input_per_mps(sp, initial, site);
