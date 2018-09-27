@@ -471,6 +471,11 @@ namespace storage {
                 return dev_data[d].device_data();
             }
 
+            int state(int d) const
+            {
+                return dev_data[d].state;
+            }
+
         private:
             serializable<T> dev_data[MAX_N_GPUS];
         };

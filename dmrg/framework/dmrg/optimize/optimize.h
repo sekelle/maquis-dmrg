@@ -201,11 +201,16 @@ protected:
 
     void print_boundary_stats()
     {
-        //for (int i = 0; i < left_.size(); ++i)
-        //{
-        //    std::cout << i << " L " << storage::detail::as_gpu(left_[i]).state << " " << size_of(left_[i])/1024/1024
-        //                 << "   R " << storage::detail::as_gpu(right_[i]).state << " " << size_of(right_[i])/1024/1024 << std::endl;
-        //}
+        for (int i = 0; i < left_.size(); ++i)
+        {
+            std::cout << i << " L " << size_of(left_[i])/1024/1024 << " ";
+            for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
+                std::cout << storage::detail::as_gpu(left_[i]).state(d) << " ";
+            std::cout << "   R " << size_of(right_[i])/1024/1024 << " ";
+            for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
+                std::cout << storage::detail::as_gpu(right_[i]).state(d) << " ";
+            std::cout << std::endl;
+        }
     }
     
     double get_cutoff(int sweep) const
