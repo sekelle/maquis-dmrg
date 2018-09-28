@@ -145,7 +145,8 @@ sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_, bool measure_on_mps)
     }
 
     /// resultfile management
-    if (!restore || ! restore_mpo)
+    if (!parms["force_keep_result_file"])
+    if (!restore || !restore_mpo)
     {
         if (boost::filesystem::exists(rfile))
         {
