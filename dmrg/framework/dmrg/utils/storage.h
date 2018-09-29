@@ -108,7 +108,7 @@ namespace storage {
                 }
             }
 
-            enum { core, storing, uncore, prefetching } state;
+            enum StorageState { core, storing, uncore, prefetching } state;
             boost::thread* worker;
 
             size_t record;
@@ -471,7 +471,12 @@ namespace storage {
                 return dev_data[d].device_data();
             }
 
-            int state(int d) const
+            int const & gpu_state(int d) const
+            {
+                return dev_data[d].state;
+            }
+
+            enum controller<gpu>::transfer::StorageState & gpu_state(int d)
             {
                 return dev_data[d].state;
             }
@@ -570,15 +575,15 @@ namespace storage {
                 {
                     if (force) HANDLE_ERROR(err);
                     for (size_t I = 0; I < o.index().n_cohorts(); ++I)
-                        cudaFree(o.device_data(d)[I]);
-                    ((controller<gpu>::transfer&)o).state = controller<gpu>::transfer::uncore;
+                        HANDLE_ERROR(cudaFree(o.device_data(d)[I]));
+                    o.gpu_state(d) = controller<gpu>::transfer::uncore;
                     return;
                 }
             }
 
             for (size_t ci = 0; ci < o.index().n_cohorts(); ++ci)
-                cudaMemcpyAsync( o.device_data(d)[ci], o[ci], o.index().cohort_size(ci) * sizeof(typename Matrix::value_type),
-                                 cudaMemcpyHostToDevice, gpu::getStorageStream(d));
+                HANDLE_ERROR( cudaMemcpyAsync( o.device_data(d)[ci], o[ci], o.index().cohort_size(ci) * sizeof(typename Matrix::value_type),
+                                 cudaMemcpyHostToDevice, gpu::getStorageStream(d)) );
 
             cudaStreamSynchronize(gpu::getStorageStream(d));
         }

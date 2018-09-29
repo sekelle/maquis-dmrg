@@ -205,10 +205,10 @@ protected:
         {
             std::cout << i << " L " << size_of(left_[i])/1024/1024 << " ";
             for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
-                std::cout << storage::detail::as_gpu(left_[i]).state(d) << " ";
+                std::cout << left_[i].gpu_state(d) << " ";
             std::cout << "   R " << size_of(right_[i])/1024/1024 << " ";
             for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
-                std::cout << storage::detail::as_gpu(right_[i]).state(d) << " ";
+                std::cout << right_[i].gpu_state(d) << " ";
             std::cout << std::endl;
         }
     }
