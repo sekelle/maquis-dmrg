@@ -165,16 +165,12 @@ public:
             }
             if (ratio <= 0.9 && ratio_prev > 0.9) ratio = ratio_prev;
 
-            //this->print_boundary_stats();
-            //left_[site1].test();
-            //right_[site2+1].test();
-
     	    // Create TwoSite objects
     	    TwoSiteTensor<Matrix, SymmGroup> tst(mps[site1], mps[site2]);
     	    MPSTensor<Matrix, SymmGroup> twin_mps = tst.make_mps();
             tst.clear();
             SiteProblem<Matrix, BoundaryMatrix, SymmGroup>
-                sp(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1], 0.976);
+                sp(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1], ratio);
 
             if (lr == +1) {
                 if (site1 > 0)                  Storage::broadcast::pin(left_[site1-1]);
