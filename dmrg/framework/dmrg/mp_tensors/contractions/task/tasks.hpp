@@ -734,7 +734,7 @@ public:
             if (boost::get<0>(t_schedule[ti]) == mps_offset && boost::get<1>(t_schedule[ti]) == ci_virt)
                 return ti;
 
-        throw std::runtime_error("ti not found\n");
+        //throw std::runtime_error("ti not found\n");
         return std::numeric_limits<unsigned>::max();
     }
 

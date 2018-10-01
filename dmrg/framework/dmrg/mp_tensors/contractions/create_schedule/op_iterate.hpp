@@ -64,7 +64,8 @@ namespace detail {
             typename Matrix::value_type scale = it->coefficient * couplings[casenr];
             unsigned ti = mpsb.get_ti(mps_offset + ss1*m2_size, ci);
 
-            cg.push_back(s, ss2, scale, ti, boundary_col);
+            if (ti < std::numeric_limits<unsigned>::max())
+                cg.push_back(s, ss2, scale, ti, boundary_col);
         }
     }
 
