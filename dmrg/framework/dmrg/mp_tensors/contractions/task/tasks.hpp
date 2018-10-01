@@ -334,8 +334,13 @@ public:
 
         cublasSetStream(accelerator::gpu::get_handle(), ws->stream);
         cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
-        cublasDgemm(accelerator::gpu::get_handle(),
-                    cuop[0], cuop[0], M, N, K, &one, dev_l, M, dev_S, K, &zero, ws->mps_buffer, M);
+        cublasStatus_t stat = cublasDgemm(accelerator::gpu::get_handle(),
+                                          cuop[0], cuop[0], M, N, K, &one, dev_l, M, dev_S, K, &zero, ws->mps_buffer, M);
+        if (stat != CUBLAS_STATUS_SUCCESS)
+        {
+            std::cout << "lgemm failed" << std::endl;
+            exit(EXIT_FAILURE);
+        }
 
         atomic_add(ws->stream, M*std::size_t(N), ws->mps_buffer, dev_out);
     }
@@ -493,7 +498,7 @@ private:
     {
         std::size_t S_size = nSrows * stripe * std::size_t(ls);
 
-        cudaMemsetAsync(dev_S, 0, S_size * sizeof(value_type), ws->stream);
+        HANDLE_ERROR(cudaMemsetAsync(dev_S, 0, S_size * sizeof(value_type), ws->stream));
 
         dsaccv_gpu(ws->stream, suv.size(), nSrows, ls, suv_stage.dev_ms, suv_stage.dev_nb1,
                    suv_stage.dev_vb1, suv_stage.dev_vb2s, suv_stage.dev_valpha, suv_stage.dev_vtidx, dev_T, dev_S, suv_stage.dev_offset);
