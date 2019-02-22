@@ -52,7 +52,9 @@ then = boost::chrono::high_resolution_clock::now(); \
 template<class Matrix, class SymmGroup, class Storage>
 class mpo_contractor_ss
 {
-    typedef contraction::Engine<Matrix, typename storage::constrained<Matrix>::type, SymmGroup> contr;
+    typedef typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, ALIGNMENT>::type AlignedMatrix;
+    typedef typename storage::constrained<AlignedMatrix>::type BoundaryMatrix;
+    typedef contraction::Engine<Matrix, BoundaryMatrix, SymmGroup> contr;
 
 public:
     mpo_contractor_ss(MPS<Matrix, SymmGroup> const & mps_,
@@ -90,7 +92,7 @@ public:
                 lr = -1;
             }
             
-            SiteProblem<Matrix, typename storage::constrained<Matrix>::type, SymmGroup> sp(mps[site], left_[site], right_[site+1], mpo[site]);
+            SiteProblem<Matrix, BoundaryMatrix, SymmGroup> sp(mps[site], left_[site], right_[site+1], mpo[site]);
             ietl::mult(sp, mps[site], mpsp[site]);
             
             if (lr == +1) {
@@ -173,7 +175,7 @@ private:
     MPO<Matrix, SymmGroup> const& mpo;
 
     BaseParameters & parms;
-    std::vector<Boundary<typename storage::constrained<Matrix>::type, SymmGroup> > left_, right_;
+    std::vector<Boundary<BoundaryMatrix, SymmGroup> > left_, right_;
 };
 
 #endif

@@ -36,21 +36,59 @@ namespace contraction {
 namespace common {
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
+    void lshtm_t_tasks(
+                       BoundaryIndex<OtherMatrix, SymmGroup> const & left,
+                       Index<SymmGroup> const & left_i,
+                       Index<SymmGroup> const & right_i,
+                       Index<SymmGroup> const & phys_i,
+                       ProductBasis<SymmGroup> const & right_pb,
+                       unsigned rb_ket,
+                       common::MPSBlock<Matrix, SymmGroup>& mpsb
+                      )
+    {
+        typedef typename SymmGroup::charge charge;
+        typedef typename Matrix::value_type value_type;
+        typedef typename common::ScheduleNew<Matrix, SymmGroup>::block_type block_type;
+
+        charge rc_ket = right_i[rb_ket].first;
+        unsigned rs_ket = right_i[rb_ket].second;
+        for (unsigned s = 0; s < phys_i.size(); ++s)
+        {
+            charge phys_in = phys_i[s].first;
+            charge lc_ket = SymmGroup::fuse(rc_ket, -phys_in);
+            unsigned lb_ket = left_i.position(lc_ket); if (lb_ket == left_i.size()) continue;
+            unsigned ls_ket = left_i[lb_ket].second;
+            unsigned ket_offset = right_pb(phys_in, rc_ket);
+
+            for (unsigned lb_bra = 0; lb_bra < left_i.size(); ++lb_bra)
+            {
+                unsigned ci = left.cohort_index(left_i[lb_bra].first, lc_ket);
+                if (ci == left.n_cohorts()) continue;
+
+                unsigned ci_eff = (left.tr(ci)) ? left.cohort_index(lc_ket, left_i[lb_bra].first) : ci;
+                for (unsigned ss = 0; ss < phys_i[s].second; ++ss)
+                    mpsb.t_schedule.push_back(boost::make_tuple(ket_offset + ss * rs_ket, ci, ci_eff, lb_ket));
+            }
+        }
+        mpsb.rs_ket = rs_ket;
+    }
+
+    template<class Matrix, class OtherMatrix, class SymmGroup>
     void lshtm_tasks(MPOTensor<Matrix, SymmGroup> const & mpo,
                      MPSTensor<Matrix, SymmGroup> const & bra,
                      MPSTensor<Matrix, SymmGroup> const & ket,
                      BoundaryIndex<OtherMatrix, SymmGroup> const & left,
                      ProductBasis<SymmGroup> const & bra_left_pb,
                      ProductBasis<SymmGroup> const & ket_right_pb,
-                     unsigned rb_bra,
-                     typename common::BoundarySchedule<Matrix, SymmGroup>::block_type & mpsb,
+                     unsigned rb_ket,
+                     typename common::ScheduleNew<Matrix, SymmGroup>::block_type & mpsb,
                      bool skip = true)
     {
         typedef typename SymmGroup::charge charge;
         typedef typename Matrix::value_type value_type;
         typedef typename MPOTensor<Matrix, SymmGroup>::col_proxy col_proxy;
         typedef MPOTensor_detail::index_type index_type;
-        typedef typename common::BoundarySchedule<Matrix, SymmGroup>::block_type block_type;
+        typedef typename common::ScheduleNew<Matrix, SymmGroup>::block_type block_type;
 
         Index<SymmGroup> const & ket_left_i = ket.row_dim();
         Index<SymmGroup> const & ket_right_i = ket.col_dim();
@@ -58,18 +96,18 @@ namespace common {
         Index<SymmGroup> const & bra_right_i = bra.col_dim();
         Index<SymmGroup> const & phys_i = ket.site_dim();
 
-        charge rc_bra = bra_right_i[rb_bra].first;
-        unsigned rs_bra = bra_right_i[rb_bra].second;
+        charge rc_ket = ket_right_i[rb_ket].first;
+        unsigned rs_ket = ket_right_i[rb_ket].second;
 
         const int site_basis_max_diff = 2;
 
-        for (unsigned rb_ket = 0; rb_ket < ket_right_i.size(); ++rb_ket)
+        for (unsigned rb_bra = 0; rb_bra < bra_right_i.size(); ++rb_bra)
         {
-            charge rc_ket = ket_right_i[rb_ket].first;
+            charge rc_bra = bra_right_i[rb_bra].first;
             if (std::abs(SymmGroup::particleNumber(rc_bra) - SymmGroup::particleNumber(rc_ket)) > site_basis_max_diff) continue;
-            unsigned rs_ket = ket_right_i[rb_ket].second;
+            unsigned rs_bra = bra_right_i[rb_bra].second;
 
-            typename block_type::mapped_type cohort(phys_i, rb_bra, rb_ket, rs_bra, rs_ket, mpo.col_dim());
+            typename block_type::cohort_type cohort(phys_i, rb_bra, rb_ket, rs_bra, rs_ket, 0, 0, mpo.col_dim());
 
             for (unsigned s = 0; s < phys_i.size(); ++s)
             {
@@ -105,6 +143,7 @@ namespace common {
                                 unsigned ci = left.cohort_index(lc_bra, lc_ket); if (!left.has_block(ci, b1)) continue;
                                 unsigned ls_ket = ket_left_i[lb_ket].second;
                                 unsigned ket_offset = ket_right_pb(phys_in, rc_ket);
+                                size_t left_offset = left.offset(ci, b1);
 
                                 value_type couplings[4];
                                 value_type scale = left.conjugate_scale(ci, b1) * access.scale(op_index);
@@ -113,14 +152,8 @@ namespace common {
                                                                lc_bra, SymmGroup::fuse(rc_bra, -lc_bra), rc_bra,
                                                                scale, couplings);
 
-                                char left_transpose = left.trans(ci, b1);
-                                unsigned ci_eff = (left_transpose) ? left.cohort_index(lc_ket, lc_bra) : ci;
-                                size_t left_offset = left.offset(ci, b1);
-
-                                auto tq = bit_twiddling::pack(ket_offset, left_transpose, ci_eff, left_offset, lb_ket);
-                                
-                                detail::op_iterate<Matrix, typename common::BoundarySchedule<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
-                                    (W, w_block, couplings, cohort, s, tq, rs_ket);
+                                detail::op_iterate<Matrix, typename common::ScheduleNew<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
+                                    (W, w_block, couplings, cohort, s, rs_ket, mpsb, ket_offset, ci, left_offset/ls_ket);
                             } // w_block
                         } //op_index
                     } // b1
@@ -130,9 +163,9 @@ namespace common {
             } // phys_out
 
             cohort.finalize();
-            if (cohort.n_tasks()) mpsb[rc_ket] = cohort;
+            if (cohort.n_tasks()) mpsb.push_back(cohort);
 
-        } // rb_ket
+        } // rb_bra
     }
 
 } // namespace common

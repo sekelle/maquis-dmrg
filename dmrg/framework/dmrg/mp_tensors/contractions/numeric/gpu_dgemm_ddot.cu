@@ -34,107 +34,11 @@
 #include <cstring>
 #include <malloc.h>
 #include <stdint.h>
-//#include <boost/static_assert.hpp>
-// BLAS declarations
-//#include <boost/numeric/bindings/blas/detail/blas.h>
 
 #include "gpu.h"
 #include "common.h"
+#include "dmrg/utils/cuda_helpers.hpp"
 
-
-static void HandleError( cudaError_t err,
-                         const char *file,
-                         int line ) {
-    if (err != cudaSuccess) {
-        printf( "%s in %s at line %d\n", cudaGetErrorString( err ),
-                file, line );
-        exit( EXIT_FAILURE );
-    }
-}
-#define HANDLE_ERROR( err ) (HandleError( err, __FILE__, __LINE__ ))
-
-/**********************************************************/
-
-#define CUDA_ERROR_CHECK
-
-#define cudaSafeCall( err ) __cudaSafeCall( err, __FILE__, __LINE__ )
-#define cudaCheckError()    __cudaCheckError( __FILE__, __LINE__ )
-
-inline void __cudaSafeCall( cudaError err, const char *file, const int line )
-{
-#ifdef CUDA_ERROR_CHECK
-    if ( cudaSuccess != err )
-    {
-        fprintf( stderr, "cudaSafeCall() failed at %s:%i : %s\n",
-                 file, line, cudaGetErrorString( err ) );
-        exit( -1 );
-    }
-#endif
-
-    return;
-}
-
-inline void __cudaCheckError( const char *file, const int line )
-{
-#ifdef CUDA_ERROR_CHECK
-    cudaError err = cudaGetLastError();
-    if ( cudaSuccess != err )
-    {
-        fprintf( stderr, "cudaCheckError() failed at %s:%i : %s\n",
-                 file, line, cudaGetErrorString( err ) );
-        exit( -1 );
-    }
-
-    // More careful checking. However, this will affect performance.
-    // Comment away if needed.
-    err = cudaDeviceSynchronize();
-    if( cudaSuccess != err )
-    {
-        fprintf( stderr, "cudaCheckError() with sync failed at %s:%i : %s\n",
-                 file, line, cudaGetErrorString( err ) );
-        exit( -1 );
-    }
-#endif
-
-    return;
-}
-
-/**********************************************************/
-
-template <class T>
-__global__ void compute_s_stacked(unsigned ms, unsigned rs, unsigned b1sz, unsigned* b2sz, T** alpha, unsigned** tidx,
-                                  const T* t_buf, T* ls_buf)
-{
-    unsigned i = blockIdx.x;
-    unsigned lda = b1sz * ms;
-    size_t t_size = ms * rs;
-
-    while (i < b1sz) {
-
-        //T* out = ls_buf + i * t_size;
-
-        T* alpha_i = alpha[i];
-        unsigned* tidx_i = tidx[i];
-
-        unsigned tid = threadIdx.x;
-        while (tid < t_size)
-        {
-            unsigned sx = i * ms + tid%ms;
-            unsigned sy = tid/ms;
-            size_t offset = sx + lda*sy;
-
-            T acc = 0;
-            for (unsigned j = 0; j < b2sz[i]; ++j)
-                acc += alpha_i[j] * t_buf[tidx_i[j]*t_size + tid];
-
-            //out[tid] = acc;
-            ls_buf[offset] = acc;
-
-            tid += blockDim.x;
-        }
-        i += gridDim.x;
-    }
-}
 
 template <class T>
 __global__ void compute_s_stacked2(unsigned ms, unsigned rs, unsigned b1sz, unsigned* b2sz, T** alpha, unsigned** tidx,
@@ -229,98 +133,22 @@ __global__ void cuda_transpose(unsigned N, unsigned M, const T* dev_a, T* dev_tr
     }
 }
 
-template <class T>
-__global__ void cuda_transpose_v(unsigned N, unsigned M, unsigned cnt, T** dev_a, T* dev_tra)
-{
-    __shared__ T tile[TILE_DIM][TILE_DIM+1];
-
-    unsigned x = threadIdx.x + blockIdx.x * TILE_DIM;
-    unsigned y = threadIdx.y + blockIdx.y * TILE_DIM;
-
-    //size_t mz = blockIdx.z;
-    //while (mz < cnt)
-    //{
-        //size_t out = mz * N * M;
-        for (unsigned my = y; my < M + TILE_DIM; my += gridDim.y * TILE_DIM)
-        {
-            for (unsigned mx = x; mx < N + TILE_DIM; mx += gridDim.x * TILE_DIM)
-            {
-                for (unsigned mz = blockIdx.z; mz < cnt; mz += gridDim.z)
-                {
-                    size_t out = mz * N * M;
-                    #pragma unroll
-                    for (unsigned j = 0; j < TILE_DIM; j+=BLOCK_ROWS)
-                    {
-                        size_t offset = mx + (my+j) * N;
-                        if (mx < N && (my+j) < M)
-                        {
-                           tile[threadIdx.y+j][threadIdx.x] = dev_a[mz][offset];
-                        }
-                    }
-
-                    __syncthreads();
-
-                    #pragma unroll
-                    for (unsigned j = 0; j < TILE_DIM; j+=BLOCK_ROWS)
-                    {
-                        unsigned tx = my-threadIdx.y + threadIdx.x;
-                        unsigned ty = mx-threadIdx.x + threadIdx.y + j;
-                        size_t tr_offset = tx + ty * M;
-                        if (tx < M && ty < N)
-                           dev_tra[out + tr_offset] = tile[threadIdx.x][threadIdx.y+j];
-                    }
-
-                    __syncthreads();
-                }
-            }
-        }
-        //mz += gridDim.z;
-    //}
-}
-
-template <class T>
-__global__ void cuda_copy_v(unsigned N, unsigned M, unsigned cnt, T** dev_a, T* dev_tra)
-{
-    unsigned x = threadIdx.x + blockIdx.x * TILE_DIM;
-    unsigned y = threadIdx.y + blockIdx.y * TILE_DIM;
-
-    size_t mz = blockIdx.z;
-    while (mz < cnt)
-    {
-        size_t out = mz * N * M;
-        for (unsigned my = y; my < M + TILE_DIM; my += gridDim.y * TILE_DIM)
-        {
-            for (unsigned mx = x; mx < N + TILE_DIM; mx += gridDim.x * TILE_DIM)
-            {
-                #pragma unroll
-                for (unsigned j = 0; j < TILE_DIM; j+=BLOCK_ROWS)
-                {
-                    size_t offset = mx + (my+j) * N;
-                    if (mx < N && (my+j) < M)
-                       dev_tra[out + offset] = dev_a[mz][offset];
-                }
-            }
-        }
-        mz += gridDim.z;
-    }
-}
-
 static __inline__ __device__ double myatomicAdd(double *address, double val) {
-unsigned long long int* address_as_ull = (unsigned long long int*)address;
-unsigned long long int old = *address_as_ull, assumed;
-if (val==0.0)
-  return __longlong_as_double(old);
-do {
-  assumed = old;
-  old = atomicCAS(address_as_ull, assumed, __double_as_longlong(val +__longlong_as_double(assumed)));
-} while (assumed != old);
-return __longlong_as_double(old);
+    unsigned long long int* address_as_ull = (unsigned long long int*)address;
+    unsigned long long int old = *address_as_ull, assumed;
+    if (val==0.0)
+      return __longlong_as_double(old);
+    do {
+      assumed = old;
+      old = atomicCAS(address_as_ull, assumed, __double_as_longlong(val +__longlong_as_double(assumed)));
+    } while (assumed != old);
+    return __longlong_as_double(old);
 }
 
 template <class T>
-__global__ void atomic_add(unsigned N, T* in, T* out)
+__global__ void atomic_add_tpl(size_t N, T* in, T* out)
 {
-    unsigned tid = threadIdx.x + blockIdx.x * blockDim.x;
+    size_t tid = threadIdx.x + blockIdx.x * blockDim.x;
     while (tid < N)
     {
         myatomicAdd(&out[tid], in[tid]);
@@ -328,28 +156,116 @@ __global__ void atomic_add(unsigned N, T* in, T* out)
     }
 }
 
-template <class T>
-void dsacc_gpu_tpl(cublasHandle_t handle,
-                   cudaStream_t stream,
-                   unsigned ls, unsigned ms, unsigned rs,
-                   const unsigned* b2sz, const T* t, T* s_buf, T* dev_out, GemmDotData<T> & gdd)
+void atomic_add(cudaStream_t stream, size_t N, double* in, double* out)
 {
-    //unsigned nb = 0;
-    //unsigned nbimax = (t_size + 1023)/ 1024;
-    //for (unsigned i = 0; i < gdd.b1sz; ++i)
-    //    nb += std::max( (nbimax * b2sz[i]) / gdd.b2max, 1u);
-    //compute_s_stacked2<<<nb, nth>>>(ms, rs, gdd.b1sz, gdd.b2sz, gdd.alpha, gdd.tidx, t, ls_buffer, gdd.b2max);
-
-    unsigned nth = std::min(round_up<TILE_DIM>(ms*rs), 1024u);
-    compute_s_stacked<<<std::min(gdd.b1sz, 1024u), nth, 0, stream>>>(ms, rs, gdd.b1sz, gdd.b2sz, gdd.alpha, gdd.tidx, t, s_buf);
+    unsigned nblocks = round_up<256>(N) / 256;
+    atomic_add_tpl<<<nblocks, 256, 0, stream>>>(N, in, out);
 }
 
-void dsacc_gpu(cublasHandle_t handle,
-               cudaStream_t stream,
-               unsigned ls, unsigned ms, unsigned rs,
-               const unsigned* b2sz, const double* t, double* s_buf, double* dev_out, GemmDotData<double> & gdd)
+template <class T>
+__global__ void compute_s_stacked(unsigned nS, unsigned ls, unsigned ms, unsigned nb1,
+                                  unsigned* b1, unsigned* b2s, T* alpha, unsigned* tidx, T** t_buf, T* s_buf)
 {
-    return dsacc_gpu_tpl(handle,stream,ls,ms,rs,b2sz,t,s_buf,dev_out,gdd);
+    unsigned b = blockIdx.x;
+    unsigned lda = nS * ls;
+    size_t t_size = ls * ms;
+
+    while (b < nb1) {
+
+        unsigned seeker = 0;
+        for (unsigned sk = 0; sk < b; ++sk) seeker += b2s[sk];
+
+        unsigned tid = threadIdx.x;
+        while (tid < t_size)
+        {
+            unsigned sx = b1[b] * ls + tid%ls;
+            unsigned sy = tid/ls;
+            size_t offset = sx + lda*sy;
+
+            T acc = 0;
+            for (unsigned ia = seeker; ia < seeker + b2s[b]; ++ia)
+                acc += alpha[ia] * t_buf[tidx[2*ia]][tidx[2*ia+1] * ls + tid];
+
+            s_buf[offset] = acc;
+
+            tid += blockDim.x;
+        }
+        b += gridDim.x;
+    }
+}
+
+template <class T>
+void dsacc_gpu_tpl(cudaStream_t stream,
+                unsigned nS, unsigned ls, unsigned ms, unsigned nb1,
+                unsigned* b1, unsigned* b2s, T* alpha, unsigned* tidx, T** tbuf, T* sbuf)
+{
+    unsigned nth = std::min(round_up<TILE_DIM>(ls*ms), 1024u);
+    compute_s_stacked<<<std::min(nb1, 1024u), nth, 0, stream>>>(nS, ls, ms, nb1, b1, b2s, alpha, tidx, tbuf, sbuf);
+}
+
+void dsacc_gpu(cudaStream_t stream,
+                unsigned nS, unsigned ls, unsigned ms, unsigned nb1,
+                unsigned* b1, unsigned* b2s, double* alpha, unsigned* tidx, double** tbuf, double* sbuf)
+{
+    return dsacc_gpu_tpl(stream,nS,ls,ms,nb1,b1,b2s,alpha,tidx,tbuf,sbuf);
+}
+
+template <class T>
+__global__ void compute_s_stackedv(unsigned nS, unsigned ls, unsigned* vms, unsigned* vnb1,
+                                   unsigned** vb1, unsigned** vb2s, T** valpha, unsigned** vtidx, T** t_buf, T* vs_buf, unsigned* offsets)
+{
+    unsigned b = blockIdx.x;
+    unsigned x = blockIdx.y;
+
+    unsigned ms = vms[x];
+    unsigned nb1 = vnb1[x];
+    unsigned* b1 = vb1[x];
+    unsigned* b2s = vb2s[x];
+    unsigned* tidx = vtidx[x];
+    T* alpha = valpha[x];
+    T* s_buf = vs_buf + nS*ls*size_t(offsets[x]);
+
+    unsigned lda = nS * ls;
+    size_t t_size = ls * ms;
+
+    while (b < nb1) {
+
+        unsigned seeker = 0;
+        for (unsigned sk = 0; sk < b; ++sk) seeker += b2s[sk];
+
+        unsigned tid = threadIdx.x;
+        while (tid < t_size)
+        {
+            unsigned sx = b1[b] * ls + tid%ls;
+            unsigned sy = tid/ls;
+            size_t offset = sx + lda*sy;
+
+            T acc = 0;
+            for (unsigned ia = seeker; ia < seeker + b2s[b]; ++ia)
+                acc += alpha[ia] * t_buf[tidx[2*ia]][tidx[2*ia+1] * ls + tid];
+
+            s_buf[offset] = acc;
+
+            tid += blockDim.x;
+        }
+        b += gridDim.x;
+    }
+}
+
+template <class T>
+void dsaccv_gpu_tpl(cudaStream_t stream, unsigned nms,
+                unsigned nS, unsigned ls, unsigned* ms, unsigned* nb1,
+                unsigned** b1, unsigned** b2s, T** alpha, unsigned** tidx, T** tbuf, T* sbuf, unsigned* offsets)
+{
+    dim3 blocks(std::min(nS, 1024u), nms);
+    compute_s_stackedv<<<blocks, 256, 0, stream>>>(nS, ls, ms, nb1, b1, b2s, alpha, tidx, tbuf, sbuf, offsets);
+}
+
+void dsaccv_gpu(cudaStream_t stream, unsigned nms,
+                unsigned nS, unsigned ls, unsigned* ms, unsigned* nb1,
+                unsigned** b1, unsigned** b2s, double** alpha, unsigned** tidx, double** tbuf, double* sbuf, unsigned* offsets)
+{
+    return dsaccv_gpu_tpl(stream,nms,nS,ls,ms,nb1,b1,b2s,alpha,tidx,tbuf,sbuf,offsets);
 }
 
 template <class T>
@@ -371,30 +287,4 @@ void dgemm_gpu(cublasHandle_t handle,
                double* s_buf, double* dev_out, GemmDotData<double> & gdd, double* l_buf)
 {
     dgemm_gpu_tpl(handle,stream, ls,ms,rs,s_buf,dev_out,gdd,l_buf);
-}
-
-template <class T>
-void dcopytr_tpl(cublasHandle_t handle,
-                 cudaStream_t stream,
-                 unsigned ls, unsigned ms, unsigned rs, T* l_buffer, GemmDotData<T> & gdd)
-{
-    size_t l_size = ls * ms;
-
-    unsigned lsb = std::min( (ls+TILE_DIM-1)/TILE_DIM, 1024u);
-    unsigned msb = std::min( (ms+TILE_DIM-1)/TILE_DIM, 1024u);
-    dim3 threads(TILE_DIM, BLOCK_ROWS);
-    dim3 blocks3d(lsb, msb, std::min(gdd.nn, 65535u));
-    dim3 blocks3d_t(msb, lsb, std::min(gdd.b1sz-gdd.nn, 65535u));
-
-    if (gdd.nn)
-    cuda_copy_v<<<blocks3d,threads, 0, stream>>>(ls, ms, gdd.nn, gdd.left, l_buffer);
-    if (gdd.b1sz-gdd.nn)
-    cuda_transpose_v<<<blocks3d_t,threads, 0, stream>>>(ms, ls, gdd.b1sz-gdd.nn, gdd.left + gdd.nn, l_buffer + gdd.nn * l_size);
-}
-
-void dcopytr_gpu(cublasHandle_t handle,
-                 cudaStream_t stream,
-                 unsigned ls, unsigned ms, unsigned rs, double* l_buffer, GemmDotData<double> & gdd)
-{
-    return dcopytr_tpl(handle, stream, ls, ms, rs, l_buffer, gdd);
 }

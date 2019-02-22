@@ -35,19 +35,23 @@ template <class SymmGroup>
 void simulation<SymmGroup>::run(DmrgParameters & parms, bool write_xml)
 {
     /// Check which matrix to use and which time evolution
-    boost::scoped_ptr<abstract_sim> sim;
+    boost::scoped_ptr<sim<cmatrix, SymmGroup> simc;
+    boost::scoped_ptr<sim<matrix, SymmGroup> simr;
     if (!parms.defined("COMPLEX") || parms["COMPLEX"]) {
         if (parms["te_type"] == "nn")
-            sim.reset(new tevol_sim<cmatrix, SymmGroup, nearest_neighbors_evolver<cmatrix, SymmGroup> >(parms, write_xml));
+            simc.reset(new tevol_sim<cmatrix, SymmGroup, nearest_neighbors_evolver<cmatrix, SymmGroup> >(parms, write_xml));
         else if (parms["te_type"] == "mpo")
-            sim.reset(new tevol_sim<cmatrix, SymmGroup, mpo_evolver<cmatrix, SymmGroup> >(parms, write_xml));
+            simc.reset(new tevol_sim<cmatrix, SymmGroup, mpo_evolver<cmatrix, SymmGroup> >(parms, write_xml));
+
+        /// Run
+        simc->run();
     } else {
         if (parms["te_type"] == "nn")
-            sim.reset(new tevol_sim<matrix, SymmGroup, nearest_neighbors_evolver<matrix, SymmGroup> >(parms, write_xml));
+            simr.reset(new tevol_sim<matrix, SymmGroup, nearest_neighbors_evolver<matrix, SymmGroup> >(parms, write_xml));
         else if (parms["te_type"] == "mpo")
-            sim.reset(new tevol_sim<matrix, SymmGroup, mpo_evolver<matrix, SymmGroup> >(parms, write_xml));
+            simr.reset(new tevol_sim<matrix, SymmGroup, mpo_evolver<matrix, SymmGroup> >(parms, write_xml));
+
+        /// Run
+        simr->run();
     }
-    
-    /// Run
-    sim->run();
 }

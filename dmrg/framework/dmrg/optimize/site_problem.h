@@ -41,18 +41,18 @@ struct SiteProblem
     SiteProblem(MPSTensor<Matrix, SymmGroup> & initial,
                 Boundary<OtherMatrix, SymmGroup> const & left_,
                 Boundary<OtherMatrix, SymmGroup> const & right_,
-                MPOTensor<Matrix, SymmGroup> const & mpo_)
+                MPOTensor<Matrix, SymmGroup> const & mpo_,
+                double cpu_gpu_ratio)
     : left(left_)
     , right(right_)
     , mpo(mpo_)
-    , contraction_schedule(contraction::Engine<Matrix, OtherMatrix, SymmGroup>::
-                           contraction_schedule(initial, left, right, mpo))
+    , contraction_schedule(contraction::common::create_contraction_schedule(initial, left, right, mpo, cpu_gpu_ratio))
     { }
     
     Boundary<OtherMatrix, SymmGroup> const & left;
     Boundary<OtherMatrix, SymmGroup> const & right;
     MPOTensor<Matrix, SymmGroup> const & mpo;
-    typename contraction::Engine<Matrix, OtherMatrix, SymmGroup>::schedule_t contraction_schedule;
+    contraction::common::ScheduleNew<Matrix, SymmGroup> contraction_schedule;
     double ortho_shift;
 };
 

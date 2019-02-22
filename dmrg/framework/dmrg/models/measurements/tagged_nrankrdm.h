@@ -131,17 +131,24 @@ namespace measurements {
         }
         
         void evaluate(MPS<Matrix, SymmGroup> const& ket_mps, boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none
-                                                           , boost::optional<std::string const&> on_the_fly_bra = boost::none)
+                                                           , boost::optional<std::string const&> on_the_fly_bra = boost::none
+                                                           , boost::optional<MPS<Matrix, SymmGroup> const&> bra_mps_otf = boost::none)
         {
             this->vector_results.clear();
             this->labels.clear();
 
             MPS<Matrix, SymmGroup> bra_mps;
-            if (bra_ckp != "") {
-                if(boost::filesystem::exists(bra_ckp))
-                    load(bra_ckp, bra_mps);
-                else
-                    throw std::runtime_error("The bra checkpoint file " + bra_ckp + " was not found\n");
+            if (bra_mps_otf)
+            {
+                bra_mps = *bra_mps_otf;
+            }
+            else {
+                if (bra_ckp != "") {
+                    if(boost::filesystem::exists(bra_ckp))
+                        load(bra_ckp, bra_mps);
+                    else
+                        throw std::runtime_error("The bra checkpoint file " + bra_ckp + " was not found\n");
+                }
             }
 
             if (operator_terms[0].first.size() == 2)
@@ -449,7 +456,8 @@ namespace measurements {
         }
         
         void evaluate(MPS<Matrix, SymmGroup> const& ket_mps, boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none
-                                                           , boost::optional<std::string const&> on_the_fly_bra = boost::none)
+                                                           , boost::optional<std::string const&> on_the_fly_bra = boost::none
+                                                           , boost::optional<MPS<Matrix, SymmGroup> const&> bra_mps_otf = boost::none)
         {
             this->vector_results.clear();
             this->labels.clear();
@@ -458,11 +466,17 @@ namespace measurements {
             if (on_the_fly_bra) bra_ckp = *on_the_fly_bra;
 
             MPS<Matrix, SymmGroup> bra_mps;
-            if (bra_ckp != "") {
-                if(boost::filesystem::exists(bra_ckp))
-                    load(bra_ckp, bra_mps);
-                else
-                    throw std::runtime_error("The bra checkpoint file " + bra_ckp + " was not found\n");
+            if (bra_mps_otf)
+            {
+                bra_mps = *bra_mps_otf;
+            }
+            else {
+                if (bra_ckp != "") {
+                    if(boost::filesystem::exists(bra_ckp))
+                        load(bra_ckp, bra_mps);
+                    else
+                        throw std::runtime_error("The bra checkpoint file " + bra_ckp + " was not found\n");
+                }
             }
 
             if (this->name() == "oneptdm" || this->name() == "transition_oneptdm")
@@ -489,7 +503,8 @@ namespace measurements {
         {
             // Test if a separate bra state has been specified
             bool bra_neq_ket = (dummy_bra_mps.length() > 0);
-            MPS<Matrix, SymmGroup> const & bra_mps = (bra_neq_ket) ? dummy_bra_mps : ket_mps;
+            //MPS<Matrix, SymmGroup> const & bra_mps = (bra_neq_ket) ? dummy_bra_mps : ket_mps;
+            MPS<Matrix, SymmGroup> bra_mps = (bra_neq_ket) ? dummy_bra_mps : ket_mps; // copy bra to avoid multithread issues
 
             #ifdef MAQUIS_OPENMP
             #pragma omp parallel for schedule(dynamic)

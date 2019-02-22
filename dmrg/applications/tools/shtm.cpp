@@ -33,11 +33,15 @@
 
 #include <cuda_profiler_api.h>
 
+#include <boost/chrono.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 
 #include <alps/hdf5.hpp>
 
+#define MAQUIS_OPENMP
+
+#include "dmrg/utils/accelerator.h"
 #include "dmrg/utils/DmrgParameters.h"
 #include "dmrg/sim/matrix_types.h"
 #include "dmrg/mp_tensors/boundary.h"
@@ -51,7 +55,6 @@
 //#include "shtm/prop.hpp"
 //#include "shtm/ips.hpp"
 // provides MatrixGroupPrint, verbose version used for converting from rbtm schedule types
-#include "shtm/print_util.hpp"
 //#include "shtm/matrix_group.hpp"
 
 #if defined(USE_TWOU1)
@@ -138,15 +141,22 @@ int main(int argc, char ** argv)
         storage::setup(parms);
         accelerator::setup(parms);
 
-        storage::gpu::prefetch(left);
-        storage::gpu::prefetch(right);
-        storage::gpu::fetch(left);
-        storage::gpu::fetch(right);
+        storage::gpu::broadcast::prefetch(left);
+        storage::gpu::broadcast::prefetch(right);
+        storage::gpu::broadcast::fetch(left);
+        storage::gpu::broadcast::fetch(right);
 
-        SiteProblem<matrix, smatrix, symm> sp(initial, left, right, tsmpo);
+
+        SiteProblem<matrix, smatrix, symm> sp(initial, left, right, tsmpo, 0.97651);
+
+        auto now = boost::chrono::high_resolution_clock::now();
         cudaProfilerStart(); 
         auto res = solve_ietl_jcd(sp, initial, parms, ortho_vecs);
         cudaProfilerStop();
+        auto then = boost::chrono::high_resolution_clock::now();
+
+        double jcd_time = boost::chrono::duration<double>(then-now).count();
+        sp.contraction_schedule.print_stats(jcd_time);
 
         maquis::cout << "Energy " << res.first << std::endl;
         //input_per_mps(sp, initial, site);

@@ -62,7 +62,8 @@ public:
     virtual ~measurement() { }
     
     virtual void evaluate(MPS<Matrix, SymmGroup> const&, boost::optional<reduced_mps<Matrix, SymmGroup> const&> = boost::none
-                                                       , boost::optional<std::string const&> = boost::none) =0;
+                                                       , boost::optional<std::string const&> = boost::none
+                                                       , boost::optional<MPS<Matrix, SymmGroup> const&> = boost::none)  =0;
     template <class Archive>
     void save(Archive &) const;
     void write_xml(alps::oxstream &) const;

@@ -88,6 +88,29 @@ MPSTensor<Matrix, SymmGroup>::MPSTensor(Index<SymmGroup> const& sd,
 , cur_storage(layout)
 , cur_normalization(normalization)
 {
+    normalize_indices();
+}
+
+template<class Matrix, class SymmGroup>
+MPSTensor<Matrix, SymmGroup>::MPSTensor(Index<SymmGroup> const& sd,
+                                        Index<SymmGroup> const& ld,
+                                        Index<SymmGroup> const& rd,
+                                        block_matrix<Matrix, SymmGroup> && block,
+                                        MPSStorageLayout layout,
+                                        Indicator normalization)
+: phys_i(sd)
+, left_i(ld)
+, right_i(rd)
+, cur_storage(layout)
+, cur_normalization(normalization)
+{
+    swap(block, data_);
+    normalize_indices();
+}
+
+template<class Matrix, class SymmGroup>
+void MPSTensor<Matrix, SymmGroup>::normalize_indices()
+{
     if (cur_storage == LeftPaired) {
         Index<SymmGroup> new_right_i = data_.right_basis();
         Index<SymmGroup> possible_left_i = adjoin(phys_i)*new_right_i;
@@ -372,8 +395,8 @@ template<class Matrix, class SymmGroup>
 typename MPSTensor<Matrix, SymmGroup>::scalar_type
 MPSTensor<Matrix, SymmGroup>::scalar_overlap(MPSTensor<Matrix, SymmGroup> const & rhs) const
 {
-    make_left_paired();
-    rhs.make_left_paired();
+    make_right_paired();
+    rhs.make_right_paired();
 
     // verbose_assert(left_i, rhs.left_i);
     // verbose_assert(right_i, rhs.right_i);
@@ -385,7 +408,8 @@ MPSTensor<Matrix, SymmGroup>::scalar_overlap(MPSTensor<Matrix, SymmGroup> const 
     // Bela says: this is a workaround for the very rare condition that site_hamil2 removes blocks
     // This shouldn't be necessary, but as of Rev. 1702, is necessary in some cases
     // If I haven't fixed this by the end of Feb 2012, remind me
-    Index<SymmGroup> i1 = data().left_basis(), i2 = rhs.data().left_basis();
+
+    Index<SymmGroup> i1 = data().right_basis(), i2 = rhs.data().right_basis();
     common_subset(i1, i2);
     std::vector<scalar_type> vt; vt.reserve(i1.size());
 
@@ -476,7 +500,9 @@ template<class Matrix, class SymmGroup>
 MPSTensor<Matrix, SymmGroup> const &
 MPSTensor<Matrix, SymmGroup>::operator*=(const scalar_type& t)
 {
+    ietl_plus.begin();
     data() *= t;
+    ietl_plus.end();
     return *this;
 }
 
@@ -484,7 +510,9 @@ template<class Matrix, class SymmGroup>
 MPSTensor<Matrix, SymmGroup> const &
 MPSTensor<Matrix, SymmGroup>::operator/=(const scalar_type& t)
 {
+    ietl_plus.begin();
     data() /= t;
+    ietl_plus.end();
     return *this;
 }
 
@@ -495,10 +523,12 @@ MPSTensor<Matrix, SymmGroup>::operator+=(MPSTensor<Matrix, SymmGroup> const & rh
     assert( weak_equal(left_i, rhs.left_i) );
     assert( weak_equal(right_i, rhs.right_i) );
     assert( phys_i == rhs.phys_i );
+
+    ietl_plus.begin();
    
-    // what if both are right_paired?
-    make_left_paired();
-    rhs.make_left_paired();
+    // what if both are left_paired?
+    make_right_paired();
+    rhs.make_right_paired();
     
     cur_normalization = Unorm;
 
@@ -510,6 +540,8 @@ MPSTensor<Matrix, SymmGroup>::operator+=(MPSTensor<Matrix, SymmGroup> const & rh
             data()[i] += rhs.data()[matched_block];
         }
     }
+
+    ietl_plus.end();
     
     return *this;
 }
@@ -521,9 +553,11 @@ MPSTensor<Matrix, SymmGroup>::operator-=(MPSTensor<Matrix, SymmGroup> const & rh
     assert( weak_equal(left_i, rhs.left_i) );
     assert( weak_equal(right_i, rhs.right_i) );
     assert( phys_i == rhs.phys_i );
+
+    ietl_plus.begin();
     
-    make_left_paired();
-    rhs.make_left_paired();
+    make_right_paired();
+    rhs.make_right_paired();
     
     cur_normalization = Unorm;
     
@@ -534,6 +568,8 @@ MPSTensor<Matrix, SymmGroup>::operator-=(MPSTensor<Matrix, SymmGroup> const & rh
             data()[i] -= rhs.data()(lc,rc);
         }
     }
+
+    ietl_plus.end();
     
     return *this;
 }

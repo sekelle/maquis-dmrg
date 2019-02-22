@@ -28,138 +28,179 @@
 #define ACCELERATOR_H
 
 #include <iostream>
+#include <vector>
+#include <thread>
 #include <atomic>
 
 #include <cuda_runtime.h>
-#include "cublas_v2.h"
+#include <cublas_v2.h>
+#include "dmrg/utils/cuda_helpers.hpp"
 
 #include "dmrg/utils/BaseParameters.h"
 #include "dmrg/utils/utils.hpp"
 
 
-static void HandleError( cudaError_t err,
-                         const char *file,
-                         int line ) {
-    if (err != cudaSuccess) {
-        printf( "%s in %s at line %d\n", cudaGetErrorString( err ),
-                file, line );
-        exit( EXIT_FAILURE );
-    }
-}
-#define HANDLE_ERROR( err ) (HandleError( err, __FILE__, __LINE__ ))
-
-
-
-template<class Matrix, class SymmGroup> class Boundary;
-template<class Matrix, class SymmGroup> class MPSTensor;
-
-
 namespace accelerator {
 
-    class gpu
+    class device
     {
     public:
-
-        static gpu& instance() {
-            static gpu singleton;
-            return singleton;
-        }
-
-        static bool enabled() {
-            return instance().active;
-        }
-
-        static void init(size_t ngpu) {
-            instance().active = true;
+        void init(int id_, int nstreams)
+        {
+            id = id_;
+            HANDLE_ERROR( cudaSetDevice(id) );
 
             cublasStatus_t stat;
-            stat = cublasCreate(&(instance().handle));
+            stat = cublasCreate(&(handle));
             if (stat != CUBLAS_STATUS_SUCCESS) {
                 printf ("CUBLAS initialization failed\n");
                 exit(EXIT_FAILURE);
             }
 
-            HANDLE_ERROR( cudaGetDeviceProperties(&instance().prop, 0) );
+            sbuffer_size = 0;
+            pbuffer_size = 0;
 
-            instance().pbuffer_size = instance().prop.totalGlobalMem/5;
-            cudaMalloc( &instance().pbuffer, instance().pbuffer_size );
-
-            instance().sbuffer_size = 150000000; // 50 MiB
-            cudaMallocHost(&instance().sbuffer, instance().sbuffer_size);
-            cudaMalloc(&instance().dev_buffer, instance().sbuffer_size);
-
-            size_t nstreams = 32;
-            instance().streams.resize(nstreams);
-            for (size_t i=0; i < nstreams; ++i)
-                cudaStreamCreate(&instance().streams[i]);
+            streams.resize(nstreams);
+            for (int i=0; i < nstreams; ++i)
+                cudaStreamCreate(&streams[i]);
         }
 
-        static bool use_gpu(size_t flops) { return enabled() && (flops > (1<<24)); }
-
-        static size_t nstreams() { return instance().streams.size(); }
-
-
-
-        static void* get_pipeline_buffer(size_t sz)
+        void* get_pipeline_buffer(size_t sz)
         {
-            size_t sz_aligned = bit_twiddling::round_up<512>(sz);
-            size_t new_position = instance().pposition += sz_aligned;
-            if (new_position > instance().pbuffer_size)
+            size_t new_position = pposition += sz;
+            if (new_position > pbuffer_size)
                 return nullptr;
 
-            return (char*)instance().pbuffer + new_position - sz_aligned;
+            return (char*)pbuffer + new_position - sz;
         }
 
-        static std::pair<void*,void*> get_staging_buffer(size_t sz)
+        void adjust_pipeline_buffer(std::vector<size_t> const & psz)
         {
-            assert(enabled());
+            HANDLE_ERROR( cudaSetDevice(id) );
+
+            size_t gfree, gtot;
+            cudaMemGetInfo(&gfree, &gtot);
+
+            size_t min_pbs = psz[0]; // bare minimum pipeline buffer size
+            size_t mid_pbs = psz[0] + psz[1] + psz[2] + psz[3]; // buffer size to support 4 streams
+            // buffer size such that 30% GPU mem remains free or at least supports 4 streams
+            size_t max_pbs = std::accumulate(psz.begin(), psz.end(), 0);
+            if (gfree > size_t(0.3 * gtot))
+                max_pbs = std::max(min_pbs, std::min(max_pbs, gfree - size_t(0.3 * gtot)));
+            else
+                max_pbs = mid_pbs;
+
+            size_t pbs_select = min_pbs;
+            if (gfree > max_pbs) pbs_select = max_pbs; // determine if there is space available for max_pbs
+
+            size_t mb = 1024*1024;
+            std::cout << "free " << gfree/mb
+                      << " min " << min_pbs/mb << " mid " << mid_pbs/mb << " max " << max_pbs/mb << " sel " << pbs_select/mb << std::endl;
+             
+            // increase buffer if pbs_select > pbuffer_size
+            if (pbs_select > pbuffer_size)
+            {
+                HANDLE_ERROR(cudaFree(pbuffer));
+                std::cout << "increasing GPU pipeline buffer to " << pbs_select << " bytes" << std::endl;
+                HANDLE_ERROR(cudaMalloc(&pbuffer, pbs_select));
+                pbuffer_size = pbs_select;
+            }
+
+            // decrease buffer if pbuffer_size > pbs_select && less than 30% free
+            //if (pbs_select < pbuffer_size && gfree < size_t(gtot*0.3))
+            //{
+            //    HANDLE_ERROR(cudaFree(pbuffer));
+            //    std::cout << "decreasing GPU pipeline buffer to " << pbs_select << " bytes" << std::endl;
+            //    HANDLE_ERROR(cudaMalloc(&pbuffer, pbs_select));
+            //    pbuffer_size = pbs_select;
+            //}
+
+            // else leave buffer unchanged
+        }
+
+        std::pair<void*,void*> get_staging_buffer(size_t sz)
+        {
             size_t sz_aligned = bit_twiddling::round_up<64>(sz);
-            size_t updated = (instance().sposition += sz_aligned); // read out current value and perform atomic update
-            if (instance().sposition > instance().sbuffer_size)
-                throw std::runtime_error("GPU schedule buffer exhausted\n");
+            size_t updated = (sposition += sz_aligned); // read out current value and perform atomic update
+            if (sposition > sbuffer_size)
+                throw std::out_of_range("GPU schedule buffer exhausted\n");
 
-            return std::make_pair((char*)instance().sbuffer + updated-sz_aligned, (char*)instance().dev_buffer + updated-sz_aligned);
+            return std::make_pair((char*)sbuffer + updated-sz_aligned, (char*)dev_buffer + updated-sz_aligned);
         }
 
-        static void update_schedule_buffer()
+        template <class Vector> void* stage_vector(Vector const & vec)
         {
-            if (enabled() && instance().sposition)
-            HANDLE_ERROR( cudaMemcpyAsync(instance().dev_buffer, instance().sbuffer, instance().sposition, cudaMemcpyHostToDevice) );
+            auto staging = get_staging_buffer(vec.size() * sizeof(typename Vector::value_type));
+            auto stage_host = (typename Vector::value_type*)staging.first;
+            memcpy( stage_host, vec.data(), vec.size() * sizeof(typename Vector::value_type));
+
+            return staging.second;
         }
 
-        static size_t get_schedule_position() { return instance().sposition; }
+        void reallocate_staging_buffer()
+        {
+            HANDLE_ERROR( cudaSetDevice(id) );
 
-        static void reset_buffers() {
-            instance().sposition = 0;
-            instance().pposition = 0;
+            std::size_t new_size = std::max(sposition.load(), 2*sbuffer_size);
+            std::cout << "increasing GPU schedule buffer size to " << new_size << " bytes" << std::endl;
+            sbuffer_size = new_size;
+
+            void* new_sbuffer;
+            HANDLE_ERROR(cudaFreeHost(sbuffer));
+            HANDLE_ERROR(cudaMallocHost(&new_sbuffer, new_size));
+            sbuffer = new_sbuffer;
+
+            void* new_dev_buffer;
+            HANDLE_ERROR(cudaMalloc(&new_dev_buffer, new_size));
+            HANDLE_ERROR(cudaFree(dev_buffer));
+            dev_buffer = new_dev_buffer;
+
+            sposition = 0;
         }
 
+        void update_schedule_buffer()
+        {
+            if (sposition)
+            {
+                HANDLE_ERROR( cudaSetDevice(id) );
+                HANDLE_ERROR( cudaMemcpyAsync(dev_buffer, sbuffer, sposition, cudaMemcpyHostToDevice) );
+            }
+        }
 
-        static cudaStream_t next_stream()
+        size_t get_schedule_position() { return sposition; }
+
+        void reset_buffers() {
+            sposition = 0;
+            pposition = 0;
+        }
+
+        cudaStream_t next_stream()
         {
             static size_t counter = 0;
 
-            size_t si = counter % instance().streams.size();
+            size_t si = counter % streams.size();
             counter++;
 
-            return instance().streams[si];
+            return streams[si];
         }
 
 
-        gpu() : active(false), sposition(0), pposition(0) {}
+        device() : sposition(0), pposition(0), sbuffer(NULL), pbuffer(NULL), dev_buffer(NULL) {}
 
-        ~gpu()
-        {
-            cudaFree(pbuffer); cudaFreeHost(sbuffer); cudaFree(dev_buffer);
-            for (size_t i=0; i < streams.size(); ++i)
-                cudaStreamDestroy(streams[i]);
-        }
+        //~device()
+        //{
+            //HANDLE_ERROR( cudaSetDevice(id) );
+            //HANDLE_ERROR( cudaFree(pbuffer) );
+            //HANDLE_ERROR( cudaFreeHost(sbuffer) );
+            //HANDLE_ERROR( cudaFree(dev_buffer) );
+            //for (size_t i=0; i < streams.size(); ++i)
+            //    cudaStreamDestroy(streams[i]);
+        //}
 
-        bool active;
         cublasHandle_t handle;
 
-        size_t id;
-        cudaDeviceProp  prop;
+        int id;
+        cudaDeviceProp prop;
 
     private:
 
@@ -173,12 +214,142 @@ namespace accelerator {
         std::vector<cudaStream_t> streams;
     };
 
+    class gpu
+    {
+    public:
+
+        gpu() : active(false), max_nstreams_(32) {}
+
+        static gpu& instance() {
+            static gpu singleton;
+            return singleton;
+        }
+
+        static bool enabled() {
+            return instance().active;
+        }
+
+        static bool use_gpu(size_t flops) { return enabled() && (flops > (1<<27)); }
+
+        static int max_nstreams() { return instance().max_nstreams_; }
+
+
+        static device* get_device(int id) { return &instance().dev_[id]; }
+
+
+        static cudaStream_t next_stream(int d) { return instance().dev_[d].next_stream(); }
+
+        ////////////////////////////////////////////////////////////////////
+        static cublasHandle_t get_handle()
+        {
+            int d;
+            HANDLE_ERROR( cudaGetDevice(&d) ); 
+            return instance().dev_[d].handle;
+        }
+
+        static size_t get_schedule_position(int d)
+        {
+            return instance().dev_[d].get_schedule_position();
+        }
+
+        static void reallocate_staging_buffer(int d)
+        {
+            if (enabled())
+            {
+                instance().dev_[d].reallocate_staging_buffer();
+                std::thread t(&device::reallocate_staging_buffer, &instance().dev_[d]);
+                t.join();
+            }
+        }
+
+        template <class Vector>
+        static void* stage_vector(Vector const & vec, int d)
+        {
+            if (enabled())
+            return instance().dev_[d].stage_vector(vec);
+        }
+
+        static void adjust_pipeline_buffer(std::vector<size_t> const & psz, int d)
+        {
+            if (enabled())
+            {
+                std::thread t(&device::adjust_pipeline_buffer, &instance().dev_[d], psz);
+                t.join();
+            }
+        }
+
+        static void* get_pipeline_buffer(size_t sz, int d)
+        {
+            return instance().dev_[d].get_pipeline_buffer(sz);
+        }
+        ////////////////////////////////////////////////////////////////////
+
+        static void update_schedule_buffer()
+        {
+            if (enabled())
+            {
+                std::vector<std::thread> workers(nGPU());
+                for (int d = 0; d < nGPU(); ++d)
+                    workers[d] = std::thread(&device::update_schedule_buffer, &instance().dev_[d]);
+
+                for (std::thread& t : workers) t.join();
+            }
+        }
+
+        static void reset_buffers()
+        {
+            if (enabled())
+            {
+                for (device& dev : instance().dev_)
+                    dev.reset_buffers();
+            }
+        }
+
+        static void* get_mps_stage_buffer(size_t sz)
+        {
+            if (sz > instance().mps_size)
+            {
+                cudaFreeHost(instance().mps_stage_buffer);
+                cudaHostAlloc( &instance().mps_stage_buffer, sz, cudaHostAllocPortable | cudaHostAllocWriteCombined);
+                instance().mps_size = sz;
+            }
+
+            return instance().mps_stage_buffer;
+        }
+
+        static void init(int ngpu)
+        {
+            instance().active = true;
+            instance().dev_ = std::vector<device>(ngpu);
+
+            for (int d = 0; d < ngpu; ++d) instance().dev_[d].init(d, max_nstreams());
+
+            cudaHostAlloc( &instance().mps_stage_buffer, instance().mps_size, cudaHostAllocPortable | cudaHostAllocWriteCombined);
+        }
+
+        static int nGPU() { return instance().dev_.size(); }
+
+        ~gpu()
+        {
+            cudaFreeHost(mps_stage_buffer);
+        }
+
+    private:
+        bool active;
+        int max_nstreams_;
+        std::vector<device> dev_;
+
+        size_t mps_size = 100000000; // 100 MiB
+        void* mps_stage_buffer;
+    };
+
     inline static void setup(BaseParameters& parms){
 
-        if(parms["GPU"])
-            gpu::init(parms["GPU"]);
+        int nGPU = parms["GPU"];
+        if(nGPU && !gpu::enabled())
+            gpu::init(nGPU);
     }
 
-} // namespace storage
+} // namespace accelerator
 
 #endif

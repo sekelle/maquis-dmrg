@@ -212,12 +212,11 @@ public:
             bit_twiddling::unpack(impl()->t_key_vec[pos], in_offset, trans, ci, offset, lb_ket);
 
             int K = (trans) ? right.index().right_size(ci) : right.index().left_size(ci);
-            //int LDB = right.index().left_size(ci);
-            int LDB = right.index().right_size(ci);
+            int LDB = right.index().left_size(ci);
 
             int found = 0;
             for (int batch = 0 ; batch < batches.size(); ++batch)
-                if (batches[batch].in_offset == in_offset && batches[batch].trans == !trans)
+                if (batches[batch].in_offset == in_offset && batches[batch].trans == trans)
                 {
                     found++;
                     batches[batch].b.push_back((value_type*)(right.device_ptr[ci]) + offset);
@@ -232,7 +231,7 @@ public:
                 batch.K = K;
                 batch.LDB = LDB;
                 batch.tstart = pos;
-                batch.trans = !trans;
+                batch.trans = trans;
                 batch.b.push_back((value_type*)(right.device_ptr[ci]) + offset);
                 batches.push_back(batch);
             }
@@ -352,22 +351,36 @@ class ScheduleGpuExtension
     typedef typename Matrix::value_type v_type;
 public:
 
+    ScheduleGpuExtension() { }
     ScheduleGpuExtension(size_t nphys_) : nphys(nphys_) { }
-
 
     void assign_streams()
     {
         std::sort(enumeration_gpu.begin(), enumeration_gpu.end(),
                   [](
-                     boost::tuple<unsigned, unsigned, unsigned, size_t>& p1,
-                     boost::tuple<unsigned, unsigned, unsigned, size_t>& p2
+                     boost::tuple<unsigned, unsigned, unsigned, size_t> p1,
+                     boost::tuple<unsigned, unsigned, unsigned, size_t> p2
                     )
                     { return boost::get<3>(p1) > boost::get<3>(p2); }
                   );
 
+        {
+            // resize the GPU pipeline buffer if needed
+            size_t pipeline_size = 0;
+            std::vector<size_t> psz(accelerator::gpu::nstreams());
+            for (size_t tn = 0; tn < std::min(accelerator::gpu::nstreams(), enumeration_gpu.size()); ++tn)
+                psz[tn] = bit_twiddling::round_up<4*BUFFER_ALIGNMENT>(
+                                    boost::get<3>(enumeration_gpu[0]) * sizeof(v_type) + 2*BUFFER_ALIGNMENT
+                                 );
+
+            accelerator::gpu::adjust_pipeline_buffer(psz);
+        }
+
         for (size_t tn = 0; tn < std::min(accelerator::gpu::nstreams(), enumeration_gpu.size()); ++tn)
         {
-            size_t buffer_size = boost::get<3>(enumeration_gpu[0]) * sizeof(v_type) + 2*BUFFER_ALIGNMENT;
+            size_t buffer_size = bit_twiddling::round_up<4*BUFFER_ALIGNMENT>(
+                                    boost::get<3>(enumeration_gpu[0]) * sizeof(v_type) + 2*BUFFER_ALIGNMENT
+                                 );
             v_type* buffer = (v_type*)accelerator::gpu::get_pipeline_buffer(buffer_size);
             if (buffer)
                 pipeline.push_back(MaquisStream<v_type>(buffer, buffer_size));

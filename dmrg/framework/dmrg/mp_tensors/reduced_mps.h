@@ -38,6 +38,8 @@ class reduced_mps
 {
     typedef typename SymmGroup::subcharge subcharge;
     typedef typename operator_selector<Matrix, SymmGroup>::type op_t;
+    typedef typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, ALIGNMENT>::type AlignedMatrix;
+
 public:
     reduced_mps(const MPS<Matrix, SymmGroup> & mps_)
     : mps(mps_)
@@ -52,32 +54,31 @@ public:
         if (!initialized) {
             
             // init right_ & left_
-            Boundary<Matrix, SymmGroup> right = mps.right_boundary(), left = mps.left_boundary();
-            right_[L-1] = right;
-            left_[0] = left;
+            right_[L-1] = mps.right_boundary();
+            left_[0] = mps.left_boundary();
             for (int i = 1; i < L; ++i) {
                 {
                     MPOTensor<Matrix, SymmGroup> ident;
                     ident.set(0, 0, identity_matrix<op_t>(mps[L-i].site_dim()));
-                    right_[L-1-i] = contraction::Engine<Matrix, Matrix, SymmGroup>::overlap_mpo_right_step(mps[L-i], mps[L-i], right_[L-i], ident);
+                    right_[L-1-i] = contraction::Engine<Matrix, AlignedMatrix, SymmGroup>::overlap_mpo_right_step(mps[L-i], mps[L-i], right_[L-i], ident);
                 }
                 {
                     MPOTensor<Matrix, SymmGroup> ident;
                     ident.set(0, 0, identity_matrix<op_t>(mps[i-1].site_dim()));
-                    left_[i] = contraction::Engine<Matrix, Matrix, SymmGroup>::overlap_mpo_left_step(mps[i-1], mps[i-1], left_[i-1], ident);
+                    left_[i] = contraction::Engine<Matrix, AlignedMatrix, SymmGroup>::overlap_mpo_left_step(mps[i-1], mps[i-1], left_[i-1], ident);
                 }
             }
             initialized = true;
         }
     }
     
-    const Boundary<Matrix, SymmGroup> & left(int i) const
+    const Boundary<AlignedMatrix, SymmGroup> & left(int i) const
     {
         if (!initialized) init();
         return left_[i];
     }
 
-    const Boundary<Matrix, SymmGroup> & right(int i) const
+    const Boundary<AlignedMatrix, SymmGroup> & right(int i) const
     {
         if (!initialized) init();
         return right_[i];
@@ -86,7 +87,7 @@ public:
 private:
     const MPS<Matrix, SymmGroup> & mps;
     std::size_t L;
-    mutable std::vector<Boundary<Matrix, SymmGroup> > left_, right_;
+    mutable std::vector<Boundary<AlignedMatrix, SymmGroup> > left_, right_;
     mutable bool initialized;
 };
 

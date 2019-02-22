@@ -28,6 +28,11 @@
 #ifndef CONTRACTIONS_COMMON_SITE_HAMIL_HPP
 #define CONTRACTIONS_COMMON_SITE_HAMIL_HPP
 
+#include <thread>
+//#include <mutex>
+//#include <condition_variable>
+//#include <atomic>
+
 namespace contraction {
 namespace common {
 
@@ -46,36 +51,43 @@ namespace common {
                  :  tasks(tasks_), left(left_), right(right_), ket_tensor(ket_tensor_), ret_gpu(ret_gpu_)
                  {} 
 
-        void operator()()
+        void operator()(int id)
         {
-            storage::gpu::prefetch(ket_tensor);
-            storage::gpu::zero(ret_gpu);
-            storage::gpu::fetch(ket_tensor);
+            HANDLE_ERROR(cudaSetDevice(id));
+
+            cudaMemset( tasks.mps_stage.device_out(id), 0, tasks.mps_stage.size() * sizeof(value_type) );
+
+            tasks.mps_stage.upload(id);
 
             cudaEvent_t start, stop;
             HANDLE_ERROR( cudaEventCreate(&start) );
             HANDLE_ERROR( cudaEventCreate(&stop) );
             HANDLE_ERROR( cudaEventRecord(start,0) );
 
-            for (unsigned tn = 0; tn < tasks.enumeration_gpu.size(); ++tn)
+            for (unsigned i = 0; i < tasks.enumeration_gpu.size(); ++i)
             {
-                tasks[ boost::get<0>(tasks.enumeration_gpu[tn]) ]
-                     [ boost::get<1>(tasks.enumeration_gpu[tn]) ]
-                     [ boost::get<2>(tasks.enumeration_gpu[tn]) ]
-                    .contract_gpu(ket_tensor, left, right, (value_type*)ret_gpu.device_ptr[boost::get<0>(tasks.enumeration_gpu[tn])]);
+                unsigned lb_in = tasks.enumeration_gpu[i];
+
+                if (tasks[lb_in].deviceID != id) continue;
+
+                value_type** dev_T = tasks[lb_in].create_T_gpu(right, ket_tensor, tasks.mps_stage.device_ptr(id));
+
+                for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
+                    it->contract_gpu(left, dev_T, tasks.mps_stage.device_out_view(id)[it->get_rb()]);
             }
 
             HANDLE_ERROR( cudaEventRecord(stop,0) );
-
-            storage::gpu::evict(ret_gpu);
-
             HANDLE_ERROR( cudaEventSynchronize(stop) );
+
             float gpu_time;
             HANDLE_ERROR( cudaEventElapsedTime( &gpu_time, start, stop ) );
-            tasks.gpu_time += gpu_time/1000;
+            tasks.gpu_time[id] += gpu_time/1000;
 
-            storage::gpu::drop(ket_tensor);
-            storage::gpu::pin(ret_gpu);
+            HANDLE_ERROR( cudaEventDestroy(start) );
+            HANDLE_ERROR( cudaEventDestroy(stop) );
+
+            cudaMemcpy( tasks.mps_stage.host_out(id), tasks.mps_stage.device_out(id), tasks.mps_stage.size() * sizeof(value_type),
+                        cudaMemcpyDeviceToHost );
         }
 
     private:
@@ -88,47 +100,200 @@ namespace common {
 
     template<class Matrix, class OtherMatrix, class SymmGroup>
     MPSTensor<Matrix, SymmGroup>
-    site_hamil2(MPSTensor<Matrix, SymmGroup> & ket_tensor,
-                Boundary<OtherMatrix, SymmGroup> const & left,
-                Boundary<OtherMatrix, SymmGroup> const & right,
-                MPOTensor<Matrix, SymmGroup> const & mpo,
-                typename common::Schedule<Matrix, SymmGroup>::schedule_t const & tasks) 
+    site_hamil(MPSTensor<Matrix, SymmGroup> & ket_tensor,
+               Boundary<OtherMatrix, SymmGroup> const & left,
+               Boundary<OtherMatrix, SymmGroup> const & right,
+               MPOTensor<Matrix, SymmGroup> const & mpo,
+               typename common::Schedule<Matrix, SymmGroup>::schedule_t const & tasks) 
     {
         typedef typename SymmGroup::charge charge;
         typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
         typedef typename Matrix::value_type value_type;
 
-        typedef typename common::Schedule<Matrix, SymmGroup>::block_type::const_iterator const_iterator;
+        common::Schedule<Matrix, SymmGroup>::schedule_t::sh_timer.begin();
 
         ket_tensor.make_right_paired();
         MPSTensor<Matrix, SymmGroup> ret(ket_tensor.site_dim(), ket_tensor.row_dim(), ket_tensor.col_dim(),
                                          ket_tensor.data().basis(), RightPaired);
-        MPSTensor<Matrix, SymmGroup> ret_gpu = ret;
 
-        boost::thread* gpu_worker;
+        if (accelerator::gpu::enabled()) tasks.mps_stage.stage(ket_tensor.data());
+
+        std::vector<std::thread> gpu_workers(accelerator::gpu::nGPU());
         if (tasks.enumeration_gpu.size())
-            gpu_worker = new boost::thread(gpu_work<Matrix, OtherMatrix, SymmGroup>(tasks, left, right, ket_tensor, ret_gpu));
+            for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
+                gpu_workers[d] = std::thread(gpu_work<Matrix, OtherMatrix, SymmGroup>(tasks, left, right, ket_tensor, ret), d);
 
         boost::chrono::high_resolution_clock::time_point now = boost::chrono::high_resolution_clock::now();
         #ifdef MAQUIS_OPENMP
         #pragma omp parallel for schedule (dynamic,1)
         #endif
-        for (index_type tn = 0; tn < tasks.enumeration.size(); ++tn)
-            tasks[ boost::get<0>(tasks.enumeration[tn]) ]
-                 [ boost::get<1>(tasks.enumeration[tn]) ]
-                 [ boost::get<2>(tasks.enumeration[tn]) ]
-                 .contract(ket_tensor, left, right, &ret.data()[boost::get<0>(tasks.enumeration[tn])](0,0));
+        for (unsigned i = 0; i < tasks.enumeration.size(); ++i)
+        {
+            unsigned lb_in = tasks.enumeration[i];
+
+            auto T = tasks[lb_in].create_T(right, ket_tensor);
+            for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
+                it->contract(left, T, ret.data()[it->get_rb()], tasks.mutexes[it->get_rb()]);
+        }
 
         boost::chrono::high_resolution_clock::time_point then = boost::chrono::high_resolution_clock::now();
         tasks.cpu_time += boost::chrono::duration<double>(then - now).count();
 
         if (tasks.enumeration_gpu.size())
         {
-            gpu_worker->join();
-            ret.data() += ret_gpu.data();
+            for (std::thread& t: gpu_workers) t.join();
 
-            storage::gpu::drop(ret_gpu);
+            for (size_t b = 0; b < ret.data().n_blocks(); ++b)
+                for (size_t v = 0; v < ret.data()[b].get_values().size(); ++v)
+                {
+                    value_type sum = 0;
+                    for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
+                        sum += tasks.mps_stage.host_out_view(d)[b][v];
+
+                    ret.data()[b].get_values()[v] += sum;
+                }
         }
+
+        common::Schedule<Matrix, SymmGroup>::schedule_t::sh_timer.end();
+
+        return ret;
+    }
+
+/*
+    struct cpu_queue
+    {
+        cpu_queue(unsigned dim) : max_idx(dim), current_idx(0), T(dim),
+                                  tavail(dim), tdone(dim), slavail(dim), sldone(dim) {}
+
+        std::atomic<unsigned> current_idx;
+        unsigned max_idx;
+
+        std::vector<std::vector<std::vector<double>>> T;
+
+        std::vector<std::atomic<int>> tavail, tdone;
+        std::vector<std::atomic<int>> slavail, sldone;
+    };
+
+    template<class Matrix, class OtherMatrix, class SymmGroup>
+    void
+    cpu_work(cpu_queue& cq, unsigned tidx,
+             MPSTensor<Matrix, SymmGroup> & ret,
+             MPSTensor<Matrix, SymmGroup> & ket_tensor,
+             Boundary<OtherMatrix, SymmGroup> const & left,
+             Boundary<OtherMatrix, SymmGroup> const & right,
+             ScheduleNew<Matrix, SymmGroup> const & tasks)
+    {
+        for (unsigned idx = 0; idx < tasks.enumeration.size(); )
+        {
+            unsigned lb_in = tasks.enumeration[idx];
+
+            // check if lb_in has T jobs
+            int hasT = cq.tavail[lb_in] -= 1;
+            if (hasT >= 0)
+            {
+                tasks[lb_in].create_T(right, ket_tensor, cq.T[lb_in], hasT);
+                ++cq.tdone[lb_in];
+
+                idx = 0;
+                continue;
+            }
+
+            // check if all T done in lb_in
+            int Tdone = cq.tdone[lb_in].load();
+            if (Tdone == tasks[lb_in].t_schedule.size())
+            {
+                // check if lb_in as LS jobs
+                int hasLS = cq.slavail[lb_in] -= 1;
+                if (hasLS >= 0)
+                {
+                    unsigned rb = tasks[lb_in][hasLS].get_rb();
+                    tasks[lb_in][hasLS].contract(left, cq.T[lb_in], ret.data()[rb], tasks.mutexes[rb]);
+                    unsigned sldone = cq.sldone[lb_in] += 1;
+
+                    if (sldone == tasks[lb_in].size())
+                        cq.T[lb_in] = std::vector<std::vector<typename Matrix::value_type>>();
+
+                    idx = 0;
+                    continue;
+                }
+            }
+            idx++;
+        }
+    }
+*/
+
+    template<class Matrix, class OtherMatrix, class SymmGroup>
+    MPSTensor<Matrix, SymmGroup>
+    site_hamil2(MPSTensor<Matrix, SymmGroup> & ket_tensor,
+               Boundary<OtherMatrix, SymmGroup> const & left,
+               Boundary<OtherMatrix, SymmGroup> const & right,
+               MPOTensor<Matrix, SymmGroup> const & mpo,
+               ScheduleNew<Matrix, SymmGroup> const & tasks)
+    {
+        typedef typename SymmGroup::charge charge;
+        typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
+        typedef typename Matrix::value_type value_type;
+
+        ket_tensor.make_right_paired();
+        MPSTensor<Matrix, SymmGroup> ret(ket_tensor.site_dim(), ket_tensor.row_dim(), ket_tensor.col_dim(),
+                                         ket_tensor.data().basis(), RightPaired);
+
+        MPSTensor<Matrix, SymmGroup> ret_gpu = ret;
+
+        storage::gpu::fetch(ket_tensor);
+        storage::gpu::zero(ret_gpu);
+
+        auto now = boost::chrono::high_resolution_clock::now();
+
+        #pragma omp parallel for schedule (dynamic,1)
+        for (unsigned i = 0; i < tasks.enumeration.size(); ++i)
+        {
+            unsigned lb_in = tasks.enumeration[i];
+
+            auto T = tasks[lb_in].create_T(right, ket_tensor);
+            for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
+                it->contract(left, T, ret.data()[it->get_rb()], tasks.mutexes[it->get_rb()]);
+        }
+
+        auto then = boost::chrono::high_resolution_clock::now();
+        tasks.cpu_time += boost::chrono::duration<double>(then - now).count();
+
+        now = boost::chrono::high_resolution_clock::now();
+        for (unsigned i = 0; i < tasks.enumeration_gpu.size(); ++i)
+        {
+            unsigned lb_in = tasks.enumeration_gpu[i];
+            value_type** dev_T = tasks[lb_in].create_T_gpu(right, ket_tensor);
+
+            for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
+                it->contract_gpu(left, dev_T, (value_type*)ret_gpu.device_data()[it->get_rb()]);
+        }
+        then = boost::chrono::high_resolution_clock::now();
+        tasks.gpu_time += boost::chrono::duration<double>(then - now).count();
+
+        storage::gpu::drop(ket_tensor);
+        storage::gpu::evict(ret_gpu);
+        storage::gpu::pin(ret_gpu);
+        ret += ret_gpu;
+
+        //cpu_queue cq(tasks.size());
+        //for (unsigned lb_in : tasks.enumeration)
+        //{
+        //    cq.T[lb_in] = std::vector<std::vector<value_type>>(tasks[lb_in].t_schedule.size());
+        //    cq.tavail[lb_in] = tasks[lb_in].t_schedule.size();
+        //    cq.tdone[lb_in] = 0;
+
+        //    cq.slavail[lb_in] = tasks[lb_in].size();
+        //    cq.sldone[lb_in] = 0;
+        //}
+
+        //std::vector<std::thread> workers;
+        //for (unsigned i = 0; i < 6; ++i)
+        //    workers.push_back(std::thread(std::bind(cpu_work<Matrix, OtherMatrix, SymmGroup>, std::ref(cq), i,
+        //                                            std::ref(ret), std::ref(ket_tensor),
+        //                                            std::ref(left), std::ref(right),
+        //                                            std::ref(tasks))
+        //                                            ));
+        //for (std::thread& t : workers) t.join();
 
         ret.make_left_paired();
         return ret;

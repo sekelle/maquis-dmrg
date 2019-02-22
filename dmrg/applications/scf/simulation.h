@@ -27,7 +27,7 @@
 #ifndef MAQUIS_SIM_RUN_H
 #define MAQUIS_SIM_RUN_H
 
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 #include "dmrg/sim/matrix.fwd.h"
 #include "../dmrg/dmrg_sim.fwd.h"
@@ -38,9 +38,14 @@ public:
     virtual void run() =0;
     virtual void measure_observable(std::string name,
                                     std::vector<double> & results, std::vector<std::vector<int> > & labels,
-                                    std::string bra) =0;
+                                    std::string bra, std::shared_ptr<simulation_base> bra_ptr = NULL) =0;
 
-    virtual parameters::proxy get_parm(std::string const& key) =0;
+    virtual double get_energy() =0;
+
+    //virtual parameters::proxy get_parm(std::string const& key) =0;
+
+    //virtual void add_ortho(std::shared_ptr<simulation_base> os) {}
+    virtual void add_ortho(simulation_base* os) {}
 };
 
 template <class SymmGroup>
@@ -52,17 +57,23 @@ public:
 
     void measure_observable(std::string name,
                             std::vector<double> & results, std::vector<std::vector<int> > & labels,
-                            std::string bra);
+                            std::string bra,
+                            std::shared_ptr<simulation_base> bra_ptr = NULL);
 
-    parameters::proxy get_parm(std::string const& key);
+    double get_energy();
+
+    //parameters::proxy get_parm(std::string const& key);
+
+    //void add_ortho(std::shared_ptr<simulation_base> os);
+    void add_ortho(simulation_base* os);
 
 private:
-    boost::shared_ptr<dmrg_sim<matrix, SymmGroup> > sim_ptr_real;
-    boost::shared_ptr<dmrg_sim<cmatrix, SymmGroup> > sim_ptr_complex;
+    std::shared_ptr<dmrg_sim<matrix, SymmGroup> > sim_ptr_real;
+    std::shared_ptr<dmrg_sim<cmatrix, SymmGroup> > sim_ptr_complex;
 };
 
 struct simulation_traits {
-    typedef boost::shared_ptr<simulation_base> shared_ptr;
+    typedef std::shared_ptr<simulation_base> shared_ptr;
     template <class SymmGroup> struct F {
         typedef simulation<SymmGroup> type;
     };

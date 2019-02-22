@@ -42,6 +42,8 @@ namespace measurements {
         typedef generate_mpo::MPOMaker<Matrix, SymmGroup> generator;
         typedef std::vector<op_t> op_vec;
         typedef std::vector<std::pair<op_vec, bool> > bond_element;
+        typedef typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, ALIGNMENT>::type AlignedMatrix;
+
     public:
         
         local(std::string const& name_, const Lattice & lat,
@@ -72,7 +74,8 @@ namespace measurements {
         }
 
         void evaluate(MPS<Matrix, SymmGroup> const& mps, boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none
-                                                       , boost::optional<std::string const&> on_the_fly_bra = boost::none)
+                                                       , boost::optional<std::string const&> on_the_fly_bra = boost::none
+                                                       , boost::optional<MPS<Matrix, SymmGroup> const&> bra_mps = boost::none)
         {
             this->vector_results.clear();
             this->labels.clear();
@@ -99,7 +102,7 @@ namespace measurements {
                         
                         MPSTensor<Matrix, SymmGroup> mpsp = mps[p];
                         MPSTensor<Matrix, SymmGroup> vec2
-                        = contraction::Engine<Matrix, Matrix, SymmGroup>::site_hamil2(mpsp, rmps.get().left(p), rmps.get().right(p), temp);
+                        = contraction::Engine<Matrix, AlignedMatrix, SymmGroup>::site_hamil(mpsp, rmps.get().left(p), rmps.get().right(p), temp);
                         
                         typename MPS<Matrix, SymmGroup>::scalar_type res = mpsp.scalar_overlap(vec2);
                         

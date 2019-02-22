@@ -144,6 +144,18 @@ sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_, bool measure_on_mps)
         mps = MPS<Matrix, SymmGroup>(lat.size(), *(model.initializer(lat, parms)));
     }
 
+    /// resultfile management
+    if (!parms["force_keep_result_file"])
+    if (!restore || !restore_mpo)
+    {
+        if (boost::filesystem::exists(rfile))
+        {
+            boost::filesystem::remove(rfile);
+        }
+        init_sweep = 0;
+        init_site = -1;
+    }
+
     assert(mps.length() == lat.size());
     
     /// Update parameters - after checks have passed
@@ -163,6 +175,12 @@ sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_, bool measure_on_mps)
     }
     
     maquis::cout << "MPS initialization has finished...\n"; // MPS restored now
+}
+
+template <class Matrix, class SymmGroup>
+void sim<Matrix, SymmGroup>::add_ortho(std::shared_ptr<sim<Matrix, SymmGroup>> os)
+{
+    ortho_mps.push_back(&os->mps);
 }
 
 template <class Matrix, class SymmGroup>

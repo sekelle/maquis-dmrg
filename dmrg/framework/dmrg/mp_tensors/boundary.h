@@ -38,6 +38,7 @@
 #include "dmrg/utils/parallel.hpp"
 #include "dmrg/block_matrix/block_matrix.h"
 #include "dmrg/utils/storage.h"
+#include "dmrg/utils/accelerator.h"
 #include "dmrg/mp_tensors/mpotensor_detail.h"
 
 namespace detail {
@@ -79,6 +80,8 @@ class BoundaryIndex
 
     template <class, class> friend class BoundaryIndex;
 
+    constexpr static unsigned A = 128 / sizeof(value_type);
+
 public:
 
     BoundaryIndex(Index<SymmGroup> const & bra, Index<SymmGroup> const & ket)
@@ -101,6 +104,7 @@ public:
         left_sizes = rhs.left_sizes;
         right_sizes = rhs.right_sizes;
         n_blocks_ = rhs.n_blocks_;
+        tr_       = rhs.tr_;
     }
 
     unsigned   n_cohorts      ()                        const { return offsets.size(); }
@@ -119,6 +123,19 @@ public:
     size_t     block_size     (unsigned ci)             const {
         return bit_twiddling::round_up<1>(left_sizes[ci] * right_sizes[ci]); // ALIGN
     }
+    size_t     cohort_size    (unsigned ci)             const { return n_blocks_[ci] * block_size(ci); }
+
+    size_t     cohort_size_a  (unsigned ci)             const { return bit_twiddling::round_up<A>(cohort_size(ci)); }
+
+    size_t     total_size() const
+    {
+        size_t ret =0;
+        for (unsigned ci=0; ci < n_cohorts(); ++ci)
+            ret += cohort_size_a(ci);
+        return ret;
+    }
+
+    bool       tr             (unsigned ci) const { return tr_[ci]; }
 
     unsigned cohort_index(unsigned lb, unsigned rb, int tag = 0) const
     {
@@ -149,6 +166,7 @@ public:
         left_sizes      .push_back(bra_index[lb].second);
         right_sizes     .push_back(ket_index[rb].second);
         n_blocks_       .push_back(std::count_if(off_.begin(), off_.end(), [](long int o) { return o > -1; }));
+        tr_             .push_back(0);
 
         return ci;
     }
@@ -163,7 +181,10 @@ public:
                 unsigned ci_A = lbrb_ci(lb, rb);
                 unsigned ci_B = cohort_index(ket_index[rb].first, bra_index[lb].first);
                 if (ci_B == n_cohorts())
+                {
                     ci_B = add_cohort(rb, lb, std::vector<long int>(herm.size(), -1));
+                    tr_[ci_B] = 1;
+                }
 
                 for (unsigned b = 0; b < herm.size(); ++b)
                 {
@@ -180,6 +201,35 @@ public:
                     }
                 }
             }
+    }
+
+    void transpose()
+    {
+        for (unsigned ci = 0; ci < transposes.size(); ++ci)
+        {
+            std::swap(left_sizes[ci], right_sizes[ci]);
+            tr_[ci] = !tr_[ci];
+            for (unsigned b = 0; b < transposes[ci].size(); ++b)
+                transposes[ci][b] = !transposes[ci][b];
+        }
+    }
+
+    void print()
+    {
+        for (unsigned rb = 0; rb < num_cols(lbrb_ci); ++rb)
+            for (unsigned lb = 0; lb < num_rows(lbrb_ci); ++lb)
+            {
+                if (lbrb_ci(lb, rb) == std::numeric_limits<unsigned>::max()) continue;
+
+                unsigned ci = lbrb_ci(lb, rb);
+                maquis::cout << bra_index[lb].first << ket_index[rb].first << std::endl;
+                for (int b = 0; b < offsets[ci].size(); ++b)
+                    if (offsets[ci][b] != -1) maquis::cout << 1  + transposes[ci][b] << " ";
+
+                maquis::cout << std::endl;
+            }
+
+        maquis::cout << std::endl;
     }
 
     template <class Data>
@@ -261,13 +311,15 @@ private:
     std::vector<std::size_t>             left_sizes;
     std::vector<std::size_t>             right_sizes;
     std::vector<unsigned>                n_blocks_;
+    std::vector<char>                    tr_;
 
     friend class boost::serialization::access;
 
     template <class Archive>
     void serialize(Archive & ar, const unsigned int version)
     {
-        ar & bra_index & ket_index & lb_rc_ci & lbrb_ci & offsets & conjugate_scales & transposes & left_sizes & right_sizes & n_blocks_;
+        ar & bra_index & ket_index & lb_rc_ci & lbrb_ci & offsets & conjugate_scales & transposes
+           & left_sizes & right_sizes & n_blocks_ & tr_;
     }
     
     std::vector<std::pair<charge, unsigned>> empty;
@@ -275,7 +327,7 @@ private:
 
 template<class Matrix, class SymmGroup>
 class Boundary : public storage::disk::serializable<Boundary<Matrix, SymmGroup> >
-               , public storage::gpu::serializable<Boundary<Matrix, SymmGroup> >
+               , public storage::gpu::multiDeviceSerializable<Boundary<Matrix, SymmGroup> >
 {
 public:
     typedef typename SymmGroup::charge charge;
@@ -283,20 +335,21 @@ public:
     typedef typename Matrix::value_type value_type;
     typedef std::pair<typename SymmGroup::charge, std::size_t> access_type;
 
-    typedef std::vector<std::vector<value_type, maquis::aligned_allocator<value_type, ALIGNMENT>>> data_t;
+    typedef std::vector<value_type, maquis::aligned_allocator<value_type, ALIGNMENT>> idata_t;
+    typedef std::vector<idata_t> data_t;
+    //typedef std::vector<value_type, maquis::aligned_allocator<value_type, ALIGNMENT>> data_t;
 
     friend class boost::serialization::access;
 
     template<class Archive>
     void serialize(Archive &ar, const unsigned int version){
-        ar & data2 & index_;
+        ar & data_ & index_;
     }
     
     Boundary(Index<SymmGroup> const & ud = Index<SymmGroup>(),
              Index<SymmGroup> const & ld = Index<SymmGroup>(),
              std::size_t ad = 1)
-    : data_(ad, block_matrix<Matrix, SymmGroup>(ud, ld))
-    , index_(ud, ld)
+    : index_(ud, ld)
     {
         assert(ud.size() == ld.size());
 
@@ -308,57 +361,87 @@ public:
 
             std::size_t ls = ud[i].second, rs = ld[i].second;
             std::size_t block_size = bit_twiddling::round_up<1>(ls*rs); // ALIGN
-            data()[i].resize(block_size * ad, value_type(0.));
-            std::fill(data()[i].begin(), data()[i].begin() + ls * rs, value_type(1.));
             std::vector<long int> offsets(ad);
             for (std::size_t b = 0; b < ad; ++b)
                 offsets[b] = b * block_size;
             index_.add_cohort(i, i, offsets);
         }
+
+        allocate_all();
+
+        for (unsigned ci = 0; ci < index_.n_cohorts(); ++ci)
+            std::fill((*this)[ci], (*this)[ci] + index_.cohort_size(ci), value_type(1.));
     }
 
-    Boundary(BoundaryIndex<Matrix, SymmGroup> const & idx) : index_(idx), data2(idx.n_cohorts()) {}
-    
-    template <class OtherMatrix>
-    Boundary(Boundary<OtherMatrix, SymmGroup> const& rhs) : index_(rhs.index()), data2(rhs.data())
-    {}
+    Boundary(BoundaryIndex<Matrix, SymmGroup> const & idx) : index_(idx), data_(idx.n_cohorts()) { }
+    //Boundary(BoundaryIndex<Matrix, SymmGroup> const & idx) : index_(idx), data_view(idx.n_cohorts()) { }
+
+    Boundary(Boundary<Matrix, SymmGroup> const& rhs) = delete;
+
+    Boundary(Boundary<Matrix, SymmGroup> && rhs) = default;
+    Boundary<Matrix, SymmGroup>& operator=(Boundary<Matrix, SymmGroup> && rhs) = default;
+
+    ///////////////////////////////////////////////////////////////
+
+    value_type* operator[](unsigned ci)             { return data()[ci].data(); }
+    const value_type* operator[](unsigned ci) const { return data()[ci].data(); }
+    //value_type* operator[](unsigned ci)             { return data()[ci]; }
+    //const value_type* operator[](unsigned ci) const { return data()[ci]; }
 
     BoundaryIndex<Matrix, SymmGroup> const& index() const
     {
         return index_;
     }
 
-    std::size_t aux_dim() const { 
-        return data_.size(); 
+    BoundaryIndex<Matrix, SymmGroup> & index()
+    {
+        return index_;
     }
 
-    void allocate(charge rc, charge lc)
+    //void allocate(charge rc, charge lc)
+    //{
+    //    unsigned ci = index_.cohort_index(rc, lc);
+    //    assert(ci < data().size());
+    //    data()[ci].resize(index_.cohort_size(ci)); // ALIGN
+    //}
+
+    void allocate_all()
     {
-        unsigned ci = index_.cohort_index(rc, lc);
-        assert(ci < data().size());
-        data()[ci].resize(index_.block_size(ci) * index_.n_blocks(ci)); // ALIGN
+        //data_.resize(index_.total_size());
+
+        //value_type* seek = data_.data();
+        //for (unsigned ci = 0; ci < index_.n_cohorts(); ++ci)
+        //{
+        //    data()[ci] = seek; 
+        //    seek += index_.cohort_size_a(ci);
+        //}
+
+        for (unsigned ci = 0; ci < index_.n_cohorts(); ++ci)
+            data()[ci].resize(index_.cohort_size(ci));
     }
 
-    void resize(size_t n)
+    void deallocate()
     {
-        if(n < data_.size()) 
-            return data_.resize(n);
-        data_.reserve(n);
-        for(int i = data_.size(); i < n; ++i)
-            data_.push_back(block_matrix<Matrix, SymmGroup>());
+        //data_.clear();
+        //data_.shrink_to_fit();
+        for (unsigned ci = 0; ci < index_.n_cohorts(); ++ci)
+        {
+            data()[ci].clear();
+            data()[ci].shrink_to_fit();
+        }
     }
-    
+
     std::vector<scalar_type> traces() const
     {
         if (!index_.n_cohorts())
             throw std::runtime_error("Could not carry out multi_expval because resulting boundary was empty");
 
         std::vector<scalar_type> ret(index_.aux_dim(), scalar_type(0));
-        for (size_t ci = 0; ci < data().size(); ++ci)
+        for (size_t ci = 0; ci < index_.n_cohorts(); ++ci)
             for (size_t b = 0; b < index_.aux_dim(); ++b)
                 if (index_.has_block(ci, b))
-                    ret[b] += std::accumulate(&data()[ci][index_.offset(ci, b)],
-                                              &data()[ci][index_.offset(ci, b)] + index_.block_size(ci), scalar_type(0));
+                    ret[b] += std::accumulate((*this)[ci] + index_.offset(ci, b),
+                                              (*this)[ci] + index_.offset(ci, b) + index_.block_size(ci), scalar_type(0));
 
         return ret;
     }
@@ -368,74 +451,55 @@ public:
         assert(index_.aux_dim() <= 1);
 
         scalar_type ret(0);
-        for (auto& v : data())
-            ret += std::accumulate(v.begin(), v.end(), scalar_type(0));
+        for (size_t ci = 0; ci < index_.n_cohorts(); ++ci)
+            ret += std::accumulate((*this)[ci], (*this)[ci] + index_.block_size(ci) * index_.n_blocks(ci), scalar_type(0));
 
         return ret;
     }
 
-    bool reasonable() const {
-        for(size_t i = 0; i < data_.size(); ++i)
-            if(!data_[i].reasonable()) return false;
-        return true;
-    }
-   
-    template<class Archive> 
-    void load(Archive & ar){
-        std::vector<std::string> children = ar.list_children("/data");
-        data_.resize(children.size());
-        for(size_t i = 0; i < children.size(); ++i){
-             ar["/data/"+children[i]] >> data_[alps::cast<std::size_t>(children[i])];
+    void test() const
+    {
+        assert(data().size() == index_.n_cohorts());
+        for (int ci = 0; ci < index_.n_cohorts(); ++ci)
+        {
+            std::vector<value_type> buf(data()[ci].size());
+            for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
+            {
+                cudaSetDevice(d);
+                HANDLE_ERROR(cudaMemcpy( buf.data(), this->device_data(d)[ci], data()[ci].size() * sizeof(value_type),
+                             cudaMemcpyDeviceToHost ));
+                for (size_t k =0; k < data()[ci].size(); ++k)
+                {
+                    if ( std::abs(data()[ci][k] - buf[k]) > 1e-8)
+                        throw std::runtime_error("boundary not syncd\n");
+                }
+            }
         }
     }
-    
-    template<class Archive> 
-    void save(Archive & ar) const {
-        ar["/data"] << data_;
-    }
-
-    //block_matrix<Matrix, SymmGroup> & operator[](std::size_t k) { return data_[k]; }
-    //block_matrix<Matrix, SymmGroup> const & operator[](std::size_t k) const { return data_[k]; }
-
-    data_t const& data() const { return data2; }
-    data_t      & data()       { return data2; }
 
 private:
-    BoundaryIndex<Matrix, SymmGroup> index_;
-    data_t data2;
 
-    std::vector<block_matrix<Matrix, SymmGroup> > data_;
+    data_t const& data() const { return data_; }
+    data_t      & data()       { return data_; }
+    //std::vector<value_type*> const& data() const { return data_view; }
+    //std::vector<value_type*>      & data()       { return data_view; }
+
+    BoundaryIndex<Matrix, SymmGroup> index_;
+
+    //std::vector<value_type*> data_view;
+    data_t data_;
 };
 
-
-template<class Matrix, class SymmGroup>
-Boundary<Matrix, SymmGroup> simplify(Boundary<Matrix, SymmGroup> b)
-{
-    typedef typename alps::numeric::associated_real_diagonal_matrix<Matrix>::type dmt;
-    
-    for (std::size_t k = 0; k < b.aux_dim(); ++k)
-    {
-        block_matrix<Matrix, SymmGroup> U, V, t;
-        block_matrix<dmt, SymmGroup> S;
-        
-        if (b[k].basis().sum_of_left_sizes() == 0)
-            continue;
-        
-        svd_truncate(b[k], U, V, S, 1e-4, 1, false);
-        
-        gemm(U, S, t);
-        gemm(t, V, b[k]);
-    }
-    
-    return b;
-}
 
 template<class Matrix, class SymmGroup>
 std::size_t size_of(Boundary<Matrix, SymmGroup> const & m)
 {
     size_t r = 0;
-    for (auto const & v : m.data())
-        r += v.size() * sizeof(typename Matrix::value_type);
+    for (unsigned ci = 0; ci < m.index().n_cohorts(); ++ci)
+    {
+        size_t cohort_size = m.index().block_size(ci) * m.index().n_blocks(ci);
+        r += cohort_size * sizeof(typename Matrix::value_type);
+    }
 
     return r;
 }

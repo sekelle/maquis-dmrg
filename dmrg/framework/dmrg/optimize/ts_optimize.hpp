@@ -45,13 +45,15 @@ public:
     using base::parms;
     using base::iteration_results_;
     using base::stop_callback;
+    using base::cpu_gpu_ratio;
     
     ts_optimize(MPS<Matrix, SymmGroup> & mps_,
                 MPO<Matrix, SymmGroup> const & mpo_,
+                std::vector<MPS<Matrix, SymmGroup>*> const & omps_ptr,
                 BaseParameters & parms_,
                 boost::function<bool ()> stop_callback_,
                 int initial_site_ = 0)
-    : base(mps_, mpo_, parms_, stop_callback_, to_site(mps_.length(), initial_site_))
+    : base(mps_, mpo_, omps_ptr, parms_, stop_callback_, to_site(mps_.length(), initial_site_))
     , initial_site((initial_site_ < 0) ? 0 : initial_site_)
     {
         make_ts_cache_mpo(mpo, ts_cache_mpo, mps);
@@ -123,14 +125,6 @@ public:
             site = to_site(L, _site);
         }
         
-        if (_site < L-1) {
-            Storage::prefetch(left_[site]);
-            Storage::prefetch(right_[site+2]);
-        } else {
-            Storage::prefetch(left_[site-1]);
-            Storage::prefetch(right_[site+1]);
-        }
-        
         for (; _site < 2*L-2; ++_site) {
 	/* (0,1), (1,2), ... , (L-1,L), (L-1,L), (L-2, L-1), ... , (0,1)
 	    | |                        |
@@ -156,50 +150,66 @@ public:
 
             if (_site != L-1)
             { 
-                Storage::fetch(left_[site1]);
-                Storage::fetch(right_[site2+1]);
-            }
-
-            if (lr == +1) {
-                if (site2+2 < right_.size()){
-                    Storage::prefetch(right_[site2+2]);
-                }
-            } else {
-                if (site1 > 0){
-                    Storage::prefetch(left_[site1-1]);
-                }
+                Storage::broadcast::fetch(left_[site1]);
+                Storage::broadcast::fetch(right_[site2+1]);
             }
 
             boost::chrono::high_resolution_clock::time_point now, then;
-            
+
+            double ratio = cpu_gpu_ratio[site1];
+            double ratio_prev = 0.9;
+            if (lr == +1) {
+                if (site1 > 0) ratio_prev = cpu_gpu_ratio[site1-1];
+            } else {
+                if (site2 < L) ratio_prev = cpu_gpu_ratio[site2];
+            }
+            if (ratio <= 0.9 && ratio_prev > 0.9) ratio = ratio_prev;
+
     	    // Create TwoSite objects
     	    TwoSiteTensor<Matrix, SymmGroup> tst(mps[site1], mps[site2]);
     	    MPSTensor<Matrix, SymmGroup> twin_mps = tst.make_mps();
             tst.clear();
             SiteProblem<Matrix, BoundaryMatrix, SymmGroup>
-                sp(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1]);
+                sp(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1], ratio);
 
+            if (lr == +1) {
+                if (site1 > 0)                  Storage::broadcast::pin(left_[site1-1]);
+                if (site2+2 < right_.size())    Storage::broadcast::prefetch(right_[site2+2]);
+            } else {
+                if (site2+2 < right_.size())    Storage::broadcast::pin(right_[site2+2]);
+                if (site1 > 0)                  Storage::broadcast::prefetch(left_[site1-1]);
+            }
+
+            //bool preshot = false;
             if (parms.is_set("snapshot"))
             {
                 int twosweep = 2*sweep + (-lr + 1)/2;
                 std::vector<int> snapshots = parms["snapshot"];
                 for (int snapidx = 0; snapidx < snapshots.size(); snapidx+=2)
-                if (twosweep == snapshots[snapidx] && site1 == snapshots[snapidx+1])
                 {
-                    std::string sweep_str = boost::lexical_cast<std::string>(twosweep) + "_";
-                    std::string site1_str = boost::lexical_cast<std::string>(site1);
-                    std::string site2_str = boost::lexical_cast<std::string>(site2+1);
-                    save_boundary(left_[site1], "left_" + sweep_str + site1_str);
-                    save_boundary(right_[site2+1], "right_" + sweep_str + site2_str);
+                    //if (twosweep == snapshots[snapidx] && site1 == snapshots[snapidx+1] + 1)
+                    //{
+                    //    maquis::cout << "preshot" << std::endl;
+                    //    preshot = true;
+                    //}
 
-                    storage::archive ari("initial_" + sweep_str + site1_str, "w");
-                    twin_mps.save(ari);
+                    if (twosweep == snapshots[snapidx] && site1 == snapshots[snapidx+1])
+                    {
+                        std::string sweep_str = boost::lexical_cast<std::string>(twosweep) + "_";
+                        std::string site1_str = boost::lexical_cast<std::string>(site1);
+                        std::string site2_str = boost::lexical_cast<std::string>(site2+1);
+                        save_boundary(left_[site1], "left_" + sweep_str + site1_str);
+                        save_boundary(right_[site2+1], "right_" + sweep_str + site2_str);
 
-                    std::ofstream ofs(("tsmpo" + sweep_str + site1_str).c_str());
-                    boost::archive::binary_oarchive mpo_ar(ofs);
-                    mpo_ar << ts_cache_mpo[site1];
+                        storage::archive ari("initial_" + sweep_str + site1_str, "w");
+                        twin_mps.save(ari);
 
-                    maquis::cout << "saved snapshot\n";
+                        std::ofstream ofs(("tsmpo" + sweep_str + site1_str).c_str());
+                        boost::archive::binary_oarchive mpo_ar(ofs);
+                        mpo_ar << ts_cache_mpo[site1];
+
+                        maquis::cout << "saved snapshot\n";
+                    }
                 }
             }
 
@@ -211,7 +221,6 @@ public:
                                                                     base::ortho_left_[n][site1], base::ortho_right_[n][site2+1]);
             }
 
-            //std::pair<typename maquis::traits::real_type<value_type>::type, MPSTensor<Matrix, SymmGroup> > res;
             std::pair<double, MPSTensor<Matrix, SymmGroup> > res;
             double jcd_time;
 
@@ -237,10 +246,13 @@ public:
                     throw std::runtime_error("I don't know this eigensolver.");
                 }
 
+                cpu_gpu_ratio[site1] = sp.contraction_schedule.get_cpu_gpu_ratio();
         		tst << res.second;
                 res.second.clear();
             }
             twin_mps.clear();
+
+            sp.contraction_schedule.mps_stage.deallocate();
 
 
 #ifndef NDEBUG
@@ -274,15 +286,12 @@ public:
     	    if (lr == +1)
     	    {
         		// Write back result from optimization
-                BEGIN_TIMING("TRUNC")
                 if (parms["twosite_truncation"] == "svd")
                     boost::tie(mps[site1], mps[site2], trunc) = tst.split_mps_l2r(Mmax, cutoff);
                 else
                     boost::tie(mps[site1], mps[site2], trunc) = contraction::Engine<Matrix, BoundaryMatrix, SymmGroup>::
                         predict_split_l2r(tst, Mmax, cutoff, alpha, left_[site1], mpo[site1]);
-                END_TIMING("TRUNC")
                 tst.clear();
-
 
         		block_matrix<Matrix, SymmGroup> t;
 		
@@ -291,30 +300,26 @@ public:
         		//mps[site2].divide_by_scalar(mps[site2].scalar_norm());	
 
         		t = mps[site2].normalize_left(DefaultSolver());
-                // MD: DEBUGGING OUTPUT
-                maquis::cout << "Propagating t with norm " << t.norm() << std::endl;
         		if (site2 < L-1) mps[site2+1].multiply_from_left(t);
 
                 if (site1 != L-2)
-                    Storage::drop(right_[site2+1]);
+                    Storage::broadcast::drop(right_[site2+1]);
 
                 this->boundary_left_step(mpo, site1); // creating left_[site2]
-                Storage::prefetch(left_[site2]);
+                Storage::broadcast::prefetch(left_[site2]);
 
                 if (site1 != L-2){ 
-                    Storage::evict(mps[site1]);
-                    Storage::evict(left_[site1]);
+                    Storage::broadcast::evict(mps[site1]);
+                    Storage::broadcast::evict(left_[site1]);
                 }
     	    }
     	    if (lr == -1){
         		// Write back result from optimization
-                BEGIN_TIMING("TRUNC")
                 if (parms["twosite_truncation"] == "svd")
                     boost::tie(mps[site1], mps[site2], trunc) = tst.split_mps_r2l(Mmax, cutoff);
                 else
                     boost::tie(mps[site1], mps[site2], trunc) = contraction::Engine<Matrix, BoundaryMatrix, SymmGroup>::
                         predict_split_r2l(tst, Mmax, cutoff, alpha, right_[site2+1], mpo[site2]);
-                END_TIMING("TRUNC")
                 tst.clear();
 
         		block_matrix<Matrix, SymmGroup> t;
@@ -324,19 +329,17 @@ public:
         		//mps[site1].divide_by_scalar(mps[site1].scalar_norm());	
 
         		t = mps[site1].normalize_right(DefaultSolver());
-                // MD: DEBUGGING OUTPUT
-                maquis::cout << "Propagating t with norm " << t.norm() << std::endl;
         		if (site1 > 0) mps[site1-1].multiply_from_right(t);
 
                 if(site1 != 0)
-                    Storage::drop(left_[site1]);
+                    Storage::broadcast::drop(left_[site1]);
 
                 this->boundary_right_step(mpo, site2); // creating right_[site2]
-                Storage::prefetch(right_[site2]);
+                Storage::broadcast::prefetch(right_[site2]);
 
                 if(site1 != 0){
-                    Storage::evict(mps[site2]);
-                    Storage::evict(right_[site2+1]); 
+                    Storage::broadcast::evict(mps[site2]);
+                    Storage::broadcast::evict(right_[site2+1]); 
                 }
     	    }
             
@@ -345,13 +348,12 @@ public:
             iteration_results_["TruncatedFraction"] << trunc.truncated_fraction;
             iteration_results_["SmallestEV"]        << trunc.smallest_ev;
             
-            parallel::meminfo();
-            
             boost::chrono::high_resolution_clock::time_point sweep_then = boost::chrono::high_resolution_clock::now();
             double elapsed = boost::chrono::duration<double>(sweep_then - sweep_now).count();
             maquis::cout << "Sweep has been running for " << elapsed << " seconds." << std::endl;
             
             if (stop_callback())
+            //if (stop_callback() || preshot)
                 throw dmrg::time_limit(sweep, _site+1);
 
     	} // for sites

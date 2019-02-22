@@ -29,16 +29,18 @@
 #define ENGINE_SITE_HAMIL_SCHEDULE_HPP
 
 #include <boost/lambda/construct.hpp>
+#include "dmrg/utils/accelerator.h"
 
 namespace contraction {
 namespace common {
 
 template<class Matrix, class OtherMatrix, class SymmGroup>
-typename Schedule<Matrix, SymmGroup>::schedule_t
+ScheduleNew<Matrix, SymmGroup>
 create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
                             Boundary<OtherMatrix, SymmGroup> const & left,
                             Boundary<OtherMatrix, SymmGroup> const & right,
-                            MPOTensor<Matrix, SymmGroup> const & mpo)
+                            MPOTensor<Matrix, SymmGroup> const & mpo,
+                            double cpu_gpu_ratio)
 {
     typedef typename SymmGroup::charge charge;
     typedef typename Matrix::value_type value_type;
@@ -56,91 +58,29 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
     ProductBasis<SymmGroup> out_right_pb(physical_i, right_i,
                                          boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
                                                              -boost::lambda::_1, boost::lambda::_2));
-
     initial.make_right_paired();
-    typename Schedule<Matrix, SymmGroup>::schedule_t tasks(left_i.size(), physical_i.size());
+    ScheduleNew<Matrix, SymmGroup> tasks(left_i.size());
 
     unsigned loop_max = left_i.size();
+
     omp_for(index_type mb, parallel::range<index_type>(0,loop_max), {
-        shtm_tasks(mpo, left, right, left_i,
-                  right_i, physical_i, out_right_pb, mb, tasks[mb]);
+                rshtm_t_tasks(right.index(), left_i, right_i, physical_i, out_right_pb, mb, tasks[mb]);
+                shtm_tasks(mpo, left, right, left_i, right_i, physical_i, out_right_pb, mb, tasks[mb]);
     });
 
-    accelerator::gpu::update_schedule_buffer();
-
-    std::vector<size_t> flops_per_block(loop_max, 0);
-    size_t flops = 0, memops = 0, ncg = 0;
-    size_t cpu_flops = 0, gpu_flops = 0;
-    for (size_t block = 0; block < loop_max; ++block)
-        for (auto& cgv : tasks[block])
-            for (auto& cg : cgv)
-            {
-                flops += cg.flops;
-                memops += cg.memops;
-                flops_per_block[block] += cg.flops;
-
-                if (cg.on_gpu) gpu_flops += cg.flops;
-                else cpu_flops += cg.flops;
-
-                //if (cg.on_gpu) for (auto& mg : cg) print(mg);
-            }
-
-    std::vector<std::pair<size_t, size_t> > fb(loop_max);
-    std::vector<size_t> idx(loop_max);
-    size_t i = 0;
-    std::for_each(idx.begin(), idx.end(), boost::lambda::_1 = boost::lambda::var(i)++);
-    std::transform(flops_per_block.begin(), flops_per_block.end(), idx.begin(), fb.begin(),
-                   boost::lambda::constructor<std::pair<size_t, size_t> >());
-    std::sort(fb.begin(), fb.end(), greater_first<std::pair<size_t, size_t> >());
-    std::transform(fb.begin(), fb.end(), idx.begin(), boost::bind(&std::pair<size_t, size_t>::second, boost::lambda::_1));
-
-    tasks.total_flops = flops;
-    tasks.total_mem = memops;
-    tasks.cpu_flops = cpu_flops;
-    tasks.gpu_flops = gpu_flops;
-
-    index_type inner_loop_max = physical_i.size();
-    for (index_type task_block = 0; task_block < loop_max; ++task_block)
-    {
-        index_type mps_block = idx[task_block];
-
-        std::vector<index_type> cg_sizes(inner_loop_max);
-        for (index_type s = 0; s < inner_loop_max; ++s)
-            cg_sizes[s] = tasks[mps_block][s].size();
-
-        index_type max_cgi = *std::max_element(cg_sizes.begin(), cg_sizes.end());
-
-        for (index_type cgi = 0; cgi < max_cgi; ++cgi)
-            for (index_type s = 0; s < inner_loop_max; ++s)
-                if (cgi < tasks[mps_block][s].size())
-                    if (tasks[mps_block][s][cgi].on_gpu)
-                        tasks.enumeration_gpu.push_back(boost::make_tuple(mps_block, s, cgi, tasks[mps_block][s][cgi].buffer_size));
-                    else
-                        tasks.enumeration.push_back(boost::make_tuple(mps_block, s, cgi));
-    }
-
-    tasks.assign_streams();
+    tasks.compute_workload(initial, left.index(), right.index(), cpu_gpu_ratio);
+    tasks.stage_gpu(right, initial);
+    tasks.mps_stage.allocate(initial.data().basis());
 
     if (std::max(mpo.row_dim(), mpo.col_dim()) > 10)
     {
-
-        //for (auto& mb : tasks)
-        //    for (auto& cgv : mb)
-        //        for (auto& cg : cgv)
-        //        {
-        //            maquis::cout << "cg " << std::setw(5) << cg.t_key_vec.size() << std::setw(5) << num_rows(initial.data()[cg.get_mps_block()])
-        //                         << std::setw(5) << cg.r_size << std::endl;
-        //            for (auto& mg  : cg)
-        //                maquis::cout << "mg " << std::setw(5) << mg.bs.size() << std::setw(5) << mg.l_size << std::setw(5) << mg.r_size << std::endl;
-        //        }
-
-        maquis::cout << "Schedule size: " << tasks.size() << " blocks, " << tasks.enumeration_gpu.size()
-                         << " cgs_gpu, " << tasks.enumeration.size() << " cgs_cpu, "
+        maquis::cout << "Schedule size: " << tasks.size() << " blocks, " //<< tasks.enumeration_gpu.size()
+                         //<< " cgs_gpu, " << ncg << " cgs_cpu, "
                      << " R " << size_of(right) << "B, "
                      << " L " << size_of(left) << "B "
-                     << " GPU " << gpu_flops / 1024 / 1024 << "MF, "
-                     << " CPU " << cpu_flops / 1024 / 1024 << "MF, "
-                     << " B " << memops / 1024 / 1024 << "MB, "
+                     << " GPU " << tasks.gpu_flops / 1024 / 1024 << "MF, "
+                     << " CPU " << tasks.cpu_flops / 1024 / 1024 << "MF, "
+                     //<< " B " << memops / 1024 / 1024 << "MB, "
                      << std::endl;
 
         boost::chrono::high_resolution_clock::time_point then = boost::chrono::high_resolution_clock::now();

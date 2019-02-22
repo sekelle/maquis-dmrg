@@ -243,4 +243,93 @@ namespace ts_reduction {
         return phys2_i;
     }
     
+    template<class Matrix, class SymmGroup>
+    Index<SymmGroup> unreduce_right(Index<SymmGroup> const & physical_i_left,
+                                    Index<SymmGroup> const & physical_i_right,
+                                    Index<SymmGroup> const & left_i,
+                                    Index<SymmGroup> const & right_i,
+                                    block_matrix<Matrix, SymmGroup> const & m1,
+                                    block_matrix<Matrix, SymmGroup> & m2)
+    {
+        m2 = block_matrix<Matrix, SymmGroup>();
+        
+        typedef std::size_t size_t;
+        typedef typename SymmGroup::subcharge spin_t;
+        typedef typename SymmGroup::charge charge;
+        typedef typename Matrix::value_type value_type;
+        
+        Index<SymmGroup> phys2_i = physical_i_left*physical_i_right;
+        ProductBasis<SymmGroup> phys_pb(physical_i_left, physical_i_right);
+        ProductBasis<SymmGroup> in_right(phys2_i, right_i,
+                                         boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
+                                                             -boost::lambda::_1, boost::lambda::_2));
+        for (size_t block = 0; block < m1.n_blocks(); ++block)
+        {
+            charge lc = m1.basis().left_charge(block);
+            size_t left_size = m1.basis().left_size(block);
+
+            charge in_r_charge = m1.basis().right_charge(block);
+
+            size_t o = m2.insert_block(new Matrix(left_size, m1.basis().right_size(block), 0) , lc, in_r_charge);
+            Matrix const & in_block = m1[block];
+            Matrix & out_block = m2[o];
+
+            for (size_t s = 0; s < phys2_i.size(); ++s)
+            {
+                charge s_charge = phys2_i[s].first;
+                size_t r = right_i.position(SymmGroup::fuse(in_r_charge, s_charge));
+                if(r == right_i.size()) continue;
+
+                size_t in_right_offset  = in_right(s_charge, right_i[r].first);
+                size_t right_size = right_i[r].second;
+
+                for (size_t s1 = 0; s1 < physical_i_left.size(); ++s1)
+                {
+                    for (size_t s2 = 0; s2 < physical_i_right.size(); ++s2)
+                    {
+                        charge phys_c1 = physical_i_left[s1].first, phys_c2 = physical_i_right[s2].first;
+                        if (s_charge != SymmGroup::fuse(phys_c1, phys_c2)) continue;
+                        
+                        size_t in_phys_offset = phys_pb(phys_c1, phys_c2);
+
+                        spin_t jl,j,jr,S1,S2;
+                        S1 = std::abs(SymmGroup::spin(phys_c1));
+                        S2 = std::abs(SymmGroup::spin(phys_c2));
+                        jl = SymmGroup::spin(lc);
+                        jr = SymmGroup::spin(right_i[r].first);
+
+                        if ( (jl == jr) && (jl > 0) && (S1 == 1) && (S2 == 1) ) {
+                            spin_t j = (SymmGroup::spin(phys_c1) == 1) ? 0 : 2;
+                            size_t base_offset = (j==0) ? in_phys_offset : in_phys_offset - 1;
+
+                            for (spin_t jm = jl - 1; jm <= jl + 1; jm+=2) {
+                                size_t out_phys_offset = (jm == jl - 1) ? base_offset + 1 : base_offset;
+                                value_type coupling_coeff = std::sqrt((j+1) * (jm+1)) * gsl_sf_coupling_6j(jl,jr,j,S2,S1,jm);
+                                coupling_coeff = (((jl+jr+S1+S2)/2)%2) ? -coupling_coeff : coupling_coeff;
+                                maquis::dmrg::detail::reduce_r(out_block, in_block, coupling_coeff,
+                                                               in_right_offset, in_phys_offset, out_phys_offset,
+                                                               physical_i_left[s1].second, physical_i_right[s2].second,
+                                                               left_size, right_size);
+                            }
+                        }
+                        else {
+                            spin_t j = std::abs(SymmGroup::spin(phys_c1) + SymmGroup::spin(phys_c2));
+                            spin_t jm = jl + SymmGroup::spin(phys_c1);
+                            if (jm < 0) continue;
+                            value_type coupling_coeff = std::sqrt((j+1) * (jm+1)) * gsl_sf_coupling_6j(jl,jr,j,S2,S1,jm);
+                            coupling_coeff = (((jl+jr+S1+S2)/2)%2) ? -coupling_coeff : coupling_coeff;
+                            maquis::dmrg::detail::reduce_r(out_block, in_block, coupling_coeff,
+                                                           in_right_offset, in_phys_offset, in_phys_offset,
+                                                           physical_i_left[s1].second, physical_i_right[s2].second,
+                                                           left_size, right_size);
+                        }
+
+                    } // S2
+                } // S1
+            } // phys2
+        } // m1 block
+
+        return phys2_i;
+    }
+    
 } // namespace ts_reduction
