@@ -72,4 +72,5 @@ create_tools_symm_target("mps_transform_pg" "SU2U1PG" "mps_transform.cpp"  "dmrg
 endif(DMRG_HAS_TwoU1PG)
 
 
-create_tools_symm_target("shtm_su2u1pg" "SU2U1PG" "shtm.cpp"  "${DMRG_APP_LIBRARIES}")
+create_tools_symm_target("shtm_su2u1"   "SU2U1"   "shtm.cpp"  "numeric;numeric_gpu;${DMRG_APP_LIBRARIES}")
+create_tools_symm_target("shtm_su2u1pg" "SU2U1PG" "shtm.cpp"  "numeric;numeric_gpu;${DMRG_APP_LIBRARIES}")

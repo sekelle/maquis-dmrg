@@ -57,7 +57,7 @@ int main(int argc, char ** argv)
                                  //model.physical_dimension(), model.total_charge(),
       
       /// Initialize optimizer /* , ... restart(sweep, -starting site) */)
-      maquis::dmrg::optimizer<matrix, symm, maquis::single_site, maquis::storage::disk> optimizer(mps, mpo, parms);
+      maquis::dmrg::optimizer<matrix, symm, maquis::single_site, maquis::storage::Controller> optimizer(mps, mpo, parms);
       // could be implemented as template <class M, class S, class P, class D> class optimizer : P::apply<M,S,D>::type;
       
       /// sweep

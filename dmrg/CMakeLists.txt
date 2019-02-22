@@ -30,15 +30,15 @@ endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 
 set(AMBIENT_SOURCES_DIR "../ambient" CACHE STRINGS "Location of the ambient source tree")
 
-set(BUILD_SYMMETRIES "U1;TwoU1;TwoU1PG;NONE" CACHE STRINGS "List of symmetry
+set(BUILD_SYMMETRIES "SU2U1;SU2U1PG" CACHE STRINGS "List of symmetry
 to include in the build objects. U1, TwoU1, TwoU1PG, NU1, Z2, SU2U1, SU2U1PG and NONE are currently available.")
 set(DMRG_NUMSYMM 6 CACHE INT "Maximum number of U1 symmetries.")
 
 option(BUILD_INTERFACE_LIBS "Build libraries for interfacing DMRG to C++ and python" ON)
-option(COMPLEX "compile dmrg for complex numbers" ON)
+option(COMPLEX "compile dmrg for complex numbers" OFF)
 
 option(ENABLE_ALPS_MODELS "Enable binding with ALPS lattices and models" ON)
-option(ENABLE_OMP "Enable OpenMP" OFF)
+option(ENABLE_OMP "Enable OpenMP" ON)
 option(USE_AMBIENT "Enable Ambient" OFF)
 option(BUILD_AMBIENT "Build Ambient inside this build tree" OFF)
 
@@ -51,7 +51,7 @@ option(REGRESSION_PERFORMANCE_TESTS "Run application benchmarks"            OFF)
 
 mark_as_advanced(ENABLE_COLLECTOR)
 
-set(BLAS_LAPACK_SELECTOR "mkl_sequential" CACHE STRINGS "auto, manual, mkl_sequential, mkl_parallel, veclib, alps")
+set(BLAS_LAPACK_SELECTOR "mkl_parallel" CACHE STRINGS "auto, manual, mkl_sequential, mkl_parallel, veclib, alps")
 
 
 ######################################################################
@@ -259,6 +259,8 @@ else(USE_AMBIENT)
   endmacro(compile_with_ambient)
 endif(USE_AMBIENT)
 
+find_package(CUDA)
+
 ######################################################################
 # Version information
 ######################################################################
@@ -331,7 +333,7 @@ set(DMRG_INCLUDE_DIRS ${MAQUIS_Boost_INCLUDE_DIRS})
 set(DMRG_LIBRARY_DIRS ${MAQUIS_Boost_LIBRARY_DIRS})
 #set(DMRG_DEFINITIONS)
 set(DMRG_LIBRARIES alps ${MAQUIS_Boost_LIBRARIES} ${HDF5_LIBRARIES}
-${GSL_LIBRARIES})
+${GSL_LIBRARIES} ${CUDA_LIBRARIES} )
 if(USE_AMBIENT)
   list(APPEND DMRG_LIBRARIES ${AMBIENT_LIBRARIES})
 else()
@@ -360,7 +362,7 @@ endif(ENABLE_OMP)
 # Include / link directories
 ######################################################################
 
-list(APPEND DMRG_INCLUDE_DIRS ${MATRICES_DIR} ${HDF5_INCLUDE_DIR} ${ALPS_INCLUDE_DIRS})
+list(APPEND DMRG_INCLUDE_DIRS ${MATRICES_DIR} ${HDF5_INCLUDE_DIR} ${ALPS_INCLUDE_DIRS} ${CUDA_INCLUDE_DIRS})
 list(APPEND DMRG_LIBRARY_DIRS ${ALPS_LIBRARY_DIRS})
 if(NOT USE_AMBIENT)
   list(APPEND DMRG_LIBRARY_DIRS ${MAQUISLapack_LIB_DIRS})

@@ -50,14 +50,22 @@ namespace ietl
     typename MPSTensor<Matrix, SymmGroup>::scalar_type
     dot(MPSTensor<Matrix, SymmGroup> const & x, MPSTensor<Matrix, SymmGroup> const & y)
     {
-        return x.scalar_overlap(y);
+        MPSTensor<Matrix, SymmGroup>::ietl_plus.begin();
+        typename MPSTensor<Matrix, SymmGroup>::scalar_type ret = x.scalar_overlap(y);
+        MPSTensor<Matrix, SymmGroup>::ietl_plus.end();
+        return ret;
+        //return x.scalar_overlap(y);
     }
 
     template<class Matrix, class SymmGroup>
     typename MPSTensor<Matrix, SymmGroup>::real_type
     two_norm(MPSTensor<Matrix, SymmGroup> const & x)
     {
-        return x.scalar_norm();
+        MPSTensor<Matrix, SymmGroup>::ietl_plus.begin();
+        typename MPSTensor<Matrix, SymmGroup>::real_type ret = x.scalar_norm();
+        MPSTensor<Matrix, SymmGroup>::ietl_plus.end();
+        return ret;
+        //return x.scalar_norm();
     }
 }
 
@@ -106,10 +114,10 @@ namespace ietl
 {
     template<class Matrix, class OtherMatrix, class SymmGroup>
     void mult(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & H,
-              MPSTensor<Matrix, SymmGroup> const & x,
+              MPSTensor<Matrix, SymmGroup> & x,
               MPSTensor<Matrix, SymmGroup> & y)
     {  
-        y = contraction::Engine<Matrix, OtherMatrix, SymmGroup>::site_hamil2(x, H.left, H.right, H.mpo, H.contraction_schedule);
+        y = contraction::common::site_hamil(x, H.left, H.right, H.mpo, H.contraction_schedule);
     }
     
     template<class Matrix, class SymmGroup>

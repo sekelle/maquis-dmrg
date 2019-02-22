@@ -41,7 +41,7 @@ template <class Matrix, class SymmGroup>
 class dmrg_sim : public sim<Matrix, SymmGroup> {
     
     typedef sim<Matrix, SymmGroup> base;
-    typedef optimizer_base<Matrix, SymmGroup, storage::disk> opt_base_t;
+    typedef optimizer_base<Matrix, SymmGroup, storage::Controller> opt_base_t;
     typedef typename base::status_type status_type;
     typedef typename base::measurements_type measurements_type;
 
@@ -74,10 +74,10 @@ public:
         boost::shared_ptr<opt_base_t> optimizer;
         if (init_sweep < parms["nsweeps"]) {
             if (parms["optimization"] == "singlesite")
-                optimizer.reset( new ss_optimize<Matrix, SymmGroup, storage::disk>
+                optimizer.reset( new ss_optimize<Matrix, SymmGroup, storage::Controller>
                                                 (mps, mpoc, parms, stop_callback, init_site) );
             else if(parms["optimization"] == "twosite")
-                optimizer.reset( new ts_optimize<Matrix, SymmGroup, storage::disk>
+                optimizer.reset( new ts_optimize<Matrix, SymmGroup, storage::Controller>
                                                 (mps, mpoc, parms, stop_callback, init_site) );
             else
                 throw std::runtime_error("Don't know this optimizer");
@@ -91,7 +91,7 @@ public:
                 // TODO: introduce some timings
                 
                 optimizer->sweep(sweep, Both);
-                storage::disk::sync();
+                storage::Controller::sync();
                 
                 if ((sweep+1) % meas_each == 0 || (sweep+1) == parms["nsweeps"])
                 {
@@ -131,7 +131,7 @@ public:
     
     ~dmrg_sim()
     {
-        storage::disk::sync();
+        storage::Controller::sync();
     }
     
 private:

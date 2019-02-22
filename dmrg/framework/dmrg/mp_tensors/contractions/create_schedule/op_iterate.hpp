@@ -35,15 +35,17 @@ namespace contraction {
 namespace common {
 namespace detail {
 
-    template <class Matrix, class AlignedMatrix, class SymmGroup, class Map>
+    template <class Matrix, class AlignedMatrix, class SymmGroup>
     void op_iterate(typename operator_selector<Matrix, SymmGroup>::type const & W, std::size_t w_block,
                     typename Matrix::value_type couplings[],
-                    ContractionGroup<AlignedMatrix, SymmGroup> & cg,
-                    typename ContractionGroup<AlignedMatrix, SymmGroup>::t_key tq,
+                    Cohort<AlignedMatrix, SymmGroup> & cg,
+                    unsigned s,
                     unsigned m2_size,
-                    Map & t_map)
+                    MPSBlock<AlignedMatrix, SymmGroup> const & mpsb,
+                    unsigned mps_offset,
+                    unsigned ci,
+                    unsigned boundary_col)
     {
-        typedef ContractionGroup<AlignedMatrix, SymmGroup> cgroup;
         typedef typename SparseOperator<Matrix, SymmGroup>::const_iterator block_iterator;
 
         std::pair<block_iterator, block_iterator> blocks = W.get_sparse().block(w_block);
@@ -54,19 +56,16 @@ namespace detail {
             unsigned ss2 = it->get_col();
             unsigned rspin = it->get_row_spin();
             unsigned cspin = it->get_col_spin();
-            unsigned casenr = 0; 
+            unsigned casenr = 0;
             if (rspin == 2 && cspin == 2) casenr = 3;
             else if (rspin == 2) casenr = 1;
             else if (cspin == 2) casenr = 2;
 
-            typename MatrixGroup<Matrix, SymmGroup>::micro_task task;
-            task.scale = it->coefficient * couplings[casenr];
+            typename Matrix::value_type scale = it->coefficient * couplings[casenr];
+            unsigned ti = mpsb.get_ti(mps_offset + ss1*m2_size, ci);
 
-            typename cgroup::t_key tq2 = bit_twiddling::add_last(tq, ss1*m2_size);
-            std::pair<typename Map::iterator, bool> pos = t_map.insert(std::make_pair(tq2, t_map.size()));
-            task.t_index = pos.first->second;
-
-            cg[ss2].push_back(task);
+            if (ti < std::numeric_limits<unsigned>::max())
+                cg.push_back(s, ss2, scale, ti, boundary_col);
         }
     }
 

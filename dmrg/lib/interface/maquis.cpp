@@ -69,7 +69,7 @@ public:
 
     void SetParameters(DmrgParameters & p) { /*parms = p;*/ }
 
-    std::string value(std::string key) { return sim->get_parm(key); }
+    //std::string value(std::string key) { return sim->get_parm(key); }
 
     void optimize()
     {
@@ -149,7 +149,7 @@ BOOST_PYTHON_MODULE(libmaquis)
     class_<Interface>("interface")
         .def(init<dict>())
         .def("SetParameters", raw_function(&SetParameters, 1))
-        .def("value", &Interface::value)
+        //.def("value", &Interface::value)
         .def("optimize", &Interface::optimize)
         .def("measure", &Interface::measure)
         .def("getObservable", &Interface::getObservable)

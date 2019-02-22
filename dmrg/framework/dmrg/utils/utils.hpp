@@ -30,6 +30,10 @@
 #include <cstddef>
 #include <complex>
 #include <limits>
+#include <vector>
+#include <utility>
+#include <algorithm>
+#include <boost/lambda/construct.hpp>
 #include <boost/static_assert.hpp>
 
 #include "dmrg/utils/proc_statm.h"
@@ -103,6 +107,34 @@ struct compare_pair_inverse
     }
 };
 
+template <class Int>
+std::vector<Int> sort_invert(std::vector<Int> const & input)
+{
+    std::size_t sz = input.size();
+
+    std::vector<Int> idx(sz);
+    Int i = 0;
+    std::for_each(idx.begin(), idx.end(), [&i](Int& e) { e = i++; });
+
+    std::vector<std::pair<Int, Int>> input_idx(sz);
+    std::transform(input.begin(), input.end(), idx.begin(), input_idx.begin(),
+                   boost::lambda::constructor<std::pair<Int, Int>>());
+
+    std::sort(input_idx.begin(), input_idx.end(), greater_first<std::pair<Int, Int>>());
+
+    std::vector<Int> ret(sz);
+    std::transform(input_idx.begin(), input_idx.end(), ret.begin(), [](std::pair<Int, Int> p) { return p.second; } );
+
+    return ret;
+}
+
+template <class V>
+void pv(V const& vec)
+{
+    std::copy(vec.begin(), vec.end(), std::ostream_iterator<typename V::value_type>(std::cout, " "));
+    std::cout << std::endl;
+}
+
 template <typename T>
 bool check_align(T const* const p, unsigned int alignment) {
     return ((reinterpret_cast<uintptr_t>(static_cast<void const* const>(p))&(alignment-1)) == 0);
@@ -122,11 +154,6 @@ namespace bit_twiddling
 
     struct bits
     {
-        //static const unsigned w0 = 1;
-        //static const unsigned w1 = 27;
-        //static const unsigned w2 = 26;
-        //static const unsigned w3 = 48;
-        //static const unsigned w4 = 26;
         static const unsigned w0 = 26;
         static const unsigned w1 = 48;
         static const unsigned w2 = 26;
@@ -148,24 +175,18 @@ namespace bit_twiddling
         return tuple += ((__uint128_t)p1<<bits::s[4]);
     }
 
-    inline __uint128_t pack(unsigned long a, unsigned long b, unsigned long c, unsigned long d, char e)
+    inline __uint128_t pack(unsigned long a, unsigned long b, unsigned long c, unsigned long d, unsigned long e)
     {
-        //assert(a <= bits::max4);
-        //assert(b <= bits::max3);
-        //assert(c <= bits::max2);
-        //assert(d <= bits::max1);
-        //assert(e <= bits::max0);
-        assert(d <= bits::max4);
-        assert(e <= bits::max3);
-        assert(a <= bits::max2);
-        assert(b <= bits::max1);
-        assert(c <= bits::max0);
+        assert(a <= bits::max4);
+        assert(b <= bits::max3);
+        assert(c <= bits::max2);
+        assert(d <= bits::max1);
+        assert(e <= bits::max0);
 
-        //return ((__uint128_t)a<<bits::s[4]) + ((__uint128_t)b<<bits::s[3]) + ((__uint128_t)c<<bits::s[2]) + ((__uint128_t)d<<bits::s[1]) + e;
-        return ((__uint128_t)d<<bits::s[4]) + ((__uint128_t)e<<bits::s[3]) + ((__uint128_t)a<<bits::s[2]) + ((__uint128_t)b<<bits::s[1]) + c;
+        return ((__uint128_t)a<<bits::s[4]) + ((__uint128_t)b<<bits::s[3]) + ((__uint128_t)c<<bits::s[2]) + ((__uint128_t)d<<bits::s[1]) + e;
     }
 
-    inline void unpack(__uint128_t tuple, unsigned long& p1, unsigned long& p2, unsigned long& p3, unsigned long& p4, char& p5)
+    inline void unpack(__uint128_t tuple, unsigned long& p1, char& p2, unsigned long& p3, unsigned long& p4, unsigned long& p5)
     {
         static const __uint128_t mask0 = (((__uint128_t)1 << bits::w0)-1);
         static const __uint128_t mask1 = (((__uint128_t)1 << bits::w1)-1) << bits::s[1];
@@ -173,16 +194,11 @@ namespace bit_twiddling
         static const __uint128_t mask3 = (((__uint128_t)1 << bits::w3)-1) << bits::s[3];
         static const __uint128_t mask4 = (((__uint128_t)1 << bits::w4)-1) << bits::s[4];
 
-        //p1 = (tuple & mask4) >> bits::s[4];
-        //p2 = (tuple & mask3) >> bits::s[3];
-        //p3 = (tuple & mask2) >> bits::s[2];
-        //p4 = (tuple & mask1) >> bits::s[1];
-        //p5 = tuple & bits::s[1];
-        p4 = (tuple & mask4) >> bits::s[4];
-        p5 = (tuple & mask3) >> bits::s[3];
-        p1 = (tuple & mask2) >> bits::s[2];
-        p2 = (tuple & mask1) >> bits::s[1];
-        p3 = tuple & mask0;
+        p1 = (tuple & mask4) >> bits::s[4];
+        p2 = (tuple & mask3) >> bits::s[3];
+        p3 = (tuple & mask2) >> bits::s[2];
+        p4 = (tuple & mask1) >> bits::s[1];
+        p5 = tuple & mask0;
     }
 
 } // namespace bit_twiddling

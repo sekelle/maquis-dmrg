@@ -2,7 +2,8 @@
  *
  * ALPS MPS DMRG Project
  *
- * Copyright (C) 2017 Stanford University, Department of Chemistry
+ * Copyright (C) 2017 Department of Chemistry and the PULSE Institute, Stanford University
+ *                    Laboratory for Physical Chemistry, ETH Zurich
  *               2017-2017 by Sebastian Keller <sebkelle@phys.ethz.ch>
  * 
  * This software is part of the ALPS Applications, published under the ALPS
@@ -23,16 +24,32 @@
  * DEALINGS IN THE SOFTWARE.
  *
  *****************************************************************************/
-#ifndef SHTM_TOOL_LOAD
-#define SHTM_TOOL_LOAD
 
-template <class Loadable>
-void load(Loadable & Data, std::string file)
-{
-    std::ifstream ifs(file.c_str());
-    boost::archive::binary_iarchive iar(ifs, std::ios::binary);
-    iar >> Data;
-}
 
+#ifndef MAQUIS_NUMERIC_GPU_H
+#define MAQUIS_NUMERIC_GPU_H
+
+#include "cuda.h"
+#include "batch_gemm.h"
+
+#define BUFFER_ALIGNMENT 128
+
+void dsacc_gpu(cudaStream_t stream,
+               unsigned nS, unsigned ls, unsigned ms, unsigned nb1,
+               unsigned* b1, unsigned* b2s, double* alpha, unsigned* tidx, double** tbuf, double* sbuf);
+
+void dsaccv_gpu(cudaStream_t stream, unsigned nms,
+                unsigned nS, unsigned ls, unsigned* ms, unsigned* nb1,
+                unsigned** b1, unsigned** b2s, double** alpha, unsigned** tidx, double** tbuf, double* sbuf, unsigned* offsets);
+
+void dgemm_gpu(cublasHandle_t handle,
+               cudaStream_t stream,
+               unsigned ls, unsigned ms, unsigned rs,
+               double* s_buffer, double* dev_out, GemmDotData<double> & gdd, double* l_buffer);
+
+void copy_v(cudaStream_t stream, int, int, int, double*, double*);
+void transpose_v(cudaStream_t stream, int, int, int, double*, double*);
+
+void atomic_add(cudaStream_t stream, size_t, double*, double*);
 
 #endif

@@ -43,7 +43,7 @@ enum DecompMethod {QR, SVD};
 static DecompMethod DefaultSolver() {return QR;} // QR or SVD
 
 template<class Matrix, class SymmGroup>
-class MPSTensor
+class MPSTensor : public storage::gpu::multiDeviceSerializable<MPSTensor<Matrix, SymmGroup>>
 {
 public:
     typedef typename maquis::traits::scalar_type<Matrix>::type scalar_type;
@@ -64,6 +64,18 @@ public:
               block_matrix<Matrix, SymmGroup> const& block,
               MPSStorageLayout layout,
               Indicator = Unorm);
+    MPSTensor(Index<SymmGroup> const& sd,
+              Index<SymmGroup> const& ld,
+              Index<SymmGroup> const& rd,
+              block_matrix<Matrix, SymmGroup> && block,
+              MPSStorageLayout layout,
+              Indicator = Unorm);
+
+    MPSTensor(Index<SymmGroup> const& sd,
+              Index<SymmGroup> const& ld,
+              Index<SymmGroup> const& rd,
+              DualIndex<SymmGroup> const& data_basis,
+              MPSStorageLayout layout);
 
     Index<SymmGroup> const & site_dim() const;
     Index<SymmGroup> const & row_dim() const;
@@ -71,6 +83,8 @@ public:
     bool isobccompatible(Indicator) const;
     std::size_t num_elements() const;
     
+    void normalize_indices();
+
     void replace_right_paired(block_matrix<Matrix, SymmGroup> const &, Indicator =Unorm);
     void replace_left_paired(block_matrix<Matrix, SymmGroup> const &, Indicator =Unorm);
     
@@ -145,55 +159,89 @@ public:
     
     // TODO : remove / make private (change non-abelian::site_hamil2)
     Index<SymmGroup> phys_i, left_i, right_i;
+
+    static Timer ietl_plus;
 private:
     mutable block_matrix<Matrix, SymmGroup> data_;
     mutable MPSStorageLayout cur_storage;
     Indicator cur_normalization;
 };
 
+template <class Matrix, class SymmGroup> Timer MPSTensor<Matrix, SymmGroup>::ietl_plus = Timer("IETL_PLUS");
+
 // this is also required by IETL
 template<class Matrix, class SymmGroup>
 MPSTensor<Matrix, SymmGroup> operator*(const typename MPSTensor<Matrix, SymmGroup>::scalar_type& t,
-                                       MPSTensor<Matrix, SymmGroup> m)
+                                       MPSTensor<Matrix, SymmGroup> const& m)
 {
-    m *= t;
-    return m;
+    MPSTensor<Matrix, SymmGroup>::ietl_plus.begin();
+    MPSTensor<Matrix, SymmGroup> ret = m;
+    MPSTensor<Matrix, SymmGroup>::ietl_plus.end();
+    ret *= t;
+    return ret;
+    //m *= t;
+    //return m;
 }
 template<class Matrix, class SymmGroup>
-MPSTensor<Matrix, SymmGroup> operator*(MPSTensor<Matrix, SymmGroup> m,
+MPSTensor<Matrix, SymmGroup> operator*(MPSTensor<Matrix, SymmGroup> const& m,
                                        const typename MPSTensor<Matrix, SymmGroup>::scalar_type& t)
 {
-    m *= t;
-    return m;
+    MPSTensor<Matrix, SymmGroup>::ietl_plus.begin();
+    MPSTensor<Matrix, SymmGroup> ret = m;
+    MPSTensor<Matrix, SymmGroup>::ietl_plus.end();
+    ret *= t;
+    return ret;
+    //m *= t;
+    //return m;
 }
 template<class Matrix, class SymmGroup>
-MPSTensor<Matrix, SymmGroup> operator/(MPSTensor<Matrix, SymmGroup> m,
+MPSTensor<Matrix, SymmGroup> operator/(MPSTensor<Matrix, SymmGroup> const & m,
                                        const typename MPSTensor<Matrix, SymmGroup>::scalar_type& t)
 {
-    m /= t;
-    return m;
+    MPSTensor<Matrix, SymmGroup>::ietl_plus.begin();
+    MPSTensor<Matrix, SymmGroup> ret = m;
+    MPSTensor<Matrix, SymmGroup>::ietl_plus.end();
+    ret /= t;
+    return ret;
+    //m /= t;
+    //return m;
 }
 
 template<class Matrix, class SymmGroup>
-MPSTensor<Matrix, SymmGroup> operator-(MPSTensor<Matrix, SymmGroup> m,
+MPSTensor<Matrix, SymmGroup> operator-(MPSTensor<Matrix, SymmGroup> const & m,
                                        MPSTensor<Matrix, SymmGroup> const & m2)
 {
-    m -= m2;
-    return m;
+    MPSTensor<Matrix, SymmGroup>::ietl_plus.begin();
+    MPSTensor<Matrix, SymmGroup> ret = m;
+    MPSTensor<Matrix, SymmGroup>::ietl_plus.end();
+    ret -= m2;
+    return ret;
+    //m -= m2;
+    //return m;
 }
 template<class Matrix, class SymmGroup>
-MPSTensor<Matrix, SymmGroup> operator+(MPSTensor<Matrix, SymmGroup> m,
+MPSTensor<Matrix, SymmGroup> operator+(MPSTensor<Matrix, SymmGroup> const & m,
                                        MPSTensor<Matrix, SymmGroup> const & m2)
 {
-    m += m2;
-    return m;
+    MPSTensor<Matrix, SymmGroup>::ietl_plus.begin();
+    MPSTensor<Matrix, SymmGroup> ret = m;
+    MPSTensor<Matrix, SymmGroup>::ietl_plus.end();
+    ret += m2;
+    return ret;
+    //m += m2;
+    //return m;
 }
 
 template<class Matrix, class SymmGroup>
-MPSTensor<Matrix, SymmGroup> operator-(MPSTensor<Matrix, SymmGroup> m)
+MPSTensor<Matrix, SymmGroup> operator-(MPSTensor<Matrix, SymmGroup> const & m)
 {
-    m *= typename MPSTensor<Matrix, SymmGroup>::scalar_type(-1.0);
-    return m;
+    MPSTensor<Matrix, SymmGroup>::ietl_plus.begin();
+    MPSTensor<Matrix, SymmGroup> ret = m;
+    MPSTensor<Matrix, SymmGroup>::ietl_plus.end();
+    ret *= typename MPSTensor<Matrix, SymmGroup>::scalar_type(-1.0);
+    return ret;
+    //m *= typename MPSTensor<Matrix, SymmGroup>::scalar_type(-1.0);
+    //return m;
 }
 
 

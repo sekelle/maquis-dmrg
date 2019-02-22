@@ -42,6 +42,7 @@
 #include <openssl/md5.h>
 
 #include "utils/data_collector.hpp"
+#include "dmrg/utils/accelerator.h"
 
 #include "dmrg/version.h"
 #include "dmrg/utils/DmrgParameters.h"
@@ -66,20 +67,22 @@
 #include "dmrg/models/measurements.h"
 
 
-class abstract_sim {
-public:
-    virtual ~abstract_sim() {}
-    virtual void run() =0;
-};
+//class abstract_sim {
+//public:
+//    virtual ~abstract_sim() {}
+//    virtual void run() =0;
+//};
 
 
 template <class Matrix, class SymmGroup>
-class sim : public abstract_sim {
+class sim /*: public abstract_sim */ {
 public:
     sim(DmrgParameters const &, bool = false);
     virtual ~sim();
     
     virtual void run() =0;
+
+    void add_ortho(std::shared_ptr<sim<Matrix, SymmGroup>> os);
 
     parameters::proxy get_parm(std::string const& key);
     
@@ -113,6 +116,8 @@ protected:
     MPS<Matrix, SymmGroup> mps;
     MPO<Matrix, SymmGroup> mpo, mpoc;
     measurements_type all_measurements, sweep_measurements;
+
+    std::vector<MPS<Matrix,SymmGroup>*> ortho_mps;
 };
 
 #include "sim.hpp"

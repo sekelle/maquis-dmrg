@@ -79,7 +79,8 @@ namespace measurements {
         }
         
         void evaluate(MPS<Matrix, SymmGroup> const& ket_mps, boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none
-                                                           , boost::optional<std::string const&> on_the_fly_bra = boost::none)
+                                                           , boost::optional<std::string const&> on_the_fly_bra = boost::none
+                                                           , boost::optional<MPS<Matrix, SymmGroup> const&> bra_mps_otf = boost::none)
         {
             this->vector_results.clear();
             this->labels.clear();

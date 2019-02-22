@@ -31,6 +31,7 @@
 #include <cmath>
 #include <iterator>
 #include <iostream>
+#include <memory>
 #include <sys/stat.h>
 
 #include <boost/shared_ptr.hpp>
@@ -44,7 +45,7 @@ template <class Matrix, class SymmGroup>
 class dmrg_sim : public sim<Matrix, SymmGroup> {
     
     typedef sim<Matrix, SymmGroup> base;
-    typedef optimizer_base<Matrix, SymmGroup, storage::disk> opt_base_t;
+    typedef optimizer_base<Matrix, SymmGroup, storage::Controller> opt_base_t;
     typedef typename base::status_type status_type;
     typedef typename base::measurements_type measurements_type;
     
@@ -68,12 +69,17 @@ public:
     void measure_observable(std::string const& name_,
                             std::vector<typename Matrix::value_type> & results,
                             std::vector<std::vector<Lattice::pos_t> > & labels,
-                            std::string const& bra
+                            std::string const& bra,
+                            std::shared_ptr<sim<Matrix, SymmGroup>> bra_ptr = NULL
                            );
+
+    double get_energy();
 
 private:
     std::string results_archive_path(int sweep) const;
     void checkpoint_simulation(MPS<Matrix, SymmGroup> const& state, int sweep, int site);
+
+    double emin;
 };
 
 #endif

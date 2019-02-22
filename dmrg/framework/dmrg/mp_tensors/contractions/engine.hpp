@@ -34,6 +34,7 @@
 #include "dmrg/mp_tensors/mpotensor.h"
 #include "dmrg/mp_tensors/twositetensor.h"
 
+//#include "dmrg/mp_tensors/contractions/task/tasks_gpu.hpp"
 #include "dmrg/mp_tensors/contractions/task/tasks.hpp"
 #include "dmrg/mp_tensors/contractions/create_schedule/site_hamil_tasks.hpp"
 #include "dmrg/mp_tensors/contractions/create_schedule/right_tasks.hpp"
@@ -72,12 +73,12 @@ namespace contraction {
         }
 
         static schedule_t
-        contraction_schedule(MPSTensor<Matrix, SymmGroup> const & mps,
+        contraction_schedule(MPSTensor<Matrix, SymmGroup> & mps,
                              Boundary<OtherMatrix, SymmGroup> const & left,
                              Boundary<OtherMatrix, SymmGroup> const & right,
                              MPOTensor<Matrix, SymmGroup> const & mpo)
         {
-            return common::create_contraction_schedule(mps, left, right, mpo);
+            return common::create_contraction_schedule(mps, left, right, mpo, 0);
         }
 
         static truncation_results
@@ -139,23 +140,23 @@ namespace contraction {
         }
 
         static MPSTensor<Matrix, SymmGroup>
-        site_hamil2(MPSTensor<Matrix, SymmGroup> const & ket_tensor,
-                    Boundary<OtherMatrix, SymmGroup> const & left,
+        site_hamil(MPSTensor<Matrix, SymmGroup> & ket_tensor,
+                   Boundary<OtherMatrix, SymmGroup> const & left,
                     Boundary<OtherMatrix, SymmGroup> const & right,
                     MPOTensor<Matrix, SymmGroup> const & mpo)
         {
             schedule_t tasks = contraction_schedule(ket_tensor, left, right, mpo);
-            return site_hamil2(ket_tensor, left, right, mpo, tasks);
+            return site_hamil(ket_tensor, left, right, mpo, tasks);
         }
 
         static MPSTensor<Matrix, SymmGroup>
-        site_hamil2(MPSTensor<Matrix, SymmGroup> const & ket_tensor,
+        site_hamil(MPSTensor<Matrix, SymmGroup> & ket_tensor,
                     Boundary<OtherMatrix, SymmGroup> const & left,
                     Boundary<OtherMatrix, SymmGroup> const & right,
                     MPOTensor<Matrix, SymmGroup> const & mpo,
                     schedule_t const & tasks)
         {
-            return common::site_hamil2(ket_tensor, left, right, mpo, tasks);
+            return common::site_hamil(ket_tensor, left, right, mpo, tasks);
         }
     };
 

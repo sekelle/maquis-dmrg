@@ -42,13 +42,15 @@ public:
     using base::parms;
     using base::iteration_results_;
     using base::stop_callback;
+    using base::cpu_gpu_ratio;
 
     ss_optimize(MPS<Matrix, SymmGroup> & mps_,
                 MPO<Matrix, SymmGroup> const & mpo_,
+                std::vector<MPS<Matrix, SymmGroup>*> omps_ptr,
                 BaseParameters & parms_,
                 boost::function<bool ()> stop_callback_,
                 int initial_site_ = 0)
-    : base(mps_, mpo_, parms_, stop_callback_, to_site(mps_.length(), initial_site_))
+    : base(mps_, mpo_, omps_ptr, parms_, stop_callback_, to_site(mps_.length(), initial_site_))
     , initial_site((initial_site_ < 0) ? 0 : initial_site_)
     { }
     
@@ -94,20 +96,11 @@ public:
             if (lr == +1 && site+2 <= L) Storage::prefetch(right_[site+2]);
             if (lr == -1 && site > 0)    Storage::prefetch(left_[site-1]);
             
-            assert( left_[site].reasonable() );    // in case something went wrong
-            assert( right_[site+1].reasonable() ); // in case something went wrong
-            
-            
-//            maquis::cout << "My size: " << std::endl;
-//            maquis::cout << "  left_: " << utils::size_of(left_.begin(), left_.end())/1024.0/1024 << std::endl;
-//            maquis::cout << "  right_: " << utils::size_of(right_.begin(), right_.end())/1024.0/1024 << std::endl;
-//            maquis::cout << "  MPS: " << utils::size_of(mps.begin(), mps.end())/1024.0/1024 << std::endl;
-//            maquis::cout << "  MPS[i]: " << utils::size_of(mps[site])/1024.0/1024 << std::endl;
-            
             boost::chrono::high_resolution_clock::time_point now, then;
 
             std::pair<double, MPSTensor<Matrix, SymmGroup> > res;
-            SiteProblem<Matrix, typename base::BoundaryMatrix, SymmGroup> sp(mps[site], left_[site], right_[site+1], mpo[site]);
+            SiteProblem<Matrix, typename base::BoundaryMatrix, SymmGroup> sp(mps[site], left_[site], right_[site+1], mpo[site],
+                                                                             cpu_gpu_ratio[site]);
             
             /// Compute orthogonal vectors
             std::vector<MPSTensor<Matrix, SymmGroup> > ortho_vecs(base::northo);
@@ -132,6 +125,7 @@ public:
                     throw std::runtime_error("I don't know this eigensolver.");
                 }
  
+                cpu_gpu_ratio[site] = sp.contraction_schedule.get_cpu_gpu_ratio();
                 mps[site] = res.second;
             }
             

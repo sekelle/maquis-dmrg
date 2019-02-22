@@ -45,17 +45,8 @@
 #include <boost/numeric/bindings/blas/detail/blas.h>
 
 #include "numeric.h"
+#include "common.h"
 
-#define ALIGNMENT 32
-
-template <unsigned A, typename T>
-inline T round_up(T x)
-{
-    // round up x to nearest multiple of A
-    BOOST_STATIC_ASSERT((A & (A-1)) == 0); // check that A is a power of 2
-    BOOST_STATIC_ASSERT(!std::numeric_limits<T>::is_signed);
-    return (x+(A-1)) & (~(A-1));
-}
 
 //inline void mydaxpy(std::size_t n, double a, const double* x, double* y)
 //{

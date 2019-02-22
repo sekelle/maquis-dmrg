@@ -18,7 +18,7 @@ configure_symm_file("simulation_symm/simulation_tpl.cpp.in" "${CMAKE_CURRENT_BIN
 get_symm_files(APPEND SIMULATION_SYMM_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/simulation_symm/simulation_{SYMM}.cpp")
 
 add_library(optimizer STATIC ${DMRGSIM_SYMM_SOURCES})
-target_link_libraries(optimizer numeric)
+target_link_libraries(optimizer numeric numeric_gpu)
 set_property(TARGET optimizer PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 
 

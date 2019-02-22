@@ -218,21 +218,21 @@ void MPS<Matrix, SymmGroup>::move_normalization_r2l(size_t p1, size_t p2, Decomp
 }
 
 template<class Matrix, class SymmGroup>
-Boundary<Matrix, SymmGroup>
+Boundary<typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, ALIGNMENT>::type, SymmGroup>
 MPS<Matrix, SymmGroup>::left_boundary() const
 {
     Index<SymmGroup> i = (*this)[0].row_dim();
-    Boundary<Matrix, SymmGroup> ret(i, i, 1);
+    Boundary<AlignedMatrix, SymmGroup> ret(i, i, 1);
 
     return ret;
 }
 
 template<class Matrix, class SymmGroup>
-Boundary<Matrix, SymmGroup>
+Boundary<typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, ALIGNMENT>::type, SymmGroup>
 MPS<Matrix, SymmGroup>::right_boundary() const
 {
     Index<SymmGroup> i = (*this)[length()-1].col_dim();
-    Boundary<Matrix, SymmGroup> ret(i, i, 1);
+    Boundary<AlignedMatrix, SymmGroup> ret(i, i, 1);
 
     return ret;
 }
@@ -333,7 +333,6 @@ void save(std::string const& dirname, MPS<Matrix, SymmGroup> const& mps)
 
     for(size_t k = 0; k < loop_max; ++k){
         mps[k].make_left_paired();
-        storage::migrate(mps[k]);
     }
     parallel::sync();
 

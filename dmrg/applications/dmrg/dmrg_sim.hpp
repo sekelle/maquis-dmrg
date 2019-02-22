@@ -51,13 +51,13 @@ void dmrg_sim<Matrix, SymmGroup>::run()
     boost::shared_ptr<opt_base_t> optimizer;
     if (parms["optimization"] == "singlesite")
     {
-        optimizer.reset( new ss_optimize<Matrix, SymmGroup, storage::disk>
-                        (mps, mpoc, parms, stop_callback, init_site) );
+        optimizer.reset( new ss_optimize<Matrix, SymmGroup, storage::Controller>
+                        (mps, mpoc, base::ortho_mps, parms, stop_callback, init_site) );
     }
     else if(parms["optimization"] == "twosite")
     {
-        optimizer.reset( new ts_optimize<Matrix, SymmGroup, storage::disk>
-                        (mps, mpoc, parms, stop_callback, init_site) );
+        optimizer.reset( new ts_optimize<Matrix, SymmGroup, storage::Controller>
+                        (mps, mpoc, base::ortho_mps, parms, stop_callback, init_site) );
     }
     else {
         throw std::runtime_error("Don't know this optimizer");
@@ -70,7 +70,7 @@ void dmrg_sim<Matrix, SymmGroup>::run()
             // TODO: introduce some timings
             
             optimizer->sweep(sweep, Both);
-            storage::disk::sync();
+            storage::Controller::sync();
 
             bool converged = false;
             
@@ -83,15 +83,23 @@ void dmrg_sim<Matrix, SymmGroup>::run()
                     ar[results_archive_path(sweep) + "/results"] << optimizer->iteration_results();
                     // ar[results_archive_path(sweep) + "/results/Runtime/mean/value"] << std::vector<double>(1, elapsed_sweep + elapsed_measure);
 
-                    // stop simulation if an energy threshold has been specified
+                    // record lowest energy from previous sweep
+                    {
+                        typedef typename maquis::traits::real_type<Matrix>::type real_type;
+                        std::vector<real_type> energies;
+
+                        ar[results_archive_path(sweep) + "/results/Energy/mean/value"] >> energies;
+                        emin = *std::min_element(energies.begin(), energies.end());
+                        ar["/spectrum/results/Energy/mean/value"] << emin;
+                    }
+
+                    // stop simulation if a specified energy threshold has been reached
                     int prev_sweep = sweep - meas_each;
                     if (prev_sweep >= 0 && parms["conv_thresh"] > 0.)
                     {
                         typedef typename maquis::traits::real_type<Matrix>::type real_type;
                         std::vector<real_type> energies;
 
-                        ar[results_archive_path(sweep) + "/results/Energy/mean/value"] >> energies;
-                        real_type emin = *std::min_element(energies.begin(), energies.end());
                         ar[results_archive_path(prev_sweep) + "/results/Energy/mean/value"] >> energies;
                         real_type emin_prev = *std::min_element(energies.begin(), energies.end());
                         real_type e_diff = std::abs(emin - emin_prev);
@@ -129,13 +137,14 @@ void dmrg_sim<Matrix, SymmGroup>::run()
 template <class Matrix, class SymmGroup>
 dmrg_sim<Matrix, SymmGroup>::~dmrg_sim()
 {
-    storage::disk::sync();
+    storage::Controller::sync();
 }
 
 template <class Matrix, class SymmGroup>
 void dmrg_sim<Matrix, SymmGroup>::measure_observable(std::string const & name_, std::vector<typename Matrix::value_type> & results,
                                                      std::vector<std::vector<Lattice::pos_t> > & labels,
-                                                     std::string const & bra)
+                                                     std::string const & bra,
+                                                     std::shared_ptr<sim<Matrix, SymmGroup>> bra_ptr)
 {
     mps.normalize_left();
     for (typename measurements_type::iterator it = all_measurements.begin(); it != all_measurements.end(); ++it)
@@ -143,7 +152,10 @@ void dmrg_sim<Matrix, SymmGroup>::measure_observable(std::string const & name_, 
         if (it->name() == name_)
         {
             maquis::cout << "Measuring " << it->name() << std::endl;
-            it->evaluate(mps, boost::none, bra);
+            if (bra_ptr)
+                it->evaluate(mps, boost::none, bra, dynamic_cast<dmrg_sim<Matrix, SymmGroup>*>(bra_ptr.get())->mps);
+            else
+                it->evaluate(mps, boost::none, bra);
             it->extract(results, labels);
 
             if (parms["keep_files"])
@@ -153,6 +165,12 @@ void dmrg_sim<Matrix, SymmGroup>::measure_observable(std::string const & name_, 
             }
         }
     }
+}
+
+template <class Matrix, class SymmGroup>
+double dmrg_sim<Matrix, SymmGroup>::get_energy()
+{
+    return emin;
 }
 
 template <class Matrix, class SymmGroup>

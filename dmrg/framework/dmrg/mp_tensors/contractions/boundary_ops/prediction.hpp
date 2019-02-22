@@ -49,27 +49,7 @@ namespace contraction {
                 block_matrix<OtherMatrix, SymmGroup> dm;
                 gemm(psi.data(), transpose(conjugate(psi.data())), dm);
                 
-                Boundary<OtherMatrix, SymmGroup> half_dm = left_boundary_tensor_mpo(psi, left, mpo);
-
-                omp_for(unsigned lb, parallel::range<unsigned>(0,psi.data().basis().size()),
-                {
-                    charge lc = psi.data().basis().left_charge(lb);
-                    size_t ls = psi.data().basis().left_size(lb);
-                    OtherMatrix tdm(ls, ls);
-
-                    for (auto lcci : half_dm.index()(lc))
-                    {
-                        unsigned ci = lcci.second;
-                        assert (half_dm.data()[ci].size() % ls == 0);
-
-                        typename Matrix::value_type one(1);
-                        typename Matrix::value_type alpha_v(alpha);
-                        int M = ls, N = ls, K = half_dm.data()[ci].size() / ls;
-                        blas_gemm('N', 'T', M, N, K, alpha_v, &half_dm.data()[ci][0], M, &half_dm.data()[ci][0], N, one, &tdm(0,0), M);
-                    }
-
-                    dm[lb] += tdm;
-                });
+                alpha_dm_direct(psi, left, mpo, dm, alpha);
 
                 return dm;
             }
@@ -85,40 +65,7 @@ namespace contraction {
                 block_matrix<OtherMatrix, SymmGroup> dm;
                 gemm(transpose(conjugate(psi.data())), psi.data(), dm);
 
-                Boundary<OtherMatrix, SymmGroup> half_dm = right_boundary_tensor_mpo(psi, right, mpo);
-                
-                omp_for(unsigned lb, parallel::range<unsigned>(0,psi.data().basis().size()),
-                {
-                    charge lc = psi.data().basis().left_charge(lb);
-
-                    for (auto rcci : half_dm.index()(lc))
-                    {
-                        unsigned rb = psi.row_dim().position(rcci.first);
-                        unsigned ci = rcci.second;
-                        unsigned ls = half_dm.index().left_size(ci);
-                        unsigned rs = half_dm.index().right_size(ci);
-
-                        OtherMatrix tdm(rs, rs);
-                        assert (half_dm.data()[ci].size() % rs == 0);
-
-                        typename Matrix::value_type one(1);
-                        typename Matrix::value_type alpha_v(alpha);
-                        int M = rs, N = rs, K = half_dm.data()[ci].size() / rs;
-                        blas_gemm('T', 'N', M, N, K, alpha_v, &half_dm.data()[ci][0], K, &half_dm.data()[ci][0], K, one, &tdm(0,0), M);
-                        //for (std::size_t b = 0; b < half_dm.aux_dim(); ++b)
-                        //{
-                        //    long int offset = half_dm.index().offset(ci, b);
-                        //    if (offset == -1) continue;
-
-                        //    int M = rs, N = rs, K = ls;
-                        //    blas_gemm('T', 'N', M, N, K, alpha_v, &half_dm.data()[ci][offset], K, &half_dm.data()[ci][offset], K,
-                        //              one, &tdm(0,0), M);
-                        //}
-
-                        parallel_critical
-                        dm[rb] += tdm;
-                    }
-                });
+                alpha_dm_direct_right(psi, right, mpo, dm, alpha);
 
                 return dm;
             }

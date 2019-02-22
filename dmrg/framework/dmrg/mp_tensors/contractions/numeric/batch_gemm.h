@@ -26,10 +26,38 @@
  *****************************************************************************/
 
 
-#ifndef MAQUIS_TASKS_NUMERIC_H
-#define MAQUIS_TASKS_NUMERIC_H
+#ifndef MAQUIS_NUMERIC_BATCH_GEMM_H
+#define MAQUIS_NUMERIC_BATCH_GEMM_H
 
-void dgemm_ddot(unsigned ls, unsigned ms, unsigned rs, unsigned b1size,
-                const unsigned* b2sz, const char* transL, unsigned const* const* tidx,
-                double const* const* alpha, const double** left, const double* t, double* out);
+#include <vector>
+
+template <class T>
+struct BatchGemmData
+{
+    unsigned long in_offset;
+    long unsigned size;
+    int K;
+    int LDB;
+    int tstart;
+    int tend;
+    char trans;
+    std::vector<T*> b;
+    T** dev_b;
+};
+
+
+template <class T>
+struct GemmDotData
+{
+    unsigned b1sz;  // number of rows
+    unsigned nn;    // number of rows with non-transposed left boundary
+    unsigned b2max;
+
+    T** left;
+    unsigned* b2sz;
+
+    T** alpha;
+    unsigned** tidx;
+};
+
 #endif

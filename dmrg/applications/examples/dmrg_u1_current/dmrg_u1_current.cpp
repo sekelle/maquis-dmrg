@@ -93,7 +93,7 @@ int main(int argc, char ** argv)
         /// Initialize optimizer
         storage::setup(parms);
 
-        ss_optimize<matrix, symm, storage::disk> optimizer(mps, mpo, parms);
+        ss_optimize<matrix, symm, storage::Controller> optimizer(mps, mpo, parms);
         int sweeps = parms["nsweeps"];
         
         /// Optimize
@@ -128,7 +128,7 @@ int main(int argc, char ** argv)
         }
         
         /// Finalize worker thread
-        storage::disk::sync();
+        storage::Controller::sync();
         
     } catch (std::exception & e) {
         maquis::cerr << "Exception thrown!" << std::endl;

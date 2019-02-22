@@ -25,11 +25,20 @@
  *
  *****************************************************************************/
 
+#ifndef MAQUIS_COMMON_H
+#define MAQUIS_COMMON_H
 
-#ifndef MAQUIS_TASKS_NUMERIC_H
-#define MAQUIS_TASKS_NUMERIC_H
+#include <boost/static_assert.hpp>
 
-void dgemm_ddot(unsigned ls, unsigned ms, unsigned rs, unsigned b1size,
-                const unsigned* b2sz, const char* transL, unsigned const* const* tidx,
-                double const* const* alpha, const double** left, const double* t, double* out);
+#define ALIGNMENT 32
+
+template <unsigned A, typename T>
+inline T round_up(T x)
+{
+    // round up x to nearest multiple of A
+    BOOST_STATIC_ASSERT((A & (A-1)) == 0); // check that A is a power of 2
+    BOOST_STATIC_ASSERT(!std::numeric_limits<T>::is_signed);
+    return (x+(A-1)) & (~(A-1));
+}
+
 #endif

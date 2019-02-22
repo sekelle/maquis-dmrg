@@ -50,6 +50,7 @@ private:
     {
         using parameters::value;
         
+        add_option("GPU", "use GPUs", value(0));
         add_option("COMPLEX", "use complex numbers", value(false));
 
         add_option("truncation_initial", "Initial value for the truncation error", value(1e-16));
@@ -82,6 +83,7 @@ private:
         
         add_option("donotsave", "", value(0));
         add_option("keep_files", "keep result/chkp files generated with the python interface", value(0));
+        add_option("force_keep_result_file", "keep result file from previous calculation even if MPO changed", value(0));
         add_option("run_seconds", "", value(0));
         add_option("storagedir", "", value(""));
         add_option("use_compressed", "", value(0));

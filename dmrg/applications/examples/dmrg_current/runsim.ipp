@@ -61,7 +61,7 @@ namespace maquis { namespace dmrg {
         
         /// Initialize optimizer
         storage::setup(parms);
-        ss_optimize<matrix, symm, storage::disk> optimizer(mps, mpo, parms);
+        ss_optimize<matrix, symm, storage::Controller> optimizer(mps, mpo, parms);
         int sweeps = parms.get<int>("nsweeps");
         
         /// Optimize
@@ -96,6 +96,6 @@ namespace maquis { namespace dmrg {
         }
         
         /// Finalize worker thread
-        storage::disk::sync();
+        storage::Controller::sync();
     }
 } }
