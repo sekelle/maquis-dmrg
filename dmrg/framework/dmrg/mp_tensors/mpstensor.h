@@ -43,9 +43,6 @@ enum DecompMethod {QR, SVD};
 static DecompMethod DefaultSolver() {return QR;} // QR or SVD
 
 template<class Matrix, class SymmGroup>
-class TwoSiteTensor;
-
-template<class Matrix, class SymmGroup>
 class MPSTensor
 {
 public:
@@ -82,6 +79,9 @@ public:
     bool isleftnormalized(bool test = false) const;
     bool isrightnormalized(bool test = false) const;
     bool isnormalized(bool test = false) const;
+
+    bool is_left_paired() const;
+    bool is_right_paired() const;
     
     block_matrix<Matrix, SymmGroup> normalize_left(DecompMethod method = DefaultSolver(),
                                                    bool multiplied = true,
@@ -144,7 +144,6 @@ public:
     bool num_check() const; // checks for nan or inf
     
     // TODO : remove / make private (change non-abelian::site_hamil2)
-    int sweep;
     Index<SymmGroup> phys_i, left_i, right_i;
 private:
     mutable block_matrix<Matrix, SymmGroup> data_;

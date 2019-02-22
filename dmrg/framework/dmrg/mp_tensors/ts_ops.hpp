@@ -31,9 +31,7 @@
 
 #include "dmrg/mp_tensors/mpstensor.h"
 #include "dmrg/mp_tensors/mpotensor.h"
-#include "dmrg/block_matrix/indexing.h"
-#include "dmrg/block_matrix/multi_index.h"
-#include "dmrg/block_matrix/site_operator.h"
+#include "dmrg/mp_tensors/mpo.h"
 #include "dmrg/block_matrix/site_operator_algorithms.h"
 
 
@@ -159,7 +157,7 @@ MPOTensor<MPSMatrix, SymmGroup> make_twosite_mpo(MPOTensor<MPOMatrix, SymmGroup>
     } // b1
 
     MPOTensor<MPSMatrix, SymmGroup> mpo_big_tag(mpo1.row_dim(), mpo2.col_dim(), prempo, kron_handler.get_kronecker_table(),
-                                                mpo1.herm_info * mpo2.herm_info, mpo1.row_spin_dim(), mpo2.col_spin_dim());
+                                                mpo1.herm_left, mpo2.herm_right, mpo1.row_spin_dim(), mpo2.col_spin_dim());
     #ifdef MAQUIS_OPENMP
     #pragma omp critical
     #endif

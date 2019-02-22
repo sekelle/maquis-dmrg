@@ -47,7 +47,7 @@ using std::endl;
 #include "dmrg/models/lattice.h"
 
 #include "dmrg/mp_tensors/mps.h"
-
+#include "dmrg/mp_tensors/mps_mpo_ops.h"
 
 typedef alps::numeric::matrix<double> matrix;
 

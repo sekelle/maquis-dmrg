@@ -53,7 +53,7 @@ public:
         (*this)[N] = 0;
     }
     
-    NU1ChargePG(boost::array<S, N> const & rhs)
+    NU1ChargePG(boost::array<S, N+1> const & rhs)
     {
         std::copy(rhs.begin(), rhs.end(), this->begin());
     }
@@ -295,6 +295,8 @@ public:
 
     static subcharge & irrep(charge & rhs) { return rhs[N]; }
     static subcharge const & irrep(charge const & rhs) { return rhs[N]; }
+
+    static bool physical(charge const & rhs) { return true; }
 
     static charge fuse(charge a, charge b)
     {

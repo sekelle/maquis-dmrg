@@ -61,7 +61,6 @@ struct truncation_results {
     { }
 };
 
-//template<class Matrix1, class Matrix2, class Matrix3, class SymmGroup, class Scheduler = parallel::scheduler_nop>
 template<class Matrix1, class Matrix2, class Matrix3, class SymmGroup, class Scheduler>
 void gemm(block_matrix<Matrix1, SymmGroup> const & A,
           block_matrix<Matrix2, SymmGroup> const & B,
@@ -85,19 +84,8 @@ void gemm(block_matrix<Matrix1, SymmGroup> const & A,
             std::size_t matched_block = std::distance(B_begin, it);
             Matrix3 tmp(num_rows(A[k]), it->rs);
 
-            parallel::guard proc(scheduler(k));
             gemm(A[k], B[matched_block], tmp);
             C.match_and_add_block(tmp, A.basis().left_charge(k), it->rc);
-        }
-    }
-
-    if(scheduler.propagate()){
-        Index<SymmGroup> B_left_basis = B.left_basis();
-        C.size_index.resize(C.n_blocks()); // propagating A size_index onto C - otherwise might C.index_sizes();
-        for(size_t k = 0; k < A.n_blocks(); ++k){
-            size_t matched_block = B_left_basis.position(A.basis().right_charge(k));
-            if(matched_block != B.n_blocks())
-                C.size_index(C.find_block(A.basis().left_charge(k), B.basis().right_charge(matched_block))) = A.size_index(k);
         }
     }
 }
@@ -110,72 +98,12 @@ void gemm(block_matrix<Matrix1, SymmGroup> const & A,
     gemm(A, B, C, parallel::scheduler_nop());
 }
 
-template<class Matrix1, class Matrix2, class Matrix3, class SymmGroup>
-void gemm_trim_left(block_matrix<Matrix1, SymmGroup> const & A,
-                    block_matrix<Matrix2, SymmGroup> const & B,
-                    block_matrix<Matrix3, SymmGroup> & C)
-{
-    parallel::scheduler_size_indexed scheduler(A);
-    C.clear();
-    
-    typedef typename SymmGroup::charge charge;
-    Index<SymmGroup> B_left_basis = B.left_basis();
-    for (std::size_t k = 0; k < A.n_blocks(); ++k) {
-        std::size_t matched_block = B_left_basis.position(A.basis().right_charge(k));
-
-        // Match right basis of A with left basis of B
-        if ( matched_block == B.n_blocks() )
-            continue;
-
-        // Also match left basis of A with left basis of B
-        if ( !B_left_basis.has(A.basis().left_charge(k)) )
-            continue;
-        
-        std::size_t new_block = C.insert_block(new Matrix3(num_rows(A[k]), num_cols(B[matched_block])),
-                                               A.basis().left_charge(k), B.basis().right_charge(matched_block));
-        
-        parallel::guard proc(scheduler(k));
-        gemm(A[k], B[matched_block], C[new_block]);
-    }
-}
-
-template<class Matrix1, class Matrix2, class Matrix3, class SymmGroup>
-void gemm_trim_right(block_matrix<Matrix1, SymmGroup> const & A,
-                     block_matrix<Matrix2, SymmGroup> const & B,
-                     block_matrix<Matrix3, SymmGroup> & C)
-{
-    parallel::scheduler_size_indexed scheduler(B);
-    C.clear();
-    
-    typedef typename SymmGroup::charge charge;
-    Index<SymmGroup> A_right_basis = A.right_basis();
-    for (std::size_t k = 0; k < B.n_blocks(); ++k) {
-        std::size_t matched_block = A_right_basis.position(B.basis().left_charge(k));
-
-        // Match right basis of A with left basis of B
-        if ( matched_block == A.n_blocks() )
-            continue;
-
-        // Also match A.right_basis() with B.right_basis()
-        if ( !A_right_basis.has(B.basis().right_charge(k)) )
-            continue;
-        
-        std::size_t new_block = C.insert_block(new Matrix3(num_rows(A[matched_block]), num_cols(B[k])),
-                                               A.basis().left_charge(matched_block), B.basis().right_charge(k));
-        
-        parallel::guard proc(scheduler(k));
-        gemm(A[matched_block], B[k], C[new_block]);
-    }
-}
-
 template<class Matrix, class DiagMatrix, class SymmGroup>
 void svd(block_matrix<Matrix, SymmGroup> const & M,
          block_matrix<Matrix, SymmGroup> & U,
          block_matrix<Matrix, SymmGroup> & V,
          block_matrix<DiagMatrix, SymmGroup> & S)
 {
-    parallel::scheduler_balanced scheduler(M);
-
     Index<SymmGroup> r = M.left_basis(), c = M.right_basis(), m = M.left_basis();
     for (std::size_t i = 0; i < M.n_blocks(); ++i)
         m[i].second = std::min(r[i].second, c[i].second);
@@ -186,7 +114,6 @@ void svd(block_matrix<Matrix, SymmGroup> const & M,
     std::size_t loop_max = M.n_blocks();
     
     omp_for(size_t k, parallel::range<size_t>(0,loop_max), {
-        parallel::guard proc(scheduler(k));
         svd(M[k], U[k], V[k], S[k]);
     });
 }
@@ -196,74 +123,14 @@ void heev(block_matrix<Matrix, SymmGroup> const & M,
           block_matrix<Matrix, SymmGroup> & evecs,
           block_matrix<DiagMatrix, SymmGroup> & evals)
 {
-    parallel::scheduler_balanced scheduler(M);
-
     evecs = block_matrix<Matrix, SymmGroup>(M.basis());
     evals = block_matrix<DiagMatrix, SymmGroup>(M.basis());
     std::size_t loop_max = M.n_blocks();
 
     omp_for(size_t k, parallel::range<size_t>(0,loop_max), {
-        parallel::guard proc(scheduler(k));
         heev(M[k], evecs[k], evals[k]);
     });
 }
-    
-#ifdef USE_AMBIENT
-
-template<class Matrix, class DiagMatrix, class SymmGroup>
-void svd_merged(block_matrix<Matrix, SymmGroup> const & M,
-                block_matrix<Matrix, SymmGroup> & U,
-                block_matrix<Matrix, SymmGroup> & V,
-                block_matrix<DiagMatrix, SymmGroup> & S)
-{
-    parallel::scheduler_inplace scheduler;
-
-    Index<SymmGroup> r = M.left_basis(), c = M.right_basis(), m = M.left_basis();
-    for (std::size_t i = 0; i < M.n_blocks(); ++i)
-        m[i].second = std::min(r[i].second, c[i].second);
-    
-    U = block_matrix<Matrix, SymmGroup>(r, m);
-    V = block_matrix<Matrix, SymmGroup>(m, c);
-    S = block_matrix<DiagMatrix, SymmGroup>(m, m);
-
-    ambient::for_each_redist(M.blocks().first, M.blocks().second, 
-                             [](const Matrix& m){ merge(m); },
-                             [](const Matrix& m){ return (num_rows(m)*num_rows(m)*num_cols(m) +
-                                                          2*num_cols(m)*num_cols(m)*num_cols(m)); });
-    parallel::sync();
-
-    std::size_t loop_max = M.n_blocks();
-    for(size_t k = 0; k < loop_max; ++k){
-        parallel::guard proc(scheduler(M[k]));
-        svd_merged(M[k], U[k], V[k], S[k]);
-    }
-    parallel::sync_mkl_parallel();
-}
-
-template<class Matrix, class DiagMatrix, class SymmGroup>
-void heev_merged(block_matrix<Matrix, SymmGroup> const & M,
-                 block_matrix<Matrix, SymmGroup> & evecs,
-                 block_matrix<DiagMatrix, SymmGroup> & evals)
-{
-    parallel::scheduler_inplace scheduler;
-
-    evecs = block_matrix<Matrix, SymmGroup>(M.basis());
-    evals = block_matrix<DiagMatrix, SymmGroup>(M.basis());
-
-    ambient::for_each_redist(M.blocks().first, M.blocks().second, 
-                             [](const Matrix& m){ merge(m); },
-                             [](const Matrix& m){ return (num_rows(m)*num_rows(m)*num_cols(m) +
-                                                          2*num_cols(m)*num_cols(m)*num_cols(m)); });
-    parallel::sync();
-
-    std::size_t loop_max = M.n_blocks();
-    for(size_t k = 0; k < loop_max; ++k){
-        parallel::guard proc(scheduler(M[k]));
-        heev_merged(M[k], evecs[k], evals[k]);
-    }
-    parallel::sync_mkl_parallel();
-}
-#endif
 
 template <class T>
 typename maquis::traits::real_type<T>::type gather_real_pred(T const & val)
@@ -277,7 +144,7 @@ template<class DiagMatrix, class SymmGroup>
 void estimate_truncation(block_matrix<DiagMatrix, SymmGroup> const & evals, 
                          size_t Mmax, double cutoff, size_t* keeps, 
                          double & truncated_fraction, double & truncated_weight, double & smallest_ev)
-{ // to be parallelized later (30.04.2012)
+{
     typedef typename DiagMatrix::value_type value_type;
     typedef typename maquis::traits::real_type<value_type>::type real_type;
 
@@ -288,10 +155,6 @@ void estimate_truncation(block_matrix<DiagMatrix, SymmGroup> const & evals,
     
     typedef std::vector<real_type> real_vector_t;
     real_vector_t allevals(length);
-    {
-        parallel::guard::serial guard;
-        storage::migrate(evals);
-    }
     
     std::size_t position = 0;
     for(std::size_t k = 0; k < evals.n_blocks(); ++k){
@@ -363,11 +226,6 @@ truncation_results svd_truncate(block_matrix<Matrix, SymmGroup> const & M,
                            V.basis().right_charge(k));
   // C- idem heev_truncate          --k; // everything gets shifted, to we have to look into the same k again
         } else {
-            #ifdef USE_AMBIENT
-            ambient::numeric::split(S(S.basis().left_charge(k), S.basis().right_charge(k)));
-            ambient::numeric::split(U(U.basis().left_charge(k), U.basis().right_charge(k)));
-            ambient::numeric::split(V(V.basis().left_charge(k), V.basis().right_charge(k)));
-            #endif
 
             if (keep >= num_rows(S[k])) continue;
         
@@ -466,7 +324,15 @@ truncation_results heev_truncate(block_matrix<Matrix, SymmGroup> const & M,
     size_t* keeps = new size_t[evals.n_blocks()];
     double truncated_fraction, truncated_weight, smallest_ev;
 
-    estimate_truncation(evals, Mmax, cutoff, keeps, truncated_fraction, truncated_weight, smallest_ev);
+    block_matrix<DiagMatrix, SymmGroup> evals_sqrt = evals;
+
+    // truncate according to singular values = sqrt(eigvals) of MM^T or M^TM
+    for (size_t b = 0; b < evals.n_blocks(); ++b)
+    for (size_t i = 0; i < num_rows(evals[b]); ++i)
+        if (evals[b](i,i) > 0.0)
+            evals_sqrt[b](i,i) = sqrt(evals[b](i,i));
+
+    estimate_truncation(evals_sqrt, Mmax, cutoff, keeps, truncated_fraction, truncated_weight, smallest_ev);
 
     for ( int k = evals.n_blocks() - 1; k >= 0; --k) // C - we reverse faster and safer ! we avoid bug if keeps[k] = 0
     {
@@ -512,8 +378,6 @@ void qr(block_matrix<Matrix, SymmGroup> const& M,
         block_matrix<Matrix, SymmGroup> & Q,
         block_matrix<Matrix, SymmGroup> & R)
 {
-    parallel::scheduler_balanced scheduler(M);
-
     /* thin QR in each block */
     Index<SymmGroup> m = M.left_basis(), n = M.right_basis(), k = M.right_basis();
     for (size_t i=0; i<k.size(); ++i)
@@ -524,7 +388,6 @@ void qr(block_matrix<Matrix, SymmGroup> const& M,
     std::size_t loop_max = M.n_blocks();
     
     omp_for(size_t k, parallel::range<size_t>(0,loop_max), {
-        parallel::guard proc(scheduler(k));
         qr(M[k], Q[k], R[k]);
     });
     
@@ -538,8 +401,6 @@ void lq(block_matrix<Matrix, SymmGroup> const& M,
         block_matrix<Matrix, SymmGroup> & L,
         block_matrix<Matrix, SymmGroup> & Q)
 {
-    parallel::scheduler_balanced scheduler(M);
-
     /* thin LQ in each block */
     Index<SymmGroup> m = M.left_basis(), n = M.right_basis(), k = M.right_basis();
     for (size_t i=0; i<k.size(); ++i)
@@ -550,7 +411,6 @@ void lq(block_matrix<Matrix, SymmGroup> const& M,
     std::size_t loop_max = M.n_blocks();
     
     omp_for(size_t k, parallel::range<size_t>(0,loop_max), {
-        parallel::guard proc(scheduler(k));
         lq(M[k], L[k], Q[k]);
     });
     
@@ -565,7 +425,6 @@ block_matrix<typename maquis::traits::transpose_view<Matrix>::type, SymmGroup> t
     block_matrix<typename maquis::traits::transpose_view<Matrix>::type, SymmGroup> ret; 
     for(size_t k=0; k<m.n_blocks(); ++k) 
         ret.insert_block(transpose(m[k]), m.basis().right_charge(k), m.basis().left_charge(k));
-    if(!m.size_index.empty()) ret.index_sizes();
     return ret; 
 } 
 

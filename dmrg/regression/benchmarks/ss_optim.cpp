@@ -48,31 +48,12 @@
 
 #include "dmrg/optimize/ietl_lanczos_solver.h"
 #include "dmrg/optimize/ietl_jacobi_davidson.h"
+#include "dmrg/optimize/site_problem.h"
 
 #include "dmrg/utils/DmrgOptions.h"
 #include "dmrg/utils/DmrgParameters.h"
 
 #include "utils/timings.h"
-
-
-template<class Matrix, class SymmGroup>
-struct SiteProblem
-{
-    SiteProblem(Boundary<Matrix, SymmGroup> const & left_,
-                Boundary<Matrix, SymmGroup> const & right_,
-                MPOTensor<Matrix, SymmGroup> const & mpo_)
-    : left(left_)
-    , right(right_)
-    , mpo(mpo_)
-    {
-    }
-    
-    Boundary<Matrix, SymmGroup> const & left;
-    Boundary<Matrix, SymmGroup> const & right;
-    MPOTensor<Matrix, SymmGroup> const & mpo;
-    typename contraction::Engine<Matrix, typename storage::constrained<Matrix>::type, SymmGroup>::schedule_t contraction_schedule;
-    double ortho_shift;
-};
 
 
 int main(int argc, char ** argv)
@@ -139,7 +120,7 @@ int main(int argc, char ** argv)
         /// Optimization
         std::vector<MPSTensor<matrix, grp> > ortho_vecs;
         std::pair<double, MPSTensor<matrix, grp> > res;
-        SiteProblem<matrix, grp> sp(left, right, mpo[site]);
+        SiteProblem<matrix, matrix, grp> sp(mps[site], left, right, mpo[site]);
         
         /// Optimization: JCD
         tim_optim_jcd.begin();
@@ -159,7 +140,7 @@ int main(int argc, char ** argv)
         if (lr == +1) {
             if (site < L-1) {
                 maquis::cout << "Growing, alpha = " << alpha << std::endl;
-                mps.grow_l2r_sweep(mpo[site], left, right, site, alpha, cutoff, Mmax);
+                contraction::Engine<matrix, matrix, grp>::grow_l2r_sweep(mps, mpo[site], left, right, site, alpha, cutoff, Mmax);
             } else {
                 block_matrix<matrix, grp> t = mps[site].normalize_left(DefaultSolver());
                 if (site < L-1)
@@ -168,7 +149,7 @@ int main(int argc, char ** argv)
         } else if (lr == -1) {
             if (site > 0) {
                 maquis::cout << "Growing, alpha = " << alpha << std::endl;
-                mps.grow_r2l_sweep(mpo[site], left, right, site, alpha, cutoff, Mmax);
+                contraction::Engine<matrix, matrix, grp>::grow_r2l_sweep(mps, mpo[site], left, right, site, alpha, cutoff, Mmax);
             } else {
                 block_matrix<matrix, grp> t = mps[site].normalize_right(DefaultSolver());
                 if (site > 0)

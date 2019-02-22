@@ -37,25 +37,7 @@
 
 #include "dmrg/utils/BaseParameters.h"
 
-
-template<class Matrix, class SymmGroup>
-struct SiteProblem
-{
-    SiteProblem(MPSTensor<Matrix, SymmGroup> const & ket_tensor_,
-                Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & left_,
-                Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & right_,
-                MPOTensor<Matrix, SymmGroup> const & mpo_)
-    : ket_tensor(ket_tensor_)
-    , left(left_)
-    , right(right_)
-    , mpo(mpo_) { }
-    
-    MPSTensor<Matrix, SymmGroup> const & ket_tensor;
-    Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & left;
-    Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & right;
-    typename contraction::Engine<Matrix, typename storage::constrained<Matrix>::type, SymmGroup>::schedule_t contraction_schedule;
-    MPOTensor<Matrix, SymmGroup> const & mpo;
-};
+#include "dmrg/optimize/site_problem.h"
 
 #define BEGIN_TIMING(name) \
 now = boost::chrono::high_resolution_clock::now();
@@ -108,7 +90,7 @@ public:
                 lr = -1;
             }
             
-            SiteProblem<Matrix, SymmGroup> sp(mps[site], left_[site], right_[site+1], mpo[site]);
+            SiteProblem<Matrix, typename storage::constrained<Matrix>::type, SymmGroup> sp(mps[site], left_[site], right_[site+1], mpo[site]);
             ietl::mult(sp, mps[site], mpsp[site]);
             
             if (lr == +1) {
@@ -119,7 +101,7 @@ public:
                 }
                 
                 left_[site+1] = contr::overlap_mpo_left_step(mpsp[site], mps[site], left_[site], mpo[site]);
-                norm_boudary = contr::overlap_left_step(mpsp[site], MPSTensor<Matrix,SymmGroup>(mpsp[site]), norm_boudary);
+                norm_boudary = mps_detail::overlap_left_step(mpsp[site], MPSTensor<Matrix,SymmGroup>(mpsp[site]), norm_boudary);
             } else if (lr == -1) {
                 if (site > 0) {
                     block_matrix<Matrix, SymmGroup> t;
@@ -128,12 +110,12 @@ public:
                 }   
                 
                 right_[site] = contr::overlap_mpo_right_step(mpsp[site], mps[site], right_[site+1], mpo[site]);
-                norm_boudary = contr::overlap_right_step(mpsp[site], MPSTensor<Matrix,SymmGroup>(mpsp[site]), norm_boudary);
+                norm_boudary = mps_detail::overlap_right_step(mpsp[site], MPSTensor<Matrix,SymmGroup>(mpsp[site]), norm_boudary);
             }
             
             if (_site == L-1) {
                 double nn = maquis::real( norm_boudary.trace() );
-                eps.first = nn - 2.*maquis::real(left_[L][0].trace());
+                eps.first = nn - 2.*maquis::real(left_[L].trace());
                 
                 /// prepare backward sweep
                 norm_boudary = block_matrix<Matrix, SymmGroup>();
@@ -142,7 +124,7 @@ public:
             
             if (_site == 2*L-1) {
                 double nn = maquis::real( norm_boudary.trace() );
-                eps.second = nn - 2.*maquis::real(right_[0][0].trace());
+                eps.second = nn - 2.*maquis::real(right_[0].trace());
             }
             
         }

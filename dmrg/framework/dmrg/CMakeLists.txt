@@ -57,11 +57,14 @@ endif(ENABLE_LL_MODELS)
 add_library(dmrg_utils STATIC block_matrix/symmetry.cpp utils/utils.cpp utils/DmrgOptions.cpp utils/time_stopper.cpp utils/proc_statm.cpp utils/proc_status.cpp utils/md5.cpp)
 add_library(dmrg_models STATIC ${DMRG_MODELS_SOURCES})
 
-set_property(TARGET dmrg_utils dmrg_models PROPERTY POSITION_INDEPENDENT_CODE TRUE)
+add_library(numeric STATIC mp_tensors/contractions/numeric/numeric.cpp)
+target_link_libraries(dmrg_models numeric)
+
+set_property(TARGET dmrg_utils dmrg_models numeric PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 
 # *** Install
 
-install(TARGETS dmrg_utils dmrg_models
+install(TARGETS dmrg_utils dmrg_models numeric
         EXPORT DMRGTargets COMPONENT libraries DESTINATION lib)
-export(TARGETS dmrg_utils dmrg_models
+export(TARGETS dmrg_utils dmrg_models numeric
        FILE "${PROJECT_BINARY_DIR}/DMRGTargets.cmake")

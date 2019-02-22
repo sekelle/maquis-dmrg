@@ -51,11 +51,7 @@ namespace maquis { namespace dmrg { namespace detail {
                               double * out1, double val)
     {
         fortran_int_t one = 1, diff = in2-in1;
-#if defined(BIND_FORTRAN_LOWERCASE) || defined(__xlC__)
-        daxpy(&diff, &val, in1, &one, out1, &one);
-#else
-        daxpy_(&diff, &val, in1, &one, out1, &one);
-#endif
+        BLAS_DAXPY(&diff, &val, in1, &one, out1, &one);
     }
     
     inline void iterator_axpy(std::complex<double> const * in1, std::complex<double> const * in2,
@@ -80,8 +76,6 @@ namespace maquis { namespace dmrg { namespace detail {
         return nzeros;
     }
     
-    //template <typename T, class A>
-    //void op_kron(alps::numeric::matrix<T,A>& out, const alps::numeric::matrix<T,A>& in, const alps::numeric::matrix<T,A>& alfa,
     template <class Matrix1, class Matrix2>
     void op_kron(Matrix2& out, const Matrix1& in, const Matrix1& alfa,
                  size_t out_y_offset, size_t out_x_offset, 

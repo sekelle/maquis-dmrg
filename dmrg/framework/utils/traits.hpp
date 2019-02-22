@@ -21,6 +21,38 @@ namespace maquis { namespace traits {
 
     template <class Matrix> struct transpose_view { typedef Matrix type; };
 
-} }
+    namespace detail {
+
+        template <class Base, class Arg> struct SwapArg {};
+
+        template< template<typename> class Base, class T, class Arg>
+        struct SwapArg<Base<T>, Arg>
+        {
+            typedef Base<Arg> type;
+        };
+
+        template <class Base, class NewArg> struct SwapSecondArg {};
+
+        template< template<typename, typename> class Base, class A1, class A2, class NewArg>
+        struct SwapSecondArg<Base<A1, A2>, NewArg>
+        {
+            typedef Base<A1, NewArg> type;
+        };
+
+    }
+
+    template<class Matrix, template<typename, unsigned> class Allocator, unsigned Alignment>
+    struct aligned_matrix { };
+
+    template < template<typename, typename> class Matrix, class T, class MemoryBlock,
+               template<typename, unsigned> class Allocator, unsigned Alignment>
+    struct aligned_matrix<Matrix<T, MemoryBlock>, Allocator, Alignment>
+    {
+        typedef typename detail::SwapSecondArg<MemoryBlock, Allocator<T, Alignment> >::type NewMemoryBlock;
+        typedef Matrix<T, NewMemoryBlock> type;
+    };
+
+} // namespace traits
+} // namespace maquis
 
 #endif

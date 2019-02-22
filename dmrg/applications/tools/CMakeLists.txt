@@ -1,6 +1,6 @@
 add_definitions(-DHAVE_ALPS_HDF5 -DDISABLE_MATRIX_ELEMENT_ITERATOR_WARNING -DALPS_DISABLE_MATRIX_ELEMENT_ITERATOR_WARNING)
 
-set(DMRG_APP_LIBRARIES dmrg_utils ${DMRG_LIBRARIES})
+set(DMRG_APP_LIBRARIES dmrg_utils numeric ${DMRG_LIBRARIES})
 
 if(USE_AMBIENT)
   compile_with_ambient()
@@ -71,10 +71,5 @@ if(DMRG_HAS_TwoU1PG)
 create_tools_symm_target("mps_transform_pg" "SU2U1PG" "mps_transform.cpp"  "dmrg_models;${DMRG_APP_LIBRARIES}")
 endif(DMRG_HAS_TwoU1PG)
 
-if(USE_AMBIENT)
-  ## enable only if needed, and with a revision < r3578
-  # add_executable(mps_converter mps_converter.cpp)
-  # target_link_libraries(mps_converter ${DMRG_APP_LIBRARIES})
-  # set_target_properties(mps_converter PROPERTIES COMPILE_DEFINITIONS "USE_TWOU1")
-endif(USE_AMBIENT)
 
+create_tools_symm_target("shtm_su2u1pg" "SU2U1PG" "shtm.cpp"  "${DMRG_APP_LIBRARIES}")

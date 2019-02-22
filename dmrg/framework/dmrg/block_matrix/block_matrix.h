@@ -108,14 +108,8 @@ public:
     size_type insert_block(Matrix const &, charge, charge);
     size_type insert_block(Matrix *, charge, charge);
     void remove_block(charge r, charge c);
-    void remove_block(std::size_t which);
+    void remove_block(size_type which);
 
-    mutable typename parallel::scheduler_balanced_iterative::index iter_index;
-    mutable typename parallel::scheduler_size_indexed::index size_index;
-
-    void index_iter(int i, int max) const;
-    void index_sizes() const;
-    
     scalar_type trace() const;
     real_type norm() const;
     void transpose_inplace();
@@ -128,8 +122,8 @@ public:
     
     void match_and_add_block(Matrix const &, charge, charge);
     
-    void reserve(charge, charge, std::size_t, std::size_t);
-    inline void reserve_pos(charge, charge, std::size_t, std::size_t);
+    void reserve(charge, charge, size_type, size_type);
+    inline void reserve_pos(charge, charge, size_type, size_type);
     void allocate_blocks();
     
     void resize_block(charge r, charge c,
@@ -143,8 +137,6 @@ public:
     {
         swap(x.data_, y.data_);
         swap(x.basis_, y.basis_);
-        swap(x.size_index, y.size_index);
-        swap(x.iter_index, y.iter_index);
     }
 
     Matrix const & operator()(charge r, charge c) const
@@ -218,7 +210,7 @@ template<class Matrix, class SymmGroup>
 std::size_t size_of(block_matrix<Matrix, SymmGroup> const & m)
 {
     size_t r = 0;
-    for (size_t i = 0; i < m.n_blocks(); ++i)
+    for (typename block_matrix<Matrix, SymmGroup>::size_type i = 0; i < m.n_blocks(); ++i)
         r += size_of(m[i]);
     return r;
 }

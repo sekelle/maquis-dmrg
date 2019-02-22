@@ -75,8 +75,9 @@ public:
     
 public:
     MPOTensor(index_type = 1, index_type = 1, prempo_t = prempo_t(), op_table_ptr = op_table_ptr(),
-              MPOTensor_detail::Hermitian = MPOTensor_detail::Hermitian(1,1),
-              spin_index const & lspins = spin_index(), spin_index const & rspins = spin_index());
+              MPOTensor_detail::Hermitian const & = MPOTensor_detail::Hermitian(1),
+              MPOTensor_detail::Hermitian const & = MPOTensor_detail::Hermitian(1),
+              spin_index const & lspins = spin_index(1), spin_index const & rspins = spin_index(1));
     
     index_type row_dim() const;
     index_type col_dim() const;
@@ -117,12 +118,9 @@ public:
     index_type num_one_rows() const;
     index_type num_one_cols() const;
 
-    mutable std::vector<int> placement_l;
-    mutable std::vector<int> placement_r;
-    mutable std::vector<int> exceptions_l;
-    mutable std::vector<int> exceptions_r;
+    MPOTensor_detail::Hermitian herm_left;
+    MPOTensor_detail::Hermitian herm_right;
 
-    MPOTensor_detail::Hermitian herm_info;
 private:
 
     friend class boost::serialization::access;

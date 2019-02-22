@@ -51,7 +51,6 @@
 #include "dmrg/mp_tensors/mpo.h"
 #include "dmrg/models/generate_mpo.hpp"
 
-#include "dmrg/mp_tensors/twositetensor.h"
 #include "dmrg/mp_tensors/contractions.h"
 #include "dmrg/mp_tensors/mps_mpo_ops.h"
 #include "dmrg/mp_tensors/mpo_ops.h"
@@ -81,6 +80,8 @@ public:
     virtual ~sim();
     
     virtual void run() =0;
+
+    parameters::proxy get_parm(std::string const& key);
     
 protected:
     typedef typename Model<Matrix, SymmGroup>::measurements_type measurements_type;

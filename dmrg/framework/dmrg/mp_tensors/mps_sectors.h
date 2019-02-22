@@ -52,6 +52,7 @@ namespace charge_detail {
 
 }
 
+
 template <class SymmGroup>
 inline std::vector<Index<SymmGroup> > allowed_sectors(std::vector<int> const& site_type,
                                                       std::vector<Index<SymmGroup> > const& phys_dims,

@@ -61,7 +61,7 @@ namespace ietl
     }
 }
 
-template<class Matrix, class SymmGroup> struct SiteProblem;
+template<class Matrix, class OtherMatrix, class SymmGroup> struct SiteProblem;
 
 template<class Matrix, class SymmGroup>
 class SingleSiteVS
@@ -104,13 +104,12 @@ private:
 
 namespace ietl
 {
-    template<class Matrix, class SymmGroup>
-    void mult(SiteProblem<Matrix, SymmGroup> const & H,
+    template<class Matrix, class OtherMatrix, class SymmGroup>
+    void mult(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & H,
               MPSTensor<Matrix, SymmGroup> const & x,
               MPSTensor<Matrix, SymmGroup> & y)
     {  
-        y = contraction::Engine<Matrix, Matrix, SymmGroup>::site_hamil2(x, H.left, H.right, H.mpo, H.contraction_schedule);
-        x.make_left_paired();
+        y = contraction::Engine<Matrix, OtherMatrix, SymmGroup>::site_hamil2(x, H.left, H.right, H.mpo, H.contraction_schedule);
     }
     
     template<class Matrix, class SymmGroup>
@@ -125,9 +124,9 @@ namespace ietl
 
 #include <ietl/lanczos.h>
 
-template<class Matrix, class SymmGroup>
+template<class Matrix, class OtherMatrix, class SymmGroup>
 std::pair<double, MPSTensor<Matrix, SymmGroup> >
-solve_ietl_lanczos(SiteProblem<Matrix, SymmGroup> & sp,
+solve_ietl_lanczos(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp,
                    MPSTensor<Matrix, SymmGroup> const & initial,
                    BaseParameters & params)
 {
@@ -138,7 +137,7 @@ solve_ietl_lanczos(SiteProblem<Matrix, SymmGroup> & sp,
     typedef ietl::vectorspace<Vector> Vecspace;
     typedef boost::lagged_fibonacci607 Gen;
     
-    ietl::lanczos<SiteProblem<Matrix, SymmGroup>, SingleSiteVS<Matrix, SymmGroup> > lanczos(sp, vs);
+    ietl::lanczos<SiteProblem<Matrix, OtherMatrix, SymmGroup>, SingleSiteVS<Matrix, SymmGroup> > lanczos(sp, vs);
     
     //            Vector test;
     //            ietl::mult(sp, mps[site], test);

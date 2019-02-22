@@ -120,6 +120,7 @@ public:
             if ((sweep+1) % meas_each == 0 || (sweep+1) == parms["nsweeps"])
             {
                 /// measure energy
+                mps.make_left_paired();
                 double energy = maquis::real(expval(mps, mpo));
                 maquis::cout << "Energy " << energy << std::endl;
                 

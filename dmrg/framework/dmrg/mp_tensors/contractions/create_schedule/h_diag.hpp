@@ -35,6 +35,8 @@
 namespace contraction {
 namespace SU2 {
 
+#ifdef OLD_DIAG_H
+
     template<class Matrix, class OtherMatrix, class SymmGroup>
     block_matrix<Matrix, SymmGroup>
     lbtm_diag_kernel(size_t b2,
@@ -138,7 +140,7 @@ namespace SU2 {
     block_matrix<Matrix, SymmGroup>
     diagonal_hamiltonian(Boundary<OtherMatrix, SymmGroup> const & left,
                          Boundary<OtherMatrix, SymmGroup> const & right,
-                         MPOTensor<Matrix, SymmGroup> const & mpo,                         
+                         MPOTensor<Matrix, SymmGroup> const & mpo,
                          MPSTensor<Matrix, SymmGroup> const & x)
     {
         typedef typename SymmGroup::charge charge;
@@ -171,6 +173,19 @@ namespace SU2 {
             }
         }
         return ret;
+    }
+
+#endif
+
+    template<class Matrix, class OtherMatrix, class SymmGroup>
+    block_matrix<Matrix, SymmGroup>
+    diagonal_hamiltonian(Boundary<OtherMatrix, SymmGroup> const & left,
+                         Boundary<OtherMatrix, SymmGroup> const & right,
+                         MPOTensor<Matrix, SymmGroup> const & mpo,
+                         MPSTensor<Matrix, SymmGroup> const & x)
+    {
+        throw std::runtime_error("diagonal hamiltonian currently not implemented\n");
+        return block_matrix<Matrix, SymmGroup>();
     }
 
 } // namespace SU2

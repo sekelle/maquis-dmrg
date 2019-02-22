@@ -466,8 +466,6 @@ namespace ietl
             rel_tol = 1. / pow(2.,double(iter.iterations()+1));
             solver(u, theta, r, V[iter.iterations()], rel_tol);
 
-            V[iter.iterations()].data().iter_index = VA[iter.iterations()-1].data().iter_index;
-            storage::migrate(V[iter.iterations()], parallel::scheduler_balanced_iterative(V[iter.iterations()].data()));
         } while(true);
         
     }

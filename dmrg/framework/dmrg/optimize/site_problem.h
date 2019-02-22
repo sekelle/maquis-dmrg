@@ -3,8 +3,8 @@
  * ALPS MPS DMRG Project
  *
  * Copyright (C) 2014 Institute for Theoretical Physics, ETH Zurich
- *                    Laboratory for Physical Chemistry, ETH Zurich
- *               2014-2014 by Sebastian Keller <sebkelle@phys.ethz.ch>
+ *               2011-2011 by Bela Bauer <bauerb@phys.ethz.ch>
+ *
  * 
  * This software is part of the ALPS Applications, published under the ALPS
  * Application License; you can use, redistribute it and/or modify it under
@@ -25,12 +25,35 @@
  *
  *****************************************************************************/
 
-#ifndef ENGINE_COMMON_H
-#define ENGINE_COMMON_H
+#ifndef SITE_PROBLEM_H
+#define SITE_PROBLEM_H
 
-#include "dmrg/mp_tensors/contractions/common/boundary_times_mps.hpp"
-#include "dmrg/mp_tensors/contractions/common/move_boundary.hpp"
-#include "dmrg/mp_tensors/contractions/common/prediction.hpp"
-#include "dmrg/mp_tensors/contractions/common/tasks.hpp"
+
+#include "dmrg/mp_tensors/mps.h"
+#include "dmrg/mp_tensors/mpo.h"
+#include "dmrg/mp_tensors/boundary.h"
+#include "dmrg/mp_tensors/contractions.h"
+
+
+template<class Matrix, class OtherMatrix, class SymmGroup>
+struct SiteProblem
+{
+    SiteProblem(MPSTensor<Matrix, SymmGroup> const & initial,
+                Boundary<OtherMatrix, SymmGroup> const & left_,
+                Boundary<OtherMatrix, SymmGroup> const & right_,
+                MPOTensor<Matrix, SymmGroup> const & mpo_)
+    : left(left_)
+    , right(right_)
+    , mpo(mpo_)
+    , contraction_schedule(contraction::Engine<Matrix, OtherMatrix, SymmGroup>::
+                           contraction_schedule(initial, left, right, mpo))
+    { }
+    
+    Boundary<OtherMatrix, SymmGroup> const & left;
+    Boundary<OtherMatrix, SymmGroup> const & right;
+    MPOTensor<Matrix, SymmGroup> const & mpo;
+    typename contraction::Engine<Matrix, OtherMatrix, SymmGroup>::schedule_t contraction_schedule;
+    double ortho_shift;
+};
 
 #endif

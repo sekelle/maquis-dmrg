@@ -212,8 +212,7 @@ namespace generate_mpo
 
             typedef SpinDescriptor<typename symm_traits::SymmType<SymmGroup>::type> spin_desc_t;
             std::vector<spin_desc_t> left_spins(1);
-            std::vector<index_type> LeftHerm(1);
-            std::vector<int> LeftPhase(1,1);
+            MPOTensor_detail::Hermitian left_herm(1);
             
             for (pos_t p = 0; p < length; ++p) {
                 std::vector<tag_block> pre_tensor; pre_tensor.reserve(prempo[p].size());
@@ -228,7 +227,7 @@ namespace generate_mpo
                     prempo_key_type const& k1 = it->first.first;
                     prempo_key_type const& k2 = it->first.second;
                     prempo_value_type const& val = it->second;
-                    
+
                     index_iterator ll = left.find(k1);
                     if (ll == left.end())
                         throw std::runtime_error("k1 not found!");
@@ -274,44 +273,40 @@ namespace generate_mpo
                     right_spins[out_index] = out_spin;
                 }
 
-                std::vector<index_type> RightHerm(rcd.second);
-                std::vector<int> RightPhase(rcd.second, 1);
-                index_type z = 0, cnt = 0;
-                std::generate(RightHerm.begin(), RightHerm.end(), boost::lambda::var(z)++);
+                MPOTensor_detail::Hermitian right_herm(rcd.second);
                 for (typename std::map<prempo_key_type, prempo_key_type>::const_iterator
                                 h_it = HermKeyPairs.begin(); h_it != HermKeyPairs.end(); ++h_it)
                 {
                     index_type romeo = right[h_it->first];
                     index_type julia = right[h_it->second];
                     if (romeo < julia)
-                    {
-                        cnt++;
-                        std::swap(RightHerm[romeo], RightHerm[julia]);
-                        RightPhase[romeo] = HermitianPhases[h_it->first].first;
-                        RightPhase[julia] = HermitianPhases[h_it->first].second;
-                    }
+                        right_herm.register_hermitian_pair(romeo, julia, HermitianPhases[h_it->first].first,
+                                                                     HermitianPhases[h_it->first].second);
                 }
-                if (verbose)
-                    maquis::cout << "MPO Bond " << p << ": " << rcd.second << "/" << cnt << std::endl;
 
-                MPOTensor_detail::Hermitian h_(LeftHerm, RightHerm, LeftPhase, RightPhase);
+                // record self adjoint keys
+                for (auto it = right.begin(); it != right.end(); ++it)
+                    if (is_self_adjoint(it->first))
+                        right_herm.register_self_adjoint(it->second);
+
+                if (verbose)
+                    maquis::cout << "MPO Bond " << p << ": " << rcd.second << "/" << HermKeyPairs.size()/2 << std::endl;
 
                 if (p == 0)
                     mpo.push_back( MPOTensor<Matrix, SymmGroup>(1, rcd.second, pre_tensor,
-                                     tag_handler->get_operator_table(), h_, left_spins, right_spins)
+                                     tag_handler->get_operator_table(), left_herm, right_herm, left_spins, right_spins)
                                  );
                 else if (p == length - 1)
                     mpo.push_back( MPOTensor<Matrix, SymmGroup>(rcd.first, 1, pre_tensor,
-                                     tag_handler->get_operator_table(), h_, left_spins, right_spins)
+                                     tag_handler->get_operator_table(), left_herm, right_herm, left_spins, right_spins)
                                  );
                 else
                     mpo.push_back( MPOTensor<Matrix, SymmGroup>(rcd.first, rcd.second, pre_tensor,
-                                     tag_handler->get_operator_table(), h_, left_spins, right_spins)
+                                     tag_handler->get_operator_table(), left_herm, right_herm, left_spins, right_spins)
                                  );
                 swap(left, right);
                 swap(left_spins, right_spins);
-                swap(LeftHerm, RightHerm);
-                swap(LeftPhase, RightPhase);
+                swap(left_herm, right_herm);
             }
             
             mpo.setCoreEnergy(core_energy);
@@ -366,6 +361,8 @@ namespace generate_mpo
         {
             assert(term.size() == 3);
             int nops = term.size();
+
+            detect_coalescing(term);
             
             /// number of fermionic operators
             int nferm = 0;
@@ -570,13 +567,14 @@ namespace generate_mpo
             prempo_key_type conj = k;
             for (tag_type i = 0; i < k.pos_op.size(); ++i)
             {
-                // for now exclude cases where some ops are self adjoint
-                // there are no keys where only part of the operators are self adjoint
+                // there are no keys pairs where only part of the operators are adjoints of each other
                 // either they all are or none, so the next two lines make no difference if
                 // all hermitian pairs have been listed
                 //if (k.pos_op[i].second == tag_handler->herm_conj(k.pos_op[i].second))
                 //    return std::make_pair(k, std::make_pair(1,1));
 
+                // tag_handler->herm_conj returns the input if it corresponds to a self adjoint op
+                // or if the property of the op is unknown
                 conj.pos_op[i].second = tag_handler->herm_conj(k.pos_op[i].second);
             }
 
@@ -625,6 +623,66 @@ namespace generate_mpo
             return std::make_pair(conj, phase);
         }
 
+        bool is_self_adjoint(prempo_key_type k)
+        {
+            if (k.pos_op.size() == 0)    return false;
+            if (coalesced_keys.count(k)) return true;
+
+            bool ret = true;
+            for (auto pos_op : k.pos_op)
+                ret = ret && tag_handler->is_self_adjoint(pos_op.second);
+
+            return ret;
+        }
+
+        void detect_coalescing(term_descriptor const & term)
+        {
+            // this is to mark mpo indices as self-adjoint that correspont to terms which
+            // only become self-adjoint if combined in pairs,
+            // i.e. flip_1 -- c^t_2 -- c_3     together with
+            //      flip_1 --  c_2  -- c^t_3
+
+            tag_type op1 = term.operator_tag(0);
+            tag_type op2 = term.operator_tag(1);
+            tag_type op3 = term.operator_tag(2);
+
+            if (tag_handler->herm_conj(op3) != op3
+                && tag_handler->herm_conj(op2) != op2
+                && !tag_handler->is_self_adjoint(op1) && tag_handler->herm_conj(op1) == op1)
+            {
+                paired_self_adjoint.insert(term);
+
+                term_descriptor complement = term;
+                boost::get<1>(complement[1]) = tag_handler->herm_conj(op2);
+                boost::get<1>(complement[2]) = tag_handler->herm_conj(op3);
+
+                if (paired_self_adjoint.count(complement))
+                {
+                    prempo_key_type k;
+                    k.pos_op.push_back(to_pair(term[0]));
+                    coalesced_keys.insert(k);
+                }
+            }
+
+            if (tag_handler->herm_conj(op1) != op1
+                && tag_handler->herm_conj(op2) != op2
+                && !tag_handler->is_self_adjoint(op3) && tag_handler->herm_conj(op3) == op3)
+            {
+                paired_self_adjoint.insert(term);
+
+                term_descriptor complement = term;
+                boost::get<1>(complement[0]) = tag_handler->herm_conj(op1);
+                boost::get<1>(complement[1]) = tag_handler->herm_conj(op2);
+
+                if (paired_self_adjoint.count(complement))
+                {
+                    prempo_key_type k;
+                    k.pos_op.push_back(to_pair(term[2]));
+                    coalesced_keys.insert(k);
+                }
+            }
+        }
+
     private:
         Lattice const& lat;
 
@@ -636,6 +694,9 @@ namespace generate_mpo
         std::vector<prempo_map_type> prempo;
         prempo_key_type trivial_left, trivial_right;
         std::map<pos_t, op_t> site_terms;
+
+        std::set<term_descriptor, ::detail::descriptor_lt<term_descriptor>> paired_self_adjoint;
+        std::set<prempo_key_type> coalesced_keys;
         
         pos_t leftmost_right, rightmost_left;
         bool finalized, verbose;

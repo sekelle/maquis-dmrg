@@ -54,6 +54,32 @@ import extrapolate_base
 rc('axes', unicode_minus=False) # supposed to eliminate Glyph warning, but doesn't work for TeX
 rc('font', **{'family':'serif','serif':['ComputerModernRoman'],'size':20})
 rc('text', usetex=True)
+
+def inset(fig, ax, flist, sweepnr=None):
+
+    extr = extrapolate_base.energy2y([flist], sweepnr)
+    xdata = extr.xdata()
+    ydata = extr.ydata()
+
+    fit = extr.linfit()
+    xf = np.linspace(1e-16,max(xdata),100)
+    yf = fit(xf)
+
+    dots = plt.plot(xdata, ydata, 'o', xf, yf, '-')
+
+    #rc('font', **{'family':'serif','serif':['ComputerModernRoman'],'size':15})
+    #def autolabel(xd,yd,labels):
+    #    # attach some text labels
+    #    yshift = (max(yd) - min(yd)) * 0.05
+    #    xshift = (max(xd) - min(xd)) * 0.2
+    #    for x,y,l in zip(xd, yd, labels):
+    #        #item = ax.text(x - xshift, y, '$m=%d$'%l,
+    #        #            ha='right', va='center')
+    #        item = ax.text(x, y, '$m=%d$'%l,
+    #                    ha='center', va='bottom')
+    #        item.set_fontsize(18)
+
+    #autolabel(xdata, ydata, extr.m())
  
 def plot(flist, sweepnr=None):
 
@@ -101,6 +127,8 @@ def plot(flist, sweepnr=None):
                        'extrapolation:\n$%.6f$'%fit(0), ha='left', va='center')
     # position below is yaxis 
     #ext_note = ax.text(0, fit(0), '$%.6f$'%fit(0), ha='right', va='top')
+
+    #inset(plt, ax, flist[1], sweepnr)
 
     plt.savefig('e.svg')
 

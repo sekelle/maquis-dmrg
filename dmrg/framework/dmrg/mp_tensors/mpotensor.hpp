@@ -25,14 +25,13 @@
  *
  *****************************************************************************/
 
-#include "dmrg/mp_tensors/reshapes.h"
-
 template<class Matrix, class SymmGroup>
 MPOTensor<Matrix, SymmGroup>::MPOTensor(index_type ld
                                        ,index_type rd
                                        ,prempo_t tags
                                        ,op_table_ptr tbl_
-                                       ,MPOTensor_detail::Hermitian h_
+                                       ,MPOTensor_detail::Hermitian const & hleft
+                                       ,MPOTensor_detail::Hermitian const & hright
                                        ,spin_index const & lspins
                                        ,spin_index const & rspins)
 : left_i(ld)
@@ -41,7 +40,8 @@ MPOTensor<Matrix, SymmGroup>::MPOTensor(index_type ld
 , right_spins(rspins)
 , col_tags(ld, rd)
 , operator_table(tbl_)
-, herm_info(ld, rd)
+, herm_left(ld)
+, herm_right(rd)
 {
     using namespace boost::tuples;
     row_index.resize(ld);
@@ -74,6 +74,9 @@ MPOTensor<Matrix, SymmGroup>::MPOTensor(index_type ld
         operator_table = op_table_ptr(new OPTable<Matrix, SymmGroup>());
     }
 
+    left_spins.resize(ld);
+    right_spins.resize(rd);
+
     // provide information about number of non-zeros in rows and columns
     row_non_zeros.resize(row_dim());
     col_non_zeros.resize(col_dim());
@@ -91,13 +94,12 @@ MPOTensor<Matrix, SymmGroup>::MPOTensor(index_type ld
     num_one_rows_ = std::count(row_non_zeros.begin(), row_non_zeros.end(), 1);
     num_one_cols_ = std::count(col_non_zeros.begin(), col_non_zeros.end(), 1);
 
-    // only print diagnostics for real (Hamiltonian) MPOs
-    //if (std::min(ld, rd) > 10)
-    //    maquis::cout << "nr1r: " << row_dim() - num_one_rows_ << " nr1c: " << col_dim() - num_one_cols_ << std::endl;
-
     // if the optional Hermitian object h_ is valid, adopt it
-    if (h_.left_size() == left_i && h_.right_size() == right_i)
-        herm_info = h_;
+    if (hleft.size() == left_i && hright.size() == right_i)
+    {
+        herm_left = hleft;
+        herm_right = hright;
+    }
 }
 
 /*
@@ -189,10 +191,13 @@ template<class Matrix, class SymmGroup>
 void MPOTensor<Matrix, SymmGroup>::set(index_type li, index_type ri, op_t const & op, value_type scale_){
     if (this->has(li, ri)) {
         (*col_tags.find_element(li, ri))[0].second = scale_;
-        (*operator_table)[(*col_tags.find_element(li, ri))[0].first] = op;
+        tag_type tag = (*col_tags.find_element(li, ri))[0].first;
+        (*operator_table)[tag] = op;
+        (*operator_table)[tag].update_sparse();
     }
     else {
         tag_type new_tag = operator_table->register_op(op);
+        (*operator_table)[new_tag].update_sparse();
         col_tags(li, ri) = internal_value_type(1, std::make_pair(new_tag, scale_));
         row_index[li].insert(ri);
     }
@@ -276,7 +281,7 @@ template<class Matrix, class SymmGroup>
 template<class Archive>
 void MPOTensor<Matrix, SymmGroup>::serialize(Archive & ar, const unsigned int version)
 {
-    ar & herm_info & left_i & right_i & left_spins & right_spins
+    ar & herm_left & herm_right & left_i & right_i & left_spins & right_spins
        & row_non_zeros & col_non_zeros & col_tags & row_index & operator_table;
 }
 

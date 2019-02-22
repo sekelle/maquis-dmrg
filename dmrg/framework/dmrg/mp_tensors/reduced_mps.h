@@ -30,6 +30,7 @@
 
 #include "dmrg/mp_tensors/mps.h"
 #include "dmrg/mp_tensors/mpotensor.h"
+#include "dmrg/mp_tensors/twositetensor.h"
 #include "dmrg/mp_tensors/contractions.h"
 
 template <class Matrix, class SymmGroup>
@@ -49,7 +50,6 @@ public:
     void init() const
     {
         if (!initialized) {
-            parallel::scheduler_balanced scheduler(L);
             
             // init right_ & left_
             Boundary<Matrix, SymmGroup> right = mps.right_boundary(), left = mps.left_boundary();
@@ -59,21 +59,12 @@ public:
                 {
                     MPOTensor<Matrix, SymmGroup> ident;
                     ident.set(0, 0, identity_matrix<op_t>(mps[L-i].site_dim()));
-                    
-                    {
-                        parallel::guard proc(scheduler(L-i));
-                        right_[L-1-i] = contraction::Engine<Matrix, Matrix, SymmGroup>::overlap_mpo_right_step(mps[L-i], mps[L-i], right_[L-i], ident);
-                    }
-                    { parallel::guard proc(scheduler(L-i-1)); storage::migrate(right_[L-1-i][0]); }
+                    right_[L-1-i] = contraction::Engine<Matrix, Matrix, SymmGroup>::overlap_mpo_right_step(mps[L-i], mps[L-i], right_[L-i], ident);
                 }
                 {
                     MPOTensor<Matrix, SymmGroup> ident;
                     ident.set(0, 0, identity_matrix<op_t>(mps[i-1].site_dim()));
-                    {
-                        parallel::guard proc(scheduler(i-1));
-                        left_[i] = contraction::Engine<Matrix, Matrix, SymmGroup>::overlap_mpo_left_step(mps[i-1], mps[i-1], left_[i-1], ident);
-                    }
-                    { parallel::guard proc(scheduler(i)); storage::migrate(left_[i][0]); }
+                    left_[i] = contraction::Engine<Matrix, Matrix, SymmGroup>::overlap_mpo_left_step(mps[i-1], mps[i-1], left_[i-1], ident);
                 }
             }
             initialized = true;

@@ -36,18 +36,18 @@
 
 namespace davidson_detail {
 
-    template<class Matrix, class SymmGroup, class = void>
+    template<class Matrix, class OtherMatrix, class SymmGroup, class = void>
     class ref_diag
     {
     public:
-        void operator()(SiteProblem<Matrix, SymmGroup> const & H, MPSTensor<Matrix, SymmGroup> x){}
+        void operator()(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & H, MPSTensor<Matrix, SymmGroup> x){}
     };
 
-    template<class Matrix, class SymmGroup>
-    class ref_diag<Matrix, SymmGroup, typename boost::enable_if<symm_traits::HasSU2<SymmGroup> >::type>
+    template<class Matrix, class OtherMatrix, class SymmGroup>
+    class ref_diag<Matrix, OtherMatrix, SymmGroup, typename boost::enable_if<symm_traits::HasSU2<SymmGroup> >::type>
     {
     public:
-        void operator()(SiteProblem<Matrix, SymmGroup> const & H, MPSTensor<Matrix, SymmGroup> x)
+        void operator()(SiteProblem<Matrix, OtherMatrix, SymmGroup> const & H, MPSTensor<Matrix, SymmGroup> x)
         {
             typedef typename Matrix::value_type value_type;
             typedef typename SymmGroup::charge charge;
@@ -76,7 +76,7 @@ namespace davidson_detail {
         }
     };
 
-    template<class Matrix, class SymmGroup, class = void>
+    template<class Matrix, class OtherMatrix, class SymmGroup, class = void>
     class MultDiagonal
     {
         typedef MPSTensor<Matrix, SymmGroup> vector_type;
@@ -84,7 +84,7 @@ namespace davidson_detail {
 
     public:
 
-        MultDiagonal(SiteProblem<Matrix, SymmGroup> const& H, vector_type const& x)
+        MultDiagonal(SiteProblem<Matrix, OtherMatrix, SymmGroup> const& H, vector_type const& x)
         {
             throw std::runtime_error("Davidson only implemented for spin-adapted Hamiltonians\n"); 
         }
@@ -94,15 +94,15 @@ namespace davidson_detail {
         }
     };
 
-    template<class Matrix, class SymmGroup>
-    class MultDiagonal<Matrix, SymmGroup, typename boost::enable_if<symm_traits::HasSU2<SymmGroup> >::type>
+    template<class Matrix, class OtherMatrix, class SymmGroup>
+    class MultDiagonal<Matrix, OtherMatrix, SymmGroup, typename boost::enable_if<symm_traits::HasSU2<SymmGroup> >::type>
     {
         typedef MPSTensor<Matrix, SymmGroup> vector_type;
         typedef typename Matrix::value_type value_type;
 
     public:
         
-        MultDiagonal(SiteProblem<Matrix, SymmGroup> const& H, vector_type const& x)
+        MultDiagonal(SiteProblem<Matrix, OtherMatrix, SymmGroup> const& H, vector_type const& x)
         {
             Hdiag = contraction::SU2::diagonal_hamiltonian(H.left, H.right, H.mpo, x);
         }
@@ -138,9 +138,9 @@ namespace davidson_detail {
 
 } // namespace davidson detail
 
-template<class Matrix, class SymmGroup>
+template<class Matrix, class OtherMatrix, class SymmGroup>
 std::pair<double, MPSTensor<Matrix, SymmGroup> >
-solve_ietl_davidson(SiteProblem<Matrix, SymmGroup> & sp,
+solve_ietl_davidson(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp,
                     MPSTensor<Matrix, SymmGroup> const & initial,
                     BaseParameters & params,
                     std::vector<MPSTensor<Matrix, SymmGroup> > ortho_vecs = std::vector<MPSTensor<Matrix, SymmGroup> >())
@@ -155,17 +155,16 @@ solve_ietl_davidson(SiteProblem<Matrix, SymmGroup> & sp,
     typedef MPSTensor<Matrix, SymmGroup> Vector;
     SingleSiteVS<Matrix, SymmGroup> vs(initial, ortho_vecs);
     
-    ietl::jcd_gmres_solver<SiteProblem<Matrix, SymmGroup>, SingleSiteVS<Matrix, SymmGroup> >
+    ietl::jcd_gmres_solver<SiteProblem<Matrix, OtherMatrix, SymmGroup>, SingleSiteVS<Matrix, SymmGroup> >
     jcd_gmres(sp, vs, params["ietl_jcd_gmres"]);
     
-    ietl::davidson<SiteProblem<Matrix, SymmGroup>, SingleSiteVS<Matrix, SymmGroup> >
+    ietl::davidson<SiteProblem<Matrix, OtherMatrix, SymmGroup>, SingleSiteVS<Matrix, SymmGroup> >
     jd(sp, vs, ietl::Smallest);
 
-    davidson_detail::MultDiagonal<Matrix, SymmGroup> mdiag(sp, initial);
+    davidson_detail::MultDiagonal<Matrix, OtherMatrix, SymmGroup> mdiag(sp, initial);
     
     double tol = params["ietl_jcd_tol"];
     ietl::basic_iteration<double> iter(params["ietl_jcd_maxiter"], tol, tol);
-    contraction::ContractionGrid<Matrix, SymmGroup>::iterate_reduction_layout(0, params["ietl_jcd_maxiter"]);
     
     for (int n = 0; n < ortho_vecs.size(); ++n) {
         maquis::cout << "Input <MPS|O[" << n << "]> : " << ietl::dot(initial, ortho_vecs[n]) << std::endl;
