@@ -33,7 +33,8 @@
 #include <atomic>
 
 #include <cuda_runtime.h>
-#include "cublas_v2.h"
+#include <cublas_v2.h>
+#include "dmrg/utils/cuda_helpers.hpp"
 
 #include "dmrg/utils/BaseParameters.h"
 #include "dmrg/utils/utils.hpp"

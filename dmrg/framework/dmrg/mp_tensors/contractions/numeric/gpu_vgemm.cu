@@ -25,9 +25,7 @@
  *
  *****************************************************************************/
 
-//#include <new>
 #include <cassert>
-//#include <complex>
 #include <cstddef>
 #include <cstdlib>
 #include <limits>
@@ -35,23 +33,10 @@
 #include <malloc.h>
 #include <stdint.h>
 #include <iostream>
-// BLAS declarations
-//#include <boost/numeric/bindings/blas/detail/blas.h>
 
 #include "gpu.h"
 #include "common.h"
-
-
-static void HandleError( cudaError_t err,
-                         const char *file,
-                         int line ) {
-    if (err != cudaSuccess) {
-        printf( "%s in %s at line %d\n", cudaGetErrorString( err ),
-                file, line );
-        exit( EXIT_FAILURE );
-    }
-}
-#define HANDLE_ERROR( err ) (HandleError( err, __FILE__, __LINE__ ))
+#include "dmrg/utils/cuda_helpers.hpp"
 
 
 __global__ void accumulate(float *in, float *out, size_t N, size_t chunks)

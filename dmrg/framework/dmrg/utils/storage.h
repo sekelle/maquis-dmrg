@@ -38,6 +38,7 @@
 #include <boost/filesystem.hpp>
 
 #include <cuda_runtime.h>
+#include "dmrg/utils/cuda_helpers.hpp"
 
 #include "utils.hpp"
 #include "utils/timings.h"

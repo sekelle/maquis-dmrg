@@ -43,7 +43,9 @@
 
 #include "dmrg/mp_tensors/contractions/numeric/numeric.h"
 #include "dmrg/mp_tensors/contractions/numeric/gemm_template.h"
+
 #include "dmrg/mp_tensors/contractions/numeric/gpu.h"
+#include "dmrg/utils/cuda_helpers.hpp"
 
 #include "dmrg/mp_tensors/contractions/task/mps_stage.hpp"
 
@@ -338,7 +340,7 @@ public:
                                           cuop[0], cuop[0], M, N, K, &one, dev_l, M, dev_S, K, &zero, ws->mps_buffer, M);
         if (stat != CUBLAS_STATUS_SUCCESS)
         {
-            std::cout << "lgemm failed" << std::endl;
+            std::cout << "lgemm failed: " << _cudaGetErrorEnum(stat) << std::endl;
             exit(EXIT_FAILURE);
         }
 
