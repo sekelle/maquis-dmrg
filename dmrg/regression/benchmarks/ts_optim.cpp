@@ -47,31 +47,13 @@
 
 #include "dmrg/optimize/ietl_lanczos_solver.h"
 #include "dmrg/optimize/ietl_jacobi_davidson.h"
+#include "dmrg/optimize/site_problem.h"
 
 #include "dmrg/utils/DmrgOptions.h"
 #include "dmrg/utils/DmrgParameters.h"
-#include "dmrg/utils/parallel/placement.hpp"
 
 #include "utils/timings.h"
 
-
-template<class Matrix, class SymmGroup>
-struct SiteProblem
-{
-    SiteProblem(Boundary<Matrix, SymmGroup> const & left_,
-                Boundary<Matrix, SymmGroup> const & right_,
-                MPOTensor<Matrix, SymmGroup> const & mpo_)
-    : left(left_)
-    , right(right_)
-    , mpo(mpo_)
-    {
-    }
-    
-    Boundary<Matrix, SymmGroup> const & left;
-    Boundary<Matrix, SymmGroup> const & right;
-    MPOTensor<Matrix, SymmGroup> const & mpo;
-    double ortho_shift;
-};
 
 bool can_clean(int k, int site, int L, int lr){
     if(k == site || k == site+1) return false;
@@ -135,7 +117,6 @@ int main(int argc, char ** argv)
         
 
         std::string boundary_name;
-        parallel::construct_placements(mpo);
         
         /// Create TwoSite objects
         time_ts_obj.begin();
@@ -143,13 +124,6 @@ int main(int argc, char ** argv)
         MPSTensor<matrix, grp> twin_mps = tst.make_mps();
         tst.clear();
         MPOTensor<matrix, grp> ts_mpo = make_twosite_mpo<matrix,matrix>(mpo[site], mpo[site+1], mps[site].site_dim(), mps[site+1].site_dim());
-        if(lr == +1){
-            ts_mpo.placement_l = mpo[site].placement_l;
-            ts_mpo.placement_r = parallel::get_right_placement(ts_mpo, mpo[site].placement_l, mpo[site+1].placement_r);
-        }else{
-            ts_mpo.placement_l = parallel::get_left_placement(ts_mpo, mpo[site].placement_l, mpo[site+1].placement_r);
-            ts_mpo.placement_r = mpo[site+1].placement_r;
-        }
         time_ts_obj.end();
         maquis::cout << "Two site obj done!\n";
         
@@ -204,7 +178,7 @@ int main(int argc, char ** argv)
         
         std::vector<MPSTensor<matrix, grp> > ortho_vecs;
         std::pair<double, MPSTensor<matrix, grp> > res;
-        SiteProblem<matrix, grp> sp(left, right, ts_mpo);
+        SiteProblem<matrix, matrix, grp> sp(twin_mps, left, right, ts_mpo);
 
         /// Optimization: JCD
         time_optim_jcd.begin();
@@ -229,7 +203,8 @@ int main(int argc, char ** argv)
             if(parms["twosite_truncation"] == "svd")
                 boost::tie(mps[site], mps[site+1], trunc) = tst.split_mps_l2r(Mmax, cutoff);
             else
-                boost::tie(mps[site], mps[site+1], trunc) = tst.predict_split_l2r(Mmax, cutoff, alpha, left, mpo[site]);
+                boost::tie(mps[site], mps[site+1], trunc) = contraction::Engine<matrix, matrix, grp>::
+                    predict_split_l2r(tst, Mmax, cutoff, alpha, left, mpo[site]);
             tst.clear();
             
             block_matrix<matrix, grp> t;
@@ -240,7 +215,8 @@ int main(int argc, char ** argv)
             if(parms["twosite_truncation"] == "svd")
                 boost::tie(mps[site], mps[site+1], trunc) = tst.split_mps_r2l(Mmax, cutoff);
             else
-                boost::tie(mps[site], mps[site+1], trunc) = tst.predict_split_r2l(Mmax, cutoff, alpha, right, mpo[site+1]);
+                boost::tie(mps[site], mps[site+1], trunc) = contraction::Engine<matrix, matrix, grp>::
+                    predict_split_r2l(tst, Mmax, cutoff, alpha, right, mpo[site+1]);
             tst.clear();
             
             block_matrix<matrix, grp> t;

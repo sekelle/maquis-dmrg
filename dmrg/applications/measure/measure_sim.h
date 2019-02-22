@@ -36,14 +36,13 @@
 #include <boost/shared_ptr.hpp>
 
 #include "dmrg/sim/sim.h"
-#include "dmrg/optimize/optimize.h"
-
+#include "dmrg/models/chem/measure_transform.hpp"
 
 template <class Matrix, class SymmGroup>
 class measure_sim : public sim<Matrix, SymmGroup> {
     
     typedef sim<Matrix, SymmGroup> base;
-    typedef optimizer_base<Matrix, SymmGroup, storage::disk> opt_base_t;
+    typedef typename Model<Matrix, SymmGroup>::measurements_type measurements_type;
     
     using base::mps;
     using base::mpo;
@@ -54,48 +53,9 @@ class measure_sim : public sim<Matrix, SymmGroup> {
     
 public:
     
-    measure_sim (DmrgParameters & parms_)
-    : base(parms_)
-    { }
+    measure_sim (DmrgParameters & parms_);
     
-    void run()
-    {
-        this->measure("/spectrum/results/", all_measurements);
-        
-        /// MPO creation
-        MPO<Matrix, SymmGroup> mpoc = mpo;
-        if (parms["use_compressed"])
-            mpoc.compress(1e-12);
-
-        double energy;
-
-        if (parms["MEASURE[Energy]"]) {
-            energy = maquis::real(expval(mps, mpoc)) + maquis::real(mpoc.getCoreEnergy());
-            maquis::cout << "Energy: " << energy << std::endl;
-            {
-                storage::archive ar(rfile, "w");
-                ar["/spectrum/results/Energy/mean/value"] << std::vector<double>(1, energy);
-            }
-        }
-        
-        if (parms["MEASURE[EnergyVariance]"] > 0) {
-            MPO<Matrix, SymmGroup> mpo2 = square_mpo(mpoc);
-            mpo2.compress(1e-12);
-            
-            if (!parms["MEASURE[Energy]"]) energy = maquis::real(expval(mps, mpoc)) + maquis::real(mpoc.getCoreEnergy());
-            double energy2 = maquis::real(expval(mps, mpo2, true));
-            
-            maquis::cout << "Energy^2: " << energy2 << std::endl;
-            maquis::cout << "Variance: " << energy2 - energy*energy << std::endl;
-            
-            {
-                storage::archive ar(rfile, "w");
-                ar["/spectrum/results/Energy^2/mean/value"] << std::vector<double>(1, energy2);
-                ar["/spectrum/results/EnergyVariance/mean/value"] << std::vector<double>(1, energy2 - energy*energy);
-            }
-        }
-
-    }
+    void run();
 };
 
 #endif

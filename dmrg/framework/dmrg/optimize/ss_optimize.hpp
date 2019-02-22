@@ -27,16 +27,14 @@
 #ifndef SS_OPTIMIZE_H
 #define SS_OPTIMIZE_H
 
-#include "dmrg/mp_tensors/mpo_ops.h"
-#include "dmrg/optimize/optimize.h"
-
-
 template<class Matrix, class SymmGroup, class Storage>
 class ss_optimize : public optimizer_base<Matrix, SymmGroup, Storage>
 {
 public:
 
     typedef optimizer_base<Matrix, SymmGroup, Storage> base;
+    typedef typename base::BoundaryMatrix BoundaryMatrix;
+    typedef typename base::contr contr;
     using base::mpo;
     using base::mps;
     using base::left_;
@@ -75,13 +73,6 @@ public:
             site = to_site(L, _site);
         }
         
-//        if (parms["beta_mode"] && sweep == 0 && resume_at < L) {
-//            int site = (resume_at == -1) ? 0 : resume_at;
-//            mpo = zero_after(mpo_orig, site+2);
-//            mps.canonize(site);
-//            this->init_left_right(mpo, site);
-//        }
-        
         Storage::prefetch(left_[site]);
         Storage::prefetch(right_[site+1]);
         
@@ -96,20 +87,6 @@ public:
             }
         
             maquis::cout << "Sweep " << sweep << ", optimizing site " << site << std::endl;
-            
-//            mps[site].make_left_paired();
-            
-            // MD: some changes needed to re-enable it.
-//            if (parms.["beta_mode"]) {
-//                if (sweep == 0 && lr == 1) {
-//                    mpo = zero_after(mpo_orig, 0);
-//                    if (site == 0)
-//                        this->init_left_right(mpo, 0);
-//                } else if (sweep == 0 && lr == -1 && site == L-1) {
-//                    mpo = mpo_orig;
-//                    //this->init_left_right(mpo, site);
-//                }
-//            }
             
             Storage::fetch(left_[site]);
             Storage::fetch(right_[site+1]);
@@ -127,12 +104,10 @@ public:
 //            maquis::cout << "  MPS: " << utils::size_of(mps.begin(), mps.end())/1024.0/1024 << std::endl;
 //            maquis::cout << "  MPS[i]: " << utils::size_of(mps[site])/1024.0/1024 << std::endl;
             
-            //SiteProblem<Matrix, SymmGroup> sp(mps[site], left_[site], right_[site+1], mpo[site]);
-            
             boost::chrono::high_resolution_clock::time_point now, then;
 
             std::pair<double, MPSTensor<Matrix, SymmGroup> > res;
-            SiteProblem<Matrix, SymmGroup> sp(left_[site], right_[site+1], mpo[site]);
+            SiteProblem<Matrix, typename base::BoundaryMatrix, SymmGroup> sp(mps[site], left_[site], right_[site+1], mpo[site]);
             
             /// Compute orthogonal vectors
             std::vector<MPSTensor<Matrix, SymmGroup> > ortho_vecs(base::northo);
@@ -191,8 +166,7 @@ public:
             if (lr == +1) {
                 if (site < L-1) {
                     maquis::cout << "Growing, alpha = " << alpha << std::endl;
-                    trunc = mps.grow_l2r_sweep(mpo[site], left_[site], right_[site+1],
-                                               site, alpha, cutoff, Mmax);
+                    trunc = contr::grow_l2r_sweep(mps, mpo[site], left_[site], right_[site+1], site, alpha, cutoff, Mmax);
                 } else {
                     block_matrix<Matrix, SymmGroup> t = mps[site].normalize_left(DefaultSolver());
                     if (site < L-1)
@@ -207,9 +181,7 @@ public:
             } else if (lr == -1) {
                 if (site > 0) {
                     maquis::cout << "Growing, alpha = " << alpha << std::endl;
-                    // Invalid read occurs after this!\n
-                    trunc = mps.grow_r2l_sweep(mpo[site], left_[site], right_[site+1],
-                                               site, alpha, cutoff, Mmax);
+                    trunc = contr::grow_r2l_sweep(mps, mpo[site], left_[site], right_[site+1], site, alpha, cutoff, Mmax);
                 } else {
                     block_matrix<Matrix, SymmGroup> t = mps[site].normalize_right(DefaultSolver());
                     if (site > 0)

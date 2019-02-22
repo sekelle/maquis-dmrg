@@ -24,13 +24,6 @@
  *
  *****************************************************************************/
 
-#include "dmrg/mp_tensors/mps.h"
-#include "contractions.h"
-
-#include "dmrg/utils/archive.h"
-
-#include <limits>
-
 template<class Matrix, class SymmGroup>
 std::string MPS<Matrix, SymmGroup>::description() const
 {
@@ -96,6 +89,18 @@ void MPS<Matrix, SymmGroup>::resize(size_t L)
 }
 
 template<class Matrix, class SymmGroup>
+void MPS<Matrix, SymmGroup>::make_left_paired() const
+{
+    std::for_each(data_.begin(), data_.end(), boost::bind(&MPSTensor<Matrix,SymmGroup>::make_left_paired, boost::lambda::_1));
+}
+
+template<class Matrix, class SymmGroup>
+void MPS<Matrix, SymmGroup>::make_right_paired() const
+{
+    std::for_each(data_.begin(), data_.end(), boost::bind(&MPSTensor<Matrix,SymmGroup>::make_right_paired, boost::lambda::_1));
+}
+
+template<class Matrix, class SymmGroup>
 size_t MPS<Matrix, SymmGroup>::canonization(bool search) const
 {
     if (!search)
@@ -123,10 +128,8 @@ size_t MPS<Matrix, SymmGroup>::canonization(bool search) const
 template<class Matrix, class SymmGroup>
 void MPS<Matrix, SymmGroup>::normalize_left()
 {
-    parallel::scheduler_balanced scheduler(length());
     canonize(length()-1);
     // now state is: A A A A A A M
-    parallel::guard proc(scheduler(length()-1));
     block_matrix<Matrix, SymmGroup> t = (*this)[length()-1].normalize_left(DefaultSolver());
     // now state is: A A A A A A A
     canonized_i = length()-1;
@@ -135,10 +138,8 @@ void MPS<Matrix, SymmGroup>::normalize_left()
 template<class Matrix, class SymmGroup>
 void MPS<Matrix, SymmGroup>::normalize_right()
 {
-    parallel::scheduler_balanced scheduler(length());
     canonize(0);
     // now state is: M B B B B B B
-    parallel::guard proc(scheduler(0));
     block_matrix<Matrix, SymmGroup> t = (*this)[0].normalize_right(DefaultSolver());
     // now state is: B B B B B B B
     canonized_i = 0;
@@ -170,8 +171,6 @@ void MPS<Matrix, SymmGroup>::canonize(std::size_t center, DecompMethod method)
 template<class Matrix, class SymmGroup>
 void MPS<Matrix, SymmGroup>::move_normalization_l2r(size_t p1, size_t p2, DecompMethod method)
 {
-    parallel::scheduler_balanced scheduler(length());
-
     size_t tmp_i = canonized_i;
     for (int i = p1; i < std::min(p2, length()); ++i)
     {
@@ -179,11 +178,9 @@ void MPS<Matrix, SymmGroup>::move_normalization_l2r(size_t p1, size_t p2, Decomp
             continue;
         block_matrix<Matrix, SymmGroup> t;
         {
-            parallel::guard proc(scheduler(i));
             t = (*this)[i].normalize_left(method);
         }
         if (i < length()-1) {
-            parallel::guard proc(scheduler(i+1));
             (*this)[i+1].multiply_from_left(t);
             (*this)[i+1].divide_by_scalar((*this)[i+1].scalar_norm());
         }
@@ -200,8 +197,6 @@ void MPS<Matrix, SymmGroup>::move_normalization_l2r(size_t p1, size_t p2, Decomp
 template<class Matrix, class SymmGroup>
 void MPS<Matrix, SymmGroup>::move_normalization_r2l(size_t p1, size_t p2, DecompMethod method)
 {
-    parallel::scheduler_balanced scheduler(length());
-
     size_t tmp_i = canonized_i;
     for (int i = p1; i > static_cast<int>(std::max(p2, size_t(0))); --i)
     {
@@ -209,11 +204,9 @@ void MPS<Matrix, SymmGroup>::move_normalization_r2l(size_t p1, size_t p2, Decomp
             continue;
         block_matrix<Matrix, SymmGroup> t;
         {
-            parallel::guard proc(scheduler(i));
             t = (*this)[i].normalize_right(method);
         }
         if (i > 0) {
-            parallel::guard proc(scheduler(i-1));
             (*this)[i-1].multiply_from_right(t);
             (*this)[i-1].divide_by_scalar((*this)[i-1].scalar_norm());
         }
@@ -225,58 +218,12 @@ void MPS<Matrix, SymmGroup>::move_normalization_r2l(size_t p1, size_t p2, Decomp
 }
 
 template<class Matrix, class SymmGroup>
-template<class OtherMatrix>
-truncation_results
-MPS<Matrix, SymmGroup>::grow_l2r_sweep(MPOTensor<Matrix, SymmGroup> const & mpo,
-                                       Boundary<OtherMatrix, SymmGroup> const & left,
-                                       Boundary<OtherMatrix, SymmGroup> const & right,
-                                       std::size_t l, double alpha,
-                                       double cutoff, std::size_t Mmax)
-{ // canonized_i invalided through (*this)[]
-    MPSTensor<Matrix, SymmGroup> new_mps;
-    truncation_results trunc;
-    
-    boost::tie(new_mps, trunc) =
-    contraction::Engine<Matrix, OtherMatrix, SymmGroup>::predict_new_state_l2r_sweep((*this)[l], mpo, left, right, alpha, cutoff, Mmax);
-    
-    (*this)[l+1] = contraction::Engine<Matrix, OtherMatrix, SymmGroup>::predict_lanczos_l2r_sweep((*this)[l+1],
-                                                    (*this)[l], new_mps);
-    (*this)[l] = new_mps;
-    return trunc;
-}
-
-template<class Matrix, class SymmGroup>
-template<class OtherMatrix>
-truncation_results
-MPS<Matrix, SymmGroup>::grow_r2l_sweep(MPOTensor<Matrix, SymmGroup> const & mpo,
-                                       Boundary<OtherMatrix, SymmGroup> const & left,
-                                       Boundary<OtherMatrix, SymmGroup> const & right,
-                                       std::size_t l, double alpha,
-                                       double cutoff, std::size_t Mmax)
-{ // canonized_i invalided through (*this)[]
-    MPSTensor<Matrix, SymmGroup> new_mps;
-    truncation_results trunc;
-    
-    boost::tie(new_mps, trunc) =
-    contraction::Engine<Matrix, OtherMatrix, SymmGroup>::predict_new_state_r2l_sweep((*this)[l], mpo, left, right, alpha, cutoff, Mmax);
-    
-    (*this)[l-1] = contraction::Engine<Matrix, OtherMatrix, SymmGroup>::predict_lanczos_r2l_sweep((*this)[l-1],
-                                                          (*this)[l], new_mps);
-    (*this)[l] = new_mps;
-    return trunc;
-}
-
-template<class Matrix, class SymmGroup>
 Boundary<Matrix, SymmGroup>
 MPS<Matrix, SymmGroup>::left_boundary() const
 {
     Index<SymmGroup> i = (*this)[0].row_dim();
     Boundary<Matrix, SymmGroup> ret(i, i, 1);
 
-    for(std::size_t k(0); k < ret[0].n_blocks(); ++k)
-       maquis::dmrg::detail::left_right_boundary_init(ret[0][k]);
-
-    ret[0].index_sizes();
     return ret;
 }
 
@@ -287,10 +234,32 @@ MPS<Matrix, SymmGroup>::right_boundary() const
     Index<SymmGroup> i = (*this)[length()-1].col_dim();
     Boundary<Matrix, SymmGroup> ret(i, i, 1);
 
-    for(std::size_t k(0); k < ret[0].n_blocks(); ++k)
-        maquis::dmrg::detail::left_right_boundary_init(ret[0][k]);
+    return ret;
+}
 
-    ret[0].index_sizes();
+template<class Matrix, class SymmGroup>
+block_matrix<Matrix, SymmGroup>
+MPS<Matrix, SymmGroup>::left_boundary_bm() const
+{
+    Index<SymmGroup> i = (*this)[0].row_dim();
+    block_matrix<Matrix, SymmGroup> ret(i, i);
+
+    for(std::size_t k(0); k < ret.n_blocks(); ++k)
+       maquis::dmrg::detail::left_right_boundary_init(ret[k]);
+
+    return ret;
+}
+
+template<class Matrix, class SymmGroup>
+block_matrix<Matrix, SymmGroup>
+MPS<Matrix, SymmGroup>::right_boundary_bm() const
+{
+    Index<SymmGroup> i = (*this)[length()-1].col_dim();
+    block_matrix<Matrix, SymmGroup> ret(i, i);
+
+    for(std::size_t k(0); k < ret.n_blocks(); ++k)
+        maquis::dmrg::detail::left_right_boundary_init(ret[k]);
+
     return ret;
 }
 
@@ -345,9 +314,7 @@ void load(std::string const& dirname, MPS<Matrix, SymmGroup> & mps)
     /// load tensors
     MPS<Matrix, SymmGroup> tmp(L);
     size_t loop_max = tmp.length();
-    parallel::scheduler_balanced scheduler(loop_max);
     for(size_t k = 0; k < loop_max; ++k){
-        parallel::guard proc(scheduler(k));
         std::string fname = dirname+"/mps"+boost::lexical_cast<std::string>((size_t)k)+".h5";
         storage::archive ar(fname);
         ar["/tensor"] >> tmp[k];
@@ -362,18 +329,15 @@ void save(std::string const& dirname, MPS<Matrix, SymmGroup> const& mps)
     if(parallel::master() && !boost::filesystem::exists(dirname))
         boost::filesystem::create_directory(dirname);
     
-    parallel::scheduler_balanced scheduler(mps.length());
     size_t loop_max = mps.length();
 
     for(size_t k = 0; k < loop_max; ++k){
-        parallel::guard proc(scheduler(k));
         mps[k].make_left_paired();
         storage::migrate(mps[k]);
     }
     parallel::sync();
 
     for(size_t k = 0; k < loop_max; ++k){
-        parallel::guard proc(scheduler(k));
         if(!parallel::local()) continue;
         const std::string fname = dirname+"/mps"+boost::lexical_cast<std::string>((size_t)k)+".h5.new";
         storage::archive ar(fname, "w");
@@ -383,7 +347,6 @@ void save(std::string const& dirname, MPS<Matrix, SymmGroup> const& mps)
     parallel::sync(); // be sure that chkp is in valid state before overwriting the old one.
     
     omp_for(size_t k, parallel::range<size_t>(0,loop_max), {
-        parallel::guard proc(scheduler(k));
         if(!parallel::local()) continue;
         const std::string fname = dirname+"/mps"+boost::lexical_cast<std::string>((size_t)k)+".h5";
         boost::filesystem::rename(fname+".new", fname);

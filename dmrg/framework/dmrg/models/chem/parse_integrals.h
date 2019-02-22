@@ -28,18 +28,65 @@
 #ifndef QC_CHEM_PARSE_INTEGRALS_H
 #define QC_CHEM_PARSE_INTEGRALS_H
 
-namespace chem_detail {
+#include <cstring>
 
-    template <class T, class SymmGroup>
+namespace chem {
+    namespace detail {
+
+        inline void parse_file(std::vector<double> & M, std::vector<int> & I, std::string integral_file)
+        {
+            if (!boost::filesystem::exists(integral_file))
+                throw std::runtime_error("integral_file " + integral_file + " does not exist\n");
+
+            std::ifstream orb_file;
+            orb_file.open(integral_file.c_str());
+            for (int i = 0; i < 4; ++i)
+                orb_file.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
+
+            std::vector<double> raw;
+            std::copy(std::istream_iterator<double>(orb_file), std::istream_iterator<double>(),
+                      std::back_inserter(raw));
+
+            if (raw.size() % 5) throw std::runtime_error("integral parsing failed\n");
+
+            M.resize(raw.size()/5);
+            I.resize(4*raw.size()/5);
+
+            std::vector<double>::iterator it = raw.begin();
+            std::size_t line = 0;
+            while (it != raw.end()) {
+                M[line] = *it++;
+                std::copy(it, it+4, &I[4*line++]);
+                it += 4;
+            }
+        }
+
+        inline void parse_buffer(std::vector<double> & M, std::vector<int> & I, std::string buffer)
+        {
+            std::size_t line_size = (sizeof(double) + 4*sizeof(int));
+            if (buffer.size() % line_size) throw std::runtime_error("integral buffer parsing failed\n");
+            std::size_t nlines = buffer.size() / line_size;
+
+            M.resize(nlines);
+            I.resize(4*nlines);
+
+            std::size_t nbytes_integrals = nlines * sizeof(double);
+            std::size_t nbytes_indices = 4 * nlines * sizeof(int);
+            memcpy(&M[0], &buffer[0], nbytes_integrals);
+            memcpy(&I[0], &buffer[nbytes_integrals], nbytes_indices);
+        }
+    } // namespace detail
+
+    template <class T>
     inline // need inline as this will be compiled in multiple objects and cause linker errors otherwise
-    std::pair<alps::numeric::matrix<Lattice::pos_t>, std::vector<T> >
+    std::pair<std::vector<int>, std::vector<T> >
     parse_integrals(BaseParameters & parms, Lattice const & lat)
     {
         typedef Lattice::pos_t pos_t;
 
         std::vector<pos_t> inv_order;
         std::vector<T> matrix_elements;
-        alps::numeric::matrix<Lattice::pos_t> idx_;
+        std::vector<int> idx_;
 
         struct reorderer
         {
@@ -68,65 +115,58 @@ namespace chem_detail {
         // *** Parse orbital data *********************************************
         // ********************************************************************
 
-        std::string integral_file = parms["integral_file"];
-        if (!boost::filesystem::exists(integral_file))
-            throw std::runtime_error("integral_file " + integral_file + " does not exist\n");
+        std::vector<double>         m_raw;
+        std::vector<Lattice::pos_t> i_raw;
 
-        std::ifstream orb_file;
-        orb_file.open(integral_file.c_str());
-        for (int i = 0; i < 4; ++i)
-            orb_file.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
+        if (parms.is_set("integrals"))
+            detail::parse_buffer(m_raw, i_raw, parms["integrals"]);
+        else
+            detail::parse_file(m_raw, i_raw, parms["integral_file"]);
 
-        std::vector<double> raw;
-        std::copy(std::istream_iterator<double>(orb_file), std::istream_iterator<double>(),
-                    std::back_inserter(raw));
+        // dump the integrals into the result file for reproducibility
+        if (parms["donotsave"] == 0)
+        {
+            storage::archive ar(parms["resultfile"], "w");
+            ar["/integrals/elements"] << m_raw;
+            ar["/integrals/indices"] << i_raw;
+        }
 
-        idx_.resize(raw.size()/5, 4);
-        std::vector<double>::iterator it = raw.begin();
-        int row = 0;
-        while (it != raw.end()) {
-            
-            if (std::abs(*it) > parms["integral_cutoff"]){
-                matrix_elements.push_back(*it++);
-                std::vector<int> tmp;
-                std::transform(it, it+4, std::back_inserter(tmp), boost::lambda::_1-1);
+        idx_.reserve(i_raw.size());
+        for (std::size_t line = 0; line < m_raw.size(); ++line) {
+            if (std::abs(m_raw[line]) > parms["integral_cutoff"]) {
+                matrix_elements.push_back(m_raw[line]);
 
-                IndexTuple aligned = align<SymmGroup>(reorderer()(tmp[0], inv_order), reorderer()(tmp[1], inv_order),
-                                           reorderer()(tmp[2], inv_order), reorderer()(tmp[3], inv_order));
-                idx_(row, 0) = aligned[0];
-                idx_(row, 1) = aligned[1];
-                idx_(row, 2) = aligned[2];
-                idx_(row, 3) = aligned[3];
+                IndexTuple aligned = align(reorderer()(i_raw[4*line  ]-1, inv_order),
+                                           reorderer()(i_raw[4*line+1]-1, inv_order),
+                                           reorderer()(i_raw[4*line+2]-1, inv_order),
+                                           reorderer()(i_raw[4*line+3]-1, inv_order));
+
+                std::copy(aligned.begin(), aligned.end(), std::back_inserter(idx_));
             }
-            else { it++; idx_.remove_rows(row--); }
-
-            it += 4;
-            row++;
         }
 
         #ifndef NDEBUG
         for (std::size_t m = 0; m < matrix_elements.size(); ++m)
         {
-            assert( *std::max_element(idx_.elements().first, idx_.elements().second) <= lat.size() );
+            assert( *std::max_element(idx_.begin(), idx_.end()) <= lat.size() );
         }
         #endif
         
         return std::make_pair(idx_, matrix_elements);
     }
 
-    // Template specialization for complex numbersi and U1DG symmetry!!
+    // Template specialization for complex numbers
     template <>
     inline // need inline as this will be compiled in multiple objects and cause linker errors otherwise
-    std::pair<alps::numeric::matrix<Lattice::pos_t>, std::vector<std::complex<double> > >
-    parse_integrals <std::complex<double>,U1DG> (BaseParameters & parms, Lattice const & lat)
+    std::pair<std::vector<int>, std::vector<std::complex<double> > >
+    parse_integrals <std::complex<double> > (BaseParameters & parms, Lattice const & lat)
     {
         typedef Lattice::pos_t pos_t;
         typedef std::complex<double> T;
-        typedef U1DG SymmGroup;
 
         std::vector<pos_t> inv_order;
         std::vector<T> matrix_elements;
-        alps::numeric::matrix<Lattice::pos_t> idx_;
+        std::vector<Lattice::pos_t> idx_;
 
         struct reorderer
         {
@@ -168,14 +208,13 @@ namespace chem_detail {
         std::copy(std::istream_iterator<double>(orb_file), std::istream_iterator<double>(),
                     std::back_inserter(raw));
 
-        idx_.resize(raw.size()/6, 4);
+        idx_.reserve(4*raw.size()/6);
         std::vector<double>::iterator it = raw.begin();
-        int row = 0;
         while (it != raw.end()) {
 
             // create complex number
-            double re = *it++;
-            double im = *it++;
+            double re = *it;
+            double im = *(it+1);
             T integral_value(re, im);
 
             //DEBUG
@@ -184,30 +223,50 @@ namespace chem_detail {
             if (std::abs(integral_value) > parms["integral_cutoff"]){
                 matrix_elements.push_back(integral_value);
                 std::vector<int> tmp;
-                std::transform(it, it+4, std::back_inserter(tmp), boost::lambda::_1-1);
+                std::transform(it+2, it+6, std::back_inserter(tmp), boost::lambda::_1-1);
 
-                IndexTuple aligned = align<SymmGroup>(reorderer()(tmp[0], inv_order), reorderer()(tmp[1], inv_order),
-                                           reorderer()(tmp[2], inv_order), reorderer()(tmp[3], inv_order));
-                idx_(row, 0) = aligned[0];
-                idx_(row, 1) = aligned[1];
-                idx_(row, 2) = aligned[2];
-                idx_(row, 3) = aligned[3];
+                IndexTuple aligned(reorderer()(tmp[0], inv_order), reorderer()(tmp[1], inv_order),
+                                   reorderer()(tmp[2], inv_order), reorderer()(tmp[3], inv_order));
+                idx_.push_back(aligned[0]);
+                idx_.push_back(aligned[1]);
+                idx_.push_back(aligned[2]);
+                idx_.push_back(aligned[3]);
             }
-            else { idx_.remove_rows(row--); }
 
-            it += 4;
-            row++;
+            it += 6;
+        }
+
+        // dump the integrals into the result file for reproducibility
+        if (parms["donotsave"] == 0)
+        {
+            std::vector<T> m_;
+            std::vector<Lattice::pos_t> i_;
+
+            it = raw.begin();
+            while (it != raw.end()) {
+                double re = *it++;
+                double im = *it++;
+                T integral_value(re, im);
+
+                m_.push_back(integral_value);
+                std::copy(it, it+4, std::back_inserter(i_));
+                it += 4;
+            }
+
+            storage::archive ar(parms["resultfile"], "w");
+            ar["/integrals/elements"] << m_;
+            ar["/integrals/indices"] << i_;
         }
 
         #ifndef NDEBUG
         for (std::size_t m = 0; m < matrix_elements.size(); ++m)
         {
-            assert( *std::max_element(idx_.elements().first, idx_.elements().second) <= lat.size() );
+            assert( *std::max_element(idx_.begin(), idx_.end()) <= lat.size() );
         }
         #endif
 
         return std::make_pair(idx_, matrix_elements);
     }
-}
+} // namespace chem
 
 #endif

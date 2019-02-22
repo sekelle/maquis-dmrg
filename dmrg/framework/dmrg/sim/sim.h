@@ -35,8 +35,15 @@
 #include <boost/filesystem.hpp>
 #include <boost/optional.hpp>
 
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/serialization/complex.hpp>
+
+#include <openssl/md5.h>
+
 #include "utils/data_collector.hpp"
 
+#include "dmrg/version.h"
 #include "dmrg/utils/DmrgParameters.h"
 
 #include "dmrg/mp_tensors/mps.h"
@@ -44,7 +51,6 @@
 #include "dmrg/mp_tensors/mpo.h"
 #include "dmrg/models/generate_mpo.hpp"
 
-#include "dmrg/mp_tensors/twositetensor.h"
 #include "dmrg/mp_tensors/contractions.h"
 #include "dmrg/mp_tensors/mps_mpo_ops.h"
 #include "dmrg/mp_tensors/mpo_ops.h"
@@ -52,6 +58,7 @@
 #include "dmrg/utils/random.hpp"
 #include "dmrg/utils/time_stopper.h"
 #include "utils/timings.h"
+#include "dmrg/utils/md5.h"
 #include "dmrg/utils/checks.h"
 
 #include "dmrg/models/lattice.h"
@@ -69,10 +76,12 @@ public:
 template <class Matrix, class SymmGroup>
 class sim : public abstract_sim {
 public:
-    sim(DmrgParameters const &);
+    sim(DmrgParameters const &, bool = false);
     virtual ~sim();
     
     virtual void run() =0;
+
+    parameters::proxy get_parm(std::string const& key);
     
 protected:
     typedef typename Model<Matrix, SymmGroup>::measurements_type measurements_type;
@@ -82,9 +91,11 @@ protected:
     
     measurements_type iteration_measurements(int sweep);
     virtual void measure(std::string archive_path, measurements_type & meas);
+
     // TODO: can be made const, now only problem are parameters
-    
     virtual void checkpoint_simulation(MPS<Matrix, SymmGroup> const& state, status_type const&);
+
+    static DmrgParameters complete_parameters(DmrgParameters);
     
 protected:
     DmrgParameters parms;

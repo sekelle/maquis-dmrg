@@ -32,11 +32,33 @@
 
 namespace detail {
     
-    struct pos_tag_lt {
+    struct pos_lt {
         typedef boost::tuple<int, unsigned int> value_type;
         inline bool operator() (value_type const& lhs, value_type const& rhs)
         {
             return (boost::get<0>(lhs) < boost::get<0>(rhs));
+        }
+    };
+
+    struct pos_tag_lt {
+        typedef boost::tuple<int, unsigned int> value_type;
+        inline bool operator() (value_type const& lhs, value_type const& rhs)
+        {
+            if (boost::get<0>(lhs) < boost::get<0>(rhs)) return true;
+            else if (boost::get<0>(lhs) > boost::get<0>(rhs)) return false;
+            else return (boost::get<1>(lhs) < boost::get<1>(rhs));
+        }
+    };
+
+    template <class TD>
+    struct descriptor_lt {
+
+        inline bool operator() (TD const & lhs, TD const & rhs) const
+        {
+            bool less = std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), pos_tag_lt());
+            bool bigger = std::lexicographical_compare(rhs.begin(), rhs.end(), lhs.begin(), lhs.end(), pos_tag_lt());
+            if (bigger == less) return std::abs(lhs.coeff) < std::abs(rhs.coeff);
+            else                return less;
         }
     };
     
@@ -65,7 +87,7 @@ public:
     /// utilities
     void canonical_order() // TODO: check and fix for fermions
     {
-        std::sort(begin(), end(), detail::pos_tag_lt());
+        std::sort(begin(), end(), detail::pos_lt());
     }
     
     bool operator< (term_descriptor const & rhs) const

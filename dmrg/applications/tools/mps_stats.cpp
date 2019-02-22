@@ -37,14 +37,7 @@ using std::cerr;
 using std::cout;
 using std::endl;
 
-#ifdef USE_AMBIENT
-    #include "dmrg/block_matrix/detail/ambient.hpp"
-    typedef ambient::tiles<ambient::matrix<double> > Matrix;
-#else
-    #include "dmrg/block_matrix/detail/alps.hpp"
-    typedef alps::numeric::matrix<double> Matrix;
-#endif
-
+#include "dmrg/sim/matrix_types.h"
 #include "dmrg/block_matrix/indexing.h"
 #include "dmrg/mp_tensors/mps.h"
 #include "dmrg/mp_tensors/mpo.h"
@@ -70,20 +63,53 @@ typedef U1DG grp;
 
 int main(int argc, char ** argv)
 {
+    typedef grp::charge charge;
+
     try {
         if (argc != 2) {
             std::cout << "Usage: " << argv[0] << " <mps.h5>" << std::endl;
             return 1;
         }
-        MPS<Matrix, grp> mps;
+        MPS<matrix, grp> mps;
         load(argv[1], mps);
         
         for (int i=0; i<mps.length(); ++i) {
+
             std::string fname = "mps_stats."+boost::lexical_cast<std::string>(i)+".dat";
             std::ofstream ofs(fname.c_str());
-            mps[i].make_left_paired();
-            for (int k=0; k<mps[i].data().n_blocks(); ++k)
-                ofs << num_rows(mps[i].data()[k]) << "    " << num_cols(mps[i].data()[k]) << std::endl;
+
+            mps[i].make_right_paired();
+            Index<grp> const & physical_i = mps[i].site_dim();
+            Index<grp> const & left_i = mps[i].row_dim();
+            Index<grp> const & right_i = mps[i].col_dim();
+
+            ProductBasis<grp> right_pb(physical_i, right_i,
+                                       boost::lambda::bind(static_cast<charge(*)(charge, charge)>(grp::fuse),
+                                       -boost::lambda::_1, boost::lambda::_2));
+
+
+            for (int l = 0; l < left_i.size(); ++l)
+            {
+                charge lc = left_i[l].first;
+                size_t lsize = left_i[l].second;
+                ofs << lc << " " << lsize << "x" << num_cols(mps[i].data()[l]) << std::endl;
+                for (int s = 0; s < physical_i.size(); ++s)
+                {
+                    charge phys = physical_i[s].first;
+                    charge rc = grp::fuse(phys, lc);
+                    if (!right_i.has(rc)) continue;
+
+                    size_t right_offset = right_pb(phys, rc);
+                    size_t rsize = right_i.size_of_block(rc);
+                     
+                    ofs << "  " << phys << ":" << rsize << "("
+                                << std::accumulate(&mps[i].data()[l](0, right_offset),
+                                                    &mps[i].data()[l](0, right_offset) + lsize * rsize, 0.0,
+                                   boost::lambda::_1 += boost::lambda::_2 * boost::lambda::_2) / (lsize * rsize)
+                                << ")";
+                }
+                ofs << std::endl << std::endl;
+            }
         }
         
     } catch (std::exception& e) {

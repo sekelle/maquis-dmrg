@@ -180,10 +180,10 @@ BOOST_AUTO_TEST_CASE(block_matrix_transpose_inplace){
     Index<U1> rows,cols;
 
     rows.insert(std::make_pair(1, 2));
-    rows.insert(std::make_pair(1, 2));
+    rows.insert(std::make_pair(2, 2));
 
     cols.insert(std::make_pair(1, 2));
-    cols.insert(std::make_pair(1, 2));
+    cols.insert(std::make_pair(2, 2));
 
     block_matrix<Matrix, U1> ba(rows,cols);
 
@@ -200,6 +200,67 @@ BOOST_AUTO_TEST_CASE(block_matrix_transpose_inplace){
 
     BOOST_CHECK_EQUAL(ba[1](0,1),4);
     BOOST_CHECK_EQUAL(ba[1](1,0),3);
+}
+
+BOOST_AUTO_TEST_CASE(block_matrix_transpose_inplace_su2){
+    typedef boost::array<SU2U1::subcharge, 2> array;
+    typedef SU2U1::charge charge;
+
+    DualIndex<SU2U1> basis;
+    {
+        array l1 = {{3,1}}, r1 = {{2,2}};
+        array l2 = {{3,1}}, r2 = {{2,0}};
+        array l3 = {{2,2}}, r3 = {{4,2}};
+        array l4 = {{2,1}}, r4 = {{4,2}};
+
+        #define INSERTBLOCK(basis, lc, rc, ls, rs) basis.insert(DualIndex<SU2U1>::value_type(charge(lc), charge(rc), ls, rs));
+        INSERTBLOCK(basis, l1, r1, 2, 2);
+        INSERTBLOCK(basis, l2, r2, 2, 2);
+        INSERTBLOCK(basis, l3, r3, 2, 2);
+        INSERTBLOCK(basis, l4, r4, 2, 2);
+        #undef INSERTBLOCK
+    }
+
+    block_matrix<Matrix, SU2U1> ba(basis);
+
+    #define FILL(bm, b, v1, v2, v3, v4) bm[b](0,0) = v1; bm[b](0,1) = v2; bm[b](1,0) = v3; bm[b](1,1) = v4;
+    FILL(ba, 0, 0, 1, 2, 0)
+    FILL(ba, 1, 0, 3, 4, 0)
+    FILL(ba, 2, 0, 5, 6, 0)
+    FILL(ba, 3, 0, 7, 8, 0)
+    #undef FILL
+
+    ba.transpose_inplace();
+
+    DualIndex<SU2U1> basis_tr;
+    {
+        array l1 = {{3,1}}, r1 = {{2,2}};
+        array l2 = {{3,1}}, r2 = {{2,0}};
+        array l3 = {{2,2}}, r3 = {{4,2}};
+        array l4 = {{2,1}}, r4 = {{4,2}};
+
+        #define INSERTBLOCK(basis, lc, rc, ls, rs) basis.insert(DualIndex<SU2U1>::value_type(charge(lc), charge(rc), ls, rs));
+        INSERTBLOCK(basis_tr, r1, l1, 2, 2);
+        INSERTBLOCK(basis_tr, r2, l2, 2, 2);
+        INSERTBLOCK(basis_tr, r3, l3, 2, 2);
+        INSERTBLOCK(basis_tr, r4, l4, 2, 2);
+        #undef INSERTBLOCK
+    }
+
+    block_matrix<Matrix, SU2U1> ba_tr(basis_tr);
+
+    #define FILL(bm, b, v1, v2, v3, v4) bm[b](0,0) = v1; bm[b](0,1) = v2; bm[b](1,0) = v3; bm[b](1,1) = v4;
+    FILL(ba_tr, 2, 0, 2, 1, 0)
+    FILL(ba_tr, 3, 0, 4, 3, 0)
+    FILL(ba_tr, 0, 0, 6, 5, 0)
+    FILL(ba_tr, 1, 0, 8, 7, 0)
+    #undef FILL
+
+    BOOST_CHECK_EQUAL(ba.basis(), ba_tr.basis());
+    BOOST_CHECK_EQUAL(ba[0],ba_tr[0]);
+    BOOST_CHECK_EQUAL(ba[1],ba_tr[1]);
+    BOOST_CHECK_EQUAL(ba[2],ba_tr[2]);
+    BOOST_CHECK_EQUAL(ba[3],ba_tr[3]);
 }
 
 BOOST_AUTO_TEST_CASE(block_matrix_clear){

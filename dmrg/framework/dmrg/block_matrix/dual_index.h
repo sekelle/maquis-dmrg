@@ -41,6 +41,8 @@ namespace dual_index_detail
         typedef typename SymmGroup::charge charge;
 
     public:
+        typedef std::size_t qsize_type;
+
         QnBlock() {}
         QnBlock(charge lc_, charge rc_, std::size_t ls_, std::size_t rs_)
             : lc(lc_), rc(rc_), ls(ls_), rs(rs_) {}
@@ -50,10 +52,10 @@ namespace dual_index_detail
             return lc == o.lc && rc == o.rc && ls == o.ls && rs == o.rs;
         }
 
-        typename SymmGroup::charge lc;
-        typename SymmGroup::charge rc;
-        std::size_t                ls;
-        std::size_t                rs;
+        charge     lc;
+        charge     rc;
+        qsize_type ls;
+        qsize_type rs;
     };
 
     template<class SymmGroup>
@@ -146,6 +148,7 @@ template<class SymmGroup> class DualIndex
 public:
     typedef typename SymmGroup::charge charge;
     typedef typename data_type::value_type value_type;
+    typedef typename value_type::qsize_type qsize_type;
     
     typedef typename data_type::iterator iterator;
     typedef typename data_type::const_iterator const_iterator;
@@ -158,11 +161,11 @@ public:
     DualIndex() : sorted_(true) {}
     
     std::size_t left_block_size(charge r, charge c) const {
-        std::size_t pos = position(value_type(r,c,0,0));
+        std::size_t pos = position(r,c);
         return (*this)[pos].ls;
     }
     std::size_t right_block_size(charge r, charge c) const {
-        std::size_t pos = position(value_type(r,c,0,0));
+        std::size_t pos = position(r,c);
         return (*this)[pos].rs;
     }
     
@@ -234,6 +237,17 @@ public:
             (*this)[k].rc = SymmGroup::fuse((*this)[k].rc, diff);
         }
     }
+
+    DualIndex transpose() const
+    {
+        DualIndex ret(*this);
+        for (std::size_t i=0; i < ret.data_.size(); ++i) {
+            std::swap(ret.data_[i].lc, ret.data_[i].rc);
+            std::swap(ret.data_[i].ls, ret.data_[i].rs);
+        }
+        ret.sort();
+        return ret;
+    }
     
     bool operator==(DualIndex const & o) const
     {
@@ -259,6 +273,15 @@ public:
                               );
     }
 
+    std::size_t memory_size() const
+    {
+        return std::accumulate(data_.begin(), data_.end(), 0,
+                               boost::lambda::_1
+                               + boost::lambda::bind(&value_type::ls, boost::lambda::_2)
+                               * boost::lambda::bind(&value_type::rs, boost::lambda::_2)
+                              );
+    }
+
     // This is mostly forwarding of the std::vector
     iterator begin() { return data_.begin(); }
     iterator end() { return data_.end(); }
@@ -272,13 +295,13 @@ public:
 
     charge & left_charge(std::size_t k) { return data_[k].lc; }
     charge & right_charge(std::size_t k) { return data_[k].rc; }
-    std::size_t & left_size(std::size_t k) { return data_[k].ls; }
-    std::size_t & right_size(std::size_t k) { return data_[k].rs; }
+    qsize_type & left_size(std::size_t k) { return data_[k].ls; }
+    qsize_type & right_size(std::size_t k) { return data_[k].rs; }
 
     charge const & left_charge(std::size_t k) const { return data_[k].lc; }
     charge const & right_charge(std::size_t k) const { return data_[k].rc; }
-    std::size_t const & left_size(std::size_t k) const { return data_[k].ls; }
-    std::size_t const & right_size(std::size_t k) const { return data_[k].rs; }
+    qsize_type const & left_size(std::size_t k) const { return data_[k].ls; }
+    qsize_type const & right_size(std::size_t k) const { return data_[k].rs; }
 
     void resize(std::size_t sz) { data_.resize(sz); }
     
@@ -347,6 +370,13 @@ public:
     
     BOOST_SERIALIZATION_SPLIT_MEMBER()
 };
+
+template<class SymmGroup>
+std::size_t size_of(DualIndex<SymmGroup> const & m)
+{
+    return m.memory_size();
+}
+
 
 template<class SymmGroup>
 std::ostream& operator<<(std::ostream& os, DualIndex<SymmGroup> const & idx)

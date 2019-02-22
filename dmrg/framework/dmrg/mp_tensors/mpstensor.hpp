@@ -35,8 +35,6 @@
 
 #include "utils/traits.hpp"
 
-#include "dmrg/mp_tensors/contractions/non-abelian/gemm.hpp"
-
 // implementation of join functions
 #include "dmrg/mp_tensors/mps_join.h"
 
@@ -376,13 +374,10 @@ MPSTensor<Matrix, SymmGroup>::scalar_overlap(MPSTensor<Matrix, SymmGroup> const 
     common_subset(i1, i2);
     std::vector<scalar_type> vt; vt.reserve(i1.size());
 
-    parallel::scheduler_balanced_iterative scheduler(data());
-
     for (size_t b = 0; b < i1.size(); ++b) {
         typename SymmGroup::charge c = i1[b].first;
         size_type l = data().find_block(c, c);
         size_type r = rhs.data().find_block(c, c);
-        parallel::guard proc(scheduler(l));
         assert( l != data().n_blocks() && r != rhs.data().n_blocks() );
         vt.push_back(overlap(data()[l], rhs.data()[r]));
     } // should be reformulated in terms of reduction (todo: Matthias, 30.04.12 / scalar-value types)
@@ -425,6 +420,18 @@ bool MPSTensor<Matrix, SymmGroup>::isnormalized(bool test) const
         return true;
     else
         return false;
+}
+
+template<class Matrix, class SymmGroup>
+bool MPSTensor<Matrix, SymmGroup>::is_left_paired() const
+{
+    return cur_storage == LeftPaired;
+}
+
+template<class Matrix, class SymmGroup>
+bool MPSTensor<Matrix, SymmGroup>::is_right_paired() const
+{
+    return cur_storage == RightPaired;
 }
 
 template<class Matrix, class SymmGroup>
@@ -662,4 +669,20 @@ template<class Matrix, class SymmGroup>
 std::size_t MPSTensor<Matrix, SymmGroup>::num_elements() const
 {
     return data().num_elements();
+}
+
+template<class Matrix, class SymmGroup>
+typename boost::enable_if<alps::is_complex<typename Matrix::value_type>, MPSTensor<Matrix, SymmGroup> >::type const &
+set_conjugate(MPSTensor<Matrix, SymmGroup> const & mps, MPSTensor<Matrix, SymmGroup> & buffer)
+{
+    buffer = mps;
+    buffer.data().conjugate_inplace();
+    return buffer;
+}
+
+template<class Matrix, class SymmGroup>
+typename boost::disable_if<alps::is_complex<typename Matrix::value_type>, MPSTensor<Matrix, SymmGroup> >::type const &
+set_conjugate(MPSTensor<Matrix, SymmGroup> const & mps, MPSTensor<Matrix, SymmGroup> & buffer)
+{
+    return mps;
 }

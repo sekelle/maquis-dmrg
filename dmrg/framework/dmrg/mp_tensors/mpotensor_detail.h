@@ -27,51 +27,50 @@
 #ifndef MPOTENSOR_DETAIL_H
 #define MPOTENSOR_DETAIL_H
 
+#include <boost/utility.hpp>
+#include <boost/type_traits.hpp>
+
+#include "dmrg/models/op_handler.h"
+
 template<class Matrix, class SymmGroup>
 class MPOTensor;
 
 namespace MPOTensor_detail
 {
-    template <class Matrix, class SymmGroup>
-    class term_descriptor {
+    typedef unsigned index_type;
+
+    template <class T, bool C>
+    struct const_type { typedef T type; };
+
+    template <class T>
+    struct const_type<T, true> { typedef const T type; };
+
+    template <class Matrix, class SymmGroup, bool Const>
+    class term_descriptor
+    {
         typedef typename Matrix::value_type value_type;
-    public:
         typedef typename OPTable<Matrix, SymmGroup>::op_t op_t;
+        typedef typename OPTable<Matrix, SymmGroup>::tag_type tag_type;
+        typedef typename MPOTensor<Matrix, SymmGroup>::internal_value_type internal_value_type;
+        typedef typename MPOTensor<Matrix, SymmGroup>::op_table_ptr op_table_ptr;
+
+    public:
         term_descriptor() {}
-        term_descriptor(op_t & op_, value_type & s_) : op(op_), scale(s_) {}
+        term_descriptor(typename const_type<internal_value_type, Const>::type & term_descs,
+                        op_table_ptr op_tbl_)
+            : operator_table(op_tbl_), term_descriptors(term_descs) {}
 
-        op_t & op;
-        value_type & scale;
+        std::size_t size() const { return term_descriptors.size(); }
+        typename const_type<op_t, Const>::type & op(std::size_t i=0) { return (*operator_table)[term_descriptors[i].first]; }
+        typename const_type<value_type, Const>::type & scale(std::size_t i=0) { return term_descriptors[i].second; }
+
+    private:
+        typename const_type<internal_value_type, Const>::type & term_descriptors;
+        op_table_ptr operator_table;
     };
-
-    template <class Matrix, class SymmGroup>
-    term_descriptor<Matrix, SymmGroup> make_term_descriptor(
-        typename term_descriptor<Matrix, SymmGroup>::op_t & op_, typename Matrix::value_type & s_)
-    {
-        return term_descriptor<Matrix, SymmGroup>(op_, s_);
-    }
-
-    template <class Matrix, class SymmGroup>
-    class const_term_descriptor {
-        typedef typename Matrix::value_type value_type;
-    public:
-        typedef typename OPTable<Matrix, SymmGroup>::op_t op_t;
-        const_term_descriptor() {}
-        const_term_descriptor(op_t const & op_, value_type s_) : op(op_), scale(s_) {}
-
-        op_t const & op;
-        value_type const scale;
-    };
-
-    template <class Matrix, class SymmGroup, typename Scale>
-    const_term_descriptor<Matrix, SymmGroup> make_const_term_descriptor(
-        typename const_term_descriptor<Matrix, SymmGroup>::op_t const & op_, Scale s_)
-    {
-        return const_term_descriptor<Matrix, SymmGroup>(op_, s_);
-    }
 
     template <class ConstIterator>
-    class IteratorWrapper
+    class IteratorWrapper : public std::iterator<std::forward_iterator_tag, typename std::iterator_traits<ConstIterator>::value_type>
     {
         typedef ConstIterator internal_iterator;
 
@@ -141,47 +140,64 @@ namespace MPOTensor_detail
 
     class Hermitian
     {
-        typedef std::size_t index_type;
-
-        friend Hermitian operator * (Hermitian const &, Hermitian const &);
-
     public:
-        Hermitian(index_type ld, index_type rd)
-        {
-            LeftHerm.resize(ld);
-            RightHerm.resize(rd);
+        Hermitian(index_type d) : Herm(d, std::numeric_limits<index_type>::max()), Phase(d,1) {}
 
-            index_type z=0;
-            std::generate(LeftHerm.begin(), LeftHerm.end(), boost::lambda::var(z)++);
-            z=0;
-            std::generate(RightHerm.begin(), RightHerm.end(), boost::lambda::var(z)++);
+        template <class Charge>
+        bool skip(index_type b, Charge l, Charge r) const
+        {
+            if (Herm[b] < b) return true;
+            else if (Herm[b] == b) return l < r;
+            else return false;
+        }
+        index_type conj(index_type b) const { return Herm[b]; }
+
+        std::size_t size()       const { return Herm.size(); }
+        int phase(std::size_t i) const { return Phase[i]; }
+
+        void register_hermitian_pair(index_type a, index_type b, int phase_a, int phase_b)
+        {
+            Herm[a] = b;
+            Herm[b] = a;
+            Phase[a] = phase_a;
+            Phase[b] = phase_b;
         }
 
-        Hermitian(std::vector<index_type> const & lh,
-                  std::vector<index_type> const & rh)
-        : LeftHerm(lh)
-        , RightHerm(rh)
-        {}
-
-        bool left_skip(index_type b1) const { return LeftHerm[b1] < b1; }
-        bool right_skip(index_type b2) const { return RightHerm[b2] < b2; }
-
-        index_type  left_conj(index_type b1) const { return  LeftHerm[b1]; }
-        index_type right_conj(index_type b2) const { return RightHerm[b2]; }
-
-        std::size_t left_size() const { return LeftHerm.size(); }
-        std::size_t right_size() const { return RightHerm.size(); }
+        void register_self_adjoint(index_type a)
+        {
+            Herm[a] = a;
+        }
 
     private:
-        std::vector<index_type> LeftHerm;
-        std::vector<index_type> RightHerm;
+        std::vector<index_type> Herm;
+        std::vector<int> Phase;
+
+        friend class boost::serialization::access;
+
+        template <class Archive>
+        void serialize(Archive & ar, const unsigned int version)
+        {
+            ar & Herm & Phase;
+        }
     };
 
-    inline Hermitian operator * (Hermitian const & a, Hermitian const & b)
-    {
-        return Hermitian(a.LeftHerm, b.RightHerm);
-    } 
+    template <class Matrix, class SymmGroup>
+    typename boost::disable_if<symm_traits::HasSU2<SymmGroup>, int>::type get_spin(MPOTensor<Matrix, SymmGroup> const & mpo,
+                                                                                   typename MPOTensor<Matrix, SymmGroup>::index_type k, bool left)
+    { 
+        return 0;
+    }
 
-}
+    template <class Matrix, class SymmGroup>
+    typename boost::enable_if<symm_traits::HasSU2<SymmGroup>, int>::type get_spin(MPOTensor<Matrix, SymmGroup> const & mpo,
+                                                                                  typename MPOTensor<Matrix, SymmGroup>::index_type k, bool left)
+    { 
+        if (left)
+        return mpo.left_spin(k).get();
+        else
+        return mpo.right_spin(k).get();
+    }
+
+} // namespace MPOTensor_detail
 
 #endif

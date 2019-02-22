@@ -29,6 +29,8 @@
 
 #include <cstddef>
 #include <complex>
+#include <limits>
+#include <boost/static_assert.hpp>
 
 #include "dmrg/utils/proc_statm.h"
 #include "dmrg/utils/proc_status.h"
@@ -62,6 +64,16 @@ bool all_true (InputIterator first, InputIterator last, Predicate pred)
 }
 
 template <class Pair>
+struct greater_first
+{
+    bool operator()(Pair const & i,
+                    Pair const & j) const
+    {
+        return i.first > j.first;
+    }
+};
+
+template <class Pair>
 struct compare_pair
 {
     bool operator()(Pair const & i,
@@ -90,5 +102,89 @@ struct compare_pair_inverse
             return i.first < j.first;
     }
 };
+
+template <typename T>
+bool check_align(T const* const p, unsigned int alignment) {
+    return ((reinterpret_cast<uintptr_t>(static_cast<void const* const>(p))&(alignment-1)) == 0);
+};
+
+namespace bit_twiddling
+{
+
+    template <unsigned A, typename T>
+    inline T round_up(T x)
+    {
+        // round up x to nearest multiple of A
+        BOOST_STATIC_ASSERT((A & (A-1)) == 0); // check that A is a power of 2
+        BOOST_STATIC_ASSERT(!std::numeric_limits<T>::is_signed);
+        return (x+(A-1)) & (~(A-1));
+    }
+
+    struct bits
+    {
+        //static const unsigned w0 = 1;
+        //static const unsigned w1 = 27;
+        //static const unsigned w2 = 26;
+        //static const unsigned w3 = 48;
+        //static const unsigned w4 = 26;
+        static const unsigned w0 = 26;
+        static const unsigned w1 = 48;
+        static const unsigned w2 = 26;
+        static const unsigned w3 = 1;
+        static const unsigned w4 = 27;
+
+        static const unsigned long max0 = (1ul<<w0)-1;
+        static const unsigned long max1 = (1ul<<w1)-1;
+        static const unsigned long max2 = (1ul<<w2)-1;
+        static const unsigned long max3 = (1ul<<w3)-1;
+        static const unsigned long max4 = (1ul<<w4)-1;
+
+        static constexpr const unsigned s[5] = {0, w0, w0+w1, w0+w1+w2, w0+w1+w2+w3};
+    };
+
+    inline __uint128_t add_last(__uint128_t tuple, unsigned long p1)
+    {
+        //return tuple += (p1<<1);
+        return tuple += ((__uint128_t)p1<<bits::s[4]);
+    }
+
+    inline __uint128_t pack(unsigned long a, unsigned long b, unsigned long c, unsigned long d, char e)
+    {
+        //assert(a <= bits::max4);
+        //assert(b <= bits::max3);
+        //assert(c <= bits::max2);
+        //assert(d <= bits::max1);
+        //assert(e <= bits::max0);
+        assert(d <= bits::max4);
+        assert(e <= bits::max3);
+        assert(a <= bits::max2);
+        assert(b <= bits::max1);
+        assert(c <= bits::max0);
+
+        //return ((__uint128_t)a<<bits::s[4]) + ((__uint128_t)b<<bits::s[3]) + ((__uint128_t)c<<bits::s[2]) + ((__uint128_t)d<<bits::s[1]) + e;
+        return ((__uint128_t)d<<bits::s[4]) + ((__uint128_t)e<<bits::s[3]) + ((__uint128_t)a<<bits::s[2]) + ((__uint128_t)b<<bits::s[1]) + c;
+    }
+
+    inline void unpack(__uint128_t tuple, unsigned long& p1, unsigned long& p2, unsigned long& p3, unsigned long& p4, char& p5)
+    {
+        static const __uint128_t mask0 = (((__uint128_t)1 << bits::w0)-1);
+        static const __uint128_t mask1 = (((__uint128_t)1 << bits::w1)-1) << bits::s[1];
+        static const __uint128_t mask2 = (((__uint128_t)1 << bits::w2)-1) << bits::s[2];
+        static const __uint128_t mask3 = (((__uint128_t)1 << bits::w3)-1) << bits::s[3];
+        static const __uint128_t mask4 = (((__uint128_t)1 << bits::w4)-1) << bits::s[4];
+
+        //p1 = (tuple & mask4) >> bits::s[4];
+        //p2 = (tuple & mask3) >> bits::s[3];
+        //p3 = (tuple & mask2) >> bits::s[2];
+        //p4 = (tuple & mask1) >> bits::s[1];
+        //p5 = tuple & bits::s[1];
+        p4 = (tuple & mask4) >> bits::s[4];
+        p5 = (tuple & mask3) >> bits::s[3];
+        p1 = (tuple & mask2) >> bits::s[2];
+        p2 = (tuple & mask1) >> bits::s[1];
+        p3 = tuple & mask0;
+    }
+
+} // namespace bit_twiddling
 
 #endif /* UTILS_HPP_ */

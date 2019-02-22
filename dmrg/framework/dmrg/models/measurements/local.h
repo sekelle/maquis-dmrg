@@ -71,7 +71,8 @@ namespace measurements {
             this->cast_to_real = is_hermitian_meas(site_term);
         }
 
-        void evaluate(MPS<Matrix, SymmGroup> const& mps, boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none)
+        void evaluate(MPS<Matrix, SymmGroup> const& mps, boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none
+                                                       , boost::optional<std::string const&> on_the_fly_bra = boost::none)
         {
             this->vector_results.clear();
             this->labels.clear();
@@ -88,10 +89,7 @@ namespace measurements {
                 this->vector_results.reserve(this->vector_results.size() + L);
                 this->labels.reserve(this->labels.size() + L);
                 
-                parallel::scheduler_balanced scheduler(L);
-                
                 for (typename Lattice::pos_t p = 0; p < L; ++p) {
-                    parallel::guard proc(scheduler(p)); /// scheduling kernels
                     
                     subcharge type = lattice.get_prop<subcharge>("type", p);
                     if (site_term[type].n_blocks() > 0) {

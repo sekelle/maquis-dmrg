@@ -49,11 +49,11 @@ qc_su2<Matrix, SymmGroup>::qc_su2(Lattice const & lat_, BaseParameters & parms_)
     C[0] = 1; C[1] = -1; // 1-1
     // D = 00
 
-    //SpinDescriptor<symm_traits::SU2Tag> one_half_up(1,0,1);
-    //SpinDescriptor<symm_traits::SU2Tag> one_half_down(1,1,0);
-    //SpinDescriptor<symm_traits::SU2Tag> one_up(2,0,2);
-    //SpinDescriptor<symm_traits::SU2Tag> one_flat(2,1,1);
-    //SpinDescriptor<symm_traits::SU2Tag> one_down(2,2,0);
+    SpinDescriptor<symm_traits::SU2Tag> one_half_up(1,0,1);
+    SpinDescriptor<symm_traits::SU2Tag> one_half_down(1,1,0);
+    SpinDescriptor<symm_traits::SU2Tag> one_up(2,0,2);
+    SpinDescriptor<symm_traits::SU2Tag> one_flat(2,1,1);
+    SpinDescriptor<symm_traits::SU2Tag> one_down(2,2,0);
 
     for (subcharge irr=0; irr <= max_irrep; ++irr)
     {
@@ -93,28 +93,28 @@ qc_su2<Matrix, SymmGroup>::qc_su2(Lattice const & lat_, BaseParameters & parms_)
     /*************************************************************/
 
     op_t create_fill_op;
-    //create_fill_op.spin() = one_half_up;
+    create_fill_op.spin() = one_half_up;
     create_fill_op.insert_block(Matrix(1,1,sqrt(2.)), B, A);
     create_fill_op.insert_block(Matrix(1,1,sqrt(2.)), C, A);
     create_fill_op.insert_block(Matrix(1,1,1), D, B);
     create_fill_op.insert_block(Matrix(1,1,1), D, C);
 
     op_t destroy_op;
-    //destroy_op.spin() = one_half_down;
+    destroy_op.spin() = one_half_down;
     destroy_op.insert_block(Matrix(1,1,1), A, B);
     destroy_op.insert_block(Matrix(1,1,1), A, C);
     destroy_op.insert_block(Matrix(1,1,sqrt(2.)), B, D);
     destroy_op.insert_block(Matrix(1,1,sqrt(2.)), C, D);
 
     op_t destroy_fill_op;
-    //destroy_fill_op.spin() = one_half_up;
+    destroy_fill_op.spin() = one_half_up;
     destroy_fill_op.insert_block(Matrix(1,1,1), A, B);
     destroy_fill_op.insert_block(Matrix(1,1,1), A, C);
     destroy_fill_op.insert_block(Matrix(1,1,-sqrt(2.)), B, D);
     destroy_fill_op.insert_block(Matrix(1,1,-sqrt(2.)), C, D);
 
     op_t create_op;
-    //create_op.spin() = one_half_down;
+    create_op.spin() = one_half_down;
     create_op.insert_block(Matrix(1,1,sqrt(2.)), B, A);
     create_op.insert_block(Matrix(1,1,sqrt(2.)), C, A);
     create_op.insert_block(Matrix(1,1,-1), D, B);
@@ -123,36 +123,36 @@ qc_su2<Matrix, SymmGroup>::qc_su2(Lattice const & lat_, BaseParameters & parms_)
     /*************************************************************/
 
     op_t create_fill_couple_down_op = create_fill_op;
-    //create_fill_couple_down_op.spin() = one_half_down;
+    create_fill_couple_down_op.spin() = one_half_down;
 
     op_t destroy_fill_couple_down_op = destroy_fill_op;
-    //destroy_fill_couple_down_op.spin() = one_half_down;
+    destroy_fill_couple_down_op.spin() = one_half_down;
 
     op_t create_couple_up_op = create_op;
-    //create_couple_up_op.spin() = one_half_up;
+    create_couple_up_op.spin() = one_half_up;
 
     op_t destroy_couple_up_op = destroy_op;
-    //destroy_couple_up_op.spin() = one_half_up;
+    destroy_couple_up_op.spin() = one_half_up;
 
     /*************************************************************/
 
     op_t create_fill_count_op;
-    //create_fill_count_op.spin() = one_half_up;
+    create_fill_count_op.spin() = one_half_up;
     create_fill_count_op.insert_block(Matrix(1,1,sqrt(2.)), B, A);
     create_fill_count_op.insert_block(Matrix(1,1,sqrt(2.)), C, A);
 
     op_t destroy_count_op;
-    //destroy_count_op.spin() = one_half_down;
+    destroy_count_op.spin() = one_half_down;
     destroy_count_op.insert_block(Matrix(1,1,1), A, B);
     destroy_count_op.insert_block(Matrix(1,1,1), A, C);
 
     op_t destroy_fill_count_op;
-    //destroy_fill_count_op.spin() = one_half_up;
+    destroy_fill_count_op.spin() = one_half_up;
     destroy_fill_count_op.insert_block(Matrix(1,1,1), A, B);
     destroy_fill_count_op.insert_block(Matrix(1,1,1), A, C);
 
     op_t create_count_op;
-    //create_count_op.spin() = one_half_down;
+    create_count_op.spin() = one_half_down;
     create_count_op.insert_block(Matrix(1,1,sqrt(2.)), B, A);
     create_count_op.insert_block(Matrix(1,1,sqrt(2.)), C, A);
 
@@ -180,17 +180,17 @@ qc_su2<Matrix, SymmGroup>::qc_su2(Lattice const & lat_, BaseParameters & parms_)
     count_fill_op.insert_block(Matrix(1,1,-1), C, B);
 
     op_t flip_to_S2_op;
-    //flip_to_S2_op.spin() = one_up;
+    flip_to_S2_op.spin() = one_up;
     flip_to_S2_op.insert_block(Matrix(1,1,std::sqrt(3./2)), B, B);
     flip_to_S2_op.insert_block(Matrix(1,1,std::sqrt(3./2.)), C, C);
     flip_to_S2_op.insert_block(Matrix(1,1,std::sqrt(3./2.)),  B, C);
     flip_to_S2_op.insert_block(Matrix(1,1,std::sqrt(3./2.)),  C, B);
 
     op_t flip_to_S0_op = flip_to_S2_op;
-    //flip_to_S0_op.spin() = one_down;
+    flip_to_S0_op.spin() = one_down;
 
     op_t flip_S0_op = flip_to_S2_op;
-    //flip_S0_op.spin() = one_flat;
+    flip_S0_op.spin() = one_flat;
 
     /**********************************************************************/
     /*** Create operator tag table ****************************************/
@@ -258,6 +258,32 @@ qc_su2<Matrix, SymmGroup>::qc_su2(Lattice const & lat_, BaseParameters & parms_)
 
     #undef REGISTER
 
+    #define HERMITIAN(op1, op2) for (int hh=0; hh < op1.size(); ++hh) tag_handler->hermitian_pair(op1[hh], op2[hh]);
+    HERMITIAN(create_fill, destroy_fill)
+    HERMITIAN(create, destroy)
+    HERMITIAN(e2d, d2e)
+
+    HERMITIAN(create_fill_count, destroy_fill_count) // useless
+    HERMITIAN(create_count, destroy_count)
+
+    HERMITIAN(create_fill_couple_down, destroy_fill_couple_down) // useless
+
+    HERMITIAN(create_couple_up, destroy_couple_up)
+    #undef HERMITIAN
+
+    #define SELF_ADJOINT(op) for (int hh=0; hh < op.size(); ++hh) tag_handler->self_adjoint(op[hh]);
+    SELF_ADJOINT(ident);
+    SELF_ADJOINT(ident_full);
+    SELF_ADJOINT(fill);
+    SELF_ADJOINT(count);
+    SELF_ADJOINT(docc);
+    SELF_ADJOINT(count_fill);
+    SELF_ADJOINT(flip_S0);
+    //SELF_ADJOINT(flip_to_S0); // these can be combined with non-self-adjoint operators
+    //SELF_ADJOINT(flip_to_S2); // and therefore are only self-adjoint if both the rest term
+                                // and rest term herm conjugate occur in the final operator
+    #undef SELF_ADJOINT
+
 //#define PRINT(op) maquis::cout << #op << "\t" << op << std::endl;
 //    PRINT(ident)
 //    PRINT(ident_full)
@@ -315,11 +341,17 @@ qc_su2<Matrix, SymmGroup>::qc_su2(Lattice const & lat_, BaseParameters & parms_)
     op_collection.flip      .no_couple = flip_S0;
     op_collection.flip      .couple_up = flip_to_S2;
     op_collection.flip      .couple_down = flip_to_S0;
+}
+
+template <class Matrix, class SymmGroup>
+void qc_su2<Matrix, SymmGroup>::create_terms()
+{
+    typedef typename SymmGroup::subcharge subcharge;
+    subcharge N = SymmGroup::particleNumber(this->total_quantum_numbers(parms));
 
     /**********************************************************************/
 
-    chem_detail::ChemHelperSU2<Matrix, SymmGroup> ta(parms, lat, tag_handler);
-    alps::numeric::matrix<Lattice::pos_t> idx_ = ta.getIdx();
+    chem::ChemHelperSU2<Matrix, SymmGroup> ta(parms, lat, tag_handler);
     std::vector<value_type> matrix_elements = ta.getMatrixElements();
 
     std::vector<int> used_elements(matrix_elements.size(), 0);
@@ -330,14 +362,14 @@ qc_su2<Matrix, SymmGroup>::qc_su2(Lattice const & lat_, BaseParameters & parms_)
 
     using boost::lambda::_1;
     using boost::bind;
-    using chem_detail::ChemHelperSU2;
-    using chem_detail::append;
+    using chem::ChemHelperSU2;
+    using chem::append;
  
     for (std::size_t m=0; m < matrix_elements.size(); ++m) {
-        int i = idx_(m, 0);
-        int j = idx_(m, 1);
-        int k = idx_(m, 2);
-        int l = idx_(m, 3);
+        int i = ta.idx(m, 0);
+        int j = ta.idx(m, 1);
+        int k = ta.idx(m, 2);
+        int l = ta.idx(m, 3);
 
         // Core electrons energy
         if ( i==-1 && j==-1 && k==-1 && l==-1) {
@@ -365,13 +397,44 @@ qc_su2<Matrix, SymmGroup>::qc_su2(Lattice const & lat_, BaseParameters & parms_)
         // Hopping term t_ij 
         else if (k == -1 && l == -1) {
 
-            // The sqrt(2.) balances the magnitudes of Clebsch coeffs C^{1/2 1/2 0}_{mrm'} which apply at the second spin-1/2 operator
-            this->terms_.push_back(TermMakerSU2<Matrix, SymmGroup>::positional_two_term(
-                true, ident, std::sqrt(2.)*matrix_elements[m],i,j,create, create_fill, destroy, destroy_fill, lat
-            ));
-            this->terms_.push_back(TermMakerSU2<Matrix, SymmGroup>::positional_two_term(
-                true, ident, std::sqrt(2.)*matrix_elements[m],j,i,create, create_fill, destroy, destroy_fill, lat
-            ));
+            // one-electron problems need special attention
+            if (N == 1) {
+
+                // The sqrt(2.) balances the magnitudes of Clebsch coeffs C^{1/2 1/2 0}_{mrm'} which apply at the second spin-1/2 operator
+                this->terms_.push_back(TermMakerSU2<Matrix, SymmGroup>::positional_two_term(
+                    true, ident, value_type(std::sqrt(2.))*matrix_elements[m],j,i,create, create_fill, destroy, destroy_fill, lat
+                ));
+                this->terms_.push_back(TermMakerSU2<Matrix, SymmGroup>::positional_two_term(
+                    true, ident, value_type(std::sqrt(2.))*matrix_elements[m],i,j,create, create_fill, destroy, destroy_fill, lat
+                ));
+            }
+
+            else {
+
+                typedef SpinSumSU2<Matrix, SymmGroup> SSUM;
+                typedef std::vector<term_descriptor> term_vec;
+
+                term_vec & vec = this->terms_;
+
+                term_vec terms;
+                for (pos_t kk = 0; kk < lat.size(); ++kk)
+                {   
+                    if (kk == j || kk == i) continue;
+                    append(terms, SSUM::three_term(matrix_elements[m] * value_type(1./(N-1)), i,kk,kk,j, op_collection, lat));
+                    append(terms, SSUM::three_term(matrix_elements[m] * value_type(1./(N-1)), j,kk,kk,i, op_collection, lat));
+                }
+
+                std::for_each(terms.begin(), terms.end(), bind(&ChemHelperSU2<Matrix, SymmGroup>::add_3term, &ta, vec, _1));
+
+                terms.clear();
+
+                append(terms, SSUM::V_term(matrix_elements[m] * value_type(1./(N-1)), i,i,i,j, op_collection, lat));
+                append(terms, SSUM::V_term(matrix_elements[m] * value_type(1./(N-1)), j,i,i,i, op_collection, lat));
+
+                append(terms, SSUM::V_term(matrix_elements[m] * value_type(1./(N-1)), i,j,j,j, op_collection, lat));
+                append(terms, SSUM::V_term(matrix_elements[m] * value_type(1./(N-1)), j,j,j,i, op_collection, lat));
+                std::for_each(terms.begin(), terms.end(), bind(&ChemHelperSU2<Matrix, SymmGroup>::add_2term, &ta, vec, _1));
+            }
 
             used_elements[m] += 1;
         }
@@ -430,8 +493,8 @@ qc_su2<Matrix, SymmGroup>::qc_su2(Lattice const & lat_, BaseParameters & parms_)
             term_vec & vec = this->terms_;
 
             term_vec terms;
-            append(terms, SSUM::two_term(0.5*matrix_elements[m], i,i,j,j, op_collection, lat));
-            append(terms, SSUM::two_term(0.5*matrix_elements[m], j,j,i,i, op_collection, lat));
+            append(terms, SSUM::two_term(value_type(0.5)*matrix_elements[m], i,i,j,j, op_collection, lat));
+            append(terms, SSUM::two_term(value_type(0.5)*matrix_elements[m], j,j,i,i, op_collection, lat));
 
             append(terms, SSUM::two_term(matrix_elements[m], i,j,i,j, op_collection, lat));
 

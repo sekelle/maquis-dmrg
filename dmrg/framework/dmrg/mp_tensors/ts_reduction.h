@@ -25,39 +25,12 @@
  *
  *****************************************************************************/
 
-#include <vector>
 #include <utility>
 
 #include "dmrg/block_matrix/symmetry/gsl_coupling.h"
-#include "dmrg/mp_tensors/mpstensor.h"
 #include "dmrg/block_matrix/block_matrix_algorithms.h"
 
 namespace ts_reduction {
-    
-    namespace detail {
-
-        template <class T, class SymmGroup>
-        struct print_values
-        {
-            void operator()(block_matrix<alps::numeric::matrix<T>, SymmGroup> const & m2) {}
-        };
-
-        template <class SymmGroup>
-        struct print_values<double, SymmGroup>
-        {
-            void operator()(block_matrix<alps::numeric::matrix<double>, SymmGroup> const & m2) {
-                std::vector<double> vcopy;
-                for(int b = 0; b < m2.n_blocks(); ++b)
-                {
-                    std::copy(m2[b].elements().first, m2[b].elements().second, std::back_inserter(vcopy));
-                }
-                std::sort(vcopy.begin(), vcopy.end());
-                maquis::cout << "Number of elements: " << vcopy.size() << std::endl;
-                std::copy(vcopy.begin(), vcopy.end(), std::ostream_iterator<double>(maquis::cout, ", "));
-                maquis::cout << std::endl;
-            }
-        };
-    }
     
     template<class Matrix, class SymmGroup>
     Index<SymmGroup> reduce_right(Index<SymmGroup> const & physical_i_left,

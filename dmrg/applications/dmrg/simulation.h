@@ -36,6 +36,7 @@ struct simulation_base {
 
 template <class SymmGroup>
 struct simulation : public simulation_base {
+    simulation(DmrgParameters & parms) {}
     void run(DmrgParameters & parms);
 };
 

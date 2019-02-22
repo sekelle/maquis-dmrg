@@ -35,36 +35,23 @@
 #endif
 
 #include <boost/algorithm/string.hpp>
+#include <boost/archive/binary_oarchive.hpp>
 
 #include "utils/sizeof.h"
 
 #include "ietl_lanczos_solver.h"
 #include "ietl_jacobi_davidson.h"
+#include "ietl_davidson.h"
 
 #include "dmrg/utils/BaseParameters.h"
 #include "dmrg/utils/results_collector.h"
 #include "dmrg/utils/storage.h"
 #include "dmrg/utils/time_limit_exception.h"
-#include "dmrg/utils/parallel/placement.hpp"
 #include "dmrg/utils/checks.h"
+#include "dmrg/utils/aligned_allocator.hpp"
 
-template<class Matrix, class SymmGroup>
-struct SiteProblem
-{
-    SiteProblem(Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & left_,
-                Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & right_,
-                MPOTensor<Matrix, SymmGroup> const & mpo_)
-    : left(left_)
-    , right(right_)
-    , mpo(mpo_) 
-    {
-    }
-    
-    Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & left;
-    Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & right;
-    MPOTensor<Matrix, SymmGroup> const & mpo;
-    double ortho_shift;
-};
+#include "dmrg/optimize/site_problem.h"
+
 
 #define BEGIN_TIMING(name) \
 now = boost::chrono::high_resolution_clock::now();
@@ -87,8 +74,13 @@ enum OptimizeDirection { Both, LeftOnly, RightOnly };
 template<class Matrix, class SymmGroup, class Storage>
 class optimizer_base
 {
-    typedef contraction::Engine<Matrix, typename storage::constrained<Matrix>::type, SymmGroup> contr;
 public:
+    typedef typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, 32>::type AlignedMatrix;
+    typedef typename storage::constrained<AlignedMatrix>::type BoundaryMatrix;
+protected:
+    typedef contraction::Engine<Matrix, BoundaryMatrix, SymmGroup> contr;
+public:
+
     optimizer_base(MPS<Matrix, SymmGroup> & mps_,
                    MPO<Matrix, SymmGroup> const & mpo_,
                    BaseParameters & parms_,
@@ -139,11 +131,11 @@ protected:
 
     inline void boundary_left_step(MPO<Matrix, SymmGroup> const & mpo, int site)
     {
-        left_[site+1] = contr::overlap_mpo_left_step(mps[site], mps[site], left_[site], mpo[site]);
+        left_[site+1] = contr::overlap_mpo_left_step(mps[site], mps[site], left_[site], mpo[site], true);
         Storage::pin(left_[site+1]);
         
         for (int n = 0; n < northo; ++n)
-            ortho_left_[n][site+1] = contr::overlap_left_step(mps[site], ortho_mps[n][site], ortho_left_[n][site]);
+            ortho_left_[n][site+1] = mps_detail::overlap_left_step(mps[site], ortho_mps[n][site], ortho_left_[n][site]);
     }
     
     inline void boundary_right_step(MPO<Matrix, SymmGroup> const & mpo, int site)
@@ -152,12 +144,11 @@ protected:
         Storage::pin(right_[site]);
         
         for (int n = 0; n < northo; ++n)
-            ortho_right_[n][site] = contr::overlap_right_step(mps[site], ortho_mps[n][site], ortho_right_[n][site+1]);
+            ortho_right_[n][site] = mps_detail::overlap_right_step(mps[site], ortho_mps[n][site], ortho_right_[n][site+1]);
     }
 
     void init_left_right(MPO<Matrix, SymmGroup> const & mpo, int site)
     {
-        parallel::construct_placements(mpo);
         std::size_t L = mps.length();
         
         left_.resize(mpo.length()+1);
@@ -169,11 +160,10 @@ protected:
             ortho_left_[n].resize(L+1);
             ortho_right_[n].resize(L+1);
             
-            ortho_left_[n][0] = mps.left_boundary()[0];
-            ortho_right_[n][L] = mps.right_boundary()[0];
+            ortho_left_[n][0] = mps.left_boundary_bm();
+            ortho_right_[n][L] = mps.right_boundary_bm();
         }
         
-        //Timer tlb("Init left boundaries"); tlb.begin();
         Storage::drop(left_[0]);
         left_[0] = mps.left_boundary();
         Storage::pin(left_[0]);
@@ -181,15 +171,13 @@ protected:
         for (int i = 0; i < site; ++i) {
             Storage::drop(left_[i+1]);
             boundary_left_step(mpo, i);
+            Storage::sync(); // avoid overstressing the disk
             Storage::evict(left_[i]);
-            parallel::sync(); // to scale down memory
         }
         Storage::evict(left_[site]);
-        //tlb.end();
 
         maquis::cout << "Boundaries are partially initialized...\n";
         
-        //Timer trb("Init right boundaries"); trb.begin();
         Storage::drop(right_[L]);
         right_[L] = mps.right_boundary();
         Storage::pin(right_[L]);
@@ -197,11 +185,10 @@ protected:
         for (int i = L-1; i >= site; --i) {
             Storage::drop(right_[i]);
             boundary_right_step(mpo, i);
+            Storage::sync(); // avoid overstressing the disk
             Storage::evict(right_[i+1]);
-            parallel::sync(); // to scale down memory
         }
         Storage::evict(right_[site]);
-        //trb.end();
 
         maquis::cout << "Boundaries are fully initialized...\n";
     }
@@ -239,11 +226,11 @@ protected:
     BaseParameters & parms;
     boost::function<bool ()> stop_callback;
 
-    std::vector<Boundary<typename storage::constrained<Matrix>::type, SymmGroup> > left_, right_;
+    std::vector<Boundary<BoundaryMatrix, SymmGroup> > left_, right_;
     
     /* This is used for multi-state targeting */
     unsigned int northo;
-    std::vector< std::vector<block_matrix<typename storage::constrained<Matrix>::type, SymmGroup> > > ortho_left_, ortho_right_;
+    std::vector< std::vector<block_matrix<BoundaryMatrix, SymmGroup> > > ortho_left_, ortho_right_;
     std::vector<MPS<Matrix, SymmGroup> > ortho_mps;
 };
 

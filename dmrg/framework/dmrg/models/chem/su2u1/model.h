@@ -62,7 +62,6 @@ class qc_su2 : public model_impl<Matrix, SymmGroup>
 
     typedef typename Lattice::pos_t pos_t;
     typedef typename Matrix::value_type value_type;
-    typedef typename alps::numeric::associated_one_matrix<Matrix>::type one_matrix;
 
 public:
     
@@ -74,6 +73,8 @@ public:
         throw std::runtime_error("update() not yet implemented for this model.");
         return;
     }
+
+    void create_terms();
     
     // For this model: site_type == point group irrep
     Index<SymmGroup> const & phys_dim(size_t type) const
@@ -91,7 +92,7 @@ public:
 
     typename SymmGroup::charge total_quantum_numbers(BaseParameters & parms_) const
     {
-        return chem_detail::qn_helper<SymmGroup>().total_qn(parms_);
+        return chem::qn_helper<SymmGroup>().total_qn(parms_);
     }
 
     tag_type get_operator_tag(std::string const & name, size_t type) const
@@ -145,6 +146,7 @@ public:
 
         boost::regex expression_oneptdm("^MEASURE\\[1rdm\\]");
         boost::regex expression_twoptdm("^MEASURE\\[2rdm\\]");
+        boost::regex expression_transition_oneptdm("^MEASURE\\[trans1rdm\\]");
         boost::regex expression_transition_twoptdm("^MEASURE\\[trans2rdm\\]");
         boost::smatch what;
 
@@ -155,22 +157,33 @@ public:
             if (boost::regex_match(lhs, what, expression_twoptdm) ||
                 boost::regex_match(lhs, what, expression_transition_twoptdm)) {
 
-                name = "twoptdm";
-
                 std::string bra_ckp("");
+                if(lhs == "MEASURE[trans2rdm]"){
+                    name = "transition_twoptdm";
+                    bra_ckp = it->value();
+                }
+                else
+                    name = "twoptdm";
+
                 std::vector<pos_t> positions;
-                //meas.push_back( new measurements::TaggedNRankRDM<Matrix, SymmGroup>(
-                //                name, lat, tag_handler, op_collection, positions, bra_ckp));
+                meas.push_back( new measurements::TaggedNRankRDM<Matrix, SymmGroup>(
+                                name, lat, tag_handler, op_collection, positions, bra_ckp));
             }
 
-            if (boost::regex_match(lhs, what, expression_oneptdm)) {
-
-                name = "oneptdm";
+            if (boost::regex_match(lhs, what, expression_oneptdm) ||
+                boost::regex_match(lhs, what, expression_transition_oneptdm)) {
 
                 std::string bra_ckp("");
+                if(lhs == "MEASURE[trans1rdm]"){
+                    name = "transition_oneptdm";
+                    bra_ckp = it->value();
+                }
+                else
+                    name = "oneptdm";
+
                 std::vector<pos_t> positions;
-                //meas.push_back( new measurements::TaggedNRankRDM<Matrix, SymmGroup>(
-                //                name, lat, tag_handler, op_collection, positions, bra_ckp));
+                meas.push_back( new measurements::TaggedNRankRDM<Matrix, SymmGroup>(
+                                name, lat, tag_handler, op_collection, positions, bra_ckp));
             }
         }
 
@@ -200,7 +213,7 @@ private:
         std::vector<op_t> ret;
         for (typename SymmGroup::subcharge sc=0; sc < max_irrep+1; ++sc) {
             op_t mod(set_symm(op.basis(), sc));
-            //mod.spin() = op.spin();
+            mod.spin() = op.spin();
             for (std::size_t b = 0; b < op.n_blocks(); ++b)
                 mod[b] = op[b];
 

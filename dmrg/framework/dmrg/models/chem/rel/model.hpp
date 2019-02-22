@@ -93,8 +93,12 @@ rel_qc_model<Matrix, SymmGroup>::rel_qc_model(Lattice const & lat_, BaseParamete
     #undef REGISTER
 
     /**********************************************************************/
+}
 
-    chem_detail::RelChemHelper<Matrix, SymmGroup> term_assistant(parms, lat, ident, fill, tag_handler);
+template <class Matrix, class SymmGroup>
+void rel_qc_model<Matrix, SymmGroup>::create_terms()
+{
+    chem::RelChemHelper<Matrix, SymmGroup> term_assistant(parms, lat, ident, fill, tag_handler);
     std::vector<value_type> & matrix_elements = term_assistant.getMatrixElements();
 
     std::vector<int> used_elements(matrix_elements.size(), 0);
@@ -138,7 +142,7 @@ rel_qc_model<Matrix, SymmGroup>::rel_qc_model(Lattice const & lat_, BaseParamete
                 true, fill, matrix_elements[m], i, j, create, destroy, tag_handler, lat)
             );
             this->terms_.push_back(TermMaker<Matrix, SymmGroup>::positional_two_term( 
-                true, fill, matrix_elements[m], j, i, create, destroy, tag_handler, lat)
+                true, fill, utils::functor_conj()(matrix_elements[m]), j, i, create, destroy, tag_handler, lat)
             );
             used_elements[m] += 1;
         }

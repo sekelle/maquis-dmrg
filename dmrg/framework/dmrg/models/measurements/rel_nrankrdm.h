@@ -78,7 +78,8 @@ namespace measurements {
             this->cast_to_real = is_hermitian_meas(ops[0]);
         }
         
-        void evaluate(MPS<Matrix, SymmGroup> const& ket_mps, boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none)
+        void evaluate(MPS<Matrix, SymmGroup> const& ket_mps, boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none
+                                                           , boost::optional<std::string const&> on_the_fly_bra = boost::none)
         {
             this->vector_results.clear();
             this->labels.clear();
@@ -104,7 +105,7 @@ namespace measurements {
         {
             return new Rel_NRankRDM(*this);
         }
-        
+
         void measure_2rdm(MPS<Matrix, SymmGroup> const & dummy_bra_mps,
                           MPS<Matrix, SymmGroup> const & ket_mps,
                           std::vector<bond_element> const & ops,
@@ -116,7 +117,7 @@ namespace measurements {
 
             // TODO: test with ambient in due time
             #ifdef MAQUIS_OPENMP
-            #pragma omp parallel for collapse(2)
+            #pragma omp parallel for collapse(1)
             #endif
 			for (pos_t l = 0; l < lattice.size(); ++l){
 				for (pos_t k = 0; k < lattice.size(); ++k){
@@ -146,26 +147,26 @@ namespace measurements {
 
 							//std::vector<typename MPS<Matrix, SymmGroup>::scalar_type> dct = multi_expval(bra_mps, ket_mps, mpo);
                             typename MPS<Matrix, SymmGroup>::scalar_type dct = (this->cast_to_real) ? maquis::real(expval(ket_mps, mpo)) : expval(ket_mps, mpo);
-							
+
 							//if(dct != 0.0) {
 								//maquis::cout << std::fixed << std::setprecision(10) << i+1 << " " << j+1 << " " << k+1 << " " << l+1 << "\t" << dct << std::endl;
-							
-							
+
+
 								std::vector<pos_t> label; label.push_back(i); label.push_back(j); label.push_back(k); label.push_back(l);
 								std::vector<std::vector<pos_t> > num_labels;
 								num_labels.push_back(label);
 								std::vector<std::string> lbt = label_strings(lattice, num_labels);
-								
+
 								this->vector_results.push_back(dct);
 								this->labels.push_back(lbt[0]);
-							//} 
+							//}
 
 						} // i loop
 					} // j loop
 				} // k loop
 			} // l loop
         }
-        
+
     private:
         Lattice lattice;
         positions_type positions_first;

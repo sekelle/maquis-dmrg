@@ -178,8 +178,13 @@ qc_model<Matrix, SymmGroup>::qc_model(Lattice const & lat_, BaseParameters & par
     HERMITIAN(cdnutf.first, ftddnu.first)
     HERMITIAN(ddcu.first, ducd.first)
     #undef HERMITIAN
+}
 
-    chem_detail::ChemHelper<Matrix, SymmGroup> term_assistant(parms, lat, ident, fill, tag_handler);
+template <class Matrix, class SymmGroup>
+void qc_model<Matrix, SymmGroup>::create_terms()
+{
+
+    chem::ChemHelper<Matrix, SymmGroup> term_assistant(parms, lat, ident, fill, tag_handler);
     std::vector<value_type> & matrix_elements = term_assistant.getMatrixElements();
 
     std::vector<int> used_elements(matrix_elements.size(), 0);

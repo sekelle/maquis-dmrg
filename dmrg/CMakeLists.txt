@@ -34,6 +34,9 @@ set(BUILD_SYMMETRIES "U1;TwoU1;TwoU1PG;NONE" CACHE STRINGS "List of symmetry
 to include in the build objects. U1, TwoU1, TwoU1PG, NU1, Z2, SU2U1, SU2U1PG and NONE are currently available.")
 set(DMRG_NUMSYMM 6 CACHE INT "Maximum number of U1 symmetries.")
 
+option(BUILD_INTERFACE_LIBS "Build libraries for interfacing DMRG to C++ and python" ON)
+option(COMPLEX "compile dmrg for complex numbers" ON)
+
 option(ENABLE_ALPS_MODELS "Enable binding with ALPS lattices and models" ON)
 option(ENABLE_OMP "Enable OpenMP" OFF)
 option(USE_AMBIENT "Enable Ambient" OFF)
@@ -65,6 +68,19 @@ if(NOT CMAKE_BUILD_TYPE)
 endif(NOT CMAKE_BUILD_TYPE)
 message(STATUS "Build type: " ${CMAKE_BUILD_TYPE})
 
+######################################################################
+# Floating types
+######################################################################
+
+if(COMPLEX)
+  set(MATRIX_TYPES "matrix;cmatrix")
+  message(STATUS "Enabling complex numbers.")
+  list(APPEND DMRG_DEFINITIONS -DHAVE_COMPLEX)
+  set(DMRG_HAS_COMPLEX TRUE)
+else(COMPLEX)
+  set(MATRIX_TYPES "matrix")
+  set(DMRG_HAS_COMPLEX FALSE)
+endif(COMPLEX)
 
 ######################################################################
 # Symmetries management
@@ -119,6 +135,33 @@ macro(configure_symm_file INPUT OUTBASE VARNAME)
     configure_file(${INPUT} ${SYMM_FILE})
   endforeach(SYMM)
 endmacro(configure_symm_file)
+
+macro(get_matrix_files TYPE RET FILEBASE)
+  if(NOT ${TYPE} STREQUAL "APPEND")
+    set(${RET} "")
+  endif(NOT ${TYPE} STREQUAL "APPEND")
+  foreach(SYMM ${BUILD_SYMMETRIES})
+    foreach(MAT ${MATRIX_TYPES})
+      get_symm_suffix(SYMM_SUFFIX ${SYMM})
+      string(REPLACE "{SYMM}" ${SYMM_SUFFIX} SYMM_FILE ${FILEBASE})
+      string(REPLACE "{MATRIX}" ${MAT} SYMM_FILE ${SYMM_FILE})
+      list(APPEND ${RET} ${SYMM_FILE})
+    endforeach(MAT)
+  endforeach(SYMM)
+endmacro(get_matrix_files)
+
+macro(configure_matrix_file INPUT OUTBASE VARNAME VARNAME2)
+  foreach(SYMM ${BUILD_SYMMETRIES})
+    foreach(MAT ${MATRIX_TYPES})
+      get_symm_suffix(SYMM_SUFFIX ${SYMM})
+      get_symm_group_name(${VARNAME2} ${SYMM})
+      set(${VARNAME} ${MAT})
+      string(REPLACE "{MATRIX}" ${MAT} SYMM_FILE ${OUTBASE})
+      string(REPLACE "{SYMM}" ${SYMM_SUFFIX} SYMM_FILE ${SYMM_FILE})
+      configure_file(${INPUT} ${SYMM_FILE})
+    endforeach(MAT)
+  endforeach(SYMM)
+endmacro(configure_matrix_file)
 
 
 # Adding symmetries definitions
@@ -183,6 +226,8 @@ message(STATUS "Boost unit_test: ${MAQUIS_Boost_UNIT_TEST_FRAMEWORK_LIBRARY}")
 if((DMRG_HAS_SU2U1) OR (DMRG_HAS_SU2U1PG))
   find_package(GSL REQUIRED)
 endif()
+
+find_package(OpenSSL REQUIRED)
 
 # BLAS/LAPACK selector
 if(NOT USE_AMBIENT)
@@ -389,6 +434,10 @@ if(REGRESSION_PERFORMANCE_TESTS)
   #add_subdirectory(${BENCHMARKS_DIR} benchmarks_refs)
 endif(REGRESSION_PERFORMANCE_TESTS)
 
+# *** python interface
+if(BUILD_INTERFACE_LIBS)
+    add_subdirectory(lib/interface)
+endif(BUILD_INTERFACE_LIBS)
 
 ######################################################################
 # DMRG exports
@@ -429,5 +478,6 @@ install(DIRECTORY framework/dmrg framework/ietl framework/utils
         )
 
 install(DIRECTORY lib/python DESTINATION lib  COMPONENT python
+        USE_SOURCE_PERMISSIONS
         FILES_MATCHING PATTERN "*.py" PATTERN "*.pyc"
         PATTERN ".svn" EXCLUDE PATTERN "CVS" EXCLUDE)

@@ -56,7 +56,7 @@ class NU1ChargeDG : public NU1ChargePG<N, S>
 
 public:
     NU1ChargeDG(S init = 0) : base(init) {}
-    NU1ChargeDG(boost::array<S, N> const & rhs) : base(rhs) {}
+    NU1ChargeDG(boost::array<S, N+1> const & rhs) : base(rhs) {}
 
     S * begin() { return base::begin(); }
     S * end() { return base::end(); }
@@ -182,6 +182,8 @@ public:
 
     static subcharge & irrep(charge & rhs) { return rhs[N]; }
     static subcharge const & irrep(charge const & rhs) { return rhs[N]; }
+
+    static bool physical(charge const & rhs) { return true; }
 
     static charge fuse(charge a, charge b)
     {

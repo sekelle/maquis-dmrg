@@ -54,24 +54,51 @@ import extrapolate_base
 rc('axes', unicode_minus=False) # supposed to eliminate Glyph warning, but doesn't work for TeX
 rc('font', **{'family':'serif','serif':['ComputerModernRoman'],'size':20})
 rc('text', usetex=True)
- 
-def plot(flist, sweepnr=None):
 
-    extr = extrapolate_base.energy2y(flist, sweepnr)
-    xdata = extr.xdata()[1:]
-    ydata = extr.ydata()[1:]
+def inset(fig, ax, flist, sweepnr=None):
+
+    extr = extrapolate_base.energy2y([flist], sweepnr)
+    xdata = extr.xdata()
+    ydata = extr.ydata()
 
     fit = extr.linfit()
     xf = np.linspace(1e-16,max(xdata),100)
     yf = fit(xf)
 
-    print "extrapolated to", fit(0) 
+    dots = plt.plot(xdata, ydata, 'o', xf, yf, '-')
+
+    #rc('font', **{'family':'serif','serif':['ComputerModernRoman'],'size':15})
+    #def autolabel(xd,yd,labels):
+    #    # attach some text labels
+    #    yshift = (max(yd) - min(yd)) * 0.05
+    #    xshift = (max(xd) - min(xd)) * 0.2
+    #    for x,y,l in zip(xd, yd, labels):
+    #        #item = ax.text(x - xshift, y, '$m=%d$'%l,
+    #        #            ha='right', va='center')
+    #        item = ax.text(x, y, '$m=%d$'%l,
+    #                    ha='center', va='bottom')
+    #        item.set_fontsize(18)
+
+    #autolabel(xdata, ydata, extr.m())
+ 
+def plot(flist, sweepnr=None):
+
+    extr = extrapolate_base.energy2y(flist, sweepnr)
+    xdata = extr.xdata()
+    ydata = extr.ydata()
+
+    fit = extr.linfit()
+    xf = np.linspace(1e-16,max(xdata),100)
+    yf = fit(xf)
+
+    print "{:30s} {:13.9f}   {:12.1f}    {:5s}  {:3s}".format("extrapolation", fit(0), 0, "infty", "")
+    print "{:30s} {:14.9f}".format("extrapolation error", fit(0)-ydata[0])
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
     dots = plt.plot(xdata, ydata, 'o', xf, yf, '-')
 
-    #plt.ticklabel_format(style='sci', axis='x', scilimits=(3,4), useOffset=False)
+    plt.ticklabel_format(style='sci', axis='x', scilimits=(3,4), useOffset=False)
     xfmt = plt.ScalarFormatter(useOffset=False, useMathText=True)
     xfmt.set_scientific(True)
     ax.yaxis.set_major_formatter(xfmt)
@@ -100,6 +127,8 @@ def plot(flist, sweepnr=None):
                        'extrapolation:\n$%.6f$'%fit(0), ha='left', va='center')
     # position below is yaxis 
     #ext_note = ax.text(0, fit(0), '$%.6f$'%fit(0), ha='right', va='top')
+
+    #inset(plt, ax, flist[1], sweepnr)
 
     plt.savefig('e.svg')
 

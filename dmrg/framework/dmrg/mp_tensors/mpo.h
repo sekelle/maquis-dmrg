@@ -29,12 +29,15 @@
 
 #include <vector>
 #include <set>
+#include <boost/serialization/vector.hpp>
 
 #include "dmrg/mp_tensors/mpotensor.h"
 
-template<class Matrix, class SymmGroup>
+template<class Matrix, class SymmGroup, typename = void>
 class MPO : public std::vector<MPOTensor<Matrix, SymmGroup> >
 {
+    typedef std::vector<MPOTensor<Matrix, SymmGroup> > base;
+
 public:
     typedef MPOTensor<Matrix, SymmGroup> elem_type;
 
@@ -72,13 +75,21 @@ public:
         }
     }
 
-    void setCoreEnergy(typename Matrix::value_type e) { core_energy = e; }
-    typename Matrix::value_type getCoreEnergy() const { return core_energy; }
+    void setCoreEnergy(double e) { core_energy = e; }
+    double getCoreEnergy() const { return core_energy; }
     
 private:
     std::vector<std::map<std::size_t, typename SymmGroup::charge> > bond_index_charges;
     std::vector<Index<SymmGroup> > bond_indices;
-    typename Matrix::value_type core_energy;
+    double core_energy;
+
+    friend class boost::serialization::access;
+
+    template <class Archive>
+    void serialize(Archive & ar, const unsigned version)
+    {
+        ar & core_energy & boost::serialization::base_object<base>(*this);
+    }
     
     void calc_charges()
     {
@@ -96,10 +107,10 @@ private:
                     assert( bond_index_charges[p-1].count(r) > 0 );
                     if (!(*this)[p-1].has(r,c))
                         continue;
-                    for (size_t b = 0; b < (*this)[p-1].at(r, c).op.n_blocks(); ++b) {
+                    for (size_t b = 0; b < (*this)[p-1].at(r, c).op().n_blocks(); ++b) {
                         charge_diffs.insert(SymmGroup::fuse(bond_index_charges[p-1][r],
-                                                            SymmGroup::fuse((*this)[p-1].at(r,c).op.basis().left_charge(b),
-                                                                            -(*this)[p-1].at(r,c).op.basis().right_charge(b))));
+                                                            SymmGroup::fuse((*this)[p-1].at(r,c).op().basis().left_charge(b),
+                                                                            -(*this)[p-1].at(r,c).op().basis().right_charge(b))));
 //                        maquis::cout << r << " " << c << std::endl;
 //                        maquis::cout << bond_index_charges[p-1][r] << std::endl;
 //                        maquis::cout << (*this)[p-1](r,c).basis().left_charge(b) << std::endl;
@@ -145,9 +156,9 @@ private:
             {
                 if (!(*this)[p].has(r,c))
                     continue;
-                for (size_t cs = 0; cs < (*this)[p].at(r, c).op.basis().size(); ++cs) {
+                for (size_t cs = 0; cs < (*this)[p].at(r, c).op().basis().size(); ++cs) {
                     //std::pair<charge, size_t> sector = (*this)[p].at(r, c).op.left_basis()[cs];
-                    typename DualIndex<SymmGroup>::value_type sector = (*this)[p].at(r, c).op.basis()[cs];
+                    typename DualIndex<SymmGroup>::value_type sector = (*this)[p].at(r, c).op().basis()[cs];
                     //if (! phys_i.has(sector.first))
                     if (! phys_i.has(sector.lc))
                         phys_i.insert(std::make_pair(sector.lc, sector.ls));
@@ -179,22 +190,22 @@ private:
                         
                         if (! (*this)[p].has(r,c))
                             continue;
-                        if (! (*this)[p].at(r,c).op.has_block(phys_i[ls].first, phys_i[rs].first) )
+                        if (! (*this)[p].at(r,c).op().has_block(phys_i[ls].first, phys_i[rs].first) )
                             continue;                       
                         
-                        //std::size_t cs = (*this)[p].at(r, c).op.left_basis().position(phys_i[ls].first);
-                        std::size_t cs = (*this)[p].at(r, c).op.basis().position(phys_i[ls].first, phys_i[rs].first);
+                        //std::size_t cs = (*this)[p].at(r, c).op().left_basis().position(phys_i[ls].first);
+                        std::size_t cs = (*this)[p].at(r, c).op().basis().position(phys_i[ls].first, phys_i[rs].first);
                         
                         assert( lc == rc );
                         assert( outr < left_i.size_of_block(lc) );
                         
                         // ...for now...
-                        assert( num_rows((*this)[p].at(r,c).op[cs]) == 1 );
-                        assert( num_cols((*this)[p].at(r,c).op[cs]) == 1 );
+                        assert( num_rows((*this)[p].at(r,c).op()[cs]) == 1 );
+                        assert( num_cols((*this)[p].at(r,c).op()[cs]) == 1 );
                         
                         ret(std::make_pair(lc, outr),
                             std::make_pair(rc, visited_c_basis[rc])) =
-                        (*this)[p].at(r,c).op[cs](0,0);
+                        (*this)[p].at(r,c).op()[cs](0,0);
                         
 //                        maquis::cout << (*this)[p](r,c)[cs](0,0) << " | ";
 //                        maquis::cout << r << " " << c << " " << phys_i[ls].first << " " << phys_i[rs].first;
@@ -220,9 +231,9 @@ private:
             {
                 if (!(*this)[p].has(r,c))
                     continue;
-                for (size_t cs = 0; cs < (*this)[p].at(r, c).op.basis().size(); ++cs) {
+                for (size_t cs = 0; cs < (*this)[p].at(r, c).op().basis().size(); ++cs) {
                     //std::pair<charge, size_t> sector = (*this)[p].at(r, c).op.left_basis()[cs];
-                    typename DualIndex<SymmGroup>::value_type sector = (*this)[p].at(r, c).op.basis()[cs];
+                    typename DualIndex<SymmGroup>::value_type sector = (*this)[p].at(r, c).op().basis()[cs];
                     //if (! phys_i.has(sector.first))
                     if (! phys_i.has(sector.lc))
                         //phys_i.insert(sector);
@@ -255,22 +266,22 @@ private:
                         
                         if (! (*this)[p].has(r,c))
                             continue;
-                        if (! (*this)[p].at(r, c).op.has_block(phys_i[ls].first, phys_i[rs].first) )
+                        if (! (*this)[p].at(r, c).op().has_block(phys_i[ls].first, phys_i[rs].first) )
                             continue;
                         
-                        //std::size_t cs = (*this)[p].at(r, c).op.left_basis().position(phys_i[ls].first);
-                        std::size_t cs = (*this)[p].at(r, c).op.basis().position(phys_i[ls].first, phys_i[rs].first);
+                        //std::size_t cs = (*this)[p].at(r, c).op().left_basis().position(phys_i[ls].first);
+                        std::size_t cs = (*this)[p].at(r, c).op().basis().position(phys_i[ls].first, phys_i[rs].first);
                         
                         assert( lc == rc );
                         assert( outc < right_i.size_of_block(rc) );
                         
                         // ...for now...
-                        assert( num_rows((*this)[p].at(r,c).op[cs]) == 1 );
-                        assert( num_cols((*this)[p].at(r,c).op[cs]) == 1 );
+                        assert( num_rows((*this)[p].at(r,c).op()[cs]) == 1 );
+                        assert( num_cols((*this)[p].at(r,c).op()[cs]) == 1 );
                         
                         ret(std::make_pair(lc, visited_r_basis[lc]),
                             std::make_pair(rc, outc)) =
-                        (*this)[p].at(r,c).op[cs](0,0);
+                        (*this)[p].at(r,c).op()[cs](0,0);
                         
 //                        maquis::cout << (*this)[p](r,c)[cs](0,0) << " | ";
 //                        maquis::cout << r << " " << c << " " << phys_i[ls].first << " " << phys_i[rs].first;
@@ -296,9 +307,9 @@ private:
         for (size_t r = 0; r < (*this)[p].row_dim(); ++r)
             for (size_t c = 0; c < (*this)[p].col_dim(); ++c)
             {
-                for (size_t cs = 0; cs < (*this)[p].at(r, c).op.basis().size(); ++cs) {
+                for (size_t cs = 0; cs < (*this)[p].at(r, c).op().basis().size(); ++cs) {
                     //std::pair<charge, size_t> sector = (*this)[p].at(r, c).op.left_basis()[cs];
-                    typename DualIndex<SymmGroup>::value_type sector = (*this)[p].at(r, c).op.basis()[cs];
+                    typename DualIndex<SymmGroup>::value_type sector = (*this)[p].at(r, c).op().basis()[cs];
                     //if (! phys_i.has(sector.first))
                     if (! phys_i.has(sector.lc))
                         //phys_i.insert(sector);
@@ -344,7 +355,7 @@ private:
                             typename operator_selector<Matrix, SymmGroup>::type block;
                             charge blc = phys_i[ls].first, brc = phys_i[rs].first;
                             if ( (*this)[p].has(r,c) )
-                                block = (*this)[p].at(r,c).op;
+                                block = (*this)[p].at(r,c).op();
                             block.insert_block(Matrix(1, 1, val), blc, brc);
                             (*this)[p].set(r, c, block);
                             
@@ -384,7 +395,7 @@ private:
                             typename operator_selector<Matrix, SymmGroup>::type block;
                             charge blc = phys_i[ls].first, brc = phys_i[rs].first;
                             if ( (*this)[p+1].has(r,c) )
-                                block = (*this)[p+1].at(r,c).op;
+                                block = (*this)[p+1].at(r,c).op();
                             block.insert_block(Matrix(1, 1, val), blc, brc);
                             (*this)[p+1].set(r, c, block);
                             
@@ -396,6 +407,45 @@ private:
                     }
             visited_r_basis[bond_index_charges[p+1][r]]++;
         }
+    }
+};
+
+template<class Matrix, class SymmGroup>
+class MPO<Matrix, SymmGroup, typename boost::enable_if<
+                                boost::is_same<typename symm_traits::SymmType<SymmGroup>::type, symm_traits::SU2Tag>
+                                                      >::type>
+    : public std::vector<MPOTensor<Matrix, SymmGroup> >
+{
+    typedef std::vector<MPOTensor<Matrix, SymmGroup> > base;
+
+public:
+    typedef MPOTensor<Matrix, SymmGroup> elem_type;
+
+    MPO() { }
+    
+    MPO(std::size_t L, elem_type elem = elem_type())
+    : std::vector<elem_type>(L, elem)
+    { }
+    
+    std::size_t length() const { return this->size(); }
+    
+    void compress(double cutoff)
+    {
+        throw std::runtime_error("MPO compression for SU2 not implemented\n");
+    }
+
+    void setCoreEnergy(double e) { core_energy = e; }
+    double getCoreEnergy() const { return core_energy; }
+
+private:
+    double core_energy;
+
+    friend class boost::serialization::access;
+
+    template <class Archive>
+    void serialize(Archive & ar, const unsigned version)
+    {
+        ar & core_energy & boost::serialization::base_object<base>(*this);
     }
 };
 

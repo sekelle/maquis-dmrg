@@ -61,11 +61,13 @@ public:
 
     virtual ~measurement() { }
     
-    virtual void evaluate(MPS<Matrix, SymmGroup> const&, boost::optional<reduced_mps<Matrix, SymmGroup> const&> = boost::none) =0;
+    virtual void evaluate(MPS<Matrix, SymmGroup> const&, boost::optional<reduced_mps<Matrix, SymmGroup> const&> = boost::none
+                                                       , boost::optional<std::string const&> = boost::none) =0;
     template <class Archive>
     void save(Archive &) const;
     void write_xml(alps::oxstream &) const;
     virtual void print(std::ostream& os) const;
+    virtual void extract(std::vector<value_type> & results, std::vector<std::vector<Lattice::pos_t> > & labels) { }
     
     std::string const& name() const { return name_; }
     int& eigenstate_index() { return eigenstate; }
@@ -202,6 +204,24 @@ inline std::vector<std::string> label_strings (const Lattice& lat, const std::ve
         std::ostringstream oss;
         for (std::vector<Lattice::pos_t>::const_iterator it2 = it->begin(); it2 != it->end(); ++it2) {
             oss << lat.get_prop<std::string>("label", *it2);
+            if (it2 + 1 != it->end())
+                oss << " -- ";
+        }
+        ret.push_back(oss.str());
+    }
+    return ret;
+}
+
+inline std::vector<std::string> label_strings (const std::vector<std::vector<Lattice::pos_t> >& labels)
+{
+    std::vector<std::string> ret;
+    ret.reserve(labels.size());
+    for (std::vector<std::vector<Lattice::pos_t> >::const_iterator it = labels.begin();
+         it != labels.end(); ++it)
+    {
+        std::ostringstream oss;
+        for (std::vector<Lattice::pos_t>::const_iterator it2 = it->begin(); it2 != it->end(); ++it2) {
+            oss << *it2;
             if (it2 + 1 != it->end())
                 oss << " -- ";
         }

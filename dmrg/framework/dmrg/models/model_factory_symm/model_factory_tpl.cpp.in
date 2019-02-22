@@ -29,5 +29,4 @@
 
 ${MAQUIS_INCLUDE_FACTORIES_${CMAKE_SYMM_GROUP}}
 
-impl_model_factory(matrix, @CMAKE_SYMM_GROUP@)
-impl_model_factory(cmatrix, @CMAKE_SYMM_GROUP@)
+impl_model_factory(@CMAKE_MATRIX_TYPE@, @CMAKE_SYMM_GROUP@)

@@ -46,6 +46,9 @@ public:
     static const bool finite = false;
 	
 	static charge fuse(charge a, charge b) { return a + b; }
+    static charge particleNumber(charge a) { return a; }
+
+    static bool physical(charge const & rhs) { return true; }
 	
 	template<int R> static charge fuse(const boost::array<charge, R> &v)
 	{

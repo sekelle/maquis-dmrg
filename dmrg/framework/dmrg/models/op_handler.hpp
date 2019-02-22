@@ -33,17 +33,10 @@
 // **************************************************************************
 
 template <class Matrix, class SymmGroup>
-TagHandler<Matrix, SymmGroup>::TagHandler(TagHandler const & rhs)
-    : operator_table(new OPTable<Matrix, SymmGroup>(*rhs.operator_table))
-    , sign_table(rhs.sign_table)
-    , product_tags(rhs.product_tags)
-{
-}
-
-template <class Matrix, class SymmGroup>
 typename OPTable<Matrix, SymmGroup>::tag_type
-OPTable<Matrix, SymmGroup>::register_op(op_t const & op_)
+OPTable<Matrix, SymmGroup>::register_op(op_t op_)
 {
+    tag_detail::remove_empty_blocks(op_);
     tag_type ret = this->size();
     this->push_back(op_);
     return ret;
@@ -71,6 +64,16 @@ OPTable<Matrix, SymmGroup>::checked_register(op_t const& sample)
 // **************************************************************************
 // TagHandler implementation
 // **************************************************************************
+
+// copy ctor
+template <class Matrix, class SymmGroup>
+TagHandler<Matrix, SymmGroup>::TagHandler(TagHandler const & rhs)
+    : operator_table(new OPTable<Matrix, SymmGroup>(*rhs.operator_table))
+    , sign_table(rhs.sign_table)
+    , product_tags(rhs.product_tags)
+    , hermitian(rhs.hermitian)
+    , self_adjoint_ops(rhs.self_adjoint_ops)
+{}
 
 // simple const query
 template <class Matrix, class SymmGroup>
@@ -100,6 +103,13 @@ herm_conj(typename OPTable<Matrix, SymmGroup>::tag_type query_tag) const
     return hermitian[query_tag];
 }
 
+template <class Matrix, class SymmGroup>
+bool TagHandler<Matrix, SymmGroup>::is_self_adjoint(typename OPTable<Matrix, SymmGroup>::tag_type query_tag) const
+{
+    assert(query_tag < self_adjoint_ops.size());
+    return self_adjoint_ops[query_tag];
+}
+
 // register new operators
 template <class Matrix, class SymmGroup>
 typename OPTable<Matrix, SymmGroup>::tag_type TagHandler<Matrix, SymmGroup>::
@@ -108,6 +118,7 @@ register_op(const op_t & op_, tag_detail::operator_kind kind)
     sign_table.push_back(kind);
     tag_type ret = operator_table->register_op(op_);
     hermitian.push_back(ret);
+    self_adjoint_ops.push_back(0);
     assert(sign_table.size() == operator_table->size());
     assert(hermitian.size() == operator_table->size());
     assert(ret < operator_table->size());
@@ -124,6 +135,7 @@ checked_register(typename OPTable<Matrix, SymmGroup>::op_t const& sample, tag_de
     {
         sign_table.push_back(kind);
         hermitian.push_back(ret.first);
+        self_adjoint_ops.push_back(0);
     }
     
     assert(sign_table.size() == operator_table->size());
@@ -143,6 +155,13 @@ void TagHandler<Matrix, SymmGroup>::hermitian_pair(typename OPTable<Matrix, Symm
     if (hermitian[pair_tag1] == pair_tag2 && hermitian[pair_tag2] == pair_tag1) return;
     assert(hermitian[pair_tag1] == pair_tag1 && hermitian[pair_tag2] == pair_tag2);
     std::swap(hermitian[pair_tag1], hermitian[pair_tag2]);
+}
+
+template <class Matrix, class SymmGroup>
+void TagHandler<Matrix, SymmGroup>::self_adjoint(typename OPTable<Matrix, SymmGroup>::tag_type sa_tag)
+{
+    assert(sa_tag < self_adjoint_ops.size());
+    self_adjoint_ops[sa_tag] = 1;
 }
 
 // access operators
@@ -195,6 +214,9 @@ get_product_tag(const typename OPTable<Matrix, SymmGroup>::tag_type t1,
         tag_detail::operator_kind prod_kind = tag_detail::bosonic;
         if (sign_table[t1] != sign_table[t2])
             prod_kind = tag_detail::fermionic;
+
+        // set the product spin descriptor
+        product.spin() = couple(get_op(t2).spin(), get_op(t1).spin());
 
         std::pair<tag_type, value_type> ret = this->checked_register(product, prod_kind);
         product_tags[std::make_pair(t1, t2)] = ret;
@@ -266,7 +288,10 @@ typename OPTable<Matrix, SymmGroup>::tag_type KronHandler<Matrix, SymmGroup>::
 get_kron_tag(Index<SymmGroup> const & phys_i1,
              Index<SymmGroup> const & phys_i2,
              typename OPTable<Matrix, SymmGroup>::tag_type t1,
-             typename OPTable<Matrix, SymmGroup>::tag_type t2)
+             typename OPTable<Matrix, SymmGroup>::tag_type t2,
+             SpinDescriptor<typename symm_traits::SymmType<SymmGroup>::type> lspin,
+             SpinDescriptor<typename symm_traits::SymmType<SymmGroup>::type> mspin,
+             SpinDescriptor<typename symm_traits::SymmType<SymmGroup>::type> rspin)
 {
     assert( t1 < base::get_operator_table()->size() && t2 < base::get_operator_table()->size() );
 
@@ -285,10 +310,10 @@ get_kron_tag(Index<SymmGroup> const & phys_i1,
     catch(const std::out_of_range& e) {
 
         op_t product;
-        op_t& op1 = (*base::get_operator_table())[t1];
-        op_t& op2 = (*base::get_operator_table())[t2];
+        op_t const& op1 = (*base::get_operator_table())[t1];
+        op_t const& op2 = (*base::get_operator_table())[t2];
 
-        op_kron(phys_i1, phys_i2, op1, op2, product);
+        op_kron(phys_i1, phys_i2, op1, op2, product, lspin, mspin, rspin);
 
         tag_detail::remove_empty_blocks(product);
         
