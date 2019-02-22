@@ -53,6 +53,7 @@ struct SiteProblem
     MPSTensor<Matrix, SymmGroup> const & ket_tensor;
     Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & left;
     Boundary<typename storage::constrained<Matrix>::type, SymmGroup> const & right;
+    typename contraction::Engine<Matrix, typename storage::constrained<Matrix>::type, SymmGroup>::schedule_t contraction_schedule;
     MPOTensor<Matrix, SymmGroup> const & mpo;
 };
 

@@ -358,6 +358,13 @@ public:
 };
 
 template<class SymmGroup>
+std::size_t size_of(DualIndex<SymmGroup> const & m)
+{
+    return m.memory_size();
+}
+
+
+template<class SymmGroup>
 std::ostream& operator<<(std::ostream& os, DualIndex<SymmGroup> const & idx)
 {
     os << "|";

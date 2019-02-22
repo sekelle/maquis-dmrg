@@ -37,6 +37,7 @@ class mytest(apptest.DMRGTestBase):
                             'model_library'              : 'coded',
                           },
                 'model': {
+                            'lattice_library'           : 'alps',
                             'LATTICE'                   : 'open ladder',
                             'L'                         : 6,
 
