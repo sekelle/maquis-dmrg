@@ -57,7 +57,6 @@ namespace common {
             charge phys_in = phys_i[s].first;
             charge lc_ket = SymmGroup::fuse(rc_ket, -phys_in);
             unsigned lb_ket = left_i.position(lc_ket); if (lb_ket == left_i.size()) continue;
-            unsigned ls_ket = left_i[lb_ket].second;
             unsigned ket_offset = right_pb(phys_in, rc_ket);
 
             for (unsigned lb_bra = 0; lb_bra < left_i.size(); ++lb_bra)
@@ -67,7 +66,11 @@ namespace common {
 
                 unsigned ci_eff = (left.tr(ci)) ? left.cohort_index(lc_ket, left_i[lb_bra].first) : ci;
                 for (unsigned ss = 0; ss < phys_i[s].second; ++ss)
+                {
                     mpsb.t_schedule.push_back(boost::make_tuple(ket_offset + ss * rs_ket, ci, ci_eff, lb_ket));
+                    size_t sz = left_i[lb_bra].second * rs_ket * left.n_blocks(ci_eff);
+                    mpsb.t_schedule.buf_size += bit_twiddling::round_up<BUFFER_ALIGNMENT>(sz);
+                }
             }
         }
         mpsb.rs_ket = rs_ket;
