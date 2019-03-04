@@ -771,23 +771,6 @@ public:
         return bit_twiddling::round_up<BUFFER_ALIGNMENT>(ret);
     }
 
-    template <class DefaultMatrix, class OtherMatrix>
-    std::size_t t_size(Boundary<OtherMatrix, SymmGroup> const& right, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
-    {
-        std::size_t ret = 0;
-        for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
-        {
-            unsigned ci = boost::get<1>(t_schedule[ti]);
-            unsigned ci_eff = boost::get<2>(t_schedule[ti]);
-            unsigned lb_ket = boost::get<3>(t_schedule[ti]);
-
-            unsigned brs = right.index().right_size(ci);
-
-            ret += bit_twiddling::round_up<BUFFER_ALIGNMENT>(num_rows(mps.data()[lb_ket]) * right.index().n_blocks(ci_eff) * brs);
-        }
-        return ret;
-    }
-
     unsigned get_ti(unsigned mps_offset, unsigned ci_virt) const
     {
         for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
@@ -989,8 +972,9 @@ struct ScheduleNew : public std::vector<MPSBlock<
 
         std::vector<std::size_t> buffer_sizes;
         for (auto& mpsb : *this)
-            //buffer_sizes.push_back(mpsb.t_size(right, mps) + std::max(mpsb.max_r_size(right.index()), mpsb.max_sl_size()) + mps_maxblock);
-            buffer_sizes.push_back(mpsb.t_schedule.buf_size + std::max(mpsb.max_r_size(right.index()), mpsb.max_sl_size()) + mps_maxblock);
+            buffer_sizes.push_back(mpsb.t_schedule.buf_size +
+                                   std::max(mpsb.max_r_size(right.index()), mpsb.max_sl_size()) +
+                                   mps_maxblock);
 
         // Index of MPSBlock with biggest buffer = mpsb_sorted[0]
         std::vector<std::size_t> mpsb_sorted = sort_invert(buffer_sizes);
