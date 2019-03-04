@@ -804,9 +804,7 @@ public:
         return ret;
     }
 
-    template <class OtherMatrix, class DefaultMatrix>
-    void stage(accelerator::device* dev, WorkSet<value_type>* ws_,
-               Boundary<OtherMatrix, SymmGroup> const & right, MPSTensor<DefaultMatrix, SymmGroup> const & mps)
+    void stage(accelerator::device* dev, WorkSet<value_type>* ws_)
     {
         ws = ws_;
 
@@ -815,18 +813,8 @@ public:
         value_type* dev_t_seek = ws->buffer;
         for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
         {
-            unsigned ci = boost::get<1>(t_schedule[ti]);
-            unsigned ci_eff = boost::get<2>(t_schedule[ti]);
-            unsigned lb_ket = boost::get<3>(t_schedule[ti]);
-
-            unsigned bls = right.index().left_size(ci);
-            unsigned brs = right.index().right_size(ci);
-
-            int M = num_rows(mps.data()[lb_ket]);
-            int N = right.index().n_blocks(ci_eff) * brs;
-
             gpu_data.t[ti] = dev_t_seek;
-            dev_t_seek += bit_twiddling::round_up<BUFFER_ALIGNMENT>(M * size_t(N));
+            dev_t_seek += boost::get<4>(t_schedule[ti]);
         }
 
         gpu_data.dev_rsl = dev_t_seek;
@@ -838,7 +826,7 @@ public:
     unsigned rs_ket;
 
     struct TSched_type : public
-    std::vector<boost::tuple<unsigned, unsigned, unsigned, unsigned>>
+    std::vector<boost::tuple<unsigned, unsigned, unsigned, unsigned, size_t>>
     {
         TSched_type() : buf_size(0) {}
         size_t buf_size;
@@ -1011,7 +999,7 @@ struct ScheduleNew : public std::vector<MPSBlock<
                         size_t i = mpsb_sorted[tn];
                         auto& mpsb = (*this)[i];
                         if(mpsb.on_gpu && mpsb.deviceID == d)
-                            mpsb.stage(accelerator::gpu::get_device(d), &pipeline[d][counter++%pipeline[d].size()], right, mps);
+                            mpsb.stage(accelerator::gpu::get_device(d), &pipeline[d][counter++%pipeline[d].size()]);
                     }
                 }
                 catch (const std::out_of_range& e) {

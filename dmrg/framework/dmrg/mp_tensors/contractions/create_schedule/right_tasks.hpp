@@ -66,11 +66,13 @@ namespace common {
                 if (ci == right.n_cohorts()) continue;
 
                 unsigned ci_eff = (right.tr(ci)) ? right.cohort_index(right_i[rb_bra].first, rc_ket) : ci;
+
+                size_t sz = left_i[lb_ket].second * right_i[rb_bra].second * right.n_blocks(ci_eff);
+                size_t sza = bit_twiddling::round_up<BUFFER_ALIGNMENT>(sz);
+                mpsb.t_schedule.buf_size += phys_i[s].second * sza;
                 for (unsigned ss = 0; ss < phys_i[s].second; ++ss)
                 {
-                    mpsb.t_schedule.push_back(boost::make_tuple(ket_offset + ss * rs_ket, ci, ci_eff, lb_ket));
-                    size_t sz = left_i[lb_ket].second * right_i[rb_bra].second * right.n_blocks(ci_eff);
-                    mpsb.t_schedule.buf_size += bit_twiddling::round_up<BUFFER_ALIGNMENT>(sz);
+                    mpsb.t_schedule.push_back(boost::make_tuple(ket_offset + ss * rs_ket, ci, ci_eff, lb_ket, sza));
                 }
             } 
         }
