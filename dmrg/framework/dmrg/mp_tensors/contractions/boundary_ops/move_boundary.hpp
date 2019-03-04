@@ -211,7 +211,7 @@ namespace contraction {
                 for(index_type rb_ket = 0; rb_ket < loop_max; ++rb_ket) {
                     charge rc_ket = ket_right_i[rb_ket].first;
 
-                    auto T = tasks[rb_ket].create_T_left(left, ket_tensor);
+                    auto T = tasks[rb_ket].create_T_left_gpu(left, ket_tensor);
 
                     for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
                     {

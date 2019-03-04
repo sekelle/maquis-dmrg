@@ -608,11 +608,17 @@ public:
         return ret;
     }
 
-    template <class DefaultMatrix, class OtherMatrix, class Pointer>
-    value_type** create_T_left_gpu(Boundary<OtherMatrix, SymmGroup> const & left,
-                                   MPSTensor<DefaultMatrix, SymmGroup> const & mps,
-                                   std::vector<Pointer> const & mps_dev_ptr) const
+    //template <class DefaultMatrix, class OtherMatrix, class Pointer>
+    //value_type** create_T_left_gpu(Boundary<OtherMatrix, SymmGroup> const & left,
+    //                               MPSTensor<DefaultMatrix, SymmGroup> const & mps,
+    //                               std::vector<Pointer> const & mps_dev_ptr) const
+    //{
+    template <class DefaultMatrix, class OtherMatrix>
+    std::vector<std::vector<value_type>>
+    create_T_left_gpu(Boundary<OtherMatrix, SymmGroup> const & left, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
     {
+        std::vector<std::vector<value_type>> ret(t_schedule.size());
+
         cublasSetStream(accelerator::gpu::get_handle(), ws->stream);
 
         value_type* dev_l = gpu_data.dev_rsl;
@@ -626,27 +632,41 @@ public:
             unsigned bls = left.index().left_size(ci);
             unsigned brs = left.index().right_size(ci);
 
+            int nb  = left.index().n_blocks(ci_eff);
             int M = bls;
             int N = rs_ket;
             int K = brs;
 
-            if (left.index().tr(ci))
-                transpose_v(ws->stream, brs, bls, left.index().n_blocks(ci_eff),
-                            (value_type*)left.device_data()[ci_eff], dev_l);
+            if(gpu_data.t[ti] + M * size_t(N)  > dev_l) {std::cout << "T/L overlap\n"; exit(1); }
 
-            const value_type* l_use = (left.index().tr(ci)) ? dev_l : (value_type*)left.device_data()[ci_eff];
-            //const value_type* mpsdata = (value_type*)mps.device_data()[lb_ket] + mps_offset * M;
-            const value_type* mpsdata = (value_type*)mps_dev_ptr[lb_ket] + mps_offset * M;
-
-            assert( gpu_data.t[ti] + M * size_t(N)  <= dev_l);
+            const value_type* mpsdata = (value_type*)mps.device_data()[lb_ket] + mps_offset * K;
+            ret[ti] = std::vector<value_type>(M * size_t(N) * nb);
 
             value_type one(1.0), zero(0.);
             cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
-            cublasDgemm(accelerator::gpu::get_handle(),
-                        cuop[0], cuop[0], M, N, K, &one, mpsdata, M, l_use, K, &zero, gpu_data.t[ti], M);
+            cublasStatus_t stat;
+            if (left.index().tr(ci))
+                stat =
+                cublasDgemmStridedBatched(accelerator::gpu::get_handle(),
+                            cuop[1], cuop[0], M, N, K, &one, (value_type*)left.device_data()[ci_eff], K, M*K,
+                            mpsdata, K, 0, &zero, gpu_data.t[ti], M, M*N, nb);
+            else
+                stat =
+                cublasDgemmStridedBatched(accelerator::gpu::get_handle(),
+                            cuop[0], cuop[0], M, N, K, &one, (value_type*)left.device_data()[ci_eff], M, M*K,
+                            mpsdata, K, 0, &zero, gpu_data.t[ti], M, M*N, nb);
+
+            if (stat != CUBLAS_STATUS_SUCCESS) {
+                std::cout << "lgemm failed: " << _cudaGetErrorEnum(stat) << std::endl;
+                exit(EXIT_FAILURE);
+            }
+
+            HANDLE_ERROR(cudaMemcpy(ret[ti].data(), gpu_data.t[ti], M*N*nb * sizeof(value_type),
+                         cudaMemcpyDeviceToHost));
         }
 
-        return gpu_data.dev_t;
+        //return gpu_data.dev_t;
+        return ret;
     }
 
     template <class DefaultMatrix, class OtherMatrix>
