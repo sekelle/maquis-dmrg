@@ -153,7 +153,6 @@ protected:
 
         BEGIN_TIMING("RSTEP")
         right_[site] = contr::overlap_mpo_right_step(mps[site], mps[site], right_[site+1], mpo[site]);
-        //right_[site] = contraction::common::overlap_mpo_right_step_gpu(mps[site], mps[site], right_[site+1], mpo[site]);
         END_TIMING("RSTEP")
         
         for (int n = 0; n < northo; ++n)
