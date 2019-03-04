@@ -150,6 +150,7 @@ namespace contraction {
             typedef typename schedule_t::block_type::const_iterator const_iterator;
 
             MPSTensor<Matrix, SymmGroup> buffer; // holds the conjugate tensor if we deal with complex numbers
+            // need the copy rather than const & because bra needs to be left-paired
             MPSTensor<Matrix, SymmGroup> bra_tensor = set_conjugate(bra_tensor_in, buffer);
 
             if (!ket_tensor.is_right_paired() || !bra_tensor.is_left_paired())
@@ -159,6 +160,9 @@ namespace contraction {
                 bra_tensor.make_left_paired();
                 }
             }
+
+            storage::gpu::broadcast::prefetch(ket_tensor);
+            storage::gpu::broadcast::fetch(left);
 
             // MPS indices
             assert(bra_tensor.site_dim() == ket_tensor.site_dim());
@@ -189,18 +193,49 @@ namespace contraction {
 
             ret.allocate_all();
 
-            #ifdef MAQUIS_OPENMP
-            #pragma omp parallel for schedule (dynamic,1)
-            #endif
-            for(index_type rb_ket = 0; rb_ket < loop_max; ++rb_ket) {
-                charge rc_ket = ket_right_i[rb_ket].first;
+            if (accelerator::gpu::enabled())
+            {
+                for(index_type rb_ket = 0; rb_ket < loop_max; ++rb_ket) {
+                    tasks.enumeration_gpu.push_back(rb_ket);
+                    tasks[rb_ket].on_gpu = true;
+                }
 
-                auto T = tasks[rb_ket].create_T_left(left, ket_tensor);
+                tasks.stage_gpu(left, ket_tensor);
 
-                for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
-                {
-                    charge rc_bra = bra_right_i[it->get_lb()].first;
-                    it->prop_l(bra_tensor, T, ret.index().cohort_index(rc_bra, rc_ket), ret);
+                //storage::gpu::broadcast::zero(ret); // allocate on gpu and init to 0
+                storage::gpu::broadcast::fetch(ket_tensor);
+
+                #ifdef MAQUIS_OPENMP
+                #pragma omp parallel for schedule (dynamic,1)
+                #endif
+                for(index_type rb_ket = 0; rb_ket < loop_max; ++rb_ket) {
+                    charge rc_ket = ket_right_i[rb_ket].first;
+
+                    auto T = tasks[rb_ket].create_T_left(left, ket_tensor);
+
+                    for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
+                    {
+                        charge rc_bra = bra_right_i[it->get_lb()].first;
+                        it->prop_l(bra_tensor, T, ret.index().cohort_index(rc_bra, rc_ket), ret);
+                    }
+                }
+
+                storage::gpu::broadcast::drop(ket_tensor);
+            }
+            else {
+                #ifdef MAQUIS_OPENMP
+                #pragma omp parallel for schedule (dynamic,1)
+                #endif
+                for(index_type rb_ket = 0; rb_ket < loop_max; ++rb_ket) {
+                    charge rc_ket = ket_right_i[rb_ket].first;
+
+                    auto T = tasks[rb_ket].create_T_left(left, ket_tensor);
+
+                    for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
+                    {
+                        charge rc_bra = bra_right_i[it->get_lb()].first;
+                        it->prop_l(bra_tensor, T, ret.index().cohort_index(rc_bra, rc_ket), ret);
+                    }
                 }
             }
 
@@ -271,7 +306,7 @@ namespace contraction {
                     tasks[lb_ket].on_gpu = true;
                 }
 
-                if (accelerator::gpu::enabled()) tasks.stage_gpu(right, ket_tensor);
+                tasks.stage_gpu(right, ket_tensor);
 
                 storage::gpu::broadcast::zero(ret); // allocate on gpu and init to 0
                 storage::gpu::broadcast::fetch(ket_tensor);
