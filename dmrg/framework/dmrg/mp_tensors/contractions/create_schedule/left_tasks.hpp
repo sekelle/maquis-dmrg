@@ -111,7 +111,7 @@ namespace common {
             if (std::abs(SymmGroup::particleNumber(rc_bra) - SymmGroup::particleNumber(rc_ket)) > site_basis_max_diff) continue;
             unsigned rs_bra = bra_right_i[rb_bra].second;
 
-            typename block_type::cohort_type cohort(phys_i, rb_bra, rb_ket, rs_bra, rs_ket, 0, 0, mpo.col_dim());
+            typename block_type::cohort_type cohort(phys_i, rb_bra, rb_ket, rs_bra, rs_ket, 0, 0, mpo.col_dim(), true);
 
             for (unsigned s = 0; s < phys_i.size(); ++s)
             {

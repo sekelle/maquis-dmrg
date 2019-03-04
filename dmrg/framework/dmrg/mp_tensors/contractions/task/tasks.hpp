@@ -183,7 +183,8 @@ public:
            index_type r_size,
            index_type ci_,
            index_type ci_eff_,
-           index_type mpodim
+           index_type mpodim,
+           bool left = false
           )
           : lb(l_block), rb(r_block), ls(l_size), rs(r_size), ci(ci_), ci_eff(ci_eff_), mpo_offsets(mpodim), nSrows(mpodim), sfold(phys_i.size())
           , suv(phys_i.sum_of_sizes())
@@ -194,6 +195,10 @@ public:
             sfold[s] = ssum;
             ssum += phys_i[s].second;
         }
+
+        // right version of create_s has a the b index on the left side
+        if (left) sblock = rs;
+        else      sblock = ls;
     }
 
     void push_back(unsigned s, unsigned ss2, value_type scale, unsigned ti, unsigned col)
@@ -417,12 +422,13 @@ public:
     index_type get_lb() const { return lb; }
     index_type get_rb() const { return rb; }
 
-    std::size_t get_sr_size() const { return nSrows * stripe * std::size_t(ls); }
+    std::size_t get_S_size() const { return nSrows * stripe * std::size_t(sblock); }
     std::size_t get_l_size() const { return nSrows * rs * std::size_t(ls); }
 
 private:
     index_type lb, rb, ls, rs, ci, ci_eff;
-    index_type nSrows = 0, stripe = 0;
+    // S is stripe x (sblock * nSrows)
+    index_type sblock, nSrows = 0, stripe = 0;
 
     std::vector<long int> mpo_offsets;
 
@@ -436,9 +442,7 @@ private:
 
     std::vector<value_type> create_s(std::vector<std::vector<value_type>> const& T) const
     {
-        std::size_t S_size = nSrows * stripe * std::size_t(rs);
-
-        std::vector<value_type> ret(S_size);
+        std::vector<value_type> ret(get_S_size());
         for (auto const& x : suv)
         {
             if (!x.alpha.size()) continue;
@@ -467,9 +471,7 @@ private:
 
     std::vector<value_type> create_s_r(std::vector<std::vector<value_type>> const & T) const
     {
-        std::size_t S_size = nSrows * stripe * std::size_t(ls);
-
-        std::vector<value_type> ret(S_size);
+        std::vector<value_type> ret(get_S_size());
         for (auto const& x : suv)
         {
             if (!x.alpha.size()) continue;
@@ -498,9 +500,7 @@ private:
 
     void create_s_r_gpu(value_type** dev_T) const
     {
-        std::size_t S_size = nSrows * stripe * std::size_t(ls);
-
-        HANDLE_ERROR(cudaMemsetAsync(dev_S, 0, S_size * sizeof(value_type), ws->stream));
+        HANDLE_ERROR(cudaMemsetAsync(dev_S, 0, get_S_size() * sizeof(value_type), ws->stream));
 
         dsaccv_gpu(ws->stream, suv.size(), nSrows, ls, suv_stage.dev_ms, suv_stage.dev_nb1,
                    suv_stage.dev_vb1, suv_stage.dev_vb2s, suv_stage.dev_valpha, suv_stage.dev_vtidx, dev_T, dev_S, suv_stage.dev_offset);
@@ -749,7 +749,7 @@ public:
         std::size_t ret = 0;
         for (auto& cohort : *this)
         {
-            ret = std::max(ret, bit_twiddling::round_up<BUFFER_ALIGNMENT>(cohort.get_sr_size()) +
+            ret = std::max(ret, bit_twiddling::round_up<BUFFER_ALIGNMENT>(cohort.get_S_size()) +
                                 bit_twiddling::round_up<BUFFER_ALIGNMENT>(cohort.get_l_size()));
         }
         return ret;
