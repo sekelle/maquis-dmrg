@@ -458,37 +458,37 @@ private:
     std::vector<value_type> create_s(std::vector<std::vector<value_type>> const& T, value_type** dev_T) const
     {
         std::vector<value_type> ret(get_S_size());
-        for (auto const& x : suv)
-        {
-            if (!x.alpha.size()) continue;
+        //for (auto const& x : suv)
+        //{
+        //    if (!x.alpha.size()) continue;
 
-            alps::numeric::matrix<value_type> buf(x.ms, rs);
+        //    alps::numeric::matrix<value_type> buf(x.ms, rs);
 
-            index_type seeker = 0;
-            for (index_type b=0; b < x.b2s.size(); ++b)
-            {
-                memset(&buf(0,0), 0, x.ms * rs * sizeof(value_type));
+        //    index_type seeker = 0;
+        //    for (index_type b=0; b < x.b2s.size(); ++b)
+        //    {
+        //        memset(&buf(0,0), 0, x.ms * rs * sizeof(value_type));
 
-                for (int ia = seeker; ia < seeker + x.b2s[b]; ++ia)
-                    maquis::dmrg::detail::iterator_axpy(&T[x.tidx[2*ia]][x.tidx[2*ia+1] * rs],
-                                                        &T[x.tidx[2*ia]][x.tidx[2*ia+1] * rs] + x.ms * rs,
-                                                        &buf(0,0), x.alpha[ia]);
+        //        for (int ia = seeker; ia < seeker + x.b2s[b]; ++ia)
+        //            maquis::dmrg::detail::iterator_axpy(&T[x.tidx[2*ia]][x.tidx[2*ia+1] * rs],
+        //                                                &T[x.tidx[2*ia]][x.tidx[2*ia+1] * rs] + x.ms * rs,
+        //                                                &buf(0,0), x.alpha[ia]);
 
-                unsigned bb = x.b1[b];
-                for (unsigned c = 0; c < rs; ++c)
-                    std::copy(&buf(0,c), &buf(0,c) + x.ms, ret.data() + stripe * (bb*rs + c) + x.offset);
+        //        unsigned bb = x.b1[b];
+        //        for (unsigned c = 0; c < rs; ++c)
+        //            std::copy(&buf(0,c), &buf(0,c) + x.ms, ret.data() + stripe * (bb*rs + c) + x.offset);
 
-                seeker += x.b2s[b];
-            }
-        }
+        //        seeker += x.b2s[b];
+        //    }
+        //}
 
-        //HANDLE_ERROR(cudaMemsetAsync(dev_S, 0, get_S_size() * sizeof(value_type), ws->stream));
+        HANDLE_ERROR(cudaMemsetAsync(dev_S, 0, get_S_size() * sizeof(value_type), ws->stream));
 
-        //dsaccv_left_gpu(ws->stream, suv.size(), nSrows, sblock, stripe, suv_stage.dev_ms, suv_stage.dev_nb1,
-        //                suv_stage.dev_vb1, suv_stage.dev_vb2s, suv_stage.dev_valpha, suv_stage.dev_vtidx,
-        //                dev_T, dev_S, suv_stage.dev_offset);
+        dsaccv_left_gpu(ws->stream, suv.size(), nSrows, sblock, stripe, suv_stage.dev_ms, suv_stage.dev_nb1,
+                        suv_stage.dev_vb1, suv_stage.dev_vb2s, suv_stage.dev_valpha, suv_stage.dev_vtidx,
+                        dev_T, dev_S, suv_stage.dev_offset);
 
-        //HANDLE_ERROR(cudaMemcpy(ret.data(), dev_S, ret.size() * sizeof(value_type), cudaMemcpyDeviceToHost));
+        HANDLE_ERROR(cudaMemcpy(ret.data(), dev_S, ret.size() * sizeof(value_type), cudaMemcpyDeviceToHost));
 
         //std::vector<value_type> buf(get_S_size());
         //HANDLE_ERROR(cudaMemcpy(buf.data(), dev_S, buf.size() * sizeof(value_type), cudaMemcpyDeviceToHost));
@@ -686,7 +686,7 @@ public:
             //if(gpu_data.t[ti] + M * size_t(N) * nb  > dev_l) {std::cout << "T/L overlap\n"; exit(1); }
 
             const value_type* mpsdata = (value_type*)mps.device_data()[lb_ket] + mps_offset * K;
-            ret[ti] = std::vector<value_type>(M * size_t(N) * nb);
+            //ret[ti] = std::vector<value_type>(M * size_t(N) * nb);
 
             value_type one(1.0), zero(0.);
             cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
@@ -707,8 +707,8 @@ public:
                 exit(EXIT_FAILURE);
             }
 
-            HANDLE_ERROR(cudaMemcpy(ret[ti].data(), gpu_data.t[ti], M*N*nb * sizeof(value_type),
-                         cudaMemcpyDeviceToHost));
+            //HANDLE_ERROR(cudaMemcpy(ret[ti].data(), gpu_data.t[ti], M*N*nb * sizeof(value_type),
+            //             cudaMemcpyDeviceToHost));
         }
 
         //for (int ti=0; ti < ret.size(); ++ti)
