@@ -255,7 +255,7 @@ public:
         std::vector<value_type> sloc = create_s(T);
 
         int M = num_cols(bra_mps.data()[lb]);
-        int N = new_left.index().n_blocks(ci) * new_left.index().right_size(ci);
+        int N = nSrows * new_left.index().right_size(ci);
         blas_gemm('T', 'N', M, N, stripe, value_type(1),
                   &bra_mps.data()[lb](0,0), stripe, &sloc[0], stripe, value_type(0), new_left[ci], M);
     }
@@ -269,7 +269,7 @@ public:
         create_s_l_gpu(dev_T);
 
         int M = num_cols(bra_mps.data()[lb]);
-        int N = new_left.index().n_blocks(ci) * new_left.index().right_size(ci);
+        int N = nSrows * new_left.index().right_size(ci);
         int K = stripe;
                 
         value_type one(1.0), zero(0.);
@@ -300,13 +300,13 @@ public:
     {
         std::vector<value_type> sloc = create_s_r(T);
 
-        int M = new_right.index().n_blocks(ci) * ls;
+        int M = nSrows * ls;
         int N = rs;
         DefaultMatrix buf(M,N);
         blas_gemm('N', 'T', M, N, stripe, value_type(1),
                    &sloc[0], M, &bra_mps.data()[rb](0,0), rs, value_type(0), &buf(0,0), M);
 
-        for (unsigned b = 0; b < new_right.index().n_blocks(ci); ++b)
+        for (unsigned b = 0; b < nSrows; ++b)
             for (unsigned col = 0; col < rs; ++col)
                 std::copy(&buf(ls*b,col), &buf(ls*b,col) + ls, new_right[ci] + (b*rs + col)*ls);
     }
@@ -319,22 +319,19 @@ public:
     {
         create_s_r_gpu(dev_T);
 
-        int np = new_right.index().n_blocks(ci);
         int M = ls;
         int N = rs;
         int K = stripe;
-
-        value_type* dev_r = dev_S + bit_twiddling::round_up<BUFFER_ALIGNMENT>(M * size_t(K));
 
         value_type one(1.0), zero(0.);
         cublasSetStream(accelerator::gpu::get_handle(), ws->stream);
         cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
         cublasDgemmStridedBatched(accelerator::gpu::get_handle(),
-                                  cuop[0], cuop[1], M, N, K, &one, dev_S, M*np, M,
+                                  cuop[0], cuop[1], M, N, K, &one, dev_S, M*nSrows, M,
                                   (value_type*)bra_mps.device_data()[rb], N, 0,
-                                  &zero, (value_type*)new_right.device_data()[ci], M, M*N, np);
+                                  &zero, (value_type*)new_right.device_data()[ci], M, M*N, nSrows);
 
-        cudaMemcpyAsync(new_right[ci], (value_type*)new_right.device_data()[ci], M*N*np * sizeof(value_type),
+        cudaMemcpyAsync(new_right[ci], (value_type*)new_right.device_data()[ci], M*N*nSrows * sizeof(value_type),
                         cudaMemcpyDeviceToHost, ws->stream);
     }
 
