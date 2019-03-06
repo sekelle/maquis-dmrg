@@ -1013,9 +1013,7 @@ struct ScheduleNew : public std::vector<MPSBlock<
 
         std::vector<std::size_t> buffer_sizes;
         for (auto& mpsb : *this)
-            buffer_sizes.push_back(mpsb.t_schedule.buf_size +
-                                   std::max(mpsb.max_r_size(right.index()), mpsb.max_sl_size()) +
-                                   mps_maxblock);
+            buffer_sizes.push_back(mpsb.t_schedule.buf_size + mpsb.max_sl_size() + mps_maxblock);
 
         // Index of MPSBlock with biggest buffer = mpsb_sorted[0]
         std::vector<std::size_t> mpsb_sorted = sort_invert(buffer_sizes);
