@@ -319,7 +319,8 @@ public:
     {
         create_s_r_gpu(dev_T);
 
-        int M = new_right.index().n_blocks(ci) * ls;
+        int np = new_right.index().n_blocks(ci);
+        int M = ls;
         int N = rs;
         int K = stripe;
 
@@ -328,13 +329,13 @@ public:
         value_type one(1.0), zero(0.);
         cublasSetStream(accelerator::gpu::get_handle(), ws->stream);
         cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
-        cublasDgemm(accelerator::gpu::get_handle(),
-                    cuop[0], cuop[1], M, N, K, &one, dev_S, M, (value_type*)bra_mps.device_data()[rb], N, &zero, dev_r, M);
+        cublasDgemmStridedBatched(accelerator::gpu::get_handle(),
+                                  cuop[0], cuop[1], M, N, K, &one, dev_S, M*np, M,
+                                  (value_type*)bra_mps.device_data()[rb], N, 0,
+                                  &zero, (value_type*)new_right.device_data()[ci], M, M*N, np);
 
-        copy_v(ws->stream, ls, rs, new_right.index().n_blocks(ci), dev_r, (value_type*)new_right.device_data()[ci]);
-
-        cudaMemcpyAsync( new_right[ci], (value_type*)new_right.device_data()[ci], M*N * sizeof(value_type), cudaMemcpyDeviceToHost,
-                         ws->stream);
+        cudaMemcpyAsync(new_right[ci], (value_type*)new_right.device_data()[ci], M*N*np * sizeof(value_type),
+                        cudaMemcpyDeviceToHost, ws->stream);
     }
 
     template <class DefaultMatrix, class OtherMatrix>
