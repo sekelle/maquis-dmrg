@@ -254,8 +254,8 @@ public:
     {
         std::vector<value_type> sloc = create_s(T);
 
-        int M = num_cols(bra_mps.data()[lb]);
-        int N = nSrows * new_left.index().right_size(ci);
+        int M = ls;
+        int N = nSrows * rs;
         blas_gemm('T', 'N', M, N, stripe, value_type(1),
                   &bra_mps.data()[lb](0,0), stripe, &sloc[0], stripe, value_type(0), new_left[ci], M);
     }
@@ -268,8 +268,8 @@ public:
     {
         create_s_l_gpu(dev_T);
 
-        int M = num_cols(bra_mps.data()[lb]);
-        int N = nSrows * new_left.index().right_size(ci);
+        int M = ls;
+        int N = nSrows * rs;
         int K = stripe;
                 
         value_type one(1.0), zero(0.);
