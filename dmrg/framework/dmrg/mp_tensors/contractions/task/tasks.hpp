@@ -770,14 +770,12 @@ public:
             unsigned bls = right.index().left_size(ci);
             unsigned brs = right.index().right_size(ci);
 
+            int np = right.index().n_blocks(ci_eff);
             int M = num_rows(mps.data()[lb_ket]);
-            int N = right.index().n_blocks(ci_eff) * brs;
+            int N = np * brs;
             int K = bls;
 
-            if (right.index().tr(ci))
-                transpose_v(ws->stream, brs, bls, right.index().n_blocks(ci_eff), (value_type*)right.device_data()[ci_eff], dev_r);
-
-            const value_type* r_use = (right.index().tr(ci)) ? dev_r : (value_type*)right.device_data()[ci_eff];
+            const value_type* r_use = (value_type*)right.device_data()[ci_eff];
             //const value_type* mpsdata = (value_type*)mps.device_data()[lb_ket] + mps_offset * M;
             const value_type* mpsdata = (value_type*)mps_dev_ptr[lb_ket] + mps_offset * M;
 
@@ -785,8 +783,18 @@ public:
 
             value_type one(1.0), zero(0.);
             cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
-            cublasDgemm(accelerator::gpu::get_handle(),
-                        cuop[0], cuop[0], M, N, K, &one, mpsdata, M, r_use, K, &zero, gpu_data.t[ti], M);
+
+            if (right.index().tr(ci)) {
+                N = brs;
+                cublasDgemmStridedBatched(
+                    accelerator::gpu::get_handle(), cuop[0], cuop[1], M, N, K, &one,
+                    mpsdata, M, 0,
+                    r_use, N, K*N,
+                    &zero, gpu_data.t[ti], M, M*N, np);
+            }
+            else
+                cublasDgemm(accelerator::gpu::get_handle(),
+                            cuop[0], cuop[0], M, N, K, &one, mpsdata, M, r_use, K, &zero, gpu_data.t[ti], M);
         }
 
         return gpu_data.dev_t;
