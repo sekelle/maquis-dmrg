@@ -145,6 +145,7 @@ namespace contraction {
                               bool symmetric = false)
         {
             typedef typename SymmGroup::charge charge;
+            typedef typename Matrix::value_type value_type;
             typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
             typedef ScheduleNew<Matrix, SymmGroup> schedule_t;
             typedef typename schedule_t::block_type::const_iterator const_iterator;
@@ -207,19 +208,30 @@ namespace contraction {
                 storage::gpu::broadcast::fetch(bra_tensor);
                 storage::gpu::broadcast::fetch(ket_tensor);
 
+                cudaEvent_t start, stop;
+                HANDLE_ERROR( cudaEventCreate(&start) );
+                HANDLE_ERROR( cudaEventCreate(&stop) );
+                HANDLE_ERROR( cudaEventRecord(start,0) );
+
                 for(index_type rb_ket = 0; rb_ket < loop_max; ++rb_ket) {
                     charge rc_ket = ket_right_i[rb_ket].first;
 
-                    auto T = tasks[rb_ket].create_T_left_gpu(left, ket_tensor);
-                    auto& tcpu = T.first;
-                    typename Matrix::value_type** tgpu = T.second;
+                    value_type** T = tasks[rb_ket].create_T_left_gpu(left, ket_tensor);
 
                     for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
                     {
                         charge rc_bra = bra_right_i[it->get_lb()].first;
-                        it->prop_l_gpu(bra_tensor, tcpu, tgpu, ret.index().cohort_index(rc_bra, rc_ket), ret);
+                        it->prop_l_gpu(bra_tensor, T, ret.index().cohort_index(rc_bra, rc_ket), ret);
                     }
                 }
+
+                HANDLE_ERROR( cudaEventRecord(stop,0) );
+                HANDLE_ERROR( cudaEventSynchronize(stop) );
+                float gpu_time;
+                HANDLE_ERROR( cudaEventElapsedTime( &gpu_time, start, stop ) );
+                HANDLE_ERROR( cudaEventDestroy(start) );
+                HANDLE_ERROR( cudaEventDestroy(stop) );
+                std::cout << "Time elapsed in LBGPU: " << gpu_time/1000 << std::endl;
 
                 storage::gpu::broadcast::drop(ket_tensor);
                 storage::gpu::broadcast::drop(bra_tensor);
@@ -340,7 +352,6 @@ namespace contraction {
                 std::cout << "Time elapsed in RBGPU: " << gpu_time/1000 << std::endl;
 
                 storage::gpu::broadcast::drop(ket_tensor);
-                //storage::gpu::upload(ret);
             }
             else {
 
