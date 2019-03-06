@@ -56,6 +56,24 @@ using boost::get;
 
 template <class T> class WorkSet;
 
+namespace detail{
+
+    template <class T>
+    void tr_tile_v(unsigned nrows, unsigned ncols, size_t cnt, const T* in, T* out)
+    {
+        std::vector<T> buf(nrows * ncols);
+        for (size_t b = 0; b < cnt; ++b)
+        {
+            size_t offset = b * nrows * ncols;
+            std::copy(in + offset, in + offset + nrows*ncols, buf.data());
+
+            for (unsigned i = 0; i < nrows; ++i)
+            for (unsigned j = 0; j < ncols; ++j)
+                out[offset + ncols*i + j] = buf[nrows*j + i];
+        }
+    }
+}
+
 template <class Matrix, class SymmGroup>
 class Cohort
 {
@@ -334,15 +352,9 @@ public:
 
         const value_type* luse = left[ci_eff];
         std::vector<value_type> lbuf;
-        if (ci != ci_eff)
-        {
+        if (ci != ci_eff) {
             lbuf = std::vector<value_type>(M * size_t(K));
-            for (size_t offset = 0; offset < M * size_t(K); offset += rs * ls)
-            {
-                for (unsigned c = 0; c < rs; ++c)
-                for (unsigned r = 0; r < ls; ++r)
-                    lbuf[offset + r*rs + c] = *(left[ci_eff] + offset + c*ls + r);
-            }
+            detail::tr_tile_v(ls, rs, nSrows, left[ci_eff], lbuf.data());
             luse = lbuf.data();
         }
 
@@ -365,7 +377,8 @@ public:
         int N = stripe;
         int K = nSrows * ls;
 
-        value_type* dev_l = (ci != ci_eff) ? dev_S + bit_twiddling::round_up<BUFFER_ALIGNMENT>(K * size_t(N)) : (value_type*)left.device_data()[ci_eff];
+        value_type* dev_l = (ci != ci_eff) ? dev_S +
+            bit_twiddling::round_up<BUFFER_ALIGNMENT>(K * size_t(N)) : (value_type*)left.device_data()[ci_eff];
         if (ci != ci_eff)
             transpose_v(ws->stream, ls, rs, left.index().n_blocks(ci_eff), (value_type*)left.device_data()[ci_eff], dev_l);
 
@@ -576,21 +589,6 @@ class MPSBlock : public std::vector<Cohort<Matrix, SymmGroup>>
 {
     typedef typename Matrix::value_type value_type;
 
-    template <class T>
-    static void tr_tile_v(unsigned nrows, unsigned ncols, size_t cnt, const T* in, T* out)
-    {
-        std::vector<T> buf(nrows * ncols);
-        for (size_t b = 0; b < cnt; ++b)
-        {
-            size_t offset = b * nrows * ncols;
-            std::copy(in + offset, in + offset + nrows*ncols, buf.data());
-
-            for (unsigned i = 0; i < nrows; ++i)
-            for (unsigned j = 0; j < ncols; ++j)
-                out[offset + ncols*i + j] = buf[nrows*j + i]; 
-        }
-    }
-
 public:
     typedef Cohort<Matrix, SymmGroup> cohort_type;
 
@@ -614,7 +612,7 @@ public:
             //if (!left.index().tr(ci))
             //{
             //    lbuf = std::vector<value_type>(bls * brs * nb);
-            //    tr_tile_v(bls, brs, nb, left[ci_eff], lbuf.data());
+            //    detail::tr_tile_v(bls, brs, nb, left[ci_eff], lbuf.data());
             //}
 
             //const value_type* l_use = (left.index().tr(ci)) ? left[ci_eff] : lbuf.data();
@@ -626,7 +624,7 @@ public:
             //int K = brs;
             //blas_gemm('T', 'N', M, N, K, value_type(1), mpsdata, K, l_use, K, value_type(0), ret[ti].data(), M);
 
-            //tr_tile_v(rs_ket, bls, nb, ret[ti].data(), ret[ti].data());
+            //detail::tr_tile_v(rs_ket, bls, nb, ret[ti].data(), ret[ti].data());
 
             int M = bls;
             int N = rs_ket;
