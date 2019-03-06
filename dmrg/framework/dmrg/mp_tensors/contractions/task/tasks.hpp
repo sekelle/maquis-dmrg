@@ -249,12 +249,40 @@ public:
                     unsigned ci,
                     Boundary<OtherMatrix, SymmGroup> & new_left) const
     {
+        if (false)
+        {
         std::vector<value_type> sloc = create_s(tcpu, tgpu);
 
         int M = num_cols(bra_mps.data()[lb]);
         int N = new_left.index().n_blocks(ci) * new_left.index().right_size(ci);
         blas_gemm('T', 'N', M, N, stripe, value_type(1),
                   &bra_mps.data()[lb](0,0), stripe, &sloc[0], stripe, value_type(0), new_left[ci], M);
+        }
+
+        create_s_l_gpu(tgpu);
+
+        int M = num_cols(bra_mps.data()[lb]);
+        int N = new_left.index().n_blocks(ci) * new_left.index().right_size(ci);
+        int K = stripe;
+                
+        value_type one(1.0), zero(0.);
+        cublasSetStream(accelerator::gpu::get_handle(), ws->stream);
+        cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
+        cublasStatus_t stat =
+        cublasDgemm(accelerator::gpu::get_handle(),
+                    cuop[1], cuop[0], M, N, K, &one, (value_type*)bra_mps.device_data()[lb], K,
+                    dev_S, K, &zero, (value_type*)new_left.device_data()[ci], M);
+
+        if (stat != CUBLAS_STATUS_SUCCESS)
+        {
+            std::cout << "propl lgemm failed: " << _cudaGetErrorEnum(stat) << std::endl;
+            exit(EXIT_FAILURE);
+        }
+
+        HANDLE_ERROR(
+        cudaMemcpyAsync(new_left[ci], (value_type*)new_left.device_data()[ci],
+                        M*N * sizeof(value_type), cudaMemcpyDeviceToHost,
+                        ws->stream));
     }
 
     template <class DefaultMatrix, class OtherMatrix>

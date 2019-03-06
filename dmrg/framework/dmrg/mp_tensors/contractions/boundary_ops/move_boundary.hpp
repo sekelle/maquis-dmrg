@@ -161,6 +161,7 @@ namespace contraction {
                 }
             }
 
+            storage::gpu::broadcast::prefetch(bra_tensor);
             storage::gpu::broadcast::prefetch(ket_tensor);
             storage::gpu::broadcast::fetch(left);
 
@@ -202,7 +203,8 @@ namespace contraction {
 
                 tasks.stage_gpu(left, ket_tensor);
 
-                //storage::gpu::broadcast::zero(ret); // allocate on gpu and init to 0
+                storage::gpu::broadcast::zero(ret); // allocate on gpu and init to 0
+                storage::gpu::broadcast::fetch(bra_tensor);
                 storage::gpu::broadcast::fetch(ket_tensor);
 
                 for(index_type rb_ket = 0; rb_ket < loop_max; ++rb_ket) {
@@ -220,6 +222,7 @@ namespace contraction {
                 }
 
                 storage::gpu::broadcast::drop(ket_tensor);
+                storage::gpu::broadcast::drop(bra_tensor);
             }
             else {
                 #ifdef MAQUIS_OPENMP
@@ -256,6 +259,7 @@ namespace contraction {
 
             MPSTensor<Matrix, SymmGroup> buffer; // holds the conjugate tensor if we deal with complex numbers
             MPSTensor<Matrix, SymmGroup> const & bra_tensor = set_conjugate(bra_tensor_in, buffer);
+            // note, this will segfault on the GPU if bra_tensor and ket_tensor are different objects
 
             if (!ket_tensor.is_right_paired() || !bra_tensor.is_right_paired())
             {
