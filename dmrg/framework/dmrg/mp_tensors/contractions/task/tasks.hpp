@@ -234,7 +234,22 @@ public:
                 unsigned ci,
                 Boundary<OtherMatrix, SymmGroup> & new_left) const
     {
-        std::vector<value_type> sloc = create_s(T);
+        std::vector<value_type> sloc = create_s(T, NULL);
+
+        int M = num_cols(bra_mps.data()[lb]);
+        int N = new_left.index().n_blocks(ci) * new_left.index().right_size(ci);
+        blas_gemm('T', 'N', M, N, stripe, value_type(1),
+                  &bra_mps.data()[lb](0,0), stripe, &sloc[0], stripe, value_type(0), new_left[ci], M);
+    }
+
+    template <class DefaultMatrix, class OtherMatrix>
+    void prop_l_gpu(MPSTensor<DefaultMatrix, SymmGroup> const & bra_mps,
+                    std::vector<std::vector<value_type>> const & tcpu,
+                    value_type** tgpu,
+                    unsigned ci,
+                    Boundary<OtherMatrix, SymmGroup> & new_left) const
+    {
+        std::vector<value_type> sloc = create_s(tcpu, tgpu);
 
         int M = num_cols(bra_mps.data()[lb]);
         int N = new_left.index().n_blocks(ci) * new_left.index().right_size(ci);
@@ -359,7 +374,7 @@ public:
               double alpha
              ) const
     {
-        std::vector<value_type> sloc = create_s(T);
+        std::vector<value_type> sloc = create_s(T, NULL);
 
         int M = stripe;
         int K = sloc.size() / M;
@@ -440,7 +455,7 @@ private:
     WorkSet<value_type>* ws;
     value_type* dev_S;
 
-    std::vector<value_type> create_s(std::vector<std::vector<value_type>> const& T) const
+    std::vector<value_type> create_s(std::vector<std::vector<value_type>> const& T, value_type** dev_T) const
     {
         std::vector<value_type> ret(get_S_size());
         for (auto const& x : suv)
@@ -466,7 +481,34 @@ private:
                 seeker += x.b2s[b];
             }
         }
+
+        //HANDLE_ERROR(cudaMemsetAsync(dev_S, 0, get_S_size() * sizeof(value_type), ws->stream));
+
+        //dsaccv_left_gpu(ws->stream, suv.size(), nSrows, sblock, stripe, suv_stage.dev_ms, suv_stage.dev_nb1,
+        //                suv_stage.dev_vb1, suv_stage.dev_vb2s, suv_stage.dev_valpha, suv_stage.dev_vtidx,
+        //                dev_T, dev_S, suv_stage.dev_offset);
+
+        //HANDLE_ERROR(cudaMemcpy(ret.data(), dev_S, ret.size() * sizeof(value_type), cudaMemcpyDeviceToHost));
+
+        //std::vector<value_type> buf(get_S_size());
+        //HANDLE_ERROR(cudaMemcpy(buf.data(), dev_S, buf.size() * sizeof(value_type), cudaMemcpyDeviceToHost));
+        //int cnt =0;
+        //for (size_t i = 0; i < buf.size(); ++i)
+        //{
+        //    if ( std::abs(buf[i] - ret[i]) > 1e-6 ) cnt++;
+        //}
+        //if (cnt) { std::cout << cnt << " " << get_S_size() << std::endl; exit(1); }
+
         return ret;
+    }
+
+    void create_s_l_gpu(value_type** dev_T) const
+    {
+        HANDLE_ERROR(cudaMemsetAsync(dev_S, 0, get_S_size() * sizeof(value_type), ws->stream));
+
+        dsaccv_left_gpu(ws->stream, suv.size(), nSrows, sblock, stripe, suv_stage.dev_ms, suv_stage.dev_nb1,
+                        suv_stage.dev_vb1, suv_stage.dev_vb2s, suv_stage.dev_valpha, suv_stage.dev_vtidx,
+                        dev_T, dev_S, suv_stage.dev_offset);
     }
 
     std::vector<value_type> create_s_r(std::vector<std::vector<value_type>> const & T) const
@@ -503,7 +545,8 @@ private:
         HANDLE_ERROR(cudaMemsetAsync(dev_S, 0, get_S_size() * sizeof(value_type), ws->stream));
 
         dsaccv_gpu(ws->stream, suv.size(), nSrows, ls, suv_stage.dev_ms, suv_stage.dev_nb1,
-                   suv_stage.dev_vb1, suv_stage.dev_vb2s, suv_stage.dev_valpha, suv_stage.dev_vtidx, dev_T, dev_S, suv_stage.dev_offset);
+                   suv_stage.dev_vb1, suv_stage.dev_vb2s, suv_stage.dev_valpha, suv_stage.dev_vtidx,
+                   dev_T, dev_S, suv_stage.dev_offset);
     }
 
     void compute_mpo_offsets()
@@ -614,7 +657,10 @@ public:
     //                               std::vector<Pointer> const & mps_dev_ptr) const
     //{
     template <class DefaultMatrix, class OtherMatrix>
-    std::vector<std::vector<value_type>>
+    std::pair<
+        std::vector<std::vector<value_type>>,
+        value_type**
+    >
     create_T_left_gpu(Boundary<OtherMatrix, SymmGroup> const & left, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
     {
         std::vector<std::vector<value_type>> ret(t_schedule.size());
@@ -637,7 +683,7 @@ public:
             int N = rs_ket;
             int K = brs;
 
-            if(gpu_data.t[ti] + M * size_t(N)  > dev_l) {std::cout << "T/L overlap\n"; exit(1); }
+            //if(gpu_data.t[ti] + M * size_t(N) * nb  > dev_l) {std::cout << "T/L overlap\n"; exit(1); }
 
             const value_type* mpsdata = (value_type*)mps.device_data()[lb_ket] + mps_offset * K;
             ret[ti] = std::vector<value_type>(M * size_t(N) * nb);
@@ -665,8 +711,12 @@ public:
                          cudaMemcpyDeviceToHost));
         }
 
+        //for (int ti=0; ti < ret.size(); ++ti)
+        //    HANDLE_ERROR(cudaMemcpy(ret[ti].data(), gpu_data.t[ti], ret[ti].size() * sizeof(value_type),
+        //                 cudaMemcpyDeviceToHost));
+
         //return gpu_data.dev_t;
-        return ret;
+        return std::make_pair(ret, gpu_data.dev_t);
     }
 
     template <class DefaultMatrix, class OtherMatrix>

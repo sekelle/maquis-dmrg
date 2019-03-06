@@ -210,6 +210,74 @@ void dsacc_gpu(cudaStream_t stream,
     return dsacc_gpu_tpl(stream,nS,ls,ms,nb1,b1,b2s,alpha,tidx,tbuf,sbuf);
 }
 
+/////////////////////////////////////////////////////////////////////////
+
+template <class T>
+__global__ void compute_s_left_stackedv(unsigned nS, unsigned stile_sz, unsigned lda, unsigned* vms, unsigned* vnb1,
+                                        unsigned** vb1, unsigned** vb2s, T** valpha, unsigned** vtidx,
+                                        T** t_buf, T* vs_buf, unsigned* offsets)
+{
+    unsigned b = blockIdx.x;
+    unsigned x = blockIdx.y;
+
+    unsigned ms = vms[x];
+    unsigned nb1 = vnb1[x];
+    unsigned* b1 = vb1[x];
+    unsigned* b2s = vb2s[x];
+    unsigned* tidx = vtidx[x];
+    T* alpha = valpha[x];
+    T* s_buf = vs_buf + size_t(offsets[x]);
+
+    size_t t_size = stile_sz * ms;
+
+    while (b < nb1) {
+
+        unsigned seeker = 0; //offset into tidx, alpha
+        for (unsigned sk = 0; sk < b; ++sk) seeker += b2s[sk];
+        // range for current b in tidx, alpha is (seeker, seeker + b2s[b])
+
+        unsigned tid = threadIdx.x;
+        while (tid < t_size)
+        {
+            //unsigned sx = b1[b] * stile_sz + tid%stile_sz;
+            //unsigned sy = tid/stile_sz;
+            unsigned sx = tid%ms;
+            unsigned sy = b1[b] * stile_sz + tid/ms;
+            size_t offset = sx + lda*sy;
+
+            T acc = 0;
+            for (unsigned ia = seeker; ia < seeker + b2s[b]; ++ia)
+                acc += alpha[ia] * t_buf[tidx[2*ia]][tidx[2*ia+1] * stile_sz + tid];
+
+            s_buf[offset] = acc;
+
+            tid += blockDim.x;
+        }
+        b += gridDim.x;
+    }
+}
+
+template <class T>
+void dsaccv_left_gpu_tpl(cudaStream_t stream, unsigned nms,
+                unsigned nS, unsigned stile_sz, unsigned lda, unsigned* ms, unsigned* nb1,
+                unsigned** b1, unsigned** b2s, T** alpha, unsigned** tidx,
+                T** tbuf, T* sbuf, unsigned* offsets)
+{
+    dim3 blocks(std::min(nS, 1024u), nms);
+    compute_s_left_stackedv<<<blocks, 256, 0, stream>>>(nS, stile_sz, lda, ms,
+                                                        nb1, b1, b2s, alpha, tidx, tbuf, sbuf, offsets);
+}
+
+void dsaccv_left_gpu(cudaStream_t stream, unsigned nms,
+                     unsigned nS, unsigned ls, unsigned lda, unsigned* ms, unsigned* nb1,
+                     unsigned** b1, unsigned** b2s, double** alpha, unsigned** tidx,
+                     double** tbuf, double* sbuf, unsigned* offsets)
+{
+    return dsaccv_left_gpu_tpl(stream,nms,nS,ls,lda,ms,nb1,b1,b2s,alpha,tidx,tbuf,sbuf,offsets);
+}
+
+/////////////////////////////////////////////////////////////////////////
+
 template <class T>
 __global__ void compute_s_stackedv(unsigned nS, unsigned ls, unsigned* vms, unsigned* vnb1,
                                    unsigned** vb1, unsigned** vb2s, T** valpha, unsigned** vtidx, T** t_buf, T* vs_buf, unsigned* offsets)
