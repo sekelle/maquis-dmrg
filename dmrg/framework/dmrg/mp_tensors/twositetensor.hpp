@@ -239,8 +239,8 @@ void TwoSiteTensor<Matrix, SymmGroup>::swap_with(TwoSiteTensor<Matrix, SymmGroup
     swap(this->left_i, b.left_i);
     swap(this->right_i, b.right_i);
     swap(this->data_, b.data_);
-    swap(this->cur_storage, b.cur_storage);
-    swap(this->cur_normalization, b.cur_normalization);
+    std::swap(this->cur_storage, b.cur_storage);
+    std::swap(this->cur_normalization, b.cur_normalization);
 }
 
 template<class Matrix, class SymmGroup>
