@@ -24,5 +24,6 @@
  *
  *****************************************************************************/
 
+#include <string>
 
 std::string md5sum(std::string fname, bool from_file);

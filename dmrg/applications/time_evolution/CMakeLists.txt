@@ -3,7 +3,7 @@ add_definitions(-DHAVE_ALPS_HDF5 -DDISABLE_MATRIX_ELEMENT_ITERATOR_WARNING -DALP
 enable_omp_if_found()
 include_directories(. ${CMAKE_CURRENT_BINARY_DIR})
 
-set(DMRG_APP_LIBRARIES dmrg_models dmrg_utils ${DMRG_LIBRARIES} ${OPENSSL_LIBRARIES})
+set(DMRG_APP_LIBRARIES dmrg_models dmrg_utils ${DMRG_LIBRARIES})
 
 if(USE_AMBIENT)
   compile_with_ambient()
@@ -16,7 +16,7 @@ get_symm_files(APPEND DMRG_TEVOL_SYMM_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/simul
 
 # *** Targets
 add_executable(dmrg_tevol ${DMRG_TEVOL_SYMM_SOURCES} dmrg_tevol.cpp)
-target_link_libraries(dmrg_tevol ${DMRG_APP_LIBRARIES} ${OPENSSL_LIBRARIES})
+target_link_libraries(dmrg_tevol ${DMRG_APP_LIBRARIES})
 
 
 # *** Install

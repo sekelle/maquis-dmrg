@@ -39,8 +39,6 @@
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/serialization/complex.hpp>
 
-#include <openssl/md5.h>
-
 #include "utils/data_collector.hpp"
 #include "dmrg/utils/accelerator.h"
 
