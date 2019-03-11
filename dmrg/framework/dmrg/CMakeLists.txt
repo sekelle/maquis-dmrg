@@ -60,6 +60,8 @@ add_library(dmrg_models STATIC ${DMRG_MODELS_SOURCES})
 add_library(numeric STATIC mp_tensors/contractions/numeric/numeric.cpp)
 target_link_libraries(dmrg_models numeric)
 
+add_library(wignerj STATIC block_matrix/symmetry/wignerj/coupling.c)
+
 # cmake prior version 3.8 doesn't apply the fPIC of the set_property command below for cu files
 #set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -Xcompiler -fPIC -arch=compute_61 -code=sm_61")
 set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -Xcompiler -fPIC")
@@ -68,11 +70,11 @@ CUDA_ADD_LIBRARY(numeric_gpu STATIC mp_tensors/contractions/numeric/gpu_dgemm_dd
 target_link_libraries(numeric_gpu cublas_static culibos ${CUDA_LIBRARIES})
 target_link_libraries(dmrg_models numeric_gpu)
 
-set_property(TARGET dmrg_utils dmrg_models numeric numeric_gpu PROPERTY POSITION_INDEPENDENT_CODE TRUE)
+set_property(TARGET wignerj dmrg_utils dmrg_models numeric numeric_gpu PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 
 # *** Install
 
-install(TARGETS dmrg_utils dmrg_models numeric numeric_gpu
+install(TARGETS dmrg_utils dmrg_models numeric numeric_gpu wignerj
         EXPORT DMRGTargets COMPONENT libraries DESTINATION lib)
-export(TARGETS dmrg_utils dmrg_models numeric numeric_gpu
+export(TARGETS dmrg_utils dmrg_models numeric numeric_gpu wignerj
        FILE "${PROJECT_BINARY_DIR}/DMRGTargets.cmake")
