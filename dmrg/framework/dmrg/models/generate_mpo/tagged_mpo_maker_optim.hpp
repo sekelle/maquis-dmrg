@@ -594,10 +594,29 @@ namespace generate_mpo
 
             finalized = true;
         }
-        
-        std::pair<prempo_key_type, std::pair<int, int> > conjugate_key(prempo_key_type k, pos_t p)
+
+        std::pair<prempo_key_type, std::pair<int, int> >
+        conjugate_key(prempo_key_type k, pos_t p)
         {
-            typename SymmGroup::subcharge (*np)(typename SymmGroup::charge) = &SymmGroup::particleNumber;
+            return conjugate_key_impl(k, p, typename symm_traits::SymmType<SymmGroup>::type());
+        }
+
+        std::pair<prempo_key_type, std::pair<int, int> >
+        conjugate_key_impl(prempo_key_type k, pos_t p, symm_traits::AbelianTag)
+        {
+            prempo_key_type conj = k;
+            for (tag_type i = 0; i < k.pos_op.size(); ++i)
+                conj.pos_op[i].second = tag_handler->herm_conj(k.pos_op[i].second);
+
+            std::pair<int, int> phase(1,1);
+            return std::make_pair(conj, phase);
+        }
+        
+        std::pair<prempo_key_type, std::pair<int, int> >
+        conjugate_key_impl(prempo_key_type k, pos_t p, symm_traits::SU2Tag)
+        {
+            typename SymmGroup::subcharge (*np)(typename SymmGroup::charge)
+                = &SymmGroup::particleNumber;
 
             //if (k.pos_op.size() > 1)
             //    return std::make_pair(k, std::make_pair(1,1));
