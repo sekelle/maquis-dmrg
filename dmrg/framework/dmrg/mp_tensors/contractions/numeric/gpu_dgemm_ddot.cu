@@ -277,6 +277,7 @@ void dsaccv_left_gpu(cudaStream_t stream, unsigned nms,
 }
 
 /////////////////////////////////////////////////////////////////////////
+#define B2S 512
 
 template <class T>
 __global__ void compute_s_stackedv(unsigned nS, unsigned ls, unsigned* vms, unsigned* vnb1,
@@ -296,25 +297,46 @@ __global__ void compute_s_stackedv(unsigned nS, unsigned ls, unsigned* vms, unsi
     unsigned lda = nS * ls;
     size_t t_size = ls * ms;
 
+    __shared__ T* ia_addr[B2S]; // 2KiB
+
     while (b < nb1) {
 
         unsigned seeker = 0;
         for (unsigned sk = 0; sk < b; ++sk) seeker += b2s[sk];
+        unsigned seekmax = seeker + b2s[b];
 
-        unsigned tid = threadIdx.x;
-        while (tid < t_size)
+        // process tidxes from seeker to seeker+b2s[b] in chunks of B2S
+        while(seeker < seekmax)
         {
-            unsigned sx = b1[b] * ls + tid%ls;
-            unsigned sy = tid/ls;
-            size_t offset = sx + lda*sy;
+            unsigned seektop = (seekmax < seeker + B2S) ? seekmax : seeker + B2S;
+            unsigned ia = threadIdx.x;
 
-            T acc = 0;
-            for (unsigned ia = seeker; ia < seeker + b2s[b]; ++ia)
-                acc += alpha[ia] * t_buf[tidx[2*ia]][tidx[2*ia+1] * ls + tid];
+            while (ia+seeker < seektop)
+            {
+                ia_addr[ia] = t_buf[tidx[2*(ia+seeker)]] + tidx[2*(ia+seeker)+1] * ls;
+                ia += blockDim.x;
+            }
 
-            s_buf[offset] = acc;
+            __syncthreads();
 
-            tid += blockDim.x;
+            unsigned tid = threadIdx.x;
+            while (tid < t_size)
+            {
+                unsigned sx = b1[b] * ls + tid%ls;
+                unsigned sy = tid/ls;
+                size_t offset = sx + lda*sy;
+
+                T acc = 0;
+                //for (unsigned ia = seeker; ia < seeker + b2s[b]; ++ia)
+                    //acc += alpha[ia] * t_buf[tidx[2*ia]][tidx[2*ia+1] * ls + tid];
+
+                for (unsigned ia = 0; ia < seektop-seeker; ++ia)
+                    acc += alpha[ia+seeker] * ia_addr[ia][tid];
+
+                s_buf[offset] += acc;
+                tid += blockDim.x;
+            }
+            seeker += B2S;
         }
         b += gridDim.x;
     }
