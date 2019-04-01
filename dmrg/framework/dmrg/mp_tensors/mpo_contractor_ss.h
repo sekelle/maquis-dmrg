@@ -92,7 +92,7 @@ public:
                 lr = -1;
             }
             
-            SiteProblem<Matrix, BoundaryMatrix, SymmGroup> sp(mps[site], left_[site], right_[site+1], mpo[site]);
+            SiteProblem<Matrix, BoundaryMatrix, SymmGroup> sp(mps[site], left_[site], right_[site+1], mpo[site], 1.0);
             ietl::mult(sp, mps[site], mpsp[site]);
             
             if (lr == +1) {
