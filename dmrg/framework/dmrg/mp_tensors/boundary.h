@@ -36,7 +36,6 @@
 #include "utils/function_objects.h"
 #include "dmrg/utils/aligned_allocator.hpp"
 #include "dmrg/utils/parallel.hpp"
-#include "dmrg/block_matrix/block_matrix.h"
 #include "dmrg/utils/storage.h"
 #include "dmrg/utils/accelerator.h"
 #include "dmrg/mp_tensors/mpotensor_detail.h"
