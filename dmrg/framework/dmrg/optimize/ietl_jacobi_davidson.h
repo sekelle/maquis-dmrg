@@ -28,11 +28,10 @@
 #define IETL_JD_SOLVER_H
 
 #include "dmrg/utils/BaseParameters.h"
+#include "ietl_interface.h"
 
-#include "ietl_lanczos_solver.h"
-
-#include "ietl/jacobi.h"
-#include "ietl/jd.h"
+#include <ietl/jacobi.h>
+#include <ietl/jd.h>
 
 template<class Matrix, class OtherMatrix, class SymmGroup>
 std::pair<double, MPSTensor<Matrix, SymmGroup> >
@@ -60,9 +59,7 @@ solve_ietl_jcd(SiteProblem<Matrix, OtherMatrix, SymmGroup> & sp,
     double tol = params["ietl_jcd_tol"];
     ietl::basic_iteration<double> iter(params["ietl_jcd_maxiter"], tol, tol);
     
-//    maquis::cout << "Ortho vecs " << ortho_vecs.size() << std::endl;
     for (int n = 0; n < ortho_vecs.size(); ++n) {
-//        maquis::cout << "Ortho norm " << n << ": " << ietl::two_norm(ortho_vecs[n]) << std::endl;
         maquis::cout << "Input <MPS|O[" << n << "]> : " << ietl::dot(initial, ortho_vecs[n]) << std::endl;
     }
     

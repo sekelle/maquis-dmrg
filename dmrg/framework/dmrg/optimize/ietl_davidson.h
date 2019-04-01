@@ -30,7 +30,7 @@
 
 #include "dmrg/utils/BaseParameters.h"
 
-#include "ietl_lanczos_solver.h"
+#include "dmrg/optimize/ietl_interface.h"
 
 #include "davidson.h"
 
