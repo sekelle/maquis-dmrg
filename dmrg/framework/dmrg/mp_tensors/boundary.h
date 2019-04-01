@@ -84,7 +84,7 @@ class BoundaryIndex
 public:
 
     BoundaryIndex(Index<SymmGroup> const & bra, Index<SymmGroup> const & ket)
-    : bra_index(bra), ket_index(ket), lb_rc_ci(bra.size())
+    : bra_index(bra), ket_index(ket)
     , lbrb_ci(bra.size(), ket.size(), std::numeric_limits<unsigned>::max())
     {}
 
@@ -94,7 +94,6 @@ public:
         bra_index = rhs.bra_index;
         ket_index = rhs.ket_index;
 
-        lb_rc_ci = rhs.lb_rc_ci;
         lbrb_ci = rhs.lbrb_ci;
 
         offsets  = rhs.offsets;
@@ -155,7 +154,6 @@ public:
         assert(cohort_index(lb, rb) == n_cohorts());
 
         unsigned ci = n_cohorts();
-        lb_rc_ci[lb].push_back(std::make_pair(ket_index[rb].first, ci));
         lbrb_ci(lb, rb) = ci;
 
         offsets.push_back(off_);
@@ -290,18 +288,8 @@ public:
             }
     }
 
-    std::vector<std::pair<charge, unsigned>> const & operator()(charge lc) const {
-        unsigned lb = bra_index.position(lc);
-        if (lb < bra_index.size())
-            return lb_rc_ci[lb];
-        else
-            return empty;
-    }
-
 private:
     Index<SymmGroup> bra_index, ket_index;
-    //     lb_ket                       rb_ket     ci
-    std::vector<std::vector<std::pair<charge, unsigned>>>   lb_rc_ci;
     alps::numeric::matrix<unsigned> lbrb_ci;
 
     std::vector<std::vector<long int>>   offsets;
@@ -317,7 +305,7 @@ private:
     template <class Archive>
     void serialize(Archive & ar, const unsigned int version)
     {
-        ar & bra_index & ket_index & lb_rc_ci & lbrb_ci & offsets & conjugate_scales & transposes
+        ar & bra_index & ket_index & lbrb_ci & offsets & conjugate_scales & transposes
            & left_sizes & right_sizes & n_blocks_ & tr_;
     }
     
