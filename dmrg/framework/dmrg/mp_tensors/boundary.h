@@ -200,17 +200,6 @@ public:
             }
     }
 
-    void transpose()
-    {
-        for (unsigned ci = 0; ci < transposes.size(); ++ci)
-        {
-            std::swap(left_sizes[ci], right_sizes[ci]);
-            tr_[ci] = !tr_[ci];
-            for (unsigned b = 0; b < transposes[ci].size(); ++b)
-                transposes[ci][b] = !transposes[ci][b];
-        }
-    }
-
     void print()
     {
         for (unsigned rb = 0; rb < num_cols(lbrb_ci); ++rb)
