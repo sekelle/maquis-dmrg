@@ -853,7 +853,7 @@ public:
             ret += 2 * mps.row_dim()[lb_ket].second * right.left_size(ci) * right.right_size(ci) * right.n_blocks(ci_eff);
         }
 
-        for (auto& coh : *this) ret += coh.n_flops(mps, left);
+        for (auto& coh : *this) ret += coh.n_flops(mps);
 
         return ret;
     }
