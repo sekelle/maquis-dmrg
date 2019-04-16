@@ -378,7 +378,7 @@ public:
         value_type* dev_l = (ci != ci_eff) ? dev_S +
             bit_twiddling::round_up<BUFFER_ALIGNMENT>(K * size_t(N)) : (value_type*)left.device_data()[ci_eff];
         if (ci != ci_eff)
-            transpose_v(ws->stream, ls, rs, left.index().n_blocks(ci_eff), (value_type*)left.device_data()[ci_eff], dev_l);
+            transpose_v(ws->stream, ls, rs, nSrows, (value_type*)left.device_data()[ci_eff], dev_l);
 
         value_type one(1.0), zero(0.);
 
@@ -438,11 +438,11 @@ public:
         return std::accumulate(suv.begin(), suv.end(), 0, [](std::size_t sum, SUnit const& su) { return sum + su.n_tasks();});
     }
 
-    template <class DefaultMatrix, class OtherMatrix>
-    std::size_t n_flops(MPSTensor<DefaultMatrix, SymmGroup> const& mps, BoundaryIndex<OtherMatrix, SymmGroup> const& left) const
+    template <class DefaultMatrix>
+    std::size_t n_flops(MPSTensor<DefaultMatrix, SymmGroup> const& mps) const
     {
         std::size_t ret = 0;
-        ret += 2 * rs * ls * left.n_blocks(ci_eff) * num_cols(mps.data()[rb]);
+        ret += 2 * rs * ls * nSrows * num_cols(mps.data()[rb]);
 
         for (auto const& x : suv)
             ret += 2 * ls * x.ms * x.alpha.size();
@@ -568,6 +568,7 @@ private:
 
         nSrows = n_blocks;
 
+        // enumerate mpo b indices, skipping empty ones, into x.b1
         for (auto & x : suv)
             for (index_type b1i = 0; b1i < x.b1.size(); ++b1i)
             {
@@ -1082,6 +1083,10 @@ struct ScheduleNew : public std::vector<MPSBlock<
     mutable std::vector<std::mutex> mutexes;
 
     static Timer sh_timer;
+    static Timer lfetch_timer;
+    static Timer lsched_timer;
+    static Timer lalloc_timer;
+    static Timer lstage_timer;
 
 private:
     std::vector<std::vector<WorkSet<value_type>>> pipeline;
@@ -1089,6 +1094,11 @@ private:
 };
 
 template <class Matrix, class SymmGroup> Timer ScheduleNew<Matrix, SymmGroup>::sh_timer = Timer("SITE_HAMIL");
+
+template <class Matrix, class SymmGroup> Timer ScheduleNew<Matrix, SymmGroup>::lfetch_timer = Timer("LFETCH");
+template <class Matrix, class SymmGroup> Timer ScheduleNew<Matrix, SymmGroup>::lsched_timer = Timer("LSCHED");
+template <class Matrix, class SymmGroup> Timer ScheduleNew<Matrix, SymmGroup>::lalloc_timer = Timer("LALLOC");
+template <class Matrix, class SymmGroup> Timer ScheduleNew<Matrix, SymmGroup>::lstage_timer = Timer("LSTAGE");
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 

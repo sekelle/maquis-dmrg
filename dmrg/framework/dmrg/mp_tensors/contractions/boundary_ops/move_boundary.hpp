@@ -162,11 +162,14 @@ namespace contraction {
                 }
             }
 
+            schedule_t::lfetch_timer.begin();
             storage::gpu::broadcast::prefetch(bra_tensor);
             storage::gpu::broadcast::prefetch(ket_tensor);
             storage::gpu::broadcast::fetch(left);
+            schedule_t::lfetch_timer.end();
 
             // MPS indices
+            schedule_t::lsched_timer.begin();
             assert(bra_tensor.site_dim() == ket_tensor.site_dim());
             Index<SymmGroup> const & physical_i = ket_tensor.site_dim(),
                                      ket_right_i = ket_tensor.col_dim(),
@@ -192,11 +195,15 @@ namespace contraction {
 
             if (symmetric) b_index.complement_transpose(mpo.herm_right, true);
             Boundary<OtherMatrix, SymmGroup> ret(b_index);
+            schedule_t::lsched_timer.end();
 
+            schedule_t::lalloc_timer.begin();
             ret.allocate_all();
+            schedule_t::lalloc_timer.end();
 
             if (accelerator::gpu::enabled())
             {
+                schedule_t::lstage_timer.begin();
                 for(index_type rb_ket = 0; rb_ket < loop_max; ++rb_ket) {
                     tasks.enumeration_gpu.push_back(rb_ket);
                     tasks[rb_ket].on_gpu = true;
@@ -207,6 +214,7 @@ namespace contraction {
                 storage::gpu::broadcast::zero(ret); // allocate on gpu and init to 0
                 storage::gpu::broadcast::fetch(bra_tensor);
                 storage::gpu::broadcast::fetch(ket_tensor);
+                schedule_t::lstage_timer.end();
 
                 cudaEvent_t start, stop;
                 HANDLE_ERROR( cudaEventCreate(&start) );
