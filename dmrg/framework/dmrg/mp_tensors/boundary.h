@@ -71,15 +71,61 @@ namespace detail {
     }
 }
 
+class BoundaryIndexRT
+{
+    constexpr static unsigned A = 128 / sizeof(double);
+public:
+    BoundaryIndexRT() {}
+
+    BoundaryIndexRT(BoundaryIndexRT const& rhs)
+    {
+        left_sizes = rhs.left_sizes;
+        right_sizes = rhs.right_sizes;
+        n_blocks_ = rhs.n_blocks_;
+    }
+
+    unsigned n_cohorts() const { return left_sizes.size(); }
+
+    size_t left_size      (unsigned ci) const { return left_sizes[ci]; }
+    size_t right_size     (unsigned ci) const { return right_sizes[ci]; }
+    size_t n_blocks       (unsigned ci) const { return n_blocks_[ci]; }
+    size_t cohort_size    (unsigned ci) const { return n_blocks_[ci] * block_size(ci); }
+    size_t cohort_size_a  (unsigned ci) const { return bit_twiddling::round_up<A>(cohort_size(ci)); }
+    size_t block_size     (unsigned ci) const {
+        return bit_twiddling::round_up<1>(left_sizes[ci] * right_sizes[ci]); // ALIGN
+    }
+
+    size_t total_size() const
+    {
+        size_t ret =0;
+        for (unsigned ci=0; ci < n_cohorts(); ++ci)
+            ret += cohort_size_a(ci);
+        return ret;
+    }
+
+    std::vector<size_t> & lszs() { return left_sizes; }
+    std::vector<size_t> & rszs() { return right_sizes; }
+    std::vector<unsigned> & nbs() { return n_blocks_; }
+
+private:
+    std::vector<std::size_t> left_sizes;
+    std::vector<std::size_t> right_sizes;
+    std::vector<unsigned>    n_blocks_;
+
+    friend class boost::serialization::access;
+
+    template <class Archive>
+    void serialize(Archive & ar, const unsigned int version)
+    {
+        ar & left_sizes & right_sizes & n_blocks_;
+    }
+};
+
 template<class T, class SymmGroup>
 class BoundaryIndex
 {
     typedef T value_type;
     typedef typename SymmGroup::charge charge;
-
-    template <class, class> friend class BoundaryIndex;
-
-    constexpr static unsigned A = 128 / sizeof(value_type);
 
 public:
 
@@ -98,10 +144,12 @@ public:
         offsets  = rhs.offsets;
         conjugate_scales = rhs.conjugate_scales;
         transposes = rhs.transposes;
-        left_sizes = rhs.left_sizes;
-        right_sizes = rhs.right_sizes;
-        n_blocks_ = rhs.n_blocks_;
+        //left_sizes = rhs.left_sizes;
+        //right_sizes = rhs.right_sizes;
+        //n_blocks_ = rhs.n_blocks_;
         tr_       = rhs.tr_;
+
+        index_rt = rhs.index_rt;
     }
 
     unsigned   n_cohorts      ()                        const { return offsets.size(); }
@@ -110,29 +158,16 @@ public:
     value_type conjugate_scale(unsigned ci, unsigned b) const { return conjugate_scales[ci][b]; }
     bool       trans          (unsigned ci, unsigned b) const { return transposes[ci][b]; }
     size_t     aux_dim        ()                        const { if (n_cohorts()) return offsets[0].size();
-                                                                else             return 0;
-                                                              }
-    size_t     left_size      (unsigned ci)             const { return left_sizes[ci]; }
-    size_t     right_size     (unsigned ci)             const { return right_sizes[ci]; }
+                                                                else             return 0; }
+    bool       tr             (unsigned ci)             const { return tr_[ci]; }
 
-    size_t     n_blocks       (unsigned ci)             const { return n_blocks_[ci]; }
-
-    size_t     block_size     (unsigned ci)             const {
-        return bit_twiddling::round_up<1>(left_sizes[ci] * right_sizes[ci]); // ALIGN
-    }
-    size_t     cohort_size    (unsigned ci)             const { return n_blocks_[ci] * block_size(ci); }
-
-    size_t     cohort_size_a  (unsigned ci)             const { return bit_twiddling::round_up<A>(cohort_size(ci)); }
-
-    size_t     total_size() const
-    {
-        size_t ret =0;
-        for (unsigned ci=0; ci < n_cohorts(); ++ci)
-            ret += cohort_size_a(ci);
-        return ret;
-    }
-
-    bool       tr             (unsigned ci) const { return tr_[ci]; }
+    // TODO: try to disable this block
+    size_t left_size      (unsigned ci) const { return index_rt.left_size(ci); }
+    size_t right_size     (unsigned ci) const { return index_rt.right_size(ci); }
+    size_t n_blocks       (unsigned ci) const { return index_rt.n_blocks(ci); }
+    size_t block_size     (unsigned ci) const { return index_rt.block_size(ci); }
+    size_t cohort_size    (unsigned ci) const { return index_rt.cohort_size(ci); }
+    //size_t     cohort_size_a  (unsigned ci) const { return index_rt.cohort_size_a(ci); }
 
     unsigned cohort_index(unsigned lb, unsigned rb, int tag = 0) const
     {
@@ -158,11 +193,13 @@ public:
         offsets.push_back(off_);
         conjugate_scales.push_back(std::vector<value_type>(off_.size(), 1.));
         transposes      .push_back(std::vector<char>      (off_.size(), 0));
-
-        left_sizes      .push_back(bra_index[lb].second);
-        right_sizes     .push_back(ket_index[rb].second);
-        n_blocks_       .push_back(std::count_if(off_.begin(), off_.end(), [](long int o) { return o > -1; }));
         tr_             .push_back(0);
+
+        index_rt.lszs().push_back(bra_index[lb].second);
+        index_rt.rszs().push_back(ket_index[rb].second);
+        index_rt.nbs().push_back(
+            std::count_if(off_.begin(), off_.end(), [](long int o) { return o > -1; })
+        );
 
         return ci;
     }
@@ -224,10 +261,12 @@ private:
     std::vector<std::vector<long int>>   offsets;
     std::vector<std::vector<value_type>> conjugate_scales;
     std::vector<std::vector<char>>       transposes;
-    std::vector<std::size_t>             left_sizes;
-    std::vector<std::size_t>             right_sizes;
-    std::vector<unsigned>                n_blocks_;
+    //std::vector<std::size_t>             left_sizes;
+    //std::vector<std::size_t>             right_sizes;
+    //std::vector<unsigned>                n_blocks_;
     std::vector<char>                    tr_;
+
+    BoundaryIndexRT index_rt;
 
     friend class boost::serialization::access;
 
@@ -235,10 +274,9 @@ private:
     void serialize(Archive & ar, const unsigned int version)
     {
         ar & bra_index & ket_index & lbrb_ci & offsets & conjugate_scales & transposes
-           & left_sizes & right_sizes & n_blocks_ & tr_;
+           //& left_sizes & right_sizes & n_blocks_ & tr_;
+           & tr_ & index_rt;
     }
-    
-    std::vector<std::pair<charge, unsigned>> empty;
 };
 
 template<class Matrix, class SymmGroup>
