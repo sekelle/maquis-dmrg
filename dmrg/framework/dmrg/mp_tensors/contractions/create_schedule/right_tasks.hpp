@@ -36,16 +36,16 @@
 namespace contraction {
 namespace common {
 
-    template<class Matrix, class OtherMatrix, class SymmGroup>
+    template<class Matrix, class SymmGroup>
     void rshtm_t_tasks(
-                       BoundaryIndex<OtherMatrix, SymmGroup> const & right,
-                       Index<SymmGroup> const & left_i,
-                       Index<SymmGroup> const & right_i,
-                       Index<SymmGroup> const & phys_i,
-                       ProductBasis<SymmGroup> const & right_pb,
-                       unsigned lb_ket,
-                       common::MPSBlock<Matrix, SymmGroup>& mpsb
-                      )
+         BoundaryIndex<typename Matrix::value_type, SymmGroup> const & right,
+         Index<SymmGroup> const & left_i,
+         Index<SymmGroup> const & right_i,
+         Index<SymmGroup> const & phys_i,
+         ProductBasis<SymmGroup> const & right_pb,
+         unsigned lb_ket,
+         common::MPSBlock<Matrix, SymmGroup>& mpsb
+    )
     {
         typedef typename SymmGroup::charge charge;
         typedef typename Matrix::value_type value_type;
@@ -94,9 +94,9 @@ namespace common {
 
     }
 
-    template<class Matrix, class OtherMatrix, class SymmGroup>
+    template<class Matrix, class SymmGroup>
     void rshtm_tasks(MPOTensor<Matrix, SymmGroup> const & mpo,
-                     BoundaryIndex<OtherMatrix, SymmGroup> const & right,
+                     BoundaryIndex<typename Matrix::value_type, SymmGroup> const & right,
                      Index<SymmGroup> const & left_i,
                      Index<SymmGroup> const & right_i,
                      Index<SymmGroup> const & phys_i,

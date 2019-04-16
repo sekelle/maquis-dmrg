@@ -54,8 +54,8 @@ namespace common {
         typedef typename Matrix::value_type value_type;
         typedef typename common::ScheduleNew<Matrix, SymmGroup>::block_type block_type;
 
-        BoundaryIndex<OtherMatrix, SymmGroup> const & left = left_boundary.index();
-        BoundaryIndex<OtherMatrix, SymmGroup> const & right = right_boundary.index();
+        auto const & left = left_boundary.index();
+        auto const & right = right_boundary.index();
 
         charge lc_in = left_i[lb_in].first;
         unsigned ls_in = left_i[lb_in].second;

@@ -188,7 +188,7 @@ namespace contraction {
                 lshtm_tasks(mpo, bra_tensor, ket_tensor, left.index(), bra_right_pb, ket_right_pb, rb_ket, tasks[rb_ket], symmetric);
             });
 
-            BoundaryIndex<Matrix, SymmGroup> b_index(bra_right_i, ket_right_i);
+            BoundaryIndex<value_type, SymmGroup> b_index(bra_right_i, ket_right_i);
             for(unsigned rb_ket = 0; rb_ket < loop_max; ++rb_ket)
                 for (auto& e : tasks[rb_ket])
                     b_index.add_cohort(e.get_lb(), rb_ket, e.get_offsets());
@@ -312,7 +312,7 @@ namespace contraction {
                 rshtm_tasks(mpo, right.index(), bra_left_i, bra_right_i, physical_i, bra_right_pb, lb_ket, tasks[lb_ket], true);
             });
 
-            BoundaryIndex<Matrix, SymmGroup> b_index(ket_left_i, bra_left_i);
+            BoundaryIndex<value_type, SymmGroup> b_index(ket_left_i, bra_left_i);
             for(unsigned lb_ket = 0; lb_ket < loop_max; ++lb_ket)
                 for (auto& e : tasks[lb_ket])
                     b_index.add_cohort(lb_ket, e.get_rb(), e.get_offsets());

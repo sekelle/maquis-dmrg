@@ -35,9 +35,9 @@
 namespace contraction {
 namespace common {
 
-    template<class Matrix, class OtherMatrix, class SymmGroup>
+    template<class Matrix, class SymmGroup>
     void lshtm_t_tasks(
-                       BoundaryIndex<OtherMatrix, SymmGroup> const & left,
+                       BoundaryIndex<typename Matrix::value_type, SymmGroup> const & left,
                        Index<SymmGroup> const & left_i,
                        Index<SymmGroup> const & right_i,
                        Index<SymmGroup> const & phys_i,
@@ -77,11 +77,11 @@ namespace common {
         mpsb.rs_ket = rs_ket;
     }
 
-    template<class Matrix, class OtherMatrix, class SymmGroup>
+    template<class Matrix, class SymmGroup>
     void lshtm_tasks(MPOTensor<Matrix, SymmGroup> const & mpo,
                      MPSTensor<Matrix, SymmGroup> const & bra,
                      MPSTensor<Matrix, SymmGroup> const & ket,
-                     BoundaryIndex<OtherMatrix, SymmGroup> const & left,
+                     BoundaryIndex<typename Matrix::value_type, SymmGroup> const & left,
                      ProductBasis<SymmGroup> const & bra_left_pb,
                      ProductBasis<SymmGroup> const & ket_right_pb,
                      unsigned rb_ket,
