@@ -607,18 +607,18 @@ public:
             unsigned ci_eff = boost::get<2>(t_schedule[ti]);
             unsigned lb_ket = boost::get<3>(t_schedule[ti]);
 
-            unsigned bls = left.index().left_size(ci);
-            unsigned brs = left.index().right_size(ci);
-            unsigned nb  = left.index().n_blocks(ci_eff);
+            unsigned bls = left_rt.left_size(ci);
+            unsigned brs = left_rt.right_size(ci);
+            unsigned nb  = left_rt.n_blocks(ci_eff);
 
             //std::vector<value_type> lbuf;
-            //if (!left.index().tr(ci))
+            //if (ci == ci_eff)
             //{
             //    lbuf = std::vector<value_type>(bls * brs * nb);
             //    detail::tr_tile_v(bls, brs, nb, left[ci_eff], lbuf.data());
             //}
 
-            //const value_type* l_use = (left.index().tr(ci)) ? left[ci_eff] : lbuf.data();
+            //const value_type* l_use = (ci != ci_eff) ? left[ci_eff] : lbuf.data();
             //const value_type* mpsdata = &mps.data()[lb_ket](0, mps_offset);
             //ret[ti] = std::vector<value_type>(bls * rs_ket * nb);
 
@@ -634,13 +634,13 @@ public:
             int K = brs;
 
             const value_type* mpsdata = &mps.data()[lb_ket](0, mps_offset);
-            ret[ti] = std::vector<value_type>(M * size_t(N) * left.index().n_blocks(ci_eff));
-            for (unsigned b = 0; b < left.index().n_blocks(ci_eff); ++b)
+            ret[ti] = std::vector<value_type>(M * size_t(N) * nb);
+            for (unsigned b = 0; b < nb; ++b)
             {
                 size_t loff = b*M*size_t(K);
                 size_t ooff = b*M*size_t(N);
 
-                if (left.index().tr(ci))
+                if (ci != ci_eff)
                     blas_gemm('T', 'N', M, N, K, value_type(1), left[ci_eff] + loff, K,
                               mpsdata, K, value_type(0), ret[ti].data()+ooff, M);
                 else
@@ -666,10 +666,10 @@ public:
             unsigned ci_eff = boost::get<2>(t_schedule[ti]);
             unsigned lb_ket = boost::get<3>(t_schedule[ti]);
 
-            unsigned bls = left.index().left_size(ci);
-            unsigned brs = left.index().right_size(ci);
+            unsigned bls = left_rt.left_size(ci);
+            unsigned brs = left_rt.right_size(ci);
 
-            int nb  = left.index().n_blocks(ci_eff);
+            int nb  = left_rt.n_blocks(ci_eff);
             int M = bls;
             int N = rs_ket;
             int K = brs;
@@ -679,7 +679,7 @@ public:
             value_type one(1.0), zero(0.);
             cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
             cublasStatus_t stat;
-            if (left.index().tr(ci))
+            if (ci != ci_eff)
                 stat =
                 cublasDgemmStridedBatched(accelerator::gpu::get_handle(),
                             cuop[1], cuop[0], M, N, K, &one, (value_type*)left.device_data()[ci_eff], K, M*K,
@@ -711,15 +711,15 @@ public:
             unsigned ci_eff = boost::get<2>(t_schedule[ti]);
             unsigned lb_ket = boost::get<3>(t_schedule[ti]);
 
-            unsigned bls = right.index().left_size(ci);
-            unsigned brs = right.index().right_size(ci);
+            unsigned bls = right_rt.left_size(ci);
+            unsigned brs = right_rt.right_size(ci);
 
             int M = num_rows(mps.data()[lb_ket]);
-            int N = right.index().n_blocks(ci_eff) * brs;
+            int N = right_rt.n_blocks(ci_eff) * brs;
             int K = bls;
 
             //std::vector<value_type> rbuf;
-            //if (right.index().tr(ci))
+            //if (right_rt.tr(ci))
             //{
             //    rbuf = std::vector<value_type>(K * size_t(N));
             //    for (size_t offset = 0; offset < K * size_t(N); offset += brs * bls)
@@ -730,7 +730,7 @@ public:
             //    }
             //}
 
-            //const value_type* r_use = (right.index().tr(ci)) ? rbuf.data() : right[ci_eff];
+            //const value_type* r_use = (ci != ci_eff) ? rbuf.data() : right[ci_eff];
             //const value_type* mpsdata = &mps.data()[lb_ket](0, mps_offset);
             //ret[ti] = std::vector<value_type>(M * size_t(N));
 
@@ -738,12 +738,12 @@ public:
 
             const value_type* mpsdata = &mps.data()[lb_ket](0, mps_offset);
             ret[ti] = std::vector<value_type>(M * size_t(N));
-            for (unsigned b = 0; b < right.index().n_blocks(ci_eff); ++b)
+            for (unsigned b = 0; b < right_rt.n_blocks(ci_eff); ++b)
             {
                 int N = brs;
                 size_t roff = b*K*N;
                 size_t ooff = b*M*N;
-                if (right.index().tr(ci))
+                if (ci != ci_eff)
                     blas_gemm('N', 'T', M, N, K, value_type(1), mpsdata, M,
                               right[ci_eff] + roff, N, value_type(0), ret[ti].data()+ooff, M);
                 else
@@ -769,10 +769,10 @@ public:
             unsigned ci_eff = boost::get<2>(t_schedule[ti]);
             unsigned lb_ket = boost::get<3>(t_schedule[ti]);
 
-            unsigned bls = right.index().left_size(ci);
-            unsigned brs = right.index().right_size(ci);
+            unsigned bls = right_rt.left_size(ci);
+            unsigned brs = right_rt.right_size(ci);
 
-            int np = right.index().n_blocks(ci_eff);
+            int np = right_rt.n_blocks(ci_eff);
             int M = num_rows(mps.data()[lb_ket]);
             int N = np * brs;
             int K = bls;
@@ -786,7 +786,7 @@ public:
             value_type one(1.0), zero(0.);
             cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
 
-            if (right.index().tr(ci)) {
+            if (ci_eff != ci) {
                 N = brs;
                 cublasDgemmStridedBatched(
                     accelerator::gpu::get_handle(), cuop[0], cuop[1], M, N, K, &one,
