@@ -909,17 +909,15 @@ public:
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 template <class Matrix, class SymmGroup>
-struct ScheduleNew : public std::vector<MPSBlock<
-            typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, ALIGNMENT>::type
-                                                      , SymmGroup> >
+struct ScheduleNew
 {
     typedef typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, ALIGNMENT>::type AlignedMatrix;
-    typedef std::vector<MPSBlock<AlignedMatrix, SymmGroup> > base;
     typedef MPSBlock<AlignedMatrix, SymmGroup> block_type;
+    typedef std::vector<block_type> > base;
     typedef typename Matrix::value_type value_type;
 
     ScheduleNew() {}
-    ScheduleNew(std::size_t dim) : base(dim), /*mutexes(dim),*/ cpu_time(0)
+    ScheduleNew(std::size_t dim) : mpsblocks(dim), /*mutexes(dim),*/ cpu_time(0)
     {
         std::fill(gpu_time, gpu_time + MAX_N_GPUS, 0); 
     }
@@ -1074,9 +1072,19 @@ struct ScheduleNew : public std::vector<MPSBlock<
     static Timer lalloc_timer;
     static Timer lstage_timer;
 
+    block_type & operator[](size_t i) { return mpsblocks[i]; }
+    block_type const& operator[](size_t i) const { return mpsblocks[i]; }
+
+    size_t size() const { return mpsblocks.size(); }
+
+    auto begin() { return mpsblocks.begin(); }
+    auto end() { return mpsblocks.end(); }
+    auto cbegin() const { return mpsblocks.cbegin(); }
+    auto cend() const { return mpsblocks.cend(); }
+
 private:
     std::vector<std::vector<WorkSet<value_type>>> pipeline;
-
+    base mpsblocks;
 };
 
 template <class Matrix, class SymmGroup> Timer ScheduleNew<Matrix, SymmGroup>::sh_timer = Timer("SITE_HAMIL");
