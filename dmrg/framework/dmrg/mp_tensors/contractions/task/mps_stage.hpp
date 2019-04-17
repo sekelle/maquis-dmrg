@@ -47,13 +47,13 @@
 namespace mps_stage_detail
 {
     template <class T, class Index>
-    void create_view(T* base_ptr, std::vector<T*> & view, Index const& index)
+    void create_view(T* base_ptr, std::vector<void*> & view, Index const& index)
     {
         view.resize(index.size());
         T* enumerator = base_ptr;
         for (size_t b = 0; b < index.size(); ++b)
         {
-            view[b] = enumerator;
+            view[b] = (void*)enumerator;
             size_t block_size = index.left_size(b) * index.right_size(b);
             enumerator += bit_twiddling::round_up<BUFFER_ALIGNMENT>(block_size);
         }
@@ -79,12 +79,12 @@ class MPSTensorStage
 {
 public:
 
-    std::vector<T*> const & device_ptr(int device) const { return device_input[device].get_view(); }
+    std::vector<void*> const & device_ptr(int device) const { return device_input[device].get_view(); }
 
-    std::vector<T*> const & device_out_view(int device) const { return device_output[device].get_view(); }
+    std::vector<void*> const & device_out_view(int device) const { return device_output[device].get_view(); }
     T* device_out(int device) { return device_output[device].data(); }
 
-    std::vector<T*> const & host_out_view(int device) { return host_output[device].get_view(); }
+    std::vector<void*> const & host_out_view(int device) { return host_output[device].get_view(); }
     T* host_out(int device) { return host_output[device].data(); }
 
     template<class Index>
@@ -155,7 +155,7 @@ private:
     class storageUnit
     {
     public:
-        std::vector<T*> const& get_view() const { return view; }
+        std::vector<void*> const& get_view() const { return view; }
 
         T* data() { return data_; }
         size_t size() const { return sz; }
@@ -179,7 +179,7 @@ private:
         int id = -1;
         size_t sz;
         T* data_;
-        std::vector<T*> view;
+        std::vector<void*> view;
     };
 
     // input mps host pinned staging area

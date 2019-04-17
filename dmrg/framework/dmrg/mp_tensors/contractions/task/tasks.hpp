@@ -368,7 +368,7 @@ public:
     template <class OtherMatrix, class SymmGroup>
     void contract_gpu(Boundary<OtherMatrix, SymmGroup> const & left,
                       value_type** dev_T,
-                      value_type* dev_out) const
+                      void* dev_out) const
     {
         create_s_r_gpu(dev_T);
 
@@ -393,7 +393,7 @@ public:
             exit(EXIT_FAILURE);
         }
 
-        atomic_add(ws->stream, M*std::size_t(N), ws->mps_buffer, dev_out);
+        atomic_add(ws->stream, M*std::size_t(N), ws->mps_buffer, (value_type*)dev_out);
     }
 
     template <class OtherMatrix>
@@ -755,9 +755,10 @@ public:
         return ret;
     }
 
-    template <class DefaultMatrix, class OtherMatrix, class Pointer>
-    value_type** create_T_gpu(Boundary<OtherMatrix, SymmGroup> const & right, MPSTensor<DefaultMatrix, SymmGroup> const & mps,
-                              std::vector<Pointer> const & mps_dev_ptr) const
+    template <class DefaultMatrix>
+    value_type** create_T_gpu(std::vector<void*> const & dev_right,
+                              MPSTensor<DefaultMatrix, SymmGroup> const & mps,
+                              std::vector<void*> const & mps_dev_ptr) const
     {
         cublasSetStream(accelerator::gpu::get_handle(), ws->stream);
 
@@ -777,7 +778,7 @@ public:
             int N = np * brs;
             int K = bls;
 
-            const value_type* r_use = (value_type*)right.device_data()[ci_eff];
+            const value_type* r_use = (value_type*)dev_right[ci_eff];
             //const value_type* mpsdata = (value_type*)mps.device_data()[lb_ket] + mps_offset * M;
             const value_type* mpsdata = (value_type*)mps_dev_ptr[lb_ket] + mps_offset * M;
 

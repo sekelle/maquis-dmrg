@@ -342,7 +342,8 @@ namespace contraction {
                 for(index_type lb_ket = 0; lb_ket < loop_max; ++lb_ket) {
                     charge lc_ket = ket_left_i[lb_ket].first;
 
-                    value_type** dev_T = tasks[lb_ket].create_T_gpu(right, ket_tensor, ket_tensor.device_data());
+                    value_type** dev_T = tasks[lb_ket].create_T_gpu(right.device_data(), ket_tensor,
+                                                                    ket_tensor.device_data());
 
                     for (const_iterator it = tasks[lb_ket].begin(); it != tasks[lb_ket].end(); ++it) // lc_ket loop
                     {

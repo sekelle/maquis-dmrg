@@ -70,7 +70,8 @@ namespace common {
 
                 if (tasks[lb_in].deviceID != id) continue;
 
-                value_type** dev_T = tasks[lb_in].create_T_gpu(right, ket_tensor, tasks.mps_stage.device_ptr(id));
+                value_type** dev_T = tasks[lb_in].create_T_gpu(right.device_data(id), ket_tensor,
+                                                               tasks.mps_stage.device_ptr(id));
 
                 for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
                     it->contract_gpu(left, dev_T, tasks.mps_stage.device_out_view(id)[it->get_rb()]);
@@ -148,7 +149,7 @@ namespace common {
                 {
                     value_type sum = 0;
                     for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
-                        sum += tasks.mps_stage.host_out_view(d)[b][v];
+                        sum += ((value_type*)(tasks.mps_stage.host_out_view(d)[b]))[v];
 
                     ret.data()[b].get_values()[v] += sum;
                 }
