@@ -592,6 +592,9 @@ class MPSBlock : public std::vector<Cohort<Matrix>>
 public:
     typedef Cohort<Matrix> cohort_type;
 
+    MPSBlock(BoundaryIndexRT const & lrt,
+             BoundaryIndexRT const & rrt) : left_rt(lrt), right_rt(rrt) {}
+
     template <class DefaultMatrix, class OtherMatrix>
     std::vector<std::vector<value_type>>
     create_T_left(Boundary<OtherMatrix, SymmGroup> const & left, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
@@ -874,6 +877,9 @@ public:
     int deviceID;
 
 private:
+    BoundaryIndexRT const & left_rt;
+    BoundaryIndexRT const & right_rt;
+
     WorkSet<value_type>* ws;
 
     struct gpuTransferable // staging data
@@ -913,11 +919,13 @@ struct ScheduleNew
 {
     typedef typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, ALIGNMENT>::type AlignedMatrix;
     typedef MPSBlock<AlignedMatrix, SymmGroup> block_type;
-    typedef std::vector<block_type> > base;
+    typedef std::vector<block_type> base;
     typedef typename Matrix::value_type value_type;
 
     ScheduleNew() {}
-    ScheduleNew(std::size_t dim) : mpsblocks(dim), /*mutexes(dim),*/ cpu_time(0)
+    ScheduleNew(std::size_t dim, BoundaryIndexRT const & left_rt,
+                                 BoundaryIndexRT const & right_rt)
+        : mpsblocks(dim, block_type(left_rt, right_rt)), /*mutexes(dim),*/ cpu_time(0)
     {
         std::fill(gpu_time, gpu_time + MAX_N_GPUS, 0); 
     }

@@ -59,7 +59,7 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
                                          boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
                                                              -boost::lambda::_1, boost::lambda::_2));
     initial.make_right_paired();
-    ScheduleNew<Matrix, SymmGroup> tasks(left_i.size());
+    ScheduleNew<Matrix, SymmGroup> tasks(left_i.size(), left.index().rt(), right.index().rt());
 
     unsigned loop_max = left_i.size();
 
