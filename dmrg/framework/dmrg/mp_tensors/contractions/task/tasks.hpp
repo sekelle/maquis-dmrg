@@ -595,9 +595,10 @@ public:
     MPSBlock(BoundaryIndexRT const & lrt,
              BoundaryIndexRT const & rrt) : left_rt(lrt), right_rt(rrt) {}
 
-    template <class DefaultMatrix, class OtherMatrix>
+    template <class DefaultMatrix>
     std::vector<std::vector<value_type>>
-    create_T_left(Boundary<OtherMatrix, SymmGroup> const & left, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
+    create_T_left(std::vector<value_type*> const & left,
+                  MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
     {
         std::vector<std::vector<value_type>> ret(t_schedule.size());
         for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
@@ -652,9 +653,8 @@ public:
         return ret;
     }
 
-    template <class DefaultMatrix, class OtherMatrix>
-    value_type** create_T_left_gpu(Boundary<OtherMatrix, SymmGroup> const & left,
-                                   MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
+    value_type** create_T_left_gpu(std::vector<void*> const & left,
+                                   std::vector<void*> const & mps) const
     {
         cublasSetStream(accelerator::gpu::get_handle(), ws->stream);
 
@@ -674,7 +674,7 @@ public:
             int N = rs_ket;
             int K = brs;
 
-            const value_type* mpsdata = (value_type*)mps.device_data()[lb_ket] + mps_offset * K;
+            const value_type* mpsdata = (value_type*)mps[lb_ket] + mps_offset * K;
 
             value_type one(1.0), zero(0.);
             cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
@@ -682,12 +682,12 @@ public:
             if (ci != ci_eff)
                 stat =
                 cublasDgemmStridedBatched(accelerator::gpu::get_handle(),
-                            cuop[1], cuop[0], M, N, K, &one, (value_type*)left.device_data()[ci_eff], K, M*K,
+                            cuop[1], cuop[0], M, N, K, &one, (value_type*)left[ci_eff], K, M*K,
                             mpsdata, K, 0, &zero, gpu_data.t[ti], M, M*N, nb);
             else
                 stat =
                 cublasDgemmStridedBatched(accelerator::gpu::get_handle(),
-                            cuop[0], cuop[0], M, N, K, &one, (value_type*)left.device_data()[ci_eff], M, M*K,
+                            cuop[0], cuop[0], M, N, K, &one, (value_type*)left[ci_eff], M, M*K,
                             mpsdata, K, 0, &zero, gpu_data.t[ti], M, M*N, nb);
 
             if (stat != CUBLAS_STATUS_SUCCESS) {

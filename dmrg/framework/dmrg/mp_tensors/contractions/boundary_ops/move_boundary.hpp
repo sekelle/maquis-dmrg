@@ -77,7 +77,7 @@ namespace contraction {
             omp_for(index_type rb_ket, parallel::range<index_type>(0,loop_max), {
                 charge rc_ket = right_i[rb_ket].first;
 
-                auto T = tasks[rb_ket].create_T_left(left, ket_tensor);
+                auto T = tasks[rb_ket].create_T_left(left.get_data_view(), ket_tensor);
 
                 for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
                 {
@@ -224,7 +224,8 @@ namespace contraction {
                 for(index_type rb_ket = 0; rb_ket < loop_max; ++rb_ket) {
                     charge rc_ket = ket_right_i[rb_ket].first;
 
-                    value_type** T = tasks[rb_ket].create_T_left_gpu(left, ket_tensor);
+                    value_type** T = tasks[rb_ket].create_T_left_gpu(left.device_data(0),
+                                                                     ket_tensor.device_data(0));
 
                     for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
                     {
@@ -251,7 +252,7 @@ namespace contraction {
                 for(index_type rb_ket = 0; rb_ket < loop_max; ++rb_ket) {
                     charge rc_ket = ket_right_i[rb_ket].first;
 
-                    auto T = tasks[rb_ket].create_T_left(left, ket_tensor);
+                    auto T = tasks[rb_ket].create_T_left(left.get_data_view(), ket_tensor);
 
                     for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
                     {

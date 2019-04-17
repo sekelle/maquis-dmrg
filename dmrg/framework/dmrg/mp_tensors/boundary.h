@@ -310,6 +310,7 @@ public:
         assert(ud.size() == ld.size());
 
         data().resize(ud.size());
+        data_view.resize(ud.size());
         for (std::size_t i = 0; i < ud.size(); ++i)
         {
             // assume diagonal blocks for initial boundaries
@@ -329,7 +330,9 @@ public:
             std::fill((*this)[ci], (*this)[ci] + index_.cohort_size(ci), value_type(1.));
     }
 
-    Boundary(BoundaryIndex<value_type, SymmGroup> const & idx) : index_(idx), data_(idx.n_cohorts()) { }
+    Boundary(BoundaryIndex<value_type, SymmGroup> const & idx) : index_(idx)
+                                                               , data_(idx.n_cohorts())
+                                                               , data_view(idx.n_cohorts()) { }
     //Boundary(BoundaryIndex<value_type, SymmGroup> const & idx) : index_(idx), data_view(idx.n_cohorts()) { }
 
     Boundary(Boundary<Matrix, SymmGroup> const& rhs) = delete;
@@ -343,6 +346,8 @@ public:
     const value_type* operator[](unsigned ci) const { return data()[ci].data(); }
     //value_type* operator[](unsigned ci)             { return data()[ci]; }
     //const value_type* operator[](unsigned ci) const { return data()[ci]; }
+
+    std::vector<value_type*> const & get_data_view() const { return data_view; }
 
     BoundaryIndex<value_type, SymmGroup> const& index() const
     {
@@ -372,8 +377,10 @@ public:
         //    seek += index_.cohort_size_a(ci);
         //}
 
-        for (unsigned ci = 0; ci < index_.n_cohorts(); ++ci)
+        for (unsigned ci = 0; ci < index_.n_cohorts(); ++ci) {
             data()[ci].resize(index_.cohort_size(ci));
+            data_view[ci] = data()[ci].data();
+        }
     }
 
     void deallocate()
@@ -442,7 +449,7 @@ private:
 
     BoundaryIndex<value_type, SymmGroup> index_;
 
-    //std::vector<value_type*> data_view;
+    std::vector<value_type*> data_view;
     data_t data_;
 };
 
