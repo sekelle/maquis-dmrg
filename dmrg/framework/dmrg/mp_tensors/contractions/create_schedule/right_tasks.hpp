@@ -114,6 +114,7 @@ namespace common {
 
         charge lc_ket = left_i[lb_ket].first;
         unsigned ls_ket = left_i[lb_ket].second;
+        auto phys_s = phys_i.sizes();
 
         // output physical index, output offset range = out_right offset + ss2*rs_bra
         //                                              for ss2 in {0, 1, .., phys_i[s].second}
@@ -123,7 +124,7 @@ namespace common {
             if (std::abs(SymmGroup::particleNumber(lc_ket) - SymmGroup::particleNumber(lc_bra)) > site_basis_max_diff) continue;
             unsigned ls_bra = left_i[lb_bra].second;
 
-            typename block_type::cohort_type cohort(phys_i, lb_ket, lb_bra, ls_ket, ls_bra, 0, 0, mpo.row_dim());
+            typename block_type::cohort_type cohort(phys_s, lb_ket, lb_bra, ls_ket, ls_bra, 0, 0, mpo.row_dim());
 
             for (unsigned s = 0; s < phys_i.size(); ++s)
             {

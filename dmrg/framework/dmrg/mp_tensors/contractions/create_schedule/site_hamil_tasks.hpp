@@ -56,6 +56,7 @@ namespace common {
 
         auto const & left = left_boundary.index();
         auto const & right = right_boundary.index();
+        auto phys_s = phys_i.sizes();
 
         charge lc_in = left_i[lb_in].first;
         unsigned ls_in = left_i[lb_in].second;
@@ -74,7 +75,7 @@ namespace common {
             unsigned ci = left.cohort_index(lc_out, lc_in); if (ci == left.n_cohorts()) continue;
             unsigned ci_eff = left.tr(ci) ? left.cohort_index(lc_in, lc_out) : ci;
 
-            typename block_type::cohort_type cohort(phys_i, lb_in, lb_out, ls_in, ls_out, ci, ci_eff, left.n_blocks(ci_eff));
+            typename block_type::cohort_type cohort(phys_s, lb_in, lb_out, ls_in, ls_out, ci, ci_eff, left.n_blocks(ci_eff));
 
             for (unsigned s = 0; s < phys_i.size(); ++s)
             {

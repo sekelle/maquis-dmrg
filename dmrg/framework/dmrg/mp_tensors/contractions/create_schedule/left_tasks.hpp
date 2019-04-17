@@ -99,6 +99,7 @@ namespace common {
         Index<SymmGroup> const & bra_left_i = bra.row_dim();
         Index<SymmGroup> const & bra_right_i = bra.col_dim();
         Index<SymmGroup> const & phys_i = ket.site_dim();
+        auto phys_s = phys_i.sizes();
 
         charge rc_ket = ket_right_i[rb_ket].first;
         unsigned rs_ket = ket_right_i[rb_ket].second;
@@ -111,7 +112,7 @@ namespace common {
             if (std::abs(SymmGroup::particleNumber(rc_bra) - SymmGroup::particleNumber(rc_ket)) > site_basis_max_diff) continue;
             unsigned rs_bra = bra_right_i[rb_bra].second;
 
-            typename block_type::cohort_type cohort(phys_i, rb_bra, rb_ket, rs_bra, rs_ket, 0, 0, mpo.col_dim(), true);
+            typename block_type::cohort_type cohort(phys_s, rb_bra, rb_ket, rs_bra, rs_ket, 0, 0, mpo.col_dim(), true);
 
             for (unsigned s = 0; s < phys_i.size(); ++s)
             {

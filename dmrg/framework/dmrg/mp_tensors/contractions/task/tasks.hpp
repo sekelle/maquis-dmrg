@@ -74,7 +74,7 @@ namespace detail{
     }
 }
 
-template <class Matrix, class SymmGroup>
+template <class Matrix>
 class Cohort
 {
     typedef MPOTensor_detail::index_type index_type;
@@ -194,7 +194,7 @@ public:
     Cohort() {}
     Cohort(index_type mpodim) : mpo_offsets(mpodim) {}
     Cohort(
-           Index<SymmGroup> const & phys_i,
+           std::vector<std::size_t> const & phys_i,
            index_type l_block,
            index_type r_block,
            index_type l_size,
@@ -204,14 +204,15 @@ public:
            index_type mpodim,
            bool left = false
           )
-          : lb(l_block), rb(r_block), ls(l_size), rs(r_size), ci(ci_), ci_eff(ci_eff_), mpo_offsets(mpodim), nSrows(mpodim), sfold(phys_i.size())
-          , suv(phys_i.sum_of_sizes())
+          : lb(l_block), rb(r_block), ls(l_size), rs(r_size), ci(ci_), ci_eff(ci_eff_),
+            mpo_offsets(mpodim), nSrows(mpodim), sfold(phys_i.size())
+          , suv(std::accumulate(phys_i.begin(), phys_i.end(), 0))
     {
         unsigned ssum = 0;
         for (unsigned s = 0; s < phys_i.size(); ++s)
         {
             sfold[s] = ssum;
-            ssum += phys_i[s].second;
+            ssum += phys_i[s];
         }
 
         // right version of create_s has a the b index on the left side
@@ -246,7 +247,7 @@ public:
         compute_mpo_offsets();
     }
 
-    template <class DefaultMatrix, class OtherMatrix>
+    template <class DefaultMatrix, class OtherMatrix, class SymmGroup>
     void prop_l(MPSTensor<DefaultMatrix, SymmGroup> const & bra_mps,
                 std::vector<std::vector<value_type>> const & T,
                 unsigned ci,
@@ -260,7 +261,7 @@ public:
                   &bra_mps.data()[lb](0,0), stripe, &sloc[0], stripe, value_type(0), new_left[ci], M);
     }
 
-    template <class DefaultMatrix, class OtherMatrix>
+    template <class DefaultMatrix, class OtherMatrix, class SymmGroup>
     void prop_l_gpu(MPSTensor<DefaultMatrix, SymmGroup> const & bra_mps,
                     value_type** dev_T,
                     unsigned ci,
@@ -292,7 +293,7 @@ public:
                         ws->stream));
     }
 
-    template <class DefaultMatrix, class OtherMatrix>
+    template <class DefaultMatrix, class OtherMatrix, class SymmGroup>
     void prop_r(MPSTensor<DefaultMatrix, SymmGroup> const & bra_mps,
                 std::vector<std::vector<value_type>> const & T,
                 unsigned ci,
@@ -311,7 +312,7 @@ public:
                 std::copy(&buf(ls*b,col), &buf(ls*b,col) + ls, new_right[ci] + (b*rs + col)*ls);
     }
 
-    template <class DefaultMatrix, class OtherMatrix>
+    template <class DefaultMatrix, class OtherMatrix, class SymmGroup>
     void prop_r_gpu(MPSTensor<DefaultMatrix, SymmGroup> const & bra_mps,
                     value_type** dev_T,
                     unsigned ci,
@@ -335,12 +336,12 @@ public:
                         cudaMemcpyDeviceToHost, ws->stream);
     }
 
-    template <class DefaultMatrix, class OtherMatrix>
+    template <class DefaultMatrix, class OtherMatrix, class SymmGroup>
     void contract(
-                  Boundary<OtherMatrix, SymmGroup> const & left,
-                  std::vector<std::vector<value_type>> const & T,
-                  DefaultMatrix & output,
-                  std::mutex & out_mutex) const
+        Boundary<OtherMatrix, SymmGroup> const & left,
+        std::vector<std::vector<value_type>> const & T,
+        DefaultMatrix & output,
+        std::mutex & out_mutex) const
     {
         std::vector<value_type> sloc = create_s_r(T);
 
@@ -364,7 +365,7 @@ public:
         output += buf;
     }
 
-    template <class OtherMatrix>
+    template <class OtherMatrix, class SymmGroup>
     void contract_gpu(Boundary<OtherMatrix, SymmGroup> const & left,
                       value_type** dev_T,
                       value_type* dev_out) const
@@ -438,7 +439,7 @@ public:
         return std::accumulate(suv.begin(), suv.end(), 0, [](std::size_t sum, SUnit const& su) { return sum + su.n_tasks();});
     }
 
-    template <class DefaultMatrix>
+    template <class DefaultMatrix, class SymmGroup>
     std::size_t n_flops(MPSTensor<DefaultMatrix, SymmGroup> const& mps) const
     {
         std::size_t ret = 0;
@@ -584,12 +585,12 @@ private:
 
 
 template <class Matrix, class SymmGroup>
-class MPSBlock : public std::vector<Cohort<Matrix, SymmGroup>>
+class MPSBlock : public std::vector<Cohort<Matrix>>
 {
     typedef typename Matrix::value_type value_type;
 
 public:
-    typedef Cohort<Matrix, SymmGroup> cohort_type;
+    typedef Cohort<Matrix> cohort_type;
 
     template <class DefaultMatrix, class OtherMatrix>
     std::vector<std::vector<value_type>>
@@ -809,22 +810,6 @@ public:
         return ret;
     }
 
-    template <class OtherMatrix>
-    std::size_t max_r_size(BoundaryIndex<OtherMatrix, SymmGroup> const& right) const
-    {
-        std::size_t ret = 0;
-        for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
-        {
-            unsigned ci = boost::get<1>(t_schedule[ti]);
-            if (right.tr(ci))
-            {
-                unsigned ci_eff = boost::get<2>(t_schedule[ti]);
-                ret = std::max(ret, right.n_blocks(ci_eff) * right.left_size(ci) * right.right_size(ci));
-            }
-        }
-        return bit_twiddling::round_up<BUFFER_ALIGNMENT>(ret);
-    }
-
     unsigned get_ti(unsigned mps_offset, unsigned ci_virt) const
     {
         for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
@@ -835,10 +820,9 @@ public:
         return std::numeric_limits<unsigned>::max();
     }
 
-    template <class DefaultMatrix, class OtherMatrix>
+    template <class DefaultMatrix>
     size_t n_flops(MPSTensor<DefaultMatrix, SymmGroup> const& mps,
-                   BoundaryIndex<OtherMatrix, SymmGroup> const& left,
-                   BoundaryIndex<OtherMatrix, SymmGroup> const& right) const
+                   BoundaryIndexRT const& right) const
     {
         std::size_t ret = 0;
         for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
@@ -850,7 +834,7 @@ public:
             unsigned bls = right.left_size(ci);
             unsigned brs = right.right_size(ci);
 
-            ret += 2 * mps.row_dim()[lb_ket].second * right.left_size(ci) * right.right_size(ci) * right.n_blocks(ci_eff);
+            ret += 2 * mps.row_dim()[lb_ket].second * right.cohort_size(ci_eff);
         }
 
         for (auto& coh : *this) ret += coh.n_flops(mps);
@@ -935,7 +919,10 @@ struct ScheduleNew : public std::vector<MPSBlock<
     typedef typename Matrix::value_type value_type;
 
     ScheduleNew() {}
-    ScheduleNew(std::size_t dim) : base(dim), /*mutexes(dim),*/ cpu_time(0) { std::fill(gpu_time, gpu_time + MAX_N_GPUS, 0); }
+    ScheduleNew(std::size_t dim) : base(dim), /*mutexes(dim),*/ cpu_time(0)
+    {
+        std::fill(gpu_time, gpu_time + MAX_N_GPUS, 0); 
+    }
 
     //double mflops(double time) const { return total_flops*niter / time / 1e6; }
 
@@ -967,13 +954,12 @@ struct ScheduleNew : public std::vector<MPSBlock<
         return std::max(1.0 / (cpu_speed/gpu_speed + 1.0), 0.9) ;
     }
 
-    template <class OtherMatrix>
-    void compute_workload(MPSTensor<Matrix, SymmGroup> const & mps, BoundaryIndex<OtherMatrix, SymmGroup> const& left,
-                          BoundaryIndex<OtherMatrix, SymmGroup> const& right, double cpu_gpu_ratio)
+    void compute_workload(MPSTensor<Matrix, SymmGroup> const & mps,
+                          BoundaryIndexRT const& right, double cpu_gpu_ratio)
     {
         std::vector<std::size_t> flops_list;
         for (auto& mpsb : *this)
-            flops_list.push_back( mpsb.n_flops(mps, left, right) );
+            flops_list.push_back( mpsb.n_flops(mps, right) );
 
         total_flops = std::accumulate(flops_list.begin(), flops_list.end(), 0lu);
 

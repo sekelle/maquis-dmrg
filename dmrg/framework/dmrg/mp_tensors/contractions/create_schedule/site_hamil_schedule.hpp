@@ -68,7 +68,7 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
                 shtm_tasks(mpo, left, right, left_i, right_i, physical_i, out_right_pb, mb, tasks[mb]);
     });
 
-    tasks.compute_workload(initial, left.index(), right.index(), cpu_gpu_ratio);
+    tasks.compute_workload(initial, right.index().rt(), cpu_gpu_ratio);
     tasks.stage_gpu(right, initial);
     tasks.mps_stage.allocate(initial.data().basis());
 

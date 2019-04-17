@@ -169,6 +169,8 @@ public:
     size_t cohort_size    (unsigned ci) const { return index_rt.cohort_size(ci); }
     //size_t     cohort_size_a  (unsigned ci) const { return index_rt.cohort_size_a(ci); }
 
+    BoundaryIndexRT const & rt() const { return index_rt; }
+
     unsigned cohort_index(unsigned lb, unsigned rb, int tag = 0) const
     {
         if (lb < num_rows(lbrb_ci) && rb < num_cols(lbrb_ci)
