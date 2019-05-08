@@ -247,25 +247,23 @@ public:
         compute_mpo_offsets();
     }
 
-    template <class DefaultMatrix, class OtherMatrix, class SymmGroup>
-    void prop_l(MPSTensor<DefaultMatrix, SymmGroup> const & bra_mps,
+    void prop_l(const value_type* bra_mps,
                 std::vector<std::vector<value_type>> const & T,
-                unsigned ci,
-                Boundary<OtherMatrix, SymmGroup> & new_left) const
+                value_type* new_left) const
     {
         std::vector<value_type> sloc = create_s(T);
 
         int M = ls;
         int N = nSrows * rs;
         blas_gemm('T', 'N', M, N, stripe, value_type(1),
-                  &bra_mps.data()[lb](0,0), stripe, &sloc[0], stripe, value_type(0), new_left[ci], M);
+                  bra_mps, stripe, &sloc[0], stripe, value_type(0), new_left, M);
+                  //&bra_mps.data()[lb](0,0), stripe, &sloc[0], stripe, value_type(0), new_left, M);
     }
 
-    template <class DefaultMatrix, class OtherMatrix, class SymmGroup>
-    void prop_l_gpu(MPSTensor<DefaultMatrix, SymmGroup> const & bra_mps,
+    void prop_l_gpu(std::vector<void*> const & bra_mps,
                     value_type** dev_T,
-                    unsigned ci,
-                    Boundary<OtherMatrix, SymmGroup> & new_left) const
+                    value_type* new_left,
+                    value_type* dev_new_left) const
     {
         create_s_l_gpu(dev_T);
 
@@ -278,8 +276,8 @@ public:
         cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
         cublasStatus_t stat =
         cublasDgemm(accelerator::gpu::get_handle(),
-                    cuop[1], cuop[0], M, N, K, &one, (value_type*)bra_mps.device_data()[lb], K,
-                    dev_S, K, &zero, (value_type*)new_left.device_data()[ci], M);
+                    cuop[1], cuop[0], M, N, K, &one, (value_type*)bra_mps[lb], K,
+                    dev_S, K, &zero, dev_new_left, M);
 
         if (stat != CUBLAS_STATUS_SUCCESS)
         {
@@ -288,7 +286,7 @@ public:
         }
 
         HANDLE_ERROR(
-        cudaMemcpyAsync(new_left[ci], (value_type*)new_left.device_data()[ci],
+        cudaMemcpyAsync(new_left, dev_new_left,
                         M*N * sizeof(value_type), cudaMemcpyDeviceToHost,
                         ws->stream));
     }

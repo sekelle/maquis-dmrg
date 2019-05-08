@@ -230,7 +230,8 @@ namespace contraction {
                     for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
                     {
                         charge rc_bra = bra_right_i[it->get_lb()].first;
-                        it->prop_l_gpu(bra_tensor, T, ret.index().cohort_index(rc_bra, rc_ket), ret);
+                        unsigned ci = ret.index().cohort_index(rc_bra, rc_ket);
+                        it->prop_l_gpu(bra_tensor.device_data(), T, ret[ci], (value_type*)ret.device_data()[ci]);
                     }
                 }
 
@@ -257,7 +258,8 @@ namespace contraction {
                     for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
                     {
                         charge rc_bra = bra_right_i[it->get_lb()].first;
-                        it->prop_l(bra_tensor, T, ret.index().cohort_index(rc_bra, rc_ket), ret);
+                        unsigned ci = ret.index().cohort_index(rc_bra, rc_ket);
+                        it->prop_l(bra_tensor.data()[it->get_lb()].get_values().data(), T, ret[ci]);
                     }
                 }
             }
