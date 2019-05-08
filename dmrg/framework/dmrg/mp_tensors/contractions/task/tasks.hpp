@@ -74,11 +74,11 @@ namespace detail{
     }
 }
 
-template <class Matrix>
+template <class VT>
 class Cohort
 {
     typedef MPOTensor_detail::index_type index_type;
-    typedef typename Matrix::value_type value_type;
+    typedef VT value_type;
 
 private:
 
@@ -585,12 +585,12 @@ private:
 
 
 template <class Matrix, class SymmGroup>
-class MPSBlock : public std::vector<Cohort<Matrix>>
+class MPSBlock : public std::vector<Cohort<typename Matrix::value_type>>
 {
     typedef typename Matrix::value_type value_type;
 
 public:
-    typedef Cohort<Matrix> cohort_type;
+    typedef Cohort<value_type> cohort_type;
 
     MPSBlock(BoundaryIndexRT const & lrt,
              BoundaryIndexRT const & rrt) : left_rt(lrt), right_rt(rrt) {}

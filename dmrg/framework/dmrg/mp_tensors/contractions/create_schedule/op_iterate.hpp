@@ -38,7 +38,7 @@ namespace detail {
     template <class Matrix, class AlignedMatrix, class SymmGroup>
     void op_iterate(typename operator_selector<Matrix, SymmGroup>::type const & W, std::size_t w_block,
                     typename Matrix::value_type couplings[],
-                    Cohort<AlignedMatrix> & cg,
+                    Cohort<typename Matrix::value_type> & cg,
                     unsigned s,
                     unsigned m2_size,
                     MPSBlock<AlignedMatrix, SymmGroup> const & mpsb,
