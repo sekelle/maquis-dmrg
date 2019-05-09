@@ -73,4 +73,35 @@ blas_gemm(char transa, char transb, int m, int n, int k,
     BLAS_CGEMM(&transa, &transb, &m,&n,&k, &alpha, a,&lda, b,&ldb, &beta, c,&ldc);
 }
 
+template <class T>
+inline typename boost::enable_if<boost::is_same<T, double> >::type
+blas_axpy(int sz, T alpha, const T* x, T* y)
+{
+    int stride = 1;
+    BLAS_DAXPY(&sz, &alpha, x, &stride, y, &stride);
+}
+
+template <class T>
+inline typename boost::enable_if<boost::is_same<T, float> >::type
+blas_axpy(int sz, T alpha, const T* x, T* y)
+{
+    int stride = 1;
+    BLAS_SAXPY(&sz, &alpha, x, &stride, y, &stride);
+}
+
+template <class T>
+inline typename boost::enable_if<boost::is_same<T, std::complex<double> > >::type
+blas_axpy(int sz, T alpha, const T* x, T* y)
+{
+    int stride = 1;
+    BLAS_ZAXPY(&sz, &alpha, x, &stride, y, &stride);
+}
+
+template <class T>
+inline typename boost::enable_if<boost::is_same<T, std::complex<float> > >::type
+blas_axpy(int sz, T alpha, const T* x, T* y)
+{
+    int stride = 1;
+    BLAS_CAXPY(&sz, &alpha, x, &stride, y, &stride);
+}
 #endif

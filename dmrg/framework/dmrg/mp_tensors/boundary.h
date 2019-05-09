@@ -347,7 +347,7 @@ public:
     //value_type* operator[](unsigned ci)             { return data()[ci]; }
     //const value_type* operator[](unsigned ci) const { return data()[ci]; }
 
-    std::vector<value_type*> const & get_data_view() const { return data_view; }
+    std::vector<const value_type*> const & get_data_view() const { return data_view; }
 
     BoundaryIndex<value_type, SymmGroup> const& index() const
     {
@@ -449,7 +449,7 @@ private:
 
     BoundaryIndex<value_type, SymmGroup> index_;
 
-    std::vector<value_type*> data_view;
+    std::vector<const value_type*> data_view;
     data_t data_;
 };
 

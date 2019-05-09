@@ -57,9 +57,6 @@ endif(ENABLE_LL_MODELS)
 add_library(dmrg_utils STATIC block_matrix/symmetry.cpp utils/utils.cpp utils/DmrgOptions.cpp utils/time_stopper.cpp utils/proc_statm.cpp utils/proc_status.cpp utils/md5_impl.cpp utils/md5.cpp)
 add_library(dmrg_models STATIC ${DMRG_MODELS_SOURCES})
 
-add_library(numeric STATIC mp_tensors/contractions/numeric/numeric.cpp)
-target_link_libraries(dmrg_models numeric)
-
 add_library(wignerj STATIC block_matrix/symmetry/wignerj/coupling.c)
 
 # cmake prior version 3.8 doesn't apply the fPIC of the set_property command below for cu files
@@ -70,11 +67,11 @@ CUDA_ADD_LIBRARY(numeric_gpu STATIC mp_tensors/contractions/numeric/gpu_dgemm_dd
 target_link_libraries(numeric_gpu cublas_static culibos ${CUDA_LIBRARIES})
 target_link_libraries(dmrg_models numeric_gpu)
 
-set_property(TARGET wignerj dmrg_utils dmrg_models numeric numeric_gpu PROPERTY POSITION_INDEPENDENT_CODE TRUE)
+set_property(TARGET wignerj dmrg_utils dmrg_models numeric_gpu PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 
 # *** Install
 
-install(TARGETS dmrg_utils dmrg_models numeric numeric_gpu wignerj
+install(TARGETS dmrg_utils dmrg_models numeric_gpu wignerj
         EXPORT DMRGTargets COMPONENT libraries DESTINATION lib)
-export(TARGETS dmrg_utils dmrg_models numeric numeric_gpu wignerj
+export(TARGETS dmrg_utils dmrg_models numeric_gpu wignerj
        FILE "${PROJECT_BINARY_DIR}/DMRGTargets.cmake")

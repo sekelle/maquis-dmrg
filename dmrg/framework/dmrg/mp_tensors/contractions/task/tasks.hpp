@@ -41,7 +41,6 @@
 #include "utils/sizeof.h"
 #include "dmrg/utils/aligned_allocator.hpp"
 
-#include "dmrg/mp_tensors/contractions/numeric/numeric.h"
 #include "dmrg/mp_tensors/contractions/numeric/gemm_template.h"
 
 #include "dmrg/mp_tensors/contractions/numeric/gpu.h"
@@ -330,11 +329,10 @@ public:
                         cudaMemcpyDeviceToHost, ws->stream);
     }
 
-    template <class DefaultMatrix, class OtherMatrix, class SymmGroup>
     void contract(
-        Boundary<OtherMatrix, SymmGroup> const & left,
+        std::vector<const value_type*> const & left,
         std::vector<std::vector<value_type>> const & T,
-        DefaultMatrix & output,
+        value_type* output,
         std::mutex & out_mutex) const
     {
         std::vector<value_type> sloc = create_s_r(T);
@@ -351,12 +349,12 @@ public:
             luse = lbuf.data();
         }
 
-        DefaultMatrix buf(M,N);
-        blas_gemm('N', 'N', M, N, K, value_type(1), luse, M, sloc.data(), K, value_type(0), buf.get_values().data(), M);
+        std::vector<value_type> buf(M*N);
+        blas_gemm('N', 'N', M, N, K, value_type(1), luse, M, sloc.data(), K, value_type(0), buf.data(), M);
 
         //std::lock_guard<std::mutex> lk(out_mutex);
         parallel_critical
-        output += buf;
+        blas_axpy(M*N, value_type{1}, buf.data(), output);
     }
 
     template <class OtherMatrix, class SymmGroup>
@@ -591,7 +589,7 @@ public:
 
     template <class DefaultMatrix>
     std::vector<std::vector<value_type>>
-    create_T_left(std::vector<value_type*> const & left,
+    create_T_left(std::vector<const value_type*> const & left,
                   MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
     {
         std::vector<std::vector<value_type>> ret(t_schedule.size());

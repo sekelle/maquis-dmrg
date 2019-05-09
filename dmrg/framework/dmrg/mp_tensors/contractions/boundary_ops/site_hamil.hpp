@@ -134,7 +134,8 @@ namespace common {
 
             auto T = tasks[lb_in].create_T(right, ket_tensor);
             for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
-                it->contract(left, T, ret.data()[it->get_rb()], tasks.mutexes[it->get_rb()]);
+                it->contract(left.get_data_view(), T, ret.data()[it->get_rb()].get_values().data(),
+                             tasks.mutexes[it->get_rb()]);
         }
 
         boost::chrono::high_resolution_clock::time_point then = boost::chrono::high_resolution_clock::now();
