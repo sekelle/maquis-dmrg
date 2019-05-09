@@ -229,9 +229,11 @@ namespace contraction {
 
                     for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
                     {
-                        charge rc_bra = bra_right_i[it->get_lb()].first;
+                        unsigned lb = it->get_lb();
+                        charge rc_bra = bra_right_i[lb].first;
                         unsigned ci = ret.index().cohort_index(rc_bra, rc_ket);
-                        it->prop_l_gpu(bra_tensor.device_data(), T, ret[ci], (value_type*)ret.device_data()[ci]);
+                        it->prop_l_gpu((value_type*)bra_tensor.device_data()[lb], T,
+                                       ret[ci], (value_type*)ret.device_data()[ci]);
                     }
                 }
 
@@ -350,8 +352,11 @@ namespace contraction {
 
                     for (const_iterator it = tasks[lb_ket].begin(); it != tasks[lb_ket].end(); ++it) // lc_ket loop
                     {
-                        charge lc_bra = bra_left_i[it->get_rb()].first;
-                        it->prop_r_gpu(bra_tensor, dev_T, ret.index().cohort_index(lc_ket, lc_bra), ret);
+                        unsigned rb = it->get_rb();
+                        charge lc_bra = bra_left_i[rb].first;
+                        unsigned ci = ret.index().cohort_index(lc_ket, lc_bra);
+                        it->prop_r_gpu((value_type*)bra_tensor.device_data()[rb],
+                                       dev_T, ret[ci], (value_type*)ret.device_data()[ci]);
                     }
                 }
 
@@ -378,8 +383,10 @@ namespace contraction {
                     // lc_ket loop
                     for (const_iterator it = tasks[lb_ket].begin(); it != tasks[lb_ket].end(); ++it)
                     {
-                        charge lc_bra = bra_left_i[it->get_rb()].first;
-                        it->prop_r(bra_tensor, T, ret.index().cohort_index(lc_ket, lc_bra), ret);
+                        unsigned rb = it->get_rb();
+                        charge lc_bra = bra_left_i[rb].first;
+                        unsigned ci = ret.index().cohort_index(lc_ket, lc_bra);
+                        it->prop_r(bra_tensor.data()[rb].get_values().data(), T, ret[ci]);
                     }
                 }
             }

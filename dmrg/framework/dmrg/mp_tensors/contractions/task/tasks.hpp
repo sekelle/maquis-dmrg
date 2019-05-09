@@ -257,10 +257,9 @@ public:
         int N = nSrows * rs;
         blas_gemm('T', 'N', M, N, stripe, value_type(1),
                   bra_mps, stripe, &sloc[0], stripe, value_type(0), new_left, M);
-                  //&bra_mps.data()[lb](0,0), stripe, &sloc[0], stripe, value_type(0), new_left, M);
     }
 
-    void prop_l_gpu(std::vector<void*> const & bra_mps,
+    void prop_l_gpu(value_type* bra_mps,
                     value_type** dev_T,
                     value_type* new_left,
                     value_type* dev_new_left) const
@@ -276,7 +275,7 @@ public:
         cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
         cublasStatus_t stat =
         cublasDgemm(accelerator::gpu::get_handle(),
-                    cuop[1], cuop[0], M, N, K, &one, (value_type*)bra_mps[lb], K,
+                    cuop[1], cuop[0], M, N, K, &one, bra_mps, K,
                     dev_S, K, &zero, dev_new_left, M);
 
         if (stat != CUBLAS_STATUS_SUCCESS)
@@ -291,30 +290,27 @@ public:
                         ws->stream));
     }
 
-    template <class DefaultMatrix, class OtherMatrix, class SymmGroup>
-    void prop_r(MPSTensor<DefaultMatrix, SymmGroup> const & bra_mps,
+    void prop_r(const value_type* bra_mps,
                 std::vector<std::vector<value_type>> const & T,
-                unsigned ci,
-                Boundary<OtherMatrix, SymmGroup> & new_right) const
+                value_type* new_right) const
     {
         std::vector<value_type> sloc = create_s_r(T);
 
         int M = nSrows * ls;
         int N = rs;
-        DefaultMatrix buf(M,N);
+        alps::numeric::matrix<value_type> buf(M,N);
         blas_gemm('N', 'T', M, N, stripe, value_type(1),
-                   &sloc[0], M, &bra_mps.data()[rb](0,0), rs, value_type(0), &buf(0,0), M);
+                   &sloc[0], M, bra_mps, rs, value_type(0), &buf(0,0), M);
 
         for (unsigned b = 0; b < nSrows; ++b)
             for (unsigned col = 0; col < rs; ++col)
-                std::copy(&buf(ls*b,col), &buf(ls*b,col) + ls, new_right[ci] + (b*rs + col)*ls);
+                std::copy(&buf(ls*b,col), &buf(ls*b,col) + ls, new_right + (b*rs + col)*ls);
     }
 
-    template <class DefaultMatrix, class OtherMatrix, class SymmGroup>
-    void prop_r_gpu(MPSTensor<DefaultMatrix, SymmGroup> const & bra_mps,
+    void prop_r_gpu(const value_type* bra_mps,
                     value_type** dev_T,
-                    unsigned ci,
-                    Boundary<OtherMatrix, SymmGroup> & new_right) const
+                    value_type* new_right,
+                    value_type* dev_new_right) const
     {
         create_s_r_gpu(dev_T);
 
@@ -327,10 +323,10 @@ public:
         cublasOperation_t cuop[2] = {CUBLAS_OP_N, CUBLAS_OP_T};
         cublasDgemmStridedBatched(accelerator::gpu::get_handle(),
                                   cuop[0], cuop[1], M, N, K, &one, dev_S, M*nSrows, M,
-                                  (value_type*)bra_mps.device_data()[rb], N, 0,
-                                  &zero, (value_type*)new_right.device_data()[ci], M, M*N, nSrows);
+                                  bra_mps, N, 0,
+                                  &zero, dev_new_right, M, M*N, nSrows);
 
-        cudaMemcpyAsync(new_right[ci], (value_type*)new_right.device_data()[ci], M*N*nSrows * sizeof(value_type),
+        cudaMemcpyAsync(new_right, dev_new_right, M*N*nSrows * sizeof(value_type),
                         cudaMemcpyDeviceToHost, ws->stream);
     }
 
