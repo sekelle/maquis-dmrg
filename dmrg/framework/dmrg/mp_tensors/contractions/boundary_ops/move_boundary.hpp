@@ -82,7 +82,7 @@ namespace contraction {
                 for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
                 {
                     charge rc_bra = right_i[it->get_lb()].first;
-                    it->lbtm(T, dm_out[right_i.position(rc_bra)], alpha);
+                    it->lbtm(T, dm_out[right_i.position(rc_bra)].get_values().data(), alpha);
                 }
             });
         }
@@ -131,7 +131,7 @@ namespace contraction {
                 for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it)
                 {
                     charge lc_ket = left_i[it->get_rb()].first;
-                    it->rbtm(T, dm_out[left_i.position(lc_ket)], alpha);
+                    it->rbtm(T, dm_out[left_i.position(lc_ket)].get_values().data(), alpha);
                 }
             });
         }

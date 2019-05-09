@@ -387,10 +387,8 @@ public:
         atomic_add(ws->stream, M*std::size_t(N), ws->mps_buffer, (value_type*)dev_out);
     }
 
-    template <class OtherMatrix>
-    void lbtm(
-              std::vector<std::vector<value_type>> const & T,
-              OtherMatrix & out,
+    void lbtm(std::vector<std::vector<value_type>> const & T,
+              value_type* out,
               double alpha
              ) const
     {
@@ -399,17 +397,15 @@ public:
         int M = stripe;
         int K = sloc.size() / M;
 
-        OtherMatrix tmp(M,M);
-        blas_gemm('N', 'T', M, M, K, value_type(alpha), &sloc[0], stripe, &sloc[0], stripe, value_type(1), &tmp(0,0), M);
+        std::vector<value_type> tmp(M*M);
+        blas_gemm('N', 'T', M, M, K, value_type(alpha), &sloc[0], stripe, &sloc[0], stripe, value_type(1), tmp.data(), M);
 
         parallel_critical
-        out += tmp;
+        blas_axpy(M*M, value_type{1}, tmp.data(), out); 
     }
 
-    template <class OtherMatrix>
-    void rbtm(
-              std::vector<std::vector<value_type>> const & T,
-              OtherMatrix & out,
+    void rbtm(std::vector<std::vector<value_type>> const & T,
+              value_type* out,
               double alpha
              ) const
     {
@@ -418,11 +414,11 @@ public:
         int M = stripe;
         int K = nSrows * ls;
 
-        OtherMatrix tmp(M,M);
-        blas_gemm('T', 'N', M, M, K, value_type(alpha), &sloc[0], K, &sloc[0], K, value_type(1), &tmp(0,0), M);
+        std::vector<value_type> tmp(M*M);
+        blas_gemm('T', 'N', M, M, K, value_type(alpha), &sloc[0], K, &sloc[0], K, value_type(1), tmp.data(), M);
 
         parallel_critical
-        out += tmp;
+        blas_axpy(M*M, value_type{1}, tmp.data(), out); 
     }
 
     std::size_t n_tasks() const
