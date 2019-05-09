@@ -74,7 +74,7 @@ namespace common {
                                                                tasks.mps_stage.device_ptr(id));
 
                 for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
-                    it->contract_gpu(left, dev_T, tasks.mps_stage.device_out_view(id)[it->get_rb()]);
+                    it->contract_gpu(left.device_data(), dev_T, tasks.mps_stage.device_out_view(id)[it->get_rb()]);
             }
 
             HANDLE_ERROR( cudaEventRecord(stop,0) );

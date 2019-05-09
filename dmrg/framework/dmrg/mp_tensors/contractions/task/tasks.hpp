@@ -357,8 +357,7 @@ public:
         blas_axpy(M*N, value_type{1}, buf.data(), output);
     }
 
-    template <class OtherMatrix, class SymmGroup>
-    void contract_gpu(Boundary<OtherMatrix, SymmGroup> const & left,
+    void contract_gpu(std::vector<void*> const & left,
                       value_type** dev_T,
                       void* dev_out) const
     {
@@ -369,9 +368,9 @@ public:
         int K = nSrows * ls;
 
         value_type* dev_l = (ci != ci_eff) ? dev_S +
-            bit_twiddling::round_up<BUFFER_ALIGNMENT>(K * size_t(N)) : (value_type*)left.device_data()[ci_eff];
+            bit_twiddling::round_up<BUFFER_ALIGNMENT>(K * size_t(N)) : (value_type*)left[ci_eff];
         if (ci != ci_eff)
-            transpose_v(ws->stream, ls, rs, nSrows, (value_type*)left.device_data()[ci_eff], dev_l);
+            transpose_v(ws->stream, ls, rs, nSrows, (value_type*)left[ci_eff], dev_l);
 
         value_type one(1.0), zero(0.);
 
