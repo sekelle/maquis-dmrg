@@ -426,11 +426,10 @@ public:
         return std::accumulate(suv.begin(), suv.end(), 0, [](std::size_t sum, SUnit const& su) { return sum + su.n_tasks();});
     }
 
-    template <class DefaultMatrix, class SymmGroup>
-    std::size_t n_flops(MPSTensor<DefaultMatrix, SymmGroup> const& mps) const
+    std::size_t n_flops() const
     {
         std::size_t ret = 0;
-        ret += 2 * rs * ls * nSrows * num_cols(mps.data()[rb]);
+        ret += 2 * rs * ls * nSrows * stripe;
 
         for (auto const& x : suv)
             ret += 2 * ls * x.ms * x.alpha.size();
@@ -828,7 +827,7 @@ public:
             ret += 2 * mps.row_dim()[lb_ket].second * right.cohort_size(ci_eff);
         }
 
-        for (auto& coh : *this) ret += coh.n_flops(mps);
+        for (auto& coh : *this) ret += coh.n_flops();
 
         return ret;
     }
