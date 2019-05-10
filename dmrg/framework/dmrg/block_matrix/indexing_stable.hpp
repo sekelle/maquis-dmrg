@@ -94,9 +94,6 @@ namespace index_detail
     };
 }
 
-template<class SymmGroup>
-class basis_iterator_;
-
 template<class SymmGroup> class Index
 {
     typedef std::vector<std::pair<typename SymmGroup::charge, std::size_t> > data_type;
@@ -110,8 +107,6 @@ public:
     
     typedef typename data_type::reverse_iterator reverse_iterator;
     typedef typename data_type::const_reverse_iterator const_reverse_iterator;
-    
-    typedef basis_iterator_<SymmGroup> basis_iterator;
     
     Index() : sorted_(true) {}
     Index(std::size_t s_) : sorted_(true), data_(s_) {}
@@ -202,12 +197,6 @@ public:
         return !( *this == o );
     }
 
-    basis_iterator basis_begin() const
-    {
-        assert( data_.size() > 0 );
-        return basis_iterator(*this);
-    }
-    
     std::vector<charge> charges() const
     {
         std::vector<charge> ret(data_.size());
@@ -387,72 +376,6 @@ private:
     mutable boost::unordered_map<charge, size_t> size_;
     boost::unordered_map<std::pair<charge, charge>, size_t> keys_vals_;
 };
-
-template<class SymmGroup>
-class basis_iterator_
-{
-public:
-    typedef typename SymmGroup::charge charge;
-    
-    basis_iterator_(Index<SymmGroup> const & idx, bool at_end = false)
-    : idx_(idx)
-    , cur_block(idx.begin())
-    , cur_i(0)
-    , max_i(cur_block->second)
-    { }
-    
-    std::pair<charge, std::size_t> operator*() const
-    {
-        return std::make_pair(cur_block->first, cur_i);
-    }
-    
-    boost::shared_ptr<std::pair<charge, std::size_t> > operator->() const
-    {
-        return boost::shared_ptr<std::pair<charge, std::size_t> >(new std::pair<charge, std::size_t>(cur_block->first, cur_i));
-    }
-    
-    basis_iterator_ & operator++()
-    {
-        ++cur_i;
-        if (cur_i != max_i)
-            return *this;
-        else {
-            ++cur_block;
-            if (cur_block != idx_.end()) {
-                cur_i = 0;
-                max_i = cur_block->second;
-            }
-            return *this;
-        }
-    }
-    
-    basis_iterator_ operator+(int k)
-    {
-        assert( k >= 0 );
-        basis_iterator_ r = *this;
-        for ( ; k > 0; --k)
-            ++r;
-        return r;
-    }
-    
-    bool end() const
-    {
-        return cur_block == idx_.end();
-    }
-    
-private:
-    Index<SymmGroup> const & idx_;
-    typename Index<SymmGroup>::const_iterator cur_block;
-    std::size_t cur_i, max_i;
-};
-
-template<class SymmGroup>
-basis_iterator_<SymmGroup> operator+(basis_iterator_<SymmGroup> it, std::size_t p)
-{
-    for ( ; p > 0; --p)
-        ++it;
-    return it;
-}
 
 // This is a workaround for MSVC++
 // It can be removed as soon as this bug is fixed:

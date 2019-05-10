@@ -33,8 +33,6 @@
 #include "dmrg/mp_tensors/mpo.h"
 #include "dmrg/mp_tensors/contractions.h"
 
-#include "dmrg/mp_tensors/special_mpos.h"
-
 
 namespace mps_mpo_detail {
 

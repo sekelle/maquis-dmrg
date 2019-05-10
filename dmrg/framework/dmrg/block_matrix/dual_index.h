@@ -156,8 +156,6 @@ public:
     typedef typename data_type::reverse_iterator reverse_iterator;
     typedef typename data_type::const_reverse_iterator const_reverse_iterator;
     
-    typedef basis_iterator_<SymmGroup> basis_iterator;
-    
     DualIndex() : sorted_(true) {}
     
     std::size_t left_block_size(charge r, charge c) const {
@@ -259,12 +257,6 @@ public:
         return !( *this == o );
     }
 
-    basis_iterator basis_begin() const
-    {
-        assert( data_.size() > 0 );
-        return basis_iterator(*this);
-    }
-    
     std::size_t sum_of_left_sizes() const
     {
         return std::accumulate(data_.begin(), data_.end(), 0,
