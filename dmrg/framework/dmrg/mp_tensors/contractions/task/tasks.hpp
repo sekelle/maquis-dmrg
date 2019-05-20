@@ -578,8 +578,9 @@ class MPSBlock : public std::vector<Cohort<typename Matrix::value_type>>
 public:
     typedef Cohort<value_type> cohort_type;
 
-    MPSBlock(BoundaryIndexRT const & lrt,
-             BoundaryIndexRT const & rrt) : left_rt(lrt), right_rt(rrt) {}
+    MPSBlock(std::vector<std::size_t> const & lrks,  BoundaryIndexRT const & lrt,
+             BoundaryIndexRT const & rrt) : lr_ket_sizes(lrks),
+                                            left_rt(lrt), right_rt(rrt) {}
 
     template <class DefaultMatrix>
     std::vector<std::vector<value_type>>
@@ -597,6 +598,7 @@ public:
             unsigned bls = left_rt.left_size(ci);
             unsigned brs = left_rt.right_size(ci);
             unsigned nb  = left_rt.n_blocks(ci_eff);
+            if (rs_ket != lr_ket_sizes[lb_ket]) throw std::runtime_error("lrket\n");
 
             //std::vector<value_type> lbuf;
             //if (ci == ci_eff)
@@ -703,6 +705,7 @@ public:
             int M = num_rows(mps.data()[lb_ket]);
             int N = right_rt.n_blocks(ci_eff) * brs;
             int K = bls;
+            if (M != lr_ket_sizes[lb_ket]) throw std::runtime_error("lrket right\n");
 
             //std::vector<value_type> rbuf;
             //if (right_rt.tr(ci))
@@ -864,6 +867,7 @@ public:
     int deviceID;
 
 private:
+    std::vector<std::size_t> lr_ket_sizes;
     BoundaryIndexRT const & left_rt;
     BoundaryIndexRT const & right_rt;
 
@@ -910,12 +914,17 @@ struct ScheduleNew
     typedef typename Matrix::value_type value_type;
 
     ScheduleNew() {}
-    ScheduleNew(std::size_t dim, BoundaryIndexRT const & left_rt,
-                                 BoundaryIndexRT const & right_rt)
-        : mpsblocks(dim, block_type(left_rt, right_rt)), /*mutexes(dim),*/ cpu_time(0)
+    ScheduleNew(std::vector<std::size_t> const & lr_ket_sizes,
+                BoundaryIndexRT const & left_rt,
+                BoundaryIndexRT const & right_rt)
+            :   mpsblocks(lr_ket_sizes.size(), block_type(lr_ket_sizes, left_rt, right_rt)),
+                /*mutexes(dim),*/ cpu_time(0)
     {
         std::fill(gpu_time, gpu_time + MAX_N_GPUS, 0); 
     }
+
+    ScheduleNew(ScheduleNew const &) = delete;
+    ScheduleNew(ScheduleNew &&) = default;
 
     //double mflops(double time) const { return total_flops*niter / time / 1e6; }
 
@@ -1078,6 +1087,7 @@ struct ScheduleNew
     auto cend() const { return mpsblocks.cend(); }
 
 private:
+
     std::vector<std::vector<WorkSet<value_type>>> pipeline;
     base mpsblocks;
 };

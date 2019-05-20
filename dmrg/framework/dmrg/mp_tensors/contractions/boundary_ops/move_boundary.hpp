@@ -67,7 +67,7 @@ namespace contraction {
 
             // Schedule
             unsigned loop_max = right_i.size();
-            schedule_t tasks(loop_max, left.index().rt(), left.index().rt());
+            schedule_t tasks(right_i.sizes(), left.index().rt(), left.index().rt());
             omp_for(unsigned mb, parallel::range<unsigned>(0,loop_max), {
                 lshtm_t_tasks(left.index(), left_i, right_i, physical_i, right_pb, mb, tasks[mb]);
                 lshtm_tasks(mpo, ket_tensor, ket_tensor, left.index(), left_pb, right_pb, mb, tasks[mb], false);
@@ -116,7 +116,7 @@ namespace contraction {
 
             // Schedule
             unsigned loop_max = left_i.size();
-            schedule_t tasks(loop_max, right.index().rt(), right.index().rt());
+            schedule_t tasks(left_i.sizes(), right.index().rt(), right.index().rt());
             omp_for(unsigned lb_ket, parallel::range<unsigned>(0,loop_max), {
                 rshtm_t_tasks(   right.index(), left_i, right_i, physical_i, right_pb, lb_ket, tasks[lb_ket]);
                 rshtm_tasks(mpo, right.index(), left_i, right_i, physical_i, right_pb, lb_ket, tasks[lb_ket], false);
@@ -182,10 +182,12 @@ namespace contraction {
 
             // Schedule
             unsigned loop_max = ket_right_i.size();
-            schedule_t tasks(loop_max, left.index().rt(), left.index().rt());
+            schedule_t tasks(ket_right_i.sizes(), left.index().rt(), left.index().rt());
             omp_for(unsigned rb_ket, parallel::range<unsigned>(0,loop_max), {
-                lshtm_t_tasks(left.index(), ket_tensor.row_dim(), ket_right_i, physical_i, ket_right_pb, rb_ket, tasks[rb_ket]);
-                lshtm_tasks(mpo, bra_tensor, ket_tensor, left.index(), bra_right_pb, ket_right_pb, rb_ket, tasks[rb_ket], symmetric);
+                lshtm_t_tasks(left.index(), ket_tensor.row_dim(), ket_right_i, physical_i,
+                              ket_right_pb, rb_ket, tasks[rb_ket]);
+                lshtm_tasks(mpo, bra_tensor, ket_tensor, left.index(), bra_right_pb, ket_right_pb,
+                            rb_ket, tasks[rb_ket], symmetric);
             });
 
             BoundaryIndex<value_type, SymmGroup> b_index(bra_right_i, ket_right_i);
@@ -207,6 +209,7 @@ namespace contraction {
                 for(index_type rb_ket = 0; rb_ket < loop_max; ++rb_ket) {
                     tasks.enumeration_gpu.push_back(rb_ket);
                     tasks[rb_ket].on_gpu = true;
+                    tasks[rb_ket].deviceID = 0;
                 }
 
                 tasks.stage_gpu(left, ket_tensor);
@@ -310,7 +313,7 @@ namespace contraction {
 
             // Schedule
             unsigned loop_max = ket_left_i.size();
-            schedule_t tasks(loop_max, right.index().rt(), right.index().rt());
+            schedule_t tasks(ket_left_i.sizes(), right.index().rt(), right.index().rt());
             omp_for(unsigned lb_ket, parallel::range<unsigned>(0,loop_max), {
                 // should pass ket indices
                 rshtm_t_tasks(   right.index(), bra_left_i, bra_right_i, physical_i, bra_right_pb, lb_ket, tasks[lb_ket]);
@@ -332,6 +335,7 @@ namespace contraction {
                 for(index_type lb_ket = 0; lb_ket < loop_max; ++lb_ket) {
                     tasks.enumeration_gpu.push_back(lb_ket);
                     tasks[lb_ket].on_gpu = true;
+                    tasks[lb_ket].deviceID = 0;
                 }
 
                 tasks.stage_gpu(right, ket_tensor);
