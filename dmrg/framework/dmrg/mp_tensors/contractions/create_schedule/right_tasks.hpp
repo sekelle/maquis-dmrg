@@ -36,20 +36,19 @@
 namespace contraction {
 namespace common {
 
-    template<class Matrix, class SymmGroup>
+    template<class T, class SymmGroup>
     void rshtm_t_tasks(
-         BoundaryIndex<typename Matrix::value_type, SymmGroup> const & right,
+         BoundaryIndex<T, SymmGroup> const & right,
          Index<SymmGroup> const & left_i,
          Index<SymmGroup> const & right_i,
          Index<SymmGroup> const & phys_i,
          ProductBasis<SymmGroup> const & right_pb,
          unsigned lb_ket,
-         common::MPSBlock<Matrix, SymmGroup>& mpsb
+         typename common::MPSBlock<T> & mpsb
     )
     {
         typedef typename SymmGroup::charge charge;
-        typedef typename Matrix::value_type value_type;
-        typedef typename common::ScheduleNew<Matrix, SymmGroup>::block_type block_type;
+        typedef T value_type;
 
         charge lc_ket = left_i[lb_ket].first;
         for (unsigned s = 0; s < phys_i.size(); ++s)
@@ -152,7 +151,7 @@ namespace common {
                                 value_type scale = right.conjugate_scale(ci, b2) * access.scale(op_index);
                                 w9j.set_scale(A, K, Ap, rc_ket, scale, couplings);
                                 
-                                detail::op_iterate<Matrix, typename common::ScheduleNew<Matrix, SymmGroup>::AlignedMatrix, SymmGroup>
+                                detail::op_iterate<Matrix, SymmGroup>
                                     (W, w_block, couplings, cohort, s, rs_ket, mpsb, ket_offset, ci, right_offset/rs_ket);
                             } // w_block
                         } //op_index

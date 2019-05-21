@@ -35,13 +35,13 @@ namespace contraction {
 namespace common {
 namespace detail {
 
-    template <class Matrix, class AlignedMatrix, class SymmGroup>
+    template <class Matrix, class SymmGroup>
     void op_iterate(typename operator_selector<Matrix, SymmGroup>::type const & W, std::size_t w_block,
                     typename Matrix::value_type couplings[],
                     Cohort<typename Matrix::value_type> & cg,
                     unsigned s,
                     unsigned m2_size,
-                    MPSBlock<AlignedMatrix, SymmGroup> const & mpsb,
+                    typename common::ScheduleNew<Matrix, SymmGroup>::block_type const & mpsb,
                     unsigned mps_offset,
                     unsigned ci,
                     unsigned boundary_col)

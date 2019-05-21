@@ -570,10 +570,10 @@ private:
 };
 
 
-template <class Matrix, class SymmGroup>
-class MPSBlock : public std::vector<Cohort<typename Matrix::value_type>>
+template <class T>
+class MPSBlock : public std::vector<Cohort<T>>
 {
-    typedef typename Matrix::value_type value_type;
+    typedef T value_type;
 
 public:
     typedef Cohort<value_type> cohort_type;
@@ -904,9 +904,9 @@ template <class Matrix, class SymmGroup>
 struct ScheduleNew
 {
     typedef typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, ALIGNMENT>::type AlignedMatrix;
-    typedef MPSBlock<AlignedMatrix, SymmGroup> block_type;
-    typedef std::vector<block_type> base;
     typedef typename Matrix::value_type value_type;
+    typedef MPSBlock<value_type> block_type;
+    typedef std::vector<block_type> base;
 
     ScheduleNew() {}
     ScheduleNew(std::vector<std::size_t> const & lr_ket_sizes,

@@ -322,7 +322,7 @@ namespace contraction {
             schedule_t tasks(ket_left_i.sizes(), right.index().rt(), right.index().rt());
             omp_for(unsigned lb_ket, parallel::range<unsigned>(0,loop_max), {
                 // should pass ket indices
-                rshtm_t_tasks(   right.index(), bra_left_i, bra_right_i, physical_i, bra_right_pb, lb_ket, tasks[lb_ket]);
+                rshtm_t_tasks(right.index(), bra_left_i, bra_right_i, physical_i, bra_right_pb, lb_ket, tasks[lb_ket]);
                 rshtm_tasks(mpo, right.index(), bra_left_i, bra_right_i, physical_i, bra_right_pb, lb_ket, tasks[lb_ket], true);
             });
 

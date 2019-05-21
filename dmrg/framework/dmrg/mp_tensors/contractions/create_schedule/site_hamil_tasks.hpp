@@ -122,7 +122,7 @@ namespace common {
                                                  *  left.conjugate_scale(ci, b1);
 
                                 w9j.set_scale(A, K, Ap, rc_in, scale, couplings);
-                                detail::op_iterate<Matrix>(W, w_block, couplings, cohort, s, rs_in, mpsb, in_offset, ci_right, right_offset/rs_in);
+                                detail::op_iterate<Matrix, SymmGroup>(W, w_block, couplings, cohort, s, rs_in, mpsb, in_offset, ci_right, right_offset/rs_in);
                             } // w_block
                         } //op_index
                     } // b2
