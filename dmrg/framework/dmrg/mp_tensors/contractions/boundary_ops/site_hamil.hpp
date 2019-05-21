@@ -124,6 +124,8 @@ namespace common {
             for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
                 gpu_workers[d] = std::thread(gpu_work<Matrix, OtherMatrix, SymmGroup>(tasks, left, right, ket_tensor, ret), d);
 
+        auto ket_data_view = ket_tensor.data().data_view();
+
         boost::chrono::high_resolution_clock::time_point now = boost::chrono::high_resolution_clock::now();
         #ifdef MAQUIS_OPENMP
         #pragma omp parallel for schedule (dynamic,1)
@@ -132,7 +134,7 @@ namespace common {
         {
             unsigned lb_in = tasks.enumeration[i];
 
-            auto T = tasks[lb_in].create_T(right, ket_tensor);
+            auto T = tasks[lb_in].create_T(right.get_data_view(), ket_data_view);
             for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
                 it->contract(left.get_data_view(), T, ret.data()[it->get_rb()].get_values().data(),
                              tasks.mutexes[it->get_rb()]);

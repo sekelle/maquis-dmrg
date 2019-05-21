@@ -162,6 +162,8 @@ public:
     inline void serialize(Archive & ar, const unsigned int version);
     
     bool reasonable() const;
+
+    std::vector<const value_type*> data_view() const;
     
 private:
     DualIndex<SymmGroup> basis_;

@@ -169,6 +169,16 @@ Index<SymmGroup> block_matrix<Matrix, SymmGroup>::right_basis() const
     return ret;
 }
 
+
+template<class Matrix, class SymmGroup>
+std::vector<const typename Matrix::value_type*> block_matrix<Matrix, SymmGroup>::data_view() const
+{
+    std::vector<const value_type*> ret(n_blocks());
+    for (size_t i = 0; i < n_blocks(); ++i)
+        ret[i] = (*this)[i].get_values().data();
+    return ret;
+}
+
 template<class Matrix, class SymmGroup>
 DualIndex<SymmGroup> const & block_matrix<Matrix, SymmGroup>::basis() const { return basis_; }
 

@@ -65,6 +65,8 @@ namespace contraction {
                                     boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
                                             -boost::lambda::_1, boost::lambda::_2));
 
+            auto ket_data_view = ket_tensor.data().data_view();
+
             // Schedule
             unsigned loop_max = right_i.size();
             schedule_t tasks(right_i.sizes(), left.index().rt(), left.index().rt());
@@ -77,7 +79,7 @@ namespace contraction {
             omp_for(index_type rb_ket, parallel::range<index_type>(0,loop_max), {
                 charge rc_ket = right_i[rb_ket].first;
 
-                auto T = tasks[rb_ket].create_T_left(left.get_data_view(), ket_tensor);
+                auto T = tasks[rb_ket].create_T_left(left.get_data_view(), ket_data_view);
 
                 for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
                 {
@@ -114,6 +116,8 @@ namespace contraction {
                                     boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
                                             -boost::lambda::_1, boost::lambda::_2));
 
+            auto ket_data_view = ket_tensor.data().data_view();
+
             // Schedule
             unsigned loop_max = left_i.size();
             schedule_t tasks(left_i.sizes(), right.index().rt(), right.index().rt());
@@ -126,7 +130,7 @@ namespace contraction {
             omp_for(index_type lb_bra, parallel::range<index_type>(0,loop_max), {
                 charge lc_bra = left_i[lb_bra].first;
 
-                auto T = tasks[lb_bra].create_T(right, ket_tensor);
+                auto T = tasks[lb_bra].create_T(right.get_data_view(), ket_data_view);
 
                 for (const_iterator it = tasks[lb_bra].begin(); it != tasks[lb_bra].end(); ++it)
                 {
@@ -252,13 +256,15 @@ namespace contraction {
                 storage::gpu::broadcast::drop(bra_tensor);
             }
             else {
+                auto ket_data_view = ket_tensor.data().data_view();
+
                 #ifdef MAQUIS_OPENMP
                 #pragma omp parallel for schedule (dynamic,1)
                 #endif
                 for(index_type rb_ket = 0; rb_ket < loop_max; ++rb_ket) {
                     charge rc_ket = ket_right_i[rb_ket].first;
 
-                    auto T = tasks[rb_ket].create_T_left(left.get_data_view(), ket_tensor);
+                    auto T = tasks[rb_ket].create_T_left(left.get_data_view(), ket_data_view);
 
                     for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
                     {
@@ -375,6 +381,7 @@ namespace contraction {
                 storage::gpu::broadcast::drop(ket_tensor);
             }
             else {
+                auto ket_data_view = ket_tensor.data().data_view();
 
                 #ifdef MAQUIS_OPENMP
                 #pragma omp parallel for schedule (dynamic,1)
@@ -382,7 +389,7 @@ namespace contraction {
                 for(index_type lb_ket = 0; lb_ket < loop_max; ++lb_ket) {
                     charge lc_ket = ket_left_i[lb_ket].first;
 
-                    auto T = tasks[lb_ket].create_T(right, ket_tensor);
+                    auto T = tasks[lb_ket].create_T(right.get_data_view(), ket_data_view);
 
                     // lc_ket loop
                     for (const_iterator it = tasks[lb_ket].begin(); it != tasks[lb_ket].end(); ++it)

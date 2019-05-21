@@ -582,10 +582,9 @@ public:
              BoundaryIndexRT const & rrt) : lr_ket_sizes(lrks),
                                             left_rt(lrt), right_rt(rrt) {}
 
-    template <class DefaultMatrix>
     std::vector<std::vector<value_type>>
     create_T_left(std::vector<const value_type*> const & left,
-                  MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
+                  std::vector<const value_type*> const & mps) const
     {
         std::vector<std::vector<value_type>> ret(t_schedule.size());
         for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
@@ -621,7 +620,7 @@ public:
             int N = lr_ket_sizes[rb_ket];
             int K = brs;
 
-            const value_type* mpsdata = &mps.data()[lb_ket](0, mps_offset);
+            const value_type* mpsdata = mps[lb_ket] + size_t(K) * mps_offset;
             ret[ti] = std::vector<value_type>(M * size_t(N) * nb);
             for (unsigned b = 0; b < nb; ++b)
             {
@@ -686,9 +685,9 @@ public:
         return gpu_data.dev_t;
     }
 
-    template <class DefaultMatrix, class OtherMatrix>
     std::vector<std::vector<value_type>>
-    create_T(Boundary<OtherMatrix, SymmGroup> const & right, MPSTensor<DefaultMatrix, SymmGroup> const & mps) const
+    create_T(std::vector<const value_type*> const & right,
+             std::vector<const value_type*> const& mps) const
     {
         std::vector<std::vector<value_type>> ret(t_schedule.size());
         for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
@@ -723,7 +722,7 @@ public:
 
             //blas_gemm('N', 'N', M, N, K, value_type(1), mpsdata, M, r_use, K, value_type(0), ret[ti].data(), M);
 
-            const value_type* mpsdata = &mps.data()[lb_ket](0, mps_offset);
+            const value_type* mpsdata = mps[lb_ket] + M * mps_offset;
             ret[ti] = std::vector<value_type>(M * size_t(N));
             for (unsigned b = 0; b < right_rt.n_blocks(ci_eff); ++b)
             {
