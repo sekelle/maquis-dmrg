@@ -808,9 +808,7 @@ public:
         return std::numeric_limits<unsigned>::max();
     }
 
-    template <class DefaultMatrix>
-    size_t n_flops(MPSTensor<DefaultMatrix, SymmGroup> const& mps,
-                   BoundaryIndexRT const& right) const
+    size_t n_flops(BoundaryIndexRT const& right) const
     {
         std::size_t ret = 0;
         for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
@@ -822,7 +820,7 @@ public:
             unsigned bls = right.left_size(ci);
             unsigned brs = right.right_size(ci);
 
-            ret += 2 * mps.row_dim()[lb_ket].second * right.cohort_size(ci_eff);
+            ret += 2 * lr_ket_sizes[lb_ket] * right.cohort_size(ci_eff);
         }
 
         for (auto& coh : *this) ret += coh.n_flops();
@@ -956,12 +954,11 @@ struct ScheduleNew
         return std::max(1.0 / (cpu_speed/gpu_speed + 1.0), 0.9) ;
     }
 
-    void compute_workload(MPSTensor<Matrix, SymmGroup> const & mps,
-                          BoundaryIndexRT const& right, double cpu_gpu_ratio)
+    void compute_workload(BoundaryIndexRT const& right, double cpu_gpu_ratio)
     {
         std::vector<std::size_t> flops_list;
         for (auto& mpsb : *this)
-            flops_list.push_back( mpsb.n_flops(mps, right) );
+            flops_list.push_back( mpsb.n_flops(right) );
 
         total_flops = std::accumulate(flops_list.begin(), flops_list.end(), 0lu);
 
