@@ -74,7 +74,6 @@ namespace common {
                 }
             }
         }
-        mpsb.rs_ket = rs_ket;
     }
 
     template<class Matrix, class SymmGroup>

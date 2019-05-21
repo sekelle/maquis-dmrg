@@ -598,7 +598,6 @@ public:
             unsigned bls = left_rt.left_size(ci);
             unsigned brs = left_rt.right_size(ci);
             unsigned nb  = left_rt.n_blocks(ci_eff);
-            if (rs_ket != lr_ket_sizes[lb_ket]) throw std::runtime_error("lrket\n");
 
             //std::vector<value_type> lbuf;
             //if (ci == ci_eff)
@@ -619,7 +618,7 @@ public:
             //detail::tr_tile_v(rs_ket, bls, nb, ret[ti].data(), ret[ti].data());
 
             int M = bls;
-            int N = rs_ket;
+            int N = lr_ket_sizes[rb_ket];
             int K = brs;
 
             const value_type* mpsdata = &mps.data()[lb_ket](0, mps_offset);
@@ -659,7 +658,7 @@ public:
 
             int nb  = left_rt.n_blocks(ci_eff);
             int M = bls;
-            int N = rs_ket;
+            int N = lr_ket_sizes[rb_ket];
             int K = brs;
 
             const value_type* mpsdata = (value_type*)mps[lb_ket] + mps_offset * K;
@@ -702,10 +701,9 @@ public:
             unsigned bls = right_rt.left_size(ci);
             unsigned brs = right_rt.right_size(ci);
 
-            int M = num_rows(mps.data()[lb_ket]);
+            int M = lr_ket_sizes[lb_ket];
             int N = right_rt.n_blocks(ci_eff) * brs;
             int K = bls;
-            if (M != lr_ket_sizes[lb_ket]) throw std::runtime_error("lrket right\n");
 
             //std::vector<value_type> rbuf;
             //if (right_rt.tr(ci))
@@ -744,9 +742,7 @@ public:
         return ret;
     }
 
-    template <class DefaultMatrix>
     value_type** create_T_gpu(std::vector<void*> const & dev_right,
-                              MPSTensor<DefaultMatrix, SymmGroup> const & mps,
                               std::vector<void*> const & mps_dev_ptr) const
     {
         cublasSetStream(accelerator::gpu::get_handle(), ws->stream);
@@ -763,12 +759,12 @@ public:
             unsigned brs = right_rt.right_size(ci);
 
             int np = right_rt.n_blocks(ci_eff);
-            int M = num_rows(mps.data()[lb_ket]);
+            //int M = num_rows(mps.data()[lb_ket]);
+            int M = lr_ket_sizes[lb_ket];
             int N = np * brs;
             int K = bls;
 
             const value_type* r_use = (value_type*)dev_right[ci_eff];
-            //const value_type* mpsdata = (value_type*)mps.device_data()[lb_ket] + mps_offset * M;
             const value_type* mpsdata = (value_type*)mps_dev_ptr[lb_ket] + mps_offset * M;
 
             assert( gpu_data.t[ti] + M * size_t(N)  <= dev_r);
@@ -854,8 +850,6 @@ public:
         for (auto& coh : *this) coh.stage(dev, ws, gpu_data.dev_rsl);
     }
 
-    unsigned rs_ket;
-
     struct TSched_type : public
     std::vector<boost::tuple<unsigned, unsigned, unsigned, unsigned, size_t>>
     {
@@ -866,7 +860,11 @@ public:
     bool on_gpu = false;
     int deviceID;
 
+    void set_rb_ket(unsigned v) { rb_ket = v; }
+
 private:
+    unsigned rb_ket;
+
     std::vector<std::size_t> lr_ket_sizes;
     BoundaryIndexRT const & left_rt;
     BoundaryIndexRT const & right_rt;
@@ -920,6 +918,9 @@ struct ScheduleNew
             :   mpsblocks(lr_ket_sizes.size(), block_type(lr_ket_sizes, left_rt, right_rt)),
                 /*mutexes(dim),*/ cpu_time(0)
     {
+        for (unsigned rb_ket = 0; rb_ket < lr_ket_sizes.size(); ++rb_ket)
+            mpsblocks[rb_ket].set_rb_ket(rb_ket);
+
         std::fill(gpu_time, gpu_time + MAX_N_GPUS, 0); 
     }
 
@@ -990,8 +991,7 @@ struct ScheduleNew
         }
     }
 
-    template <class OtherMatrix>
-    void stage_gpu(Boundary<OtherMatrix, SymmGroup> const & right, MPSTensor<Matrix, SymmGroup> const & mps)
+    void stage_gpu(MPSTensor<Matrix, SymmGroup> const & mps)
     {
         accelerator::gpu::reset_buffers();
 

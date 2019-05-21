@@ -76,22 +76,6 @@ namespace common {
                 }
             } 
         }
-        //maquis::cout << "n ti " << mpsb.t_schedule.size() << std::endl;
-        //for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
-        //{
-        //    unsigned mps_offset = boost::get<0>(t_schedule[ti]);
-        //    unsigned ci = boost::get<1>(t_schedule[ti]);
-        //    unsigned ci_eff = boost::get<2>(t_schedule[ti]);
-        //    unsigned lb_ket = boost::get<3>(t_schedule[ti]);
-
-        //    unsigned bls = right.index().left_size(ci);
-        //    unsigned brs = right.index().right_size(ci);
-
-        //    int M = num_rows(mps.data()[lb_ket]);
-        //    int N = right.index().n_blocks(ci_eff) * brs;
-        //    int K = bls;
-        //}
-
     }
 
     template<class Matrix, class SymmGroup>

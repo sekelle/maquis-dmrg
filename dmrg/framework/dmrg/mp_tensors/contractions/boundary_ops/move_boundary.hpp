@@ -212,7 +212,7 @@ namespace contraction {
                     tasks[rb_ket].deviceID = 0;
                 }
 
-                tasks.stage_gpu(left, ket_tensor);
+                tasks.stage_gpu(ket_tensor);
 
                 storage::gpu::broadcast::zero(ret); // allocate on gpu and init to 0
                 storage::gpu::broadcast::fetch(bra_tensor);
@@ -338,7 +338,7 @@ namespace contraction {
                     tasks[lb_ket].deviceID = 0;
                 }
 
-                tasks.stage_gpu(right, ket_tensor);
+                tasks.stage_gpu(ket_tensor);
 
                 storage::gpu::broadcast::zero(ret); // allocate on gpu and init to 0
                 storage::gpu::broadcast::fetch(ket_tensor);
@@ -351,7 +351,7 @@ namespace contraction {
                 for(index_type lb_ket = 0; lb_ket < loop_max; ++lb_ket) {
                     charge lc_ket = ket_left_i[lb_ket].first;
 
-                    value_type** dev_T = tasks[lb_ket].create_T_gpu(right.device_data(), ket_tensor,
+                    value_type** dev_T = tasks[lb_ket].create_T_gpu(right.device_data(),
                                                                     ket_tensor.device_data());
 
                     for (const_iterator it = tasks[lb_ket].begin(); it != tasks[lb_ket].end(); ++it) // lc_ket loop

@@ -70,7 +70,7 @@ namespace common {
 
                 if (tasks[lb_in].deviceID != id) continue;
 
-                value_type** dev_T = tasks[lb_in].create_T_gpu(right.device_data(id), ket_tensor,
+                value_type** dev_T = tasks[lb_in].create_T_gpu(right.device_data(id),
                                                                tasks.mps_stage.device_ptr(id));
 
                 for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
