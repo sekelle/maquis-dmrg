@@ -900,19 +900,20 @@ public:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-template <class Matrix, class SymmGroup>
+template <class T>
 struct ScheduleNew
 {
-    typedef typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, ALIGNMENT>::type AlignedMatrix;
-    typedef typename Matrix::value_type value_type;
+    typedef T value_type;
     typedef MPSBlock<value_type> block_type;
     typedef std::vector<block_type> base;
 
     ScheduleNew() {}
-    ScheduleNew(std::vector<std::size_t> const & lr_ket_sizes,
+    ScheduleNew(std::vector<std::size_t> mpsbs,
+                std::vector<std::size_t> const & lr_ket_sizes,
                 BoundaryIndexRT const & left_rt,
                 BoundaryIndexRT const & right_rt)
-            :   mpsblocks(lr_ket_sizes.size(), block_type(lr_ket_sizes, left_rt, right_rt)),
+            :   mps_block_sizes(std::move(mpsbs)),
+                mpsblocks(lr_ket_sizes.size(), block_type(lr_ket_sizes, left_rt, right_rt)),
                 /*mutexes(dim),*/ cpu_time(0)
     {
         for (unsigned rb_ket = 0; rb_ket < lr_ket_sizes.size(); ++rb_ket)
@@ -987,14 +988,13 @@ struct ScheduleNew
         }
     }
 
-    void stage_gpu(MPSTensor<Matrix, SymmGroup> const & mps)
+    void stage_gpu()
     {
         accelerator::gpu::reset_buffers();
 
-        std::size_t mps_maxblock = 0;
-        for (std::size_t k = 0; k < mps.data().basis().size(); ++k)
-            mps_maxblock = bit_twiddling::round_up<BUFFER_ALIGNMENT>(
-                            std::max( mps.data().basis().left_size(k) * mps.data().basis().right_size(k), mps_maxblock) );
+        std::size_t mps_maxblock = bit_twiddling::round_up<BUFFER_ALIGNMENT>(
+             *std::max_element(mps_block_sizes.begin(), mps_block_sizes.end())
+        );
 
         std::vector<std::size_t> buffer_sizes;
         for (auto& mpsb : *this)
@@ -1083,27 +1083,19 @@ struct ScheduleNew
     auto cend() const { return mpsblocks.cend(); }
 
 private:
+    std::vector<std::size_t> mps_block_sizes;
+    base mpsblocks;
 
     std::vector<std::vector<WorkSet<value_type>>> pipeline;
-    base mpsblocks;
 };
 
-template <class Matrix, class SymmGroup> Timer ScheduleNew<Matrix, SymmGroup>::sh_timer = Timer("SITE_HAMIL");
+template <class T> Timer ScheduleNew<T>::sh_timer = Timer("SITE_HAMIL");
 
-template <class Matrix, class SymmGroup> Timer ScheduleNew<Matrix, SymmGroup>::lfetch_timer = Timer("LFETCH");
-template <class Matrix, class SymmGroup> Timer ScheduleNew<Matrix, SymmGroup>::lsched_timer = Timer("LSCHED");
-template <class Matrix, class SymmGroup> Timer ScheduleNew<Matrix, SymmGroup>::lalloc_timer = Timer("LALLOC");
-template <class Matrix, class SymmGroup> Timer ScheduleNew<Matrix, SymmGroup>::lstage_timer = Timer("LSTAGE");
+template <class T> Timer ScheduleNew<T>::lfetch_timer = Timer("LFETCH");
+template <class T> Timer ScheduleNew<T>::lsched_timer = Timer("LSCHED");
+template <class T> Timer ScheduleNew<T>::lalloc_timer = Timer("LALLOC");
+template <class T> Timer ScheduleNew<T>::lstage_timer = Timer("LSTAGE");
 
-///////////////////////////////////////////////////////////////////////////////////////////////
-
-
-template <class Matrix, class SymmGroup>
-struct Schedule
-{
-    //typedef typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, ALIGNMENT>::type AlignedMatrix;
-    typedef ScheduleNew<Matrix, SymmGroup> schedule_t;
-}; 
 
 } // namespace common
 } // namespace contraction

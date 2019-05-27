@@ -274,6 +274,30 @@ public:
                               );
     }
 
+    std::vector<std::size_t> left_sizes() const
+    {
+        std::vector<std::size_t> ret(size());
+        for (std::size_t k = 0; k < size(); ++k)
+            ret[k] = data_[k].ls;
+        return ret;
+    }
+
+    std::vector<std::size_t> right_sizes() const
+    {
+        std::vector<std::size_t> ret(size());
+        for (std::size_t k = 0; k < size(); ++k)
+            ret[k] = data_[k].rs;
+        return ret;
+    }
+
+    std::vector<std::size_t> sizes() const
+    {
+        std::vector<std::size_t> ret(size());
+        for (std::size_t k = 0; k < size(); ++k)
+            ret[k] = data_[k].ls * data_[k].rs;
+        return ret;
+    }
+
     // This is mostly forwarding of the std::vector
     iterator begin() { return data_.begin(); }
     iterator end() { return data_.end(); }

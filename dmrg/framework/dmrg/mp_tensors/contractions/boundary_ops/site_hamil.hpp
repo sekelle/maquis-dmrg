@@ -42,7 +42,7 @@ namespace common {
         typedef typename Matrix::value_type value_type;
 
     public:
-        gpu_work(typename common::Schedule<Matrix, SymmGroup>::schedule_t const & tasks_
+        gpu_work(ScheduleNew<value_type> const & tasks_
                  , Boundary<OtherMatrix, SymmGroup> const & left_
                  , Boundary<OtherMatrix, SymmGroup> const & right_
                  , MPSTensor<Matrix, SymmGroup> & ket_tensor_
@@ -92,7 +92,7 @@ namespace common {
         }
 
     private:
-        typename common::Schedule<Matrix, SymmGroup>::schedule_t const & tasks;
+        ScheduleNew<value_type> const & tasks;
         Boundary<OtherMatrix, SymmGroup> const & left;
         Boundary<OtherMatrix, SymmGroup> const & right;
         MPSTensor<Matrix, SymmGroup> & ket_tensor;
@@ -105,13 +105,13 @@ namespace common {
                Boundary<OtherMatrix, SymmGroup> const & left,
                Boundary<OtherMatrix, SymmGroup> const & right,
                MPOTensor<Matrix, SymmGroup> const & mpo,
-               typename common::Schedule<Matrix, SymmGroup>::schedule_t const & tasks) 
+               ScheduleNew<typename Matrix::value_type> const & tasks)
     {
         typedef typename SymmGroup::charge charge;
         typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
         typedef typename Matrix::value_type value_type;
 
-        common::Schedule<Matrix, SymmGroup>::schedule_t::sh_timer.begin();
+        ScheduleNew<value_type>::sh_timer.begin();
 
         ket_tensor.make_right_paired();
         MPSTensor<Matrix, SymmGroup> ret(ket_tensor.site_dim(), ket_tensor.row_dim(), ket_tensor.col_dim(),
@@ -158,7 +158,7 @@ namespace common {
                 }
         }
 
-        common::Schedule<Matrix, SymmGroup>::schedule_t::sh_timer.end();
+        ScheduleNew<value_type>::sh_timer.end();
 
         return ret;
     }
@@ -225,83 +225,6 @@ namespace common {
         }
     }
 */
-
-    template<class Matrix, class OtherMatrix, class SymmGroup>
-    MPSTensor<Matrix, SymmGroup>
-    site_hamil2(MPSTensor<Matrix, SymmGroup> & ket_tensor,
-               Boundary<OtherMatrix, SymmGroup> const & left,
-               Boundary<OtherMatrix, SymmGroup> const & right,
-               MPOTensor<Matrix, SymmGroup> const & mpo,
-               ScheduleNew<Matrix, SymmGroup> const & tasks)
-    {
-        typedef typename SymmGroup::charge charge;
-        typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
-        typedef typename Matrix::value_type value_type;
-
-        ket_tensor.make_right_paired();
-        MPSTensor<Matrix, SymmGroup> ret(ket_tensor.site_dim(), ket_tensor.row_dim(), ket_tensor.col_dim(),
-                                         ket_tensor.data().basis(), RightPaired);
-
-        MPSTensor<Matrix, SymmGroup> ret_gpu = ret;
-
-        storage::gpu::fetch(ket_tensor);
-        storage::gpu::zero(ret_gpu);
-
-        auto now = boost::chrono::high_resolution_clock::now();
-
-        #pragma omp parallel for schedule (dynamic,1)
-        for (unsigned i = 0; i < tasks.enumeration.size(); ++i)
-        {
-            unsigned lb_in = tasks.enumeration[i];
-
-            auto T = tasks[lb_in].create_T(right, ket_tensor);
-            for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
-                it->contract(left, T, ret.data()[it->get_rb()], tasks.mutexes[it->get_rb()]);
-        }
-
-        auto then = boost::chrono::high_resolution_clock::now();
-        tasks.cpu_time += boost::chrono::duration<double>(then - now).count();
-
-        now = boost::chrono::high_resolution_clock::now();
-        for (unsigned i = 0; i < tasks.enumeration_gpu.size(); ++i)
-        {
-            unsigned lb_in = tasks.enumeration_gpu[i];
-            value_type** dev_T = tasks[lb_in].create_T_gpu(right, ket_tensor);
-
-            for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
-                it->contract_gpu(left, dev_T, (value_type*)ret_gpu.device_data()[it->get_rb()]);
-        }
-        then = boost::chrono::high_resolution_clock::now();
-        tasks.gpu_time += boost::chrono::duration<double>(then - now).count();
-
-        storage::gpu::drop(ket_tensor);
-        storage::gpu::evict(ret_gpu);
-        storage::gpu::pin(ret_gpu);
-        ret += ret_gpu;
-
-        //cpu_queue cq(tasks.size());
-        //for (unsigned lb_in : tasks.enumeration)
-        //{
-        //    cq.T[lb_in] = std::vector<std::vector<value_type>>(tasks[lb_in].t_schedule.size());
-        //    cq.tavail[lb_in] = tasks[lb_in].t_schedule.size();
-        //    cq.tdone[lb_in] = 0;
-
-        //    cq.slavail[lb_in] = tasks[lb_in].size();
-        //    cq.sldone[lb_in] = 0;
-        //}
-
-        //std::vector<std::thread> workers;
-        //for (unsigned i = 0; i < 6; ++i)
-        //    workers.push_back(std::thread(std::bind(cpu_work<Matrix, OtherMatrix, SymmGroup>, std::ref(cq), i,
-        //                                            std::ref(ret), std::ref(ket_tensor),
-        //                                            std::ref(left), std::ref(right),
-        //                                            std::ref(tasks))
-        //                                            ));
-        //for (std::thread& t : workers) t.join();
-
-        ret.make_left_paired();
-        return ret;
-    }
 
 } // namespace common
 } // namespace contraction

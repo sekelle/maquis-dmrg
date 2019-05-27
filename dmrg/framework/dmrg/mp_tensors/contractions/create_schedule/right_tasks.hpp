@@ -85,13 +85,13 @@ namespace common {
                      Index<SymmGroup> const & phys_i,
                      ProductBasis<SymmGroup> const & right_pb,
                      unsigned lb_ket,
-                     typename common::ScheduleNew<Matrix, SymmGroup>::block_type & mpsb,
+                     common::MPSBlock<typename Matrix::value_type> & mpsb,
                      bool skip = true)
     {
         typedef MPOTensor_detail::index_type index_type;
         typedef typename SymmGroup::charge charge;
         typedef typename Matrix::value_type value_type;
-        typedef typename common::ScheduleNew<Matrix, SymmGroup>::block_type block_type;
+        typedef common::MPSBlock<typename Matrix::value_type> block_type;
 
         const int site_basis_max_diff = 2;
 

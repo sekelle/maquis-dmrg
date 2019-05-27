@@ -41,7 +41,7 @@ namespace detail {
                     Cohort<typename Matrix::value_type> & cg,
                     unsigned s,
                     unsigned m2_size,
-                    typename common::ScheduleNew<Matrix, SymmGroup>::block_type const & mpsb,
+                    typename common::ScheduleNew<typename Matrix::value_type>::block_type const & mpsb,
                     unsigned mps_offset,
                     unsigned ci,
                     unsigned boundary_col)

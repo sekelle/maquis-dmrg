@@ -47,12 +47,12 @@ namespace common {
                     Index<SymmGroup> const & phys_i,
                     ProductBasis<SymmGroup> const & right_pb,
                     unsigned lb_in,
-                    typename common::ScheduleNew<Matrix, SymmGroup>::block_type & mpsb)
+                    typename common::ScheduleNew<typename Matrix::value_type>::block_type & mpsb)
     {
         typedef MPOTensor_detail::index_type index_type;
         typedef typename SymmGroup::charge charge;
         typedef typename Matrix::value_type value_type;
-        typedef typename common::ScheduleNew<Matrix, SymmGroup>::block_type block_type;
+        typedef typename common::ScheduleNew<value_type>::block_type block_type;
 
         auto const & left = left_boundary.index();
         auto const & right = right_boundary.index();

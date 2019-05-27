@@ -52,7 +52,7 @@ struct SiteProblem
     Boundary<OtherMatrix, SymmGroup> const & left;
     Boundary<OtherMatrix, SymmGroup> const & right;
     MPOTensor<Matrix, SymmGroup> const & mpo;
-    contraction::common::ScheduleNew<Matrix, SymmGroup> contraction_schedule;
+    contraction::common::ScheduleNew<typename Matrix::value_type> contraction_schedule;
     double ortho_shift;
 };
 

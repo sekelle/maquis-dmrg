@@ -83,14 +83,14 @@ namespace common {
                      ProductBasis<SymmGroup> const & bra_left_pb,
                      ProductBasis<SymmGroup> const & ket_right_pb,
                      unsigned rb_ket,
-                     typename common::ScheduleNew<Matrix, SymmGroup>::block_type & mpsb,
+                     typename common::ScheduleNew<typename Matrix::value_type>::block_type & mpsb,
                      bool skip = true)
     {
         typedef typename SymmGroup::charge charge;
         typedef typename Matrix::value_type value_type;
         typedef typename MPOTensor<Matrix, SymmGroup>::col_proxy col_proxy;
         typedef MPOTensor_detail::index_type index_type;
-        typedef typename common::ScheduleNew<Matrix, SymmGroup>::block_type block_type;
+        typedef typename common::ScheduleNew<value_type>::block_type block_type;
 
         Index<SymmGroup> const & ket_left_i = ket.row_dim();
         Index<SymmGroup> const & ket_right_i = ket.col_dim();

@@ -43,8 +43,9 @@ namespace contraction {
                              double alpha)
         {
             typedef typename SymmGroup::charge charge;
+            typedef typename Matrix::value_type value_type;
             typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
-            typedef ScheduleNew<Matrix, SymmGroup> schedule_t;
+            typedef ScheduleNew<value_type> schedule_t;
             typedef typename schedule_t::block_type::const_iterator const_iterator;
 
             if (!ket_tensor.is_right_paired())
@@ -69,7 +70,8 @@ namespace contraction {
 
             // Schedule
             unsigned loop_max = right_i.size();
-            schedule_t tasks(right_i.sizes(), left.index().rt(), left.index().rt());
+            schedule_t tasks(ket_tensor.data().basis().sizes(),
+                             right_i.sizes(), left.index().rt(), left.index().rt());
             omp_for(unsigned mb, parallel::range<unsigned>(0,loop_max), {
                 lshtm_t_tasks(left.index(), left_i, right_i, physical_i, right_pb, mb, tasks[mb]);
                 lshtm_tasks(mpo, ket_tensor, ket_tensor, left.index(), left_pb, right_pb, mb, tasks[mb], false);
@@ -97,8 +99,9 @@ namespace contraction {
                                    double alpha)
         {
             typedef typename SymmGroup::charge charge;
+            typedef typename Matrix::value_type value_type;
             typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
-            typedef ScheduleNew<Matrix, SymmGroup> schedule_t;
+            typedef ScheduleNew<value_type> schedule_t;
             typedef typename schedule_t::block_type::const_iterator const_iterator;
 
             if (!ket_tensor.is_right_paired())
@@ -120,7 +123,8 @@ namespace contraction {
 
             // Schedule
             unsigned loop_max = left_i.size();
-            schedule_t tasks(left_i.sizes(), right.index().rt(), right.index().rt());
+            schedule_t tasks(ket_tensor.data().basis().sizes(),
+                             left_i.sizes(), right.index().rt(), right.index().rt());
             omp_for(unsigned lb_ket, parallel::range<unsigned>(0,loop_max), {
                 rshtm_t_tasks(   right.index(), left_i, right_i, physical_i, right_pb, lb_ket, tasks[lb_ket]);
                 rshtm_tasks(mpo, right.index(), left_i, right_i, physical_i, right_pb, lb_ket, tasks[lb_ket], false);
@@ -151,7 +155,7 @@ namespace contraction {
             typedef typename SymmGroup::charge charge;
             typedef typename Matrix::value_type value_type;
             typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
-            typedef ScheduleNew<Matrix, SymmGroup> schedule_t;
+            typedef ScheduleNew<value_type> schedule_t;
             typedef typename schedule_t::block_type::const_iterator const_iterator;
 
             MPSTensor<Matrix, SymmGroup> buffer; // holds the conjugate tensor if we deal with complex numbers
@@ -186,7 +190,8 @@ namespace contraction {
 
             // Schedule
             unsigned loop_max = ket_right_i.size();
-            schedule_t tasks(ket_right_i.sizes(), left.index().rt(), left.index().rt());
+            schedule_t tasks(ket_tensor.data().basis().sizes(),
+                             ket_right_i.sizes(), left.index().rt(), left.index().rt());
             omp_for(unsigned rb_ket, parallel::range<unsigned>(0,loop_max), {
                 lshtm_t_tasks(left.index(), ket_tensor.row_dim(), ket_right_i, physical_i,
                               ket_right_pb, rb_ket, tasks[rb_ket]);
@@ -216,7 +221,7 @@ namespace contraction {
                     tasks[rb_ket].deviceID = 0;
                 }
 
-                tasks.stage_gpu(ket_tensor);
+                tasks.stage_gpu();
 
                 storage::gpu::broadcast::zero(ret); // allocate on gpu and init to 0
                 storage::gpu::broadcast::fetch(bra_tensor);
@@ -288,7 +293,7 @@ namespace contraction {
             typedef typename SymmGroup::charge charge;
             typedef typename Matrix::value_type value_type;
             typedef typename MPOTensor<Matrix, SymmGroup>::index_type index_type;
-            typedef ScheduleNew<Matrix, SymmGroup> schedule_t;
+            typedef ScheduleNew<value_type> schedule_t;
             typedef typename schedule_t::block_type::const_iterator const_iterator;
 
             MPSTensor<Matrix, SymmGroup> buffer; // holds the conjugate tensor if we deal with complex numbers
@@ -319,7 +324,8 @@ namespace contraction {
 
             // Schedule
             unsigned loop_max = ket_left_i.size();
-            schedule_t tasks(ket_left_i.sizes(), right.index().rt(), right.index().rt());
+            schedule_t tasks(ket_tensor.data().basis().sizes(),
+                             ket_left_i.sizes(), right.index().rt(), right.index().rt());
             omp_for(unsigned lb_ket, parallel::range<unsigned>(0,loop_max), {
                 // should pass ket indices
                 rshtm_t_tasks(right.index(), bra_left_i, bra_right_i, physical_i, bra_right_pb, lb_ket, tasks[lb_ket]);
@@ -344,7 +350,7 @@ namespace contraction {
                     tasks[lb_ket].deviceID = 0;
                 }
 
-                tasks.stage_gpu(ket_tensor);
+                tasks.stage_gpu();
 
                 storage::gpu::broadcast::zero(ret); // allocate on gpu and init to 0
                 storage::gpu::broadcast::fetch(ket_tensor);

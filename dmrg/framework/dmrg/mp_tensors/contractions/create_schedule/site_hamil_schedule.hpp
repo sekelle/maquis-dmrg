@@ -35,7 +35,7 @@ namespace contraction {
 namespace common {
 
 template<class Matrix, class OtherMatrix, class SymmGroup>
-ScheduleNew<Matrix, SymmGroup>
+ScheduleNew<typename Matrix::value_type>
 create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
                             Boundary<OtherMatrix, SymmGroup> const & left,
                             Boundary<OtherMatrix, SymmGroup> const & right,
@@ -59,7 +59,8 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
                                          boost::lambda::bind(static_cast<charge(*)(charge, charge)>(SymmGroup::fuse),
                                                              -boost::lambda::_1, boost::lambda::_2));
     initial.make_right_paired();
-    ScheduleNew<Matrix, SymmGroup> tasks(left_i.sizes(), left.index().rt(), right.index().rt());
+    ScheduleNew<value_type> tasks(initial.data().basis().sizes(),
+                                  left_i.sizes(), left.index().rt(), right.index().rt());
 
     unsigned loop_max = left_i.size();
 
@@ -69,7 +70,7 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
     });
 
     tasks.compute_workload(right.index().rt(), cpu_gpu_ratio);
-    tasks.stage_gpu(initial);
+    tasks.stage_gpu();
     tasks.mps_stage.allocate(initial.data().basis());
 
     if (std::max(mpo.row_dim(), mpo.col_dim()) > 10)

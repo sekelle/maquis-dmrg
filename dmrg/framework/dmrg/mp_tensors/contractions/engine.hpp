@@ -34,7 +34,6 @@
 #include "dmrg/mp_tensors/mpotensor.h"
 #include "dmrg/mp_tensors/twositetensor.h"
 
-//#include "dmrg/mp_tensors/contractions/task/tasks_gpu.hpp"
 #include "dmrg/mp_tensors/contractions/task/tasks.hpp"
 #include "dmrg/mp_tensors/contractions/create_schedule/site_hamil_tasks.hpp"
 #include "dmrg/mp_tensors/contractions/create_schedule/right_tasks.hpp"
@@ -51,7 +50,7 @@ namespace contraction {
     class Engine
     {
     public:
-        typedef typename common::Schedule<Matrix, SymmGroup>::schedule_t schedule_t;
+        typedef common::ScheduleNew<typename Matrix::value_type> schedule_t;
 
         static Boundary<OtherMatrix, SymmGroup>
         overlap_mpo_left_step(MPSTensor<Matrix, SymmGroup> const & bra_tensor,
