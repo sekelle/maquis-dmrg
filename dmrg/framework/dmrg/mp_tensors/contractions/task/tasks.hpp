@@ -571,16 +571,23 @@ private:
 
 
 template <class T>
-class MPSBlock : public std::vector<Cohort<T>>
+class MPSBlock
 {
     typedef T value_type;
-
 public:
     typedef Cohort<value_type> cohort_type;
+    typedef typename std::vector<Cohort<T>>::const_iterator const_iterator;
+    typedef typename std::vector<Cohort<T>>::iterator iterator;
 
     MPSBlock(std::vector<std::size_t> const & lrks,  BoundaryIndexRT const & lrt,
              BoundaryIndexRT const & rrt) : lr_ket_sizes(lrks),
                                             left_rt(lrt), right_rt(rrt) {}
+
+    void push_back(Cohort<T>&& coh) { data.push_back(std::move(coh)); }
+    const_iterator begin() const { return data.begin(); }
+    const_iterator end() const { return data.end(); }
+    iterator begin() { return data.begin(); }
+    iterator end() { return data.end(); }
 
     std::vector<std::vector<value_type>>
     create_T_left(std::vector<const value_type*> const & left,
@@ -867,6 +874,8 @@ private:
     BoundaryIndexRT const & right_rt;
 
     WorkSet<value_type>* ws;
+
+    std::vector<Cohort<value_type>> data;
 
     struct gpuTransferable // staging data
     {

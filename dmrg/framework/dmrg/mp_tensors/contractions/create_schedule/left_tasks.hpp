@@ -166,7 +166,7 @@ namespace common {
             } // phys_out
 
             cohort.finalize();
-            if (cohort.n_tasks()) mpsb.push_back(cohort);
+            if (cohort.n_tasks()) mpsb.push_back(std::move(cohort));
 
         } // rb_bra
     }

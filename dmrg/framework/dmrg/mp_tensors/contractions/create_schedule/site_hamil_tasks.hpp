@@ -131,7 +131,7 @@ namespace common {
                 } // b1
             } // phys_out
 
-            if (cohort.n_tasks()) mpsb.push_back(cohort);
+            if (cohort.n_tasks()) mpsb.push_back(std::move(cohort));
 
         } // lb_out
     }
