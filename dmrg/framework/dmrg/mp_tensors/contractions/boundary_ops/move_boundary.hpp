@@ -234,16 +234,13 @@ namespace contraction {
                 HANDLE_ERROR( cudaEventRecord(start,0) );
 
                 for(index_type rb_ket = 0; rb_ket < loop_max; ++rb_ket) {
-                    charge rc_ket = ket_right_i[rb_ket].first;
-
                     value_type** T = tasks[rb_ket].create_T_left_gpu(left.device_data(0),
                                                                      ket_tensor.device_data(0));
 
                     for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
                     {
                         unsigned lb = it->get_lb();
-                        charge rc_bra = bra_right_i[lb].first;
-                        unsigned ci = ret.index().cohort_index(rc_bra, rc_ket);
+                        unsigned ci = ret.index().cohort_index(lb, rb_ket);
                         it->prop_l_gpu((value_type*)bra_tensor.device_data()[lb], T,
                                        ret[ci], (value_type*)ret.device_data()[ci]);
                     }
@@ -267,15 +264,13 @@ namespace contraction {
                 #pragma omp parallel for schedule (dynamic,1)
                 #endif
                 for(index_type rb_ket = 0; rb_ket < loop_max; ++rb_ket) {
-                    charge rc_ket = ket_right_i[rb_ket].first;
-
                     auto T = tasks[rb_ket].create_T_left(left.get_data_view(), ket_data_view);
 
                     for (const_iterator it = tasks[rb_ket].begin(); it != tasks[rb_ket].end(); ++it)
                     {
-                        charge rc_bra = bra_right_i[it->get_lb()].first;
-                        unsigned ci = ret.index().cohort_index(rc_bra, rc_ket);
-                        it->prop_l(bra_tensor.data()[it->get_lb()].get_values().data(), T, ret[ci]);
+                        unsigned lb = it->get_lb();
+                        unsigned ci = ret.index().cohort_index(lb, rb_ket);
+                        it->prop_l(bra_tensor.data()[lb].get_values().data(), T, ret[ci]);
                     }
                 }
             }
@@ -369,8 +364,7 @@ namespace contraction {
                     for (const_iterator it = tasks[lb_ket].begin(); it != tasks[lb_ket].end(); ++it) // lc_ket loop
                     {
                         unsigned rb = it->get_rb();
-                        charge lc_bra = bra_left_i[rb].first;
-                        unsigned ci = ret.index().cohort_index(lc_ket, lc_bra);
+                        unsigned ci = ret.index().cohort_index(lb_ket, rb);
                         it->prop_r_gpu((value_type*)bra_tensor.device_data()[rb],
                                        dev_T, ret[ci], (value_type*)ret.device_data()[ci]);
                     }
@@ -393,16 +387,12 @@ namespace contraction {
                 #pragma omp parallel for schedule (dynamic,1)
                 #endif
                 for(index_type lb_ket = 0; lb_ket < loop_max; ++lb_ket) {
-                    charge lc_ket = ket_left_i[lb_ket].first;
-
                     auto T = tasks[lb_ket].create_T(right.get_data_view(), ket_data_view);
 
-                    // lc_ket loop
                     for (const_iterator it = tasks[lb_ket].begin(); it != tasks[lb_ket].end(); ++it)
                     {
                         unsigned rb = it->get_rb();
-                        charge lc_bra = bra_left_i[rb].first;
-                        unsigned ci = ret.index().cohort_index(lc_ket, lc_bra);
+                        unsigned ci = ret.index().cohort_index(lb_ket, rb);
                         it->prop_r(bra_tensor.data()[rb].get_values().data(), T, ret[ci]);
                     }
                 }
