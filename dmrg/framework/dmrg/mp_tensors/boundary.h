@@ -32,12 +32,11 @@
 #include <set>
 #include <boost/archive/binary_oarchive.hpp>
 
-#include "dmrg/sim/matrix_types.h"
+//#include "dmrg/sim/matrix_types.h"
 #include "utils/function_objects.h"
 #include "dmrg/utils/aligned_allocator.hpp"
-#include "dmrg/utils/parallel.hpp"
+//#include "dmrg/utils/parallel.hpp"
 #include "dmrg/utils/storage.h"
-#include "dmrg/utils/accelerator.h"
 #include "dmrg/mp_tensors/mpotensor_detail.h"
 
 namespace detail {
@@ -420,25 +419,25 @@ public:
         return ret;
     }
 
-    void test() const
-    {
-        assert(data().size() == index_.n_cohorts());
-        for (int ci = 0; ci < index_.n_cohorts(); ++ci)
-        {
-            std::vector<value_type> buf(data()[ci].size());
-            for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
-            {
-                cudaSetDevice(d);
-                HANDLE_ERROR(cudaMemcpy( buf.data(), this->device_data(d)[ci], data()[ci].size() * sizeof(value_type),
-                             cudaMemcpyDeviceToHost ));
-                for (size_t k =0; k < data()[ci].size(); ++k)
-                {
-                    if ( std::abs(data()[ci][k] - buf[k]) > 1e-8)
-                        throw std::runtime_error("boundary not syncd\n");
-                }
-            }
-        }
-    }
+    //void test() const
+    //{
+    //    assert(data().size() == index_.n_cohorts());
+    //    for (int ci = 0; ci < index_.n_cohorts(); ++ci)
+    //    {
+    //        std::vector<value_type> buf(data()[ci].size());
+    //        for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
+    //        {
+    //            cudaSetDevice(d);
+    //            HANDLE_ERROR(cudaMemcpy( buf.data(), this->device_data(d)[ci], data()[ci].size() * sizeof(value_type),
+    //                         cudaMemcpyDeviceToHost ));
+    //            for (size_t k =0; k < data()[ci].size(); ++k)
+    //            {
+    //                if ( std::abs(data()[ci][k] - buf[k]) > 1e-8)
+    //                    throw std::runtime_error("boundary not syncd\n");
+    //            }
+    //        }
+    //    }
+    //}
 
 private:
 

@@ -67,7 +67,14 @@ namespace detail{
                 out[offset + ncols*i + j] = buf[nrows*j + i];
         }
     }
+
 }
+    template <class Vector>
+    void* stage_vector(accelerator::device* dev, Vector const & vec)
+    {
+        return dev->stage_vector((void*)vec.data(),
+            vec.size() * sizeof(typename Vector::value_type));
+    }
 
     template <class VT>
     void Cohort<VT>::SUnit::push_back(value_type scale, index_type ti, index_type col)
@@ -99,10 +106,10 @@ namespace detail{
     template <class VT>
     void Cohort<VT>::SUnit::stage(accelerator::device* dev)
     {
-        dev_tidx = (index_type*)dev->stage_vector(tidx);
-        dev_alpha = (value_type*)dev->stage_vector(alpha);
-        dev_b2s = (index_type*)dev->stage_vector(b2s);
-        dev_b1  = (index_type*)dev->stage_vector(b1);
+        dev_tidx =  (index_type*)stage_vector(dev, tidx);
+        dev_alpha = (value_type*)stage_vector(dev, alpha);
+        dev_b2s =   (index_type*)stage_vector(dev, b2s);
+        dev_b1  =   (index_type*)stage_vector(dev, b1);
     }
 
     template <class VT>
@@ -128,14 +135,14 @@ namespace detail{
             valpha[x] = suv[x].dev_alpha;
         }
 
-        dev_offset = (index_type*)dev->stage_vector(offset);
-        dev_ms = (index_type*)dev->stage_vector(ms);
-        dev_nb1 = (index_type*)dev->stage_vector(nb1);
+        dev_offset = (index_type*)stage_vector(dev, offset);
+        dev_ms =     (index_type*)stage_vector(dev, ms);
+        dev_nb1 =    (index_type*)stage_vector(dev, nb1);
 
-        dev_vtidx = (index_type**)dev->stage_vector(vtidx);
-        dev_vb2s  = (index_type**)dev->stage_vector(vb2s);
-        dev_vb1   = (index_type**)dev->stage_vector(vb1);
-        dev_valpha = (value_type**)dev->stage_vector(valpha);
+        dev_vtidx =  (index_type**)stage_vector(dev, vtidx);
+        dev_vb2s  =  (index_type**)stage_vector(dev, vb2s);
+        dev_vb1   =  (index_type**)stage_vector(dev, vb1);
+        dev_valpha = (value_type**)stage_vector(dev, valpha);
     }
 
     template <class VT> Cohort<VT>::Cohort() {}
@@ -822,7 +829,7 @@ namespace detail{
 
     template <class T>
     void MPSBlock<T>::gpuTransferable::stage(accelerator::device* dev) {
-        dev_t = (value_type**)dev->stage_vector(t);
+        dev_t = (value_type**)stage_vector(dev, t);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////

@@ -41,7 +41,7 @@ sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_, bool measure_on_mps)
     storage::setup(parms);
     dmrg_random::engine.seed(parms["seed"]);
 
-    accelerator::setup(parms);
+    accelerator::setup(parms["GPU"]);
     
     /// Model initialization
     lat = Lattice(parms);
