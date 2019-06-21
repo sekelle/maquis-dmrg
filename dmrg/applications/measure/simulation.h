@@ -29,8 +29,6 @@
 
 #include <boost/shared_ptr.hpp>
 
-#include "dmrg/utils/DmrgParameters.h"
-
 struct simulation_base {
     virtual ~simulation_base() {}
     virtual void run(DmrgParameters & parms) =0;

@@ -86,8 +86,6 @@ public:
     void add_ortho(FrontEndBase* os);
 
 private:
-    //std::shared_ptr<dmrg_sim<matrix, SymmGroup>> sim_ptr_real;
-    //std::shared_ptr<dmrg_sim<matrix, SymmGroup>> sim_ptr_real;
     std::shared_ptr<dmrg_sim<Matrix, SymmGroup>> sim_ptr;
 };
 

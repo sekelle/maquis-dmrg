@@ -32,26 +32,12 @@
 template <class Matrix, class SymmGroup>
 SimFrontEnd<Matrix, SymmGroup>::SimFrontEnd(DmrgParameters & parms)
 {
-//    if (parms["COMPLEX"]) {
-//#ifdef HAVE_COMPLEX
-//        sim_ptr_complex.reset(new dmrg_sim<cmatrix, SymmGroup>(parms));
-//#else
-//        throw std::runtime_error("compilation of complex numbers not enabled, check your compile options\n");
-//#endif
-//    } else
-//        sim_ptr_real.reset(new dmrg_sim<matrix, SymmGroup>(parms));
-
     sim_ptr.reset(new dmrg_sim<Matrix, SymmGroup>(parms));
 }
 
 template <class Matrix, class SymmGroup>
 void SimFrontEnd<Matrix, SymmGroup>::run()
 {
-    //if (sim_ptr_complex)
-    //    sim_ptr_complex->run();
-    //else
-    //    sim_ptr_real->run();
-
     sim_ptr->run();
 }
 
@@ -59,18 +45,7 @@ template <class Matrix, class SymmGroup>
 //void SimFrontEnd<SymmGroup>::add_ortho(std::shared_ptr<FrontEndBase> os)
 void SimFrontEnd<Matrix, SymmGroup>::add_ortho(FrontEndBase* os)
 {
-    //std::shared_ptr<SimFrontEnd<SymmGroup>> os_up = std::dynamic_pointer_cast<SimFrontEnd<SymmGroup>>(os);
     SimFrontEnd<Matrix, SymmGroup>* os_up = dynamic_cast<SimFrontEnd<Matrix, SymmGroup>*>(os);
-
-    //if (sim_ptr_complex)
-    //#ifdef HAVE_COMPLEX
-    //    sim_ptr_complex->add_ortho(os_up->sim_ptr_complex);
-    //#else
-    //    throw std::runtime_error("compilation of complex numbers not enabled, check your compile options\n");
-    //#endif
-    //if (sim_ptr_real)
-    //    sim_ptr_real->add_ortho(os_up->sim_ptr_real);
-
     sim_ptr->add_ortho(os_up->sim_ptr);
 }
 
@@ -81,9 +56,6 @@ void SimFrontEnd<Matrix, SymmGroup>::measure_observable(std::string name,
                                                std::string bra,
                                                std::shared_ptr<FrontEndBase> bra_ptr)
 {
-    //if (sim_ptr_complex.get())
-    //    throw std::runtime_error("extraction of complex observables not implemented\n");
-
     if (bra_ptr)
         sim_ptr->measure_observable(name, results, labels, bra,
             std::dynamic_pointer_cast<SimFrontEnd<Matrix, SymmGroup>>(bra_ptr)->sim_ptr);
@@ -94,15 +66,6 @@ void SimFrontEnd<Matrix, SymmGroup>::measure_observable(std::string name,
 template <class Matrix, class SymmGroup>
 double SimFrontEnd<Matrix, SymmGroup>::get_energy()
 {
-    //if (sim_ptr_complex)
-    //#ifdef HAVE_COMPLEX
-    //    return sim_ptr_complex->get_energy();
-    //#else
-    //    throw std::runtime_error("compilation of complex numbers not enabled, check your compile options\n");
-    //#endif
-    //if (sim_ptr_real)
-    //    return sim_ptr_real->get_energy();
-
     return sim_ptr->get_energy();
 }
 
