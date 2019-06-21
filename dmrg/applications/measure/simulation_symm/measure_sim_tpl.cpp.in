@@ -30,3 +30,6 @@
 #include "measure_sim.hpp"
 
 template class measure_sim<@CMAKE_MATRIX_TYPE@, @CMAKE_SYMM_GROUP@>;
+
+#include "simulation.ipp"
+template class simulation<@CMAKE_MATRIX_TYPE@, @CMAKE_SYMM_GROUP@>;

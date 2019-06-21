@@ -33,7 +33,6 @@
 
 #include "dmrg/utils/DmrgParameters.h"
 #include "dmrg/sim/symmetry_factory.h"
-//#include "../../applications/scf/simulation.h"
 
 #include "cpp_maquis.h"
 

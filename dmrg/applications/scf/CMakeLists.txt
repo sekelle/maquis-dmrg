@@ -10,7 +10,7 @@ if(USE_AMBIENT)
 endif(USE_AMBIENT)  
 
 # *** Configure symmetries
-configure_symm_file("simulation_symm/simulation_tpl.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/simulation_symm/simulation_{SYMM}.cpp" CMAKE_SYMM_GROUP)
+configure_matrix_file("simulation_symm/simulation_tpl.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/simulation_symm/simulation_{SYMM}.cpp" CMAKE_MATRIX_TYPE CMAKE_SYMM_GROUP)
 get_symm_files(APPEND SCF_SYMM_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/simulation_symm/simulation_{SYMM}.cpp")
 
 add_library(dmrg_simulation STATIC ${SCF_SYMM_SOURCES})

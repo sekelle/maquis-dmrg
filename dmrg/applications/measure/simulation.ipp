@@ -29,19 +29,21 @@
 #include "measure_sim.h"
 #include "simulation.h"
 
-template <class SymmGroup>
-void simulation<SymmGroup>::run(DmrgParameters & parms)
+template <class Matrix, class SymmGroup>
+void simulation<Matrix, SymmGroup>::run(DmrgParameters & parms)
 {
-    if (parms["COMPLEX"]) {
-#ifdef HAVE_COMPLEX
-        measure_sim<cmatrix, SymmGroup> sim(parms);
-        sim.run();
-#else
-        throw std::runtime_error("compilation of complex numbers not enabled, check your compile options\n");
-#endif
-
-    } else {
-        measure_sim<matrix, SymmGroup> sim(parms);
-        sim.run();
-    }
+//    if (parms["COMPLEX"]) {
+//#ifdef HAVE_COMPLEX
+//        measure_sim<cmatrix, SymmGroup> sim(parms);
+//        sim.run();
+//#else
+//        throw std::runtime_error("compilation of complex numbers not enabled, check your compile options\n");
+//#endif
+//
+//    } else {
+//        measure_sim<matrix, SymmGroup> sim(parms);
+//        sim.run();
+//    }
+    measure_sim<Matrix, SymmGroup> sim(parms);
+    sim.run();
 }

@@ -32,50 +32,51 @@
 #include "dmrg/sim/matrix.fwd.h"
 #include "../dmrg/dmrg_sim.fwd.h"
 
-class simulation_base {
+class FrontEndBase {
 public:
-    virtual ~simulation_base() {}
+    virtual ~FrontEndBase() {}
     virtual void run() =0;
     virtual void measure_observable(std::string name,
                                     std::vector<double> & results, std::vector<std::vector<int> > & labels,
-                                    std::string bra, std::shared_ptr<simulation_base> bra_ptr = NULL) =0;
+                                    std::string bra, std::shared_ptr<FrontEndBase> bra_ptr = NULL) =0;
 
     virtual double get_energy() =0;
 
     //virtual parameters::proxy get_parm(std::string const& key) =0;
 
-    //virtual void add_ortho(std::shared_ptr<simulation_base> os) {}
-    virtual void add_ortho(simulation_base* os) {}
+    //virtual void add_ortho(std::shared_ptr<FrontEndBase> os) {}
+    virtual void add_ortho(FrontEndBase* os) {}
 };
 
-template <class SymmGroup>
-class simulation : public simulation_base {
+template <class Matrix, class SymmGroup>
+class SimFrontEnd : public FrontEndBase {
 public:
-    simulation(DmrgParameters & parms);
+    SimFrontEnd(DmrgParameters & parms);
 
     void run();
 
     void measure_observable(std::string name,
                             std::vector<double> & results, std::vector<std::vector<int> > & labels,
                             std::string bra,
-                            std::shared_ptr<simulation_base> bra_ptr = NULL);
+                            std::shared_ptr<FrontEndBase> bra_ptr = NULL);
 
     double get_energy();
 
     //parameters::proxy get_parm(std::string const& key);
 
-    //void add_ortho(std::shared_ptr<simulation_base> os);
-    void add_ortho(simulation_base* os);
+    //void add_ortho(std::shared_ptr<FrontEndBase> os);
+    void add_ortho(FrontEndBase* os);
 
 private:
-    std::shared_ptr<dmrg_sim<matrix, SymmGroup> > sim_ptr_real;
-    std::shared_ptr<dmrg_sim<cmatrix, SymmGroup> > sim_ptr_complex;
+    //std::shared_ptr<dmrg_sim<matrix, SymmGroup> > sim_ptr_real;
+    //std::shared_ptr<dmrg_sim<cmatrix, SymmGroup> > sim_ptr_complex;
+    std::shared_ptr<dmrg_sim<Matrix, SymmGroup>> sim_ptr;
 };
 
 struct simulation_traits {
-    typedef std::shared_ptr<simulation_base> shared_ptr;
-    template <class SymmGroup> struct F {
-        typedef simulation<SymmGroup> type;
+    typedef std::shared_ptr<FrontEndBase> shared_ptr;
+    template <class Matrix, class SymmGroup> struct F {
+        typedef SimFrontEnd<Matrix, SymmGroup> type;
     };
 };
 
