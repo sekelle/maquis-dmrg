@@ -13,7 +13,7 @@ set_property(TARGET maquis PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 #set_target_properties(maquis PROPERTIES PREFIX "")
 
 add_library(cpp_maquis SHARED cpp_maquis.cpp)
-target_link_libraries(cpp_maquis dmrg_simulation)
+target_link_libraries(cpp_maquis optimizer)
 set_property(TARGET cpp_maquis PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 
 # *** Install

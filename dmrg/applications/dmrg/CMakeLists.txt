@@ -22,7 +22,13 @@ set_property(TARGET optimizer PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 add_executable(dmrg dmrg.cpp)
 target_link_libraries(dmrg optimizer ${DMRG_APP_LIBRARIES})
 
+# *** Targets
+add_executable(dmrg_meas measure.cpp)
+target_link_libraries(dmrg_meas optimizer ${DMRG_APP_LIBRARIES})
+
+
 # *** Install
 install(TARGETS dmrg RUNTIME DESTINATION bin COMPONENT applications)
+install(TARGETS dmrg_meas RUNTIME DESTINATION bin COMPONENT applications)
 install(TARGETS optimizer EXPORT DMRGTargets COMPONENT libraries DESTINATION lib)
 export(TARGETS optimizer APPEND FILE "${PROJECT_BINARY_DIR}/DMRGTargets.cmake")
