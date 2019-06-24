@@ -19,7 +19,6 @@ set_property(TARGET optimizer PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 
 
 # *** Targets
-#add_executable(dmrg dmrg.cpp ${SIMULATION_SYMM_SOURCES})
 add_executable(dmrg dmrg.cpp)
 target_link_libraries(dmrg optimizer ${DMRG_APP_LIBRARIES})
 

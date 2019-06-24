@@ -30,7 +30,7 @@
 #include <string>
 
 #include "dmrg/utils/DmrgOptions.h"
-#include "simulation.h"
+#include "../../applications/dmrg/simulation.h"
 
 class DmrgInterface
 {

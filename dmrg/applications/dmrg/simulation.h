@@ -2,8 +2,8 @@
  *
  * ALPS MPS DMRG Project
  *
- * Copyright (C) 2014 Institute for Theoretical Physics, ETH Zurich
- *               2011-2013 by Michele Dolfi <dolfim@phys.ethz.ch>
+ * Copyright (C) 2017 Stanford University Department of Chemistry
+ *               2017-2017 by Sebastian Keller <sebkelle@phys.ethz.ch>
  *
  * This software is part of the ALPS Applications, published under the ALPS
  * Application License; you can use, redistribute it and/or modify it under
@@ -27,23 +27,54 @@
 #ifndef MAQUIS_SIM_RUN_H
 #define MAQUIS_SIM_RUN_H
 
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
-struct simulation_base {
-    virtual ~simulation_base() {}
-    virtual void run(DmrgParameters & parms) =0;
+#include "dmrg/sim/matrix.fwd.h"
+#include "../dmrg/dmrg_sim.fwd.h"
+
+class FrontEndBase {
+public:
+    virtual ~FrontEndBase() {}
+    virtual void run() =0;
+    virtual void measure_observable(std::string name,
+                                    std::vector<double> & results, std::vector<std::vector<int> > & labels,
+                                    std::string bra, std::shared_ptr<FrontEndBase> bra_ptr = NULL) =0;
+
+    virtual double get_energy() =0;
+
+    //virtual parameters::proxy get_parm(std::string const& key) =0;
+
+    //virtual void add_ortho(std::shared_ptr<FrontEndBase> os) {}
+    virtual void add_ortho(FrontEndBase* os) {}
 };
 
 template <class Matrix, class SymmGroup>
-struct simulation : public simulation_base {
-    simulation(DmrgParameters & parms) {}
-    void run(DmrgParameters & parms);
+class SimFrontEnd : public FrontEndBase {
+public:
+    SimFrontEnd(DmrgParameters & parms);
+
+    void run();
+
+    void measure_observable(std::string name,
+                            std::vector<double> & results, std::vector<std::vector<int> > & labels,
+                            std::string bra,
+                            std::shared_ptr<FrontEndBase> bra_ptr = NULL);
+
+    double get_energy();
+
+    //parameters::proxy get_parm(std::string const& key);
+
+    //void add_ortho(std::shared_ptr<FrontEndBase> os);
+    void add_ortho(FrontEndBase* os);
+
+private:
+    std::shared_ptr<dmrg_sim<Matrix, SymmGroup>> sim_ptr;
 };
 
 struct simulation_traits {
-    typedef boost::shared_ptr<simulation_base> shared_ptr;
+    typedef std::shared_ptr<FrontEndBase> shared_ptr;
     template <class Matrix, class SymmGroup> struct F {
-        typedef simulation<Matrix, SymmGroup> type;
+        typedef SimFrontEnd<Matrix, SymmGroup> type;
     };
 };
 

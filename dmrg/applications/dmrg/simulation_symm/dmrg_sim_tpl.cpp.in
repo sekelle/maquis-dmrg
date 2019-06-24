@@ -31,4 +31,4 @@
 template class dmrg_sim<@CMAKE_MATRIX_TYPE@, @CMAKE_SYMM_GROUP@>;
 
 #include "simulation.ipp"
-template class simulation<@CMAKE_MATRIX_TYPE@, @CMAKE_SYMM_GROUP@>;
+template class SimFrontEnd<@CMAKE_MATRIX_TYPE@, @CMAKE_SYMM_GROUP@>;

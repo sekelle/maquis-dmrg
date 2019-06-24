@@ -3,7 +3,7 @@
 enable_omp_if_found()
 include_directories(. ${CMAKE_CURRENT_BINARY_DIR})
 
-set(PYTHON_APP_LIBRARIES dmrg_simulation python2.7)
+set(PYTHON_APP_LIBRARIES optimizer python2.7)
 
 
 # *** Targets

@@ -33,7 +33,7 @@
 
 #include "dmrg/utils/DmrgParameters.h"
 #include "dmrg/sim/symmetry_factory.h"
-#include "../../applications/scf/simulation.h"
+#include "../../applications/dmrg/simulation.h"
 
 using namespace boost::python;
 
