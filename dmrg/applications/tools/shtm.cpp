@@ -139,7 +139,7 @@ int main(int argc, char ** argv)
         std::vector<MPSTensor<matrix, symm>> ortho_vecs;
 
         storage::setup(parms);
-        accelerator::setup(parms);
+        accelerator::setup(parms["GPU"]);
 
         storage::gpu::broadcast::prefetch(left);
         storage::gpu::broadcast::prefetch(right);
