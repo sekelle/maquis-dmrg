@@ -25,8 +25,6 @@
  *****************************************************************************/
 
 #include "utils/io.hpp" // has to be first include because of impi
-#include <cmath>
-#include <iterator>
 #include <iostream>
 #include <sys/stat.h>
 #include <sys/time.h>

@@ -63,6 +63,8 @@ public:
     dmrg_sim (DmrgParameters & parms_);
     
     void run();
+
+    void measure_all();
     
     ~dmrg_sim();
 

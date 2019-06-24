@@ -41,6 +41,12 @@ void SimFrontEnd<Matrix, SymmGroup>::run()
 }
 
 template <class Matrix, class SymmGroup>
+void SimFrontEnd<Matrix, SymmGroup>::measure_all()
+{
+    sim_ptr->measure_all();
+}
+
+template <class Matrix, class SymmGroup>
 //void SimFrontEnd<SymmGroup>::add_ortho(std::shared_ptr<FrontEndBase> os)
 void SimFrontEnd<Matrix, SymmGroup>::add_ortho(FrontEndBase* os)
 {

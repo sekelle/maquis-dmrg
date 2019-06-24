@@ -135,13 +135,58 @@ void dmrg_sim<Matrix, SymmGroup>::run()
 }
 
 template <class Matrix, class SymmGroup>
+void dmrg_sim<Matrix, SymmGroup>::measure_all()
+{
+    this->measure("/spectrum/results/", all_measurements);
+
+    /// MPO creation
+    MPO<Matrix, SymmGroup> mpoc = mpo;
+    if (parms["use_compressed"])
+        mpoc.compress(1e-12);
+
+    double energy;
+
+    if (parms["MEASURE[Energy]"]) {
+        energy = maquis::real(expval(mps, mpoc)) + maquis::real(mpoc.getCoreEnergy());
+        maquis::cout << "Energy: " << energy << std::endl;
+        {
+            storage::archive ar(rfile, "w");
+            ar["/spectrum/results/Energy/mean/value"] << std::vector<double>(1, energy);
+        }
+    }
+
+    if (parms["MEASURE[EnergyVariance]"] > 0) {
+        MPO<Matrix, SymmGroup> mpo2 = square_mpo(mpoc);
+        mpo2.compress(1e-12);
+
+        if (!parms["MEASURE[Energy]"]) energy = maquis::real(expval(mps, mpoc)) + maquis::real(mpoc.getCoreEnergy());
+        double energy2 = maquis::real(expval(mps, mpo2, true));
+
+        maquis::cout << "Energy^2: " << energy2 << std::endl;
+        maquis::cout << "Variance: " << energy2 - energy*energy << std::endl;
+
+        {
+            storage::archive ar(rfile, "w");
+            ar["/spectrum/results/Energy^2/mean/value"] << std::vector<double>(1, energy2);
+            ar["/spectrum/results/EnergyVariance/mean/value"] << std::vector<double>(1, energy2 - energy*energy);
+        }
+    }
+
+    #if defined(HAVE_TwoU1) || defined(HAVE_TwoU1PG)
+    if (parms.is_set("MEASURE[ChemEntropy]"))
+        measure_transform<Matrix, SymmGroup>()(rfile, "/spectrum/results", base::lat, mps);
+    #endif
+}
+
+template <class Matrix, class SymmGroup>
 dmrg_sim<Matrix, SymmGroup>::~dmrg_sim()
 {
     storage::Controller::sync();
 }
 
 template <class Matrix, class SymmGroup>
-void dmrg_sim<Matrix, SymmGroup>::measure_observable(std::string const & name_, std::vector<typename Matrix::value_type> & results,
+void dmrg_sim<Matrix, SymmGroup>::measure_observable(std::string const & name_,
+                                                     std::vector<typename Matrix::value_type> & results,
                                                      std::vector<std::vector<Lattice::pos_t> > & labels,
                                                      std::string const & bra,
                                                      std::shared_ptr<sim<Matrix, SymmGroup>> bra_ptr)

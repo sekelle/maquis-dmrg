@@ -25,13 +25,14 @@
  *****************************************************************************/
 
 #include "utils/io.hpp" // has to be first include because of impi
-#include "dmrg/utils/DmrgOptions.h"
-#include "simulation.h"
-#include "dmrg/sim/symmetry_factory.h"
-
 #include <iostream>
 #include <sys/time.h>
 #include <sys/stat.h>
+
+#include "dmrg/utils/DmrgOptions.h"
+
+#include "../../applications/dmrg/simulation.h"
+#include "dmrg/sim/symmetry_factory.h"
 
 int main(int argc, char ** argv)
 {
@@ -55,7 +56,7 @@ int main(int argc, char ** argv)
         
         try {
             simulation_traits::shared_ptr sim = dmrg::symmetry_factory<simulation_traits>(opt.parms);
-            sim->run(opt.parms);
+            sim->measure_all();
         } catch (std::exception & e) {
             maquis::cerr << "Exception thrown!" << std::endl;
             maquis::cerr << e.what() << std::endl;

@@ -36,6 +36,9 @@ class FrontEndBase {
 public:
     virtual ~FrontEndBase() {}
     virtual void run() =0;
+
+    virtual void measure_all() =0;
+
     virtual void measure_observable(std::string name,
                                     std::vector<double> & results, std::vector<std::vector<int> > & labels,
                                     std::string bra, std::shared_ptr<FrontEndBase> bra_ptr = NULL) =0;
@@ -54,6 +57,8 @@ public:
     SimFrontEnd(DmrgParameters & parms);
 
     void run();
+
+    void measure_all();
 
     void measure_observable(std::string name,
                             std::vector<double> & results, std::vector<std::vector<int> > & labels,
