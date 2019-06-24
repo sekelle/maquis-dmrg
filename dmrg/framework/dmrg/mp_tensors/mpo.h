@@ -323,9 +323,8 @@ private:
             std::size_t count = 0;
             bond_index_charges[p+1].clear();
             Index<SymmGroup> left_right_basis_cp = left.right_basis();
-            for (typename Index<SymmGroup>::basis_iterator it = left_right_basis_cp.basis_begin();
-                 !it.end(); ++it)
-                bond_index_charges[p+1][count++] = (*it).first;
+            for (size_t i = 0; i < left_right_basis_cp.size(); ++i)
+                bond_index_charges[p+1][count++] = left_right_basis_cp[i].first;
         }
         
         (*this)[p] = MPOTensor<Matrix, SymmGroup>((*this)[p].row_dim(),

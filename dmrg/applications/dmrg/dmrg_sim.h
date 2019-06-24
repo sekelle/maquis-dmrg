@@ -38,6 +38,7 @@
 
 #include "dmrg/sim/sim.h"
 #include "dmrg/optimize/optimize.h"
+#include "dmrg/models/chem/measure_transform.hpp"
 
 #include "dmrg_sim.fwd.h"
 
