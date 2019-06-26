@@ -36,7 +36,7 @@ struct simulation_base {
     virtual void run(DmrgParameters & parms) =0;
 };
 
-template <class SymmGroup>
+template <class Matrix, class SymmGroup>
 struct simulation : public simulation_base {
     simulation(DmrgParameters & parms) {}
     void run(DmrgParameters & parms);
@@ -44,8 +44,8 @@ struct simulation : public simulation_base {
 
 struct simulation_traits {
     typedef boost::shared_ptr<simulation_base> shared_ptr;
-    template <class SymmGroup> struct F {
-        typedef simulation<SymmGroup> type;
+    template <class Matrix, class SymmGroup> struct F {
+        typedef simulation<Matrix, SymmGroup> type;
     };
 };
 

@@ -546,39 +546,34 @@ block_matrix<Matrix, SymmGroup> reshape_2site_op (Index<SymmGroup> const & phys1
     /// s3 \in phys1, output of op on site1
     /// s4 \in phys2, output of op on site2
     
-    typedef typename Index<SymmGroup>::basis_iterator bi_t;
-    for (bi_t s1 = phys1.basis_begin(); !s1.end(); ++s1)
-        for (bi_t s2 = phys2.basis_begin(); !s2.end(); ++s2)
-            for (bi_t s3 = phys1.basis_begin(); !s3.end(); ++s3)
-                for (bi_t s4 = phys2.basis_begin(); !s4.end(); ++s4)
-                {                    
-                    charge in_left_c = SymmGroup::fuse(s1->first, s2->first);
-                    charge in_right_c = SymmGroup::fuse(s3->first, s4->first);
-                    
-                    if (!A.has_block(in_left_c, in_right_c))
-                        continue;
-                    
-                    charge out_left_c = SymmGroup::fuse(s1->first, -s3->first);
-                    charge out_right_c = SymmGroup::fuse(s4->first, -s2->first);
-                    
-                    if (!ret.has_block(out_left_c, out_right_c))
-                        ret.insert_block(new Matrix(pb_out_left.size(s1->first, -s3->first),
-                                                    pb_out_right.size(s4->first, -s2->first),
-                                                    0),
-                                         out_left_c, out_right_c);
-                    
-                    std::size_t in_left_offset = pb(s1->first, s2->first);
-                    std::size_t in_right_offset = pb(s3->first, s4->first);
-                    
-                    std::size_t out_left_offset = pb_out_left(s1->first, -s3->first);
-                    std::size_t out_right_offset = pb_out_right(s4->first, -s2->first);
-                    
-                    ret(std::make_pair(out_left_c, out_left_offset + s1->second*phys1.size_of_block(s3->first)+s3->second),
-                        std::make_pair(out_right_c, out_right_offset + s2->second*phys2.size_of_block(s4->first)+s4->second))
-                    = A(std::make_pair(in_left_c, in_left_offset + s1->second*phys2.size_of_block(s2->first) + s2->second),
-                        std::make_pair(in_right_c, in_right_offset + s3->second*phys2.size_of_block(s4->first) + s4->second));
-                    
-                }
+    for (auto s1 : phys1) for (auto s2 : phys2) for (auto s3 : phys1) for (auto s4 : phys2) {
+        charge in_left_c = SymmGroup::fuse(s1.first, s2.first);
+        charge in_right_c = SymmGroup::fuse(s3.first, s4.first);
+        
+        if (!A.has_block(in_left_c, in_right_c))
+            continue;
+        
+        charge out_left_c = SymmGroup::fuse(s1.first, -s3.first);
+        charge out_right_c = SymmGroup::fuse(s4.first, -s2.first);
+        
+        if (!ret.has_block(out_left_c, out_right_c))
+            ret.insert_block(new Matrix(pb_out_left.size(s1.first, -s3.first),
+                                        pb_out_right.size(s4.first, -s2.first),
+                                        0),
+                             out_left_c, out_right_c);
+        
+        std::size_t in_left_offset = pb(s1.first, s2.first);
+        std::size_t in_right_offset = pb(s3.first, s4.first);
+        
+        std::size_t out_left_offset = pb_out_left(s1.first, -s3.first);
+        std::size_t out_right_offset = pb_out_right(s4.first, -s2.first);
+        
+        ret(std::make_pair(out_left_c, out_left_offset + s1.second*phys1.size_of_block(s3.first)+s3.second),
+            std::make_pair(out_right_c, out_right_offset + s2.second*phys2.size_of_block(s4.first)+s4.second))
+        = A(std::make_pair(in_left_c, in_left_offset + s1.second*phys2.size_of_block(s2.first) + s2.second),
+            std::make_pair(in_right_c, in_right_offset + s3.second*phys2.size_of_block(s4.first) + s4.second));
+        
+    }
     
     // Removing empty blocks
     Index<SymmGroup> out_left = phys1*adjoin(phys1);
@@ -621,37 +616,36 @@ std::vector<Op> reshape_right_to_list (Index<SymmGroup> const & phys, Op2 const 
     Index<SymmGroup> aux_i = A.right_basis();
     ProductBasis<SymmGroup> pb(phys, adjoin(phys));
 
-    typedef typename Index<SymmGroup>::basis_iterator bi_t;
-    for (bi_t b = aux_i.basis_begin(); !b.end(); ++b)
+    for (auto b : aux_i)
     {
     	Op Ai;
-        for (bi_t s1 = phys.basis_begin(); !s1.end(); ++s1)
-            for (bi_t s2 = phys.basis_begin(); !s2.end(); ++s2)
+        for (auto s1 : phys)
+            for (auto s2 : phys)
             {                    
-                charge in_left_c = SymmGroup::fuse(s1->first, -s2->first);
-                charge in_right_c = b->first;
+                charge in_left_c = SymmGroup::fuse(s1.first, -s2.first);
+                charge in_right_c = b.first;
                 
                 if (!A.has_block(in_left_c, in_right_c))
                     continue;
                 
-                charge out_left_c = s1->first;
-                charge out_right_c = s2->first;
+                charge out_left_c = s1.first;
+                charge out_right_c = s2.first;
                 
                 if (!Ai.has_block(out_left_c, out_right_c))
-                    Ai.insert_block(new Matrix(phys.size_of_block(s1->first),
-                                               phys.size_of_block(s2->first),
+                    Ai.insert_block(new Matrix(phys.size_of_block(s1.first),
+                                               phys.size_of_block(s2.first),
                                                0),
                                      out_left_c, out_right_c);
                 
-                std::size_t in_left_offset = pb(s1->first, -s2->first);
+                std::size_t in_left_offset = pb(s1.first, -s2.first);
                 std::size_t in_right_offset = 0;
                 
                 std::size_t out_left_offset = 0;
                 std::size_t out_right_offset = 0;
                 
-                Ai(*s1, *s2)
-                = A(std::make_pair(in_left_c, in_left_offset + s1->second*phys.size_of_block(s2->first) + s2->second),
-                    *b);
+                Ai(s1, s2)
+                = A(std::make_pair(in_left_c, in_left_offset + s1.second*phys.size_of_block(s2.first) + s2.second),
+                    b);
                 
             }
 
@@ -686,38 +680,38 @@ std::vector<Op> reshape_left_to_list (Index<SymmGroup> const & phys, Op2 const &
 	Index<SymmGroup> aux_i = A.left_basis();
 	ProductBasis<SymmGroup> pb(phys, adjoin(phys));
 
-	typedef typename Index<SymmGroup>::basis_iterator bi_t;
-	for (bi_t b = aux_i.basis_begin(); !b.end(); ++b)
+        for (auto b : aux_i)
 	{
 		Op Ai;
-		for (bi_t s1 = phys.basis_begin(); !s1.end(); ++s1)
-			for (bi_t s2 = phys.basis_begin(); !s2.end(); ++s2)
+                for (auto s1 : phys)
+                        for (auto s2 : phys)
 			{
-				charge in_right_c = SymmGroup::fuse(s2->first, -s1->first);
-				charge in_left_c = b->first;
+				charge in_right_c = SymmGroup::fuse(s2.first, -s1.first);
+				charge in_left_c = b.first;
 
 				if (!A.has_block(in_left_c, in_right_c))
 					continue;
 
-				charge out_left_c = s1->first;
-				charge out_right_c = s2->first;
+				charge out_left_c = s1.first;
+				charge out_right_c = s2.first;
 
 				if (!Ai.has_block(out_left_c, out_right_c))
-					Ai.insert_block(new Matrix(phys.size_of_block(s1->first),
-							phys.size_of_block(s2->first),
+					Ai.insert_block(new Matrix(phys.size_of_block(s1.first),
+							phys.size_of_block(s2.first),
 							0),
 							out_left_c, out_right_c);
 
 				std::size_t in_left_offset = 0;
-				std::size_t in_right_offset = pb(s2->first, -s1->first);
+				std::size_t in_right_offset = pb(s2.first, -s1.first);
 
 				std::size_t out_left_offset = 0;
 				std::size_t out_right_offset = 0;
 
-				Ai(std::make_pair(out_left_c, out_left_offset + s1->second),
-						std::make_pair(out_right_c, out_right_offset + s2->second))
-				= A(std::make_pair(in_left_c, in_left_offset + b->second),
-						std::make_pair(in_right_c, in_right_offset + s1->second*phys.size_of_block(s2->first) + s2->second));
+				Ai(std::make_pair(out_left_c, out_left_offset + s1.second),
+						std::make_pair(out_right_c, out_right_offset + s2.second))
+				= A(std::make_pair(in_left_c, in_left_offset + b.second),
+						std::make_pair(in_right_c, in_right_offset +
+                                                               s1.second*phys.size_of_block(s2.first) + s2.second));
 
 			}
 

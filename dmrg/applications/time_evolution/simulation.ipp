@@ -34,34 +34,50 @@
 
 #include <boost/scoped_ptr.hpp>
 
-template <class SymmGroup>
-void simulation<SymmGroup>::run(DmrgParameters & parms)
+template <class Matrix, class SymmGroup>
+void simulation<Matrix, SymmGroup>::run(DmrgParameters & parms)
 {
-    boost::scoped_ptr<sim<cmatrix, SymmGroup> > simc;
-    boost::scoped_ptr<sim<matrix, SymmGroup> > simr;
-    if (parms["COMPLEX"]) {
-#ifdef HAVE_COMPLEX
-        if (parms["te_type"] == "nn")
-            simc.reset(new tevol_sim<cmatrix, SymmGroup, nearest_neighbors_evolver<cmatrix, SymmGroup> >(parms));
-        else if (parms["te_type"] == "mpo")
-            simc.reset(new tevol_sim<cmatrix, SymmGroup, mpo_evolver<cmatrix, SymmGroup> >(parms));
-        else if (parms["te_type"] == "circuit")
-            simc.reset(new tevol_sim<cmatrix, SymmGroup, circuit_evolver<cmatrix, SymmGroup> >(parms));
+    boost::scoped_ptr<sim<Matrix, SymmGroup>> sim;
 
-        /// Run
-        simc->run();
-#else
-        throw std::runtime_error("compilation of complex numbers not enabled, check your compile options\n");
-#endif
-    } else {
-        if (parms["te_type"] == "nn")
-            simr.reset(new tevol_sim<matrix, SymmGroup, nearest_neighbors_evolver<matrix, SymmGroup> >(parms));
-        else if (parms["te_type"] == "mpo")
-            simr.reset(new tevol_sim<matrix, SymmGroup, mpo_evolver<matrix, SymmGroup> >(parms));
-        else if (parms["te_type"] == "circuit")
-            simr.reset(new tevol_sim<matrix, SymmGroup, circuit_evolver<matrix, SymmGroup> >(parms));
+    if (parms["te_type"] == "nn")
+        sim.reset(new tevol_sim<Matrix, SymmGroup, nearest_neighbors_evolver<Matrix, SymmGroup> >(parms));
+    else if (parms["te_type"] == "mpo")
+        sim.reset(new tevol_sim<Matrix, SymmGroup, mpo_evolver<Matrix, SymmGroup> >(parms));
+    else if (parms["te_type"] == "circuit")
+        sim.reset(new tevol_sim<Matrix, SymmGroup, circuit_evolver<Matrix, SymmGroup> >(parms));
 
-        /// Run
-        simr->run();
-    }
+    /// Run
+    sim->run();
 }
+
+//template <class SymmGroup>
+//void simulation<SymmGroup>::run(DmrgParameters & parms)
+//{
+//    boost::scoped_ptr<sim<cmatrix, SymmGroup> > simc;
+//    boost::scoped_ptr<sim<matrix, SymmGroup> > simr;
+//    if (parms["COMPLEX"]) {
+//#ifdef HAVE_COMPLEX
+//        if (parms["te_type"] == "nn")
+//            simc.reset(new tevol_sim<cmatrix, SymmGroup, nearest_neighbors_evolver<cmatrix, SymmGroup> >(parms));
+//        else if (parms["te_type"] == "mpo")
+//            simc.reset(new tevol_sim<cmatrix, SymmGroup, mpo_evolver<cmatrix, SymmGroup> >(parms));
+//        else if (parms["te_type"] == "circuit")
+//            simc.reset(new tevol_sim<cmatrix, SymmGroup, circuit_evolver<cmatrix, SymmGroup> >(parms));
+//
+//        /// Run
+//        simc->run();
+//#else
+//        throw std::runtime_error("compilation of complex numbers not enabled, check your compile options\n");
+//#endif
+//    } else {
+//        if (parms["te_type"] == "nn")
+//            simr.reset(new tevol_sim<matrix, SymmGroup, nearest_neighbors_evolver<matrix, SymmGroup> >(parms));
+//        else if (parms["te_type"] == "mpo")
+//            simr.reset(new tevol_sim<matrix, SymmGroup, mpo_evolver<matrix, SymmGroup> >(parms));
+//        else if (parms["te_type"] == "circuit")
+//            simr.reset(new tevol_sim<matrix, SymmGroup, circuit_evolver<matrix, SymmGroup> >(parms));
+//
+//        /// Run
+//        simr->run();
+//    }
+//}
