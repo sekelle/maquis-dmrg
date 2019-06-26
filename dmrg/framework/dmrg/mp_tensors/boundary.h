@@ -32,10 +32,9 @@
 #include <set>
 #include <boost/archive/binary_oarchive.hpp>
 
-//#include "dmrg/sim/matrix_types.h"
+#include "dmrg/sim/matrix_types.h"
 #include "utils/function_objects.h"
 #include "dmrg/utils/aligned_allocator.hpp"
-//#include "dmrg/utils/parallel.hpp"
 #include "dmrg/utils/storage.h"
 #include "dmrg/mp_tensors/mpotensor_detail.h"
 
