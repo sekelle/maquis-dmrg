@@ -178,14 +178,14 @@ void op_kron(Index<SymmGroup> const & phys_A,
              SiteOperator<Matrix1, SymmGroup> const & A,
              SiteOperator<Matrix1, SymmGroup> const & B,
              SiteOperator<Matrix2, SymmGroup> & C,
-             SpinDescriptor<typename symm_traits::SymmType<SymmGroup>::type> lspin
-           = SpinDescriptor<typename symm_traits::SymmType<SymmGroup>::type>(),
-             SpinDescriptor<typename symm_traits::SymmType<SymmGroup>::type> mspin
-           = SpinDescriptor<typename symm_traits::SymmType<SymmGroup>::type>(),
-             SpinDescriptor<typename symm_traits::SymmType<SymmGroup>::type> rspin
-           = SpinDescriptor<typename symm_traits::SymmType<SymmGroup>::type>(),
-             SpinDescriptor<typename symm_traits::SymmType<SymmGroup>::type> tspin
-           = SpinDescriptor<typename symm_traits::SymmType<SymmGroup>::type>())
+             SpinDescriptor<symm_traits::AbelianTag> lspin
+           = SpinDescriptor<symm_traits::AbelianTag>(),
+             SpinDescriptor<symm_traits::AbelianTag> mspin
+           = SpinDescriptor<symm_traits::AbelianTag>(),
+             SpinDescriptor<symm_traits::AbelianTag> rspin
+           = SpinDescriptor<symm_traits::AbelianTag>(),
+             SpinDescriptor<symm_traits::AbelianTag> tspin
+           = SpinDescriptor<symm_traits::AbelianTag>())
 {
     C = SiteOperator<Matrix2, SymmGroup>();
 
@@ -328,56 +328,5 @@ void op_kron(Index<SymmGroup> const & phys_A,
     C = SiteOperator<Matrix2, SymmGroup>(blocks, basis_spins);
     C.spin() = op_spin;
 }
-
-
-// Currently not used
-
-//template<class Matrix, class SymmGroup>
-//void op_kron_long(MultiIndex<SymmGroup> const & midx,
-//                  typename MultiIndex<SymmGroup>::set_id s,
-//                  SiteOperator<Matrix, SymmGroup> const & A,
-//                  SiteOperator<Matrix, SymmGroup> const & B,
-//                  SiteOperator<Matrix, SymmGroup> const & F,
-//                  std::size_t dist,
-//                  SiteOperator<Matrix, SymmGroup> & C)
-//{
-//    assert( midx.size() == 2*(dist+1) );
-//    C = SiteOperator<Matrix, SymmGroup>();
-//    
-//    for (size_t run=0; run<2; ++run) {
-//        
-//        if (run == 1)
-//            C.allocate_blocks();
-//        
-//        for (index_product_iterator<SymmGroup> it = midx.begin();
-//             it != midx.end(); ++it)
-//        {
-//            bool has_block = A.has_block((*it)[0].first, (*it)[1].first);
-//            has_block = has_block && B.has_block((*it)[2*dist].first, (*it)[2*dist+1].first);
-//            for (size_t i=1; has_block && i<dist; ++i)
-//                has_block = F.has_block((*it)[2*i].first, (*it)[2*i+1].first);
-//            
-//            if (!has_block)
-//                continue;
-//            
-//            typename Matrix::value_type val = A((*it)[0], (*it)[1]) * B((*it)[2*dist], (*it)[2*dist+1]);
-//            for (size_t i=1; i<dist; ++i)
-//                val *= F((*it)[2*i], (*it)[2*i+1]);
-//            
-//            if (val != 0.) {
-//                typename MultiIndex<SymmGroup>::coord_t coord_l, coord_r;
-//                boost::tie(coord_l, coord_r) = midx.get_coords(s, *it);
-//                if (run == 0)
-//                    C.reserve(coord_l.first, coord_r.first,
-//                              midx.left_size(s, coord_l.first), midx.right_size(s, coord_r.first));
-//                else
-//                    C(coord_l, coord_r) += val;
-//                
-//            }
-//        }
-//        
-//    }
-//    
-//}
 
 #endif
