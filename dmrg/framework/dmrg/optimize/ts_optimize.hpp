@@ -4,7 +4,7 @@
  *
  * Copyright (C) 2014 Institute for Theoretical Physics, ETH Zurich
  *               2013-2013 by Bela Bauer <bauerb@phys.ethz.ch> 
- *	                          Sebastian Keller <sebkelle@phys.ethz.ch>
+ *                            Sebastian Keller <sebkelle@phys.ethz.ch>
  * 
  * This software is part of the ALPS Applications, published under the ALPS
  * Application License; you can use, redistribute it and/or modify it under
@@ -126,26 +126,26 @@ public:
         }
         
         for (; _site < 2*L-2; ++_site) {
-	/* (0,1), (1,2), ... , (L-1,L), (L-1,L), (L-2, L-1), ... , (0,1)
-	    | |                        |
+    /* (0,1), (1,2), ... , (L-1,L), (L-1,L), (L-2, L-1), ... , (0,1)
+        | |                        |
        site 1                      |
-	      |         left to right  | right to left, lr = -1
-	      site 2                   |                               */
+          |         left to right  | right to left, lr = -1
+          site 2                   |                               */
 
             int lr, site1, site2;
             if (_site < L-1) {
                 site = to_site(L, _site);
                 lr = 1;
-        		site1 = site;
-        		site2 = site+1;
+                site1 = site;
+                site2 = site+1;
             } else {
                 site = to_site(L, _site);
                 lr = -1;
-        		site1 = site-1;
-        		site2 = site;
+                site1 = site-1;
+                site2 = site;
             }
 
-    	    maquis::cout << std::endl;
+            maquis::cout << std::endl;
             maquis::cout << "Sweep " << sweep << ", optimizing sites " << site1 << " and " << site2 << std::endl;
 
             if (_site != L-1)
@@ -165,9 +165,9 @@ public:
             }
             if (ratio <= 0.9 && ratio_prev > 0.9) ratio = ratio_prev;
 
-    	    // Create TwoSite objects
-    	    TwoSiteTensor<Matrix, SymmGroup> tst(mps[site1], mps[site2]);
-    	    MPSTensor<Matrix, SymmGroup> twin_mps = tst.make_mps();
+            // Create TwoSite objects
+            TwoSiteTensor<Matrix, SymmGroup> tst(mps[site1], mps[site2]);
+            MPSTensor<Matrix, SymmGroup> twin_mps = tst.make_mps();
             tst.clear();
             SiteProblem<Matrix, BoundaryMatrix, SymmGroup>
                 sp(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1], ratio);
@@ -229,25 +229,25 @@ public:
                 (d == RightOnly && lr == +1))
             {
                 if (parms["eigensolver"] == std::string("IETL")) {
-            	    BEGIN_TIMING("IETL")
+                    BEGIN_TIMING("IETL")
                     res = solve_ietl_lanczos(sp, twin_mps, parms);
-            	    END_TIMING("IETL")
+                    END_TIMING("IETL")
                 } else if (parms["eigensolver"] == std::string("IETL_JCD")) {
-            	    BEGIN_TIMING("JCD")
+                    BEGIN_TIMING("JCD")
                     res = solve_ietl_jcd(sp, twin_mps, parms, ortho_vecs);
-            	    END_TIMING("JCD")
+                    END_TIMING("JCD")
                     jcd_time = boost::chrono::duration<double>(then-now).count();
                     sp.contraction_schedule.print_stats(jcd_time);
                 } else if (parms["eigensolver"] == std::string("IETL_DAVIDSON")) {
-            	    BEGIN_TIMING("DAVIDSON")
+                    BEGIN_TIMING("DAVIDSON")
                     res = solve_ietl_davidson(sp, twin_mps, parms, ortho_vecs);
-            	    END_TIMING("DAVIDSON")
+                    END_TIMING("DAVIDSON")
                 } else {
                     throw std::runtime_error("I don't know this eigensolver.");
                 }
 
                 cpu_gpu_ratio[site1] = sp.contraction_schedule.get_cpu_gpu_ratio();
-        		tst << res.second;
+                tst << res.second;
                 res.second.clear();
             }
             twin_mps.clear();
@@ -283,9 +283,9 @@ public:
             std::size_t Mmax = this->get_Mmax(sweep);
             truncation_results trunc;
             
-    	    if (lr == +1)
-    	    {
-        		// Write back result from optimization
+            if (lr == +1)
+            {
+                // Write back result from optimization
                 if (parms["twosite_truncation"] == "svd")
                     boost::tie(mps[site1], mps[site2], trunc) = tst.split_mps_l2r(Mmax, cutoff);
                 else
@@ -293,14 +293,14 @@ public:
                         predict_split_l2r(tst, Mmax, cutoff, alpha, left_[site1], mpo[site1]);
                 tst.clear();
 
-        		block_matrix<Matrix, SymmGroup> t;
-		
-        		//t = mps[site1].normalize_left(DefaultSolver());
-        		//mps[site2].multiply_from_left(t);
-        		//mps[site2].divide_by_scalar(mps[site2].scalar_norm());	
+                block_matrix<Matrix, SymmGroup> t;
 
-        		t = mps[site2].normalize_left(DefaultSolver());
-        		if (site2 < L-1) mps[site2+1].multiply_from_left(t);
+                //t = mps[site1].normalize_left(DefaultSolver());
+                //mps[site2].multiply_from_left(t);
+                //mps[site2].divide_by_scalar(mps[site2].scalar_norm());
+
+                t = mps[site2].normalize_left(DefaultSolver());
+                if (site2 < L-1) mps[site2+1].multiply_from_left(t);
 
                 if (site1 != L-2)
                     Storage::broadcast::drop(right_[site2+1]);
@@ -312,9 +312,9 @@ public:
                     Storage::broadcast::evict(mps[site1]);
                     Storage::broadcast::evict(left_[site1]);
                 }
-    	    }
-    	    if (lr == -1){
-        		// Write back result from optimization
+            }
+            if (lr == -1){
+                // Write back result from optimization
                 if (parms["twosite_truncation"] == "svd")
                     boost::tie(mps[site1], mps[site2], trunc) = tst.split_mps_r2l(Mmax, cutoff);
                 else
@@ -322,14 +322,14 @@ public:
                         predict_split_r2l(tst, Mmax, cutoff, alpha, right_[site2+1], mpo[site2]);
                 tst.clear();
 
-        		block_matrix<Matrix, SymmGroup> t;
+                block_matrix<Matrix, SymmGroup> t;
 
-        		//t = mps[site2].normalize_right(DefaultSolver());
-        		//mps[site1].multiply_from_right(t);
-        		//mps[site1].divide_by_scalar(mps[site1].scalar_norm());	
+                //t = mps[site2].normalize_right(DefaultSolver());
+                //mps[site1].multiply_from_right(t);
+                //mps[site1].divide_by_scalar(mps[site1].scalar_norm());
 
-        		t = mps[site1].normalize_right(DefaultSolver());
-        		if (site1 > 0) mps[site1-1].multiply_from_right(t);
+                t = mps[site1].normalize_right(DefaultSolver());
+                if (site1 > 0) mps[site1-1].multiply_from_right(t);
 
                 if(site1 != 0)
                     Storage::broadcast::drop(left_[site1]);
@@ -341,7 +341,7 @@ public:
                     Storage::broadcast::evict(mps[site2]);
                     Storage::broadcast::evict(right_[site2+1]); 
                 }
-    	    }
+            }
             
             iteration_results_["BondDimension"]     << trunc.bond_dimension;
             iteration_results_["TruncatedWeight"]   << trunc.truncated_weight;
@@ -356,7 +356,7 @@ public:
             //if (stop_callback() || preshot)
                 throw dmrg::time_limit(sweep, _site+1);
 
-    	} // for sites
+        } // for sites
         initial_site = -1;
     } // sweep
 
