@@ -71,7 +71,7 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
 
     tasks.compute_workload(right.index().rt(), cpu_gpu_ratio);
     tasks.stage_gpu();
-    tasks.mps_stage.allocate(initial.data().basis());
+    tasks.mps_stage.allocate(initial.data().basis().sizes());
 
     if (std::max(mpo.row_dim(), mpo.col_dim()) > 10)
     {
