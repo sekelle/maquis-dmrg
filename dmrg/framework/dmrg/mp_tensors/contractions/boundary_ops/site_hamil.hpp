@@ -104,7 +104,6 @@ namespace common {
     site_hamil(MPSTensor<Matrix, SymmGroup> & ket_tensor,
                Boundary<OtherMatrix, SymmGroup> const & left,
                Boundary<OtherMatrix, SymmGroup> const & right,
-               MPOTensor<Matrix, SymmGroup> const & mpo,
                ScheduleNew<typename Matrix::value_type> const & tasks)
     {
         typedef typename SymmGroup::charge charge;

@@ -117,7 +117,7 @@ namespace ietl
               MPSTensor<Matrix, SymmGroup> & x,
               MPSTensor<Matrix, SymmGroup> & y)
     {  
-        y = contraction::common::site_hamil(x, H.left, H.right, H.mpo, H.contraction_schedule);
+        y = contraction::common::site_hamil(x, H.left, H.right, H.contraction_schedule);
     }
     
     template<class Matrix, class SymmGroup>
