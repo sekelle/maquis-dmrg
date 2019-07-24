@@ -134,12 +134,11 @@ public:
         }
     }
 
-    template <class BlockMatrix>
-    void stage(BlockMatrix const& bm)
+    void stage(std::vector<const T*> const& bm, std::vector<std::size_t> const& sizes)
     {
-        assert (bm.n_blocks() == host_input.get_view().size());
-        for (size_t b = 0; b < bm.n_blocks(); ++b)
-            memcpy( host_input.get_view()[b], bm[b].get_values().data(), bm.basis().left_size(b) * bm.basis().right_size(b) * sizeof(T) );
+        assert (bm.size() == host_input.get_view().size());
+        for (size_t b = 0; b < bm.size(); ++b)
+            memcpy( host_input.get_view()[b], bm[b], sizes[b] * sizeof(T) );
     }
 
     void upload(int device)

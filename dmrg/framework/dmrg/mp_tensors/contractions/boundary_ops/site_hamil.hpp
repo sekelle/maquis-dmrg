@@ -116,14 +116,15 @@ namespace common {
         MPSTensor<Matrix, SymmGroup> ret(ket_tensor.site_dim(), ket_tensor.row_dim(), ket_tensor.col_dim(),
                                          ket_tensor.data().basis(), RightPaired);
 
-        if (accelerator::gpu::enabled()) tasks.mps_stage.stage(ket_tensor.data());
+        auto ket_data_view = ket_tensor.data().data_view();
+
+        if (accelerator::gpu::enabled())
+            tasks.mps_stage.stage(ket_data_view, ket_tensor.data().basis().sizes());
 
         std::vector<std::thread> gpu_workers(accelerator::gpu::nGPU());
         if (tasks.enumeration_gpu.size())
             for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
                 gpu_workers[d] = std::thread(gpu_work<Matrix, OtherMatrix, SymmGroup>(tasks, left, right, ket_tensor, ret), d);
-
-        auto ket_data_view = ket_tensor.data().data_view();
 
         boost::chrono::high_resolution_clock::time_point now = boost::chrono::high_resolution_clock::now();
         #ifdef MAQUIS_OPENMP
