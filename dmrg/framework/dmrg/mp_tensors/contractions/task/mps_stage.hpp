@@ -65,13 +65,6 @@ namespace mps_stage_detail
         HANDLE_ERROR(cudaSetDevice(device));
         HANDLE_ERROR(cudaMalloc(ptr, sz));
     }
-
-    template <class T>
-    void cuda_dealloc_request(int device, T* ptr)
-    {
-        HANDLE_ERROR( cudaSetDevice(device) );
-        HANDLE_ERROR( cudaFree(ptr) );
-    }
 }
 
 template <class T>
@@ -122,6 +115,7 @@ public:
 
     void deallocate()
     {
+        // host_input storage is managed by the accelerator object
         for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
         {
             device_input[d].deallocate();
@@ -165,7 +159,10 @@ private:
 
         void deallocate()
         {
-            if (id >=0 ) mps_stage_detail::cuda_dealloc_request(id, data_);
+            if (id >=0 ) {
+                HANDLE_ERROR( cudaSetDevice(id) );
+                HANDLE_ERROR( cudaFree(data_) );
+            }
             else         cudaFreeHost(data_);
         }
 
