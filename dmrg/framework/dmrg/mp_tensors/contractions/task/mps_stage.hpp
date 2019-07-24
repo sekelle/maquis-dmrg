@@ -46,16 +46,16 @@
 
 namespace mps_stage_detail
 {
-    template <class T, class Index>
-    void create_view(T* base_ptr, std::vector<void*> & view, Index const& index)
+    template <class T>
+    void create_view(T* base_ptr, std::vector<void*> & view,
+                     std::vector<std::size_t> const& block_sizes)
     {
-        view.resize(index.size());
+        view.resize(block_sizes.size());
         T* enumerator = base_ptr;
-        for (size_t b = 0; b < index.size(); ++b)
+        for (size_t b = 0; b < block_sizes.size(); ++b)
         {
             view[b] = (void*)enumerator;
-            size_t block_size = index.left_size(b) * index.right_size(b);
-            enumerator += bit_twiddling::round_up<BUFFER_ALIGNMENT>(block_size);
+            enumerator += bit_twiddling::round_up<BUFFER_ALIGNMENT>(block_sizes[b]);
         }
     }
 
@@ -87,24 +87,20 @@ public:
     std::vector<void*> const & host_out_view(int device) { return host_output[device].get_view(); }
     T* host_out(int device) { return host_output[device].data(); }
 
-    template<class Index>
-    void allocate(Index const& index)
+    void allocate(std::vector<std::size_t> const& block_sizes)
     {
         size_t sz = 0;
-        for (size_t b = 0; b < index.size(); ++b)
-        {
-            size_t block_size = index.left_size(b) * index.right_size(b);
-            sz += bit_twiddling::round_up<BUFFER_ALIGNMENT>(block_size);
-        }
+        for (size_t b = 0; b < block_sizes.size(); ++b)
+            sz += bit_twiddling::round_up<BUFFER_ALIGNMENT>(block_sizes[b]);
 
-        host_input.allocate(-1, sz, (T*)accelerator::gpu::get_mps_stage_buffer(sz * sizeof(T)), index);
+        host_input.allocate(-1, sz, (T*)accelerator::gpu::get_mps_stage_buffer(sz * sizeof(T)), block_sizes);
 
         device_input.resize(accelerator::gpu::nGPU());
         for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
         {
             T* dev_ptr;
             mps_stage_detail::cuda_alloc_request(d, &dev_ptr, sz * sizeof(T));
-            device_input[d].allocate(d, sz, dev_ptr, index);
+            device_input[d].allocate(d, sz, dev_ptr, block_sizes);
         }
 
         device_output.resize(accelerator::gpu::nGPU());
@@ -112,7 +108,7 @@ public:
         {
             T* dev_ptr;
             mps_stage_detail::cuda_alloc_request(d, &dev_ptr, sz * sizeof(T));
-            device_output[d].allocate(d, sz, dev_ptr, index);
+            device_output[d].allocate(d, sz, dev_ptr, block_sizes);
         }
 
         host_output.resize(accelerator::gpu::nGPU());
@@ -120,7 +116,7 @@ public:
         {
             T* ptr;
             cudaHostAlloc(&ptr, sz * sizeof(T), cudaHostAllocPortable);
-            host_output[d].allocate(-1, sz, ptr, index);
+            host_output[d].allocate(-1, sz, ptr, block_sizes);
         }
     }
 
@@ -159,13 +155,12 @@ private:
         T* data() { return data_; }
         size_t size() const { return sz; }
 
-        template <class Index>
-        void allocate(int i, size_t s, T* d, Index const& index)
+        void allocate(int i, size_t s, T* d, std::vector<std::size_t> const& bsz)
         {
             id = i;
             sz = s;
             data_ = d;
-            mps_stage_detail::create_view(data_, view, index);
+            mps_stage_detail::create_view(data_, view, bsz);
         }
 
         void deallocate()
