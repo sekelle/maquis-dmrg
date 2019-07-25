@@ -52,6 +52,8 @@
 
 #include "dmrg/optimize/site_problem.h"
 
+#include "dmrg/mp_tensors/contractions/task/solver_package.h"
+
 
 #define BEGIN_TIMING(name) \
 now = boost::chrono::high_resolution_clock::now();

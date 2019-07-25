@@ -39,7 +39,7 @@
 
 #include "dmrg/utils/accelerator.h"
 
-#include "utils/sizeof.h"
+#include "dmrg/utils/utils.hpp"
 #include "dmrg/utils/aligned_allocator.hpp"
 
 #include "../numeric/gpu.h"

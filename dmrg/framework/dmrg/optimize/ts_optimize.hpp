@@ -172,6 +172,20 @@ public:
             SiteProblem<Matrix, BoundaryMatrix, SymmGroup>
                 sp(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1], ratio);
 
+
+            DavidsonVector<value_type> dv0(twin_mps.data().data_view(), twin_mps.data().basis().sizes());
+            auto dv = dv0;
+            //DavidsonVector<value_type> dvmult =
+            //    contraction::common::super_hamil_mv(dv, left_[site1].get_data_view(),
+            //                                        right_[site2+1].get_data_view(),
+            //                                        sp.contraction_schedule);
+
+            if ( std::abs(dv.scalar_norm() - twin_mps.scalar_norm()) > 1e-6) {
+                std::cout << dv.scalar_norm() << std::endl;
+                std::cout << twin_mps.scalar_norm() << std::endl;
+                throw std::runtime_error("norm mismatch\n");
+            }
+
             if (lr == +1) {
                 if (site1 > 0)                  Storage::broadcast::pin(left_[site1-1]);
                 if (site2+2 < right_.size())    Storage::broadcast::prefetch(right_[site2+2]);

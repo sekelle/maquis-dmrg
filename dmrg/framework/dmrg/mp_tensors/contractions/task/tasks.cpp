@@ -25,9 +25,6 @@
  *
  *****************************************************************************/
 
-//#ifndef ENGINE_COMMON_TASKS_HPP
-//#define ENGINE_COMMON_TASKS_HPP
-
 #include <vector>
 #include <utility>
 #include <malloc.h>
@@ -1013,5 +1010,3 @@ template <class T> Timer ScheduleNew<T>::lstage_timer = Timer("LSTAGE");
 
 } // namespace common
 } // namespace contraction
-
-//#endif
