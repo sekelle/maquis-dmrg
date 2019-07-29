@@ -52,8 +52,7 @@
 
 #include "dmrg/optimize/site_problem.h"
 
-#include "dmrg/mp_tensors/contractions/task/solver_package.h"
-
+#include "dmrg/solver/davidson_vector.h"
 
 #define BEGIN_TIMING(name) \
 now = boost::chrono::high_resolution_clock::now();
