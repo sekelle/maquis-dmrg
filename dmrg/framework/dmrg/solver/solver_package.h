@@ -5,9 +5,9 @@
 
 #include "davidson_vector.h"
 #include "tasks.hpp"
-//#include "super_hamil_mv.hpp"
-//#include "super_hamil.h"
-//#include "ietl_interface.h"
-//#include "ietl_jacobi_davidson.h"
+#include "super_hamil_mv.hpp"
+#include "super_hamil.h"
+#include "ietl_interface_dv.h"
+#include "ietl_jacobi_davidson.h"
 
 #endif
