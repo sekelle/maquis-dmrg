@@ -33,7 +33,7 @@
 #include <mutex>
 
 
-#include "dmrg/utils/accelerator.h"
+#include "dmrg/solver/accelerator.h"
 
 #include "dmrg/solver/numeric/gemm_template.h"
 

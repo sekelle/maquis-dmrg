@@ -1,7 +1,7 @@
 
 
 # *** Libraries
-#add_library(solver STATIC accelerator.cpp)
+add_library(solver STATIC accelerator.cpp)
 
 # cmake prior version 3.8 doesn't apply the fPIC of the set_property command below for cu files
 #set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -Xcompiler -fPIC -arch=compute_61 -code=sm_61")
@@ -11,9 +11,9 @@ CUDA_ADD_LIBRARY(numeric_gpu STATIC numeric/gpu_dgemm_ddot.cu numeric/gpu_vgemm.
 target_link_libraries(numeric_gpu ${CUDA_CUBLAS_LIBRARIES} ${CUDA_LIBRARIES})
 #target_link_libraries(numeric_gpu cublas_static cublasLt culibos ${CUDA_LIBRARIES})
 
-set_property(TARGET numeric_gpu PROPERTY POSITION_INDEPENDENT_CODE TRUE)
+set_property(TARGET solver numeric_gpu PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 
 # *** Install
 
-install(TARGETS numeric_gpu EXPORT DMRGTargets COMPONENT libraries DESTINATION lib)
-export(TARGETS numeric_gpu APPEND FILE "${PROJECT_BINARY_DIR}/DMRGTargets.cmake")
+install(TARGETS solver numeric_gpu EXPORT DMRGTargets COMPONENT libraries DESTINATION lib)
+export(TARGETS solver numeric_gpu APPEND FILE "${PROJECT_BINARY_DIR}/DMRGTargets.cmake")

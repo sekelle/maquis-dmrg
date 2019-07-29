@@ -34,9 +34,6 @@
 #include <cuda_runtime.h>
 
 #include "dmrg/utils/utils.hpp"
-#include "dmrg/utils/accelerator.h"
-#include "dmrg/utils/aligned_allocator.hpp"
-
 
 
 template <class T>

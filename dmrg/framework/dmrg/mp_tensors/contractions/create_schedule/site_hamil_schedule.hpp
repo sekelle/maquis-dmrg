@@ -29,7 +29,7 @@
 #define ENGINE_SITE_HAMIL_SCHEDULE_HPP
 
 #include <boost/lambda/construct.hpp>
-#include "dmrg/utils/accelerator.h"
+#include "dmrg/solver/accelerator.h"
 
 namespace contraction {
 namespace common {

@@ -1,6 +1,6 @@
 add_definitions(-DHAVE_ALPS_HDF5 -DDISABLE_MATRIX_ELEMENT_ITERATOR_WARNING -DALPS_DISABLE_MATRIX_ELEMENT_ITERATOR_WARNING)
 
-set(DMRG_APP_LIBRARIES dmrg_utils numeric_gpu ${DMRG_LIBRARIES})
+set(DMRG_APP_LIBRARIES dmrg_utils solver numeric_gpu ${DMRG_LIBRARIES})
 
 if(USE_AMBIENT)
   compile_with_ambient()

@@ -35,7 +35,7 @@
 #include <thread>
 #include <mutex>
 
-#include "dmrg/utils/accelerator.h"
+#include "dmrg/solver/accelerator.h"
 
 #include "dmrg/mp_tensors/contractions/task/mps_stage.hpp"
 
