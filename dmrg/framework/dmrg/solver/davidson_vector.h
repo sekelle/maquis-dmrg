@@ -48,20 +48,27 @@ public:
     typedef T real_type;
     typedef double magnitude_type;
 
+    DavidsonVector();
     DavidsonVector(std::vector<const T*> const& bm,
                    std::vector<std::size_t> block_sizes);
+    DavidsonVector(std::vector<std::size_t> block_sizes);
 
     DavidsonVector(DavidsonVector const&);
 
     DavidsonVector& operator=(DavidsonVector);
 
-    size_t size() const;
+    size_t num_elements() const;
 
     T*       operator[](size_t b);
     const T* operator[](size_t b) const;
 
+    void clear();
+
     std::vector<T*>& data_view();
-    std::vector<const T*> const& data_view() const;
+    // TODO: const& ?
+    std::vector<const T*> data_view() const;
+
+    std::vector<std::size_t> const& blocks() const;
 
     DavidsonVector const& operator*=(const value_type);
     DavidsonVector const& operator/=(const value_type);
@@ -76,6 +83,34 @@ public:
     template <class T_>
     friend void swap(DavidsonVector<T_>& a, DavidsonVector<T_>& b);
 
+    // TODO remove
+    void sanity_check(std::vector<const T*> const& ref)
+    {
+        auto ext_view = view;
+        ext_view.push_back(buffer.data() + buffer.size());
+
+        for (int b = 0; b < block_sizes.size(); ++b)
+        {
+            T* padding_start = ext_view[b] + block_sizes[b];
+            while(padding_start != ext_view[b+1])
+            {
+                if (*padding_start != 0.0)
+                    std::cout << "holes not empty" << std::endl;
+                padding_start++;
+            }
+        }
+
+        for (int b = 0; b < block_sizes.size(); ++b)
+        {
+            T* test = view[b];
+            const T* refptr = ref[b];
+
+            for (int i = 0; i < block_sizes[b]; ++i)
+                if ( std::abs(test[i] - refptr[i]) > 1e-6 )
+                    std::cout << "data mismatch" << std::endl;
+        }
+    }
+
 private:
     std::vector<T> buffer;
     std::vector<T*> view;
@@ -85,6 +120,53 @@ private:
 };
 
 
+template <class T>
+DavidsonVector<T> operator*(T scal, DavidsonVector<T> const& rhs)
+{
+    DavidsonVector<T> ret = rhs;
+    return ret*=scal;
+}
+template <class T>
+DavidsonVector<T> operator*(DavidsonVector<T> const& rhs, T scal)
+{
+    DavidsonVector<T> ret = rhs;
+    return ret*=scal;
+}
+template <class T>
+DavidsonVector<T> operator/(T scal, DavidsonVector<T> const& rhs)
+{
+    DavidsonVector<T> ret = rhs;
+    return ret/=scal;
+}
+template <class T>
+DavidsonVector<T> operator/(DavidsonVector<T> const& rhs, T scal)
+{
+    DavidsonVector<T> ret = rhs;
+    return ret/=scal;
+}
+
+template <class T>
+DavidsonVector<T> operator+(DavidsonVector<T> const& a, DavidsonVector<T> const& b)
+{
+    DavidsonVector<T> ret = a;
+    return ret+=b;
+}
+template <class T>
+DavidsonVector<T> operator-(DavidsonVector<T> const& a, DavidsonVector<T> const& b)
+{
+    DavidsonVector<T> ret = a;
+    return ret-=b;
+}
+template <class T>
+DavidsonVector<T> operator-(DavidsonVector<T> const& a)
+{
+    DavidsonVector<T> ret = a;
+    return ret*=-1.0;
+}
+
+
+template <class T>
+DavidsonVector<T>::DavidsonVector() {}
 
 template <class T>
 DavidsonVector<T>::DavidsonVector(std::vector<const T*> const& bm,
@@ -101,6 +183,19 @@ DavidsonVector<T>::DavidsonVector(std::vector<const T*> const& bm,
 
     for (size_t b = 0; b < block_sizes.size(); ++b)
         std::copy(bm[b], bm[b]+block_sizes[b], view[b]);
+}
+
+template <class T>
+DavidsonVector<T>::DavidsonVector(std::vector<std::size_t> block_sizes_)
+    : block_sizes(block_sizes_)
+{
+    size_t sz = 0;
+    for (size_t b = 0; b < block_sizes.size(); ++b)
+        sz += bit_twiddling::round_up<BUFFER_ALIGNMENT>(block_sizes[b]);
+
+    buffer = std::vector<T>(sz);
+    
+    create_view(); 
 }
 
 template <class T>
@@ -121,7 +216,10 @@ DavidsonVector<T>& DavidsonVector<T>::operator=(DavidsonVector rhs)
 
 
 template <class T>
-size_t DavidsonVector<T>::size() const { return buffer.size(); }
+size_t DavidsonVector<T>::num_elements() const {
+    //return buffer.size();
+    return std::accumulate(block_sizes.begin(), block_sizes.end(), 0ul);
+}
 
 template <class T>
 void DavidsonVector<T>::create_view()
@@ -141,6 +239,13 @@ T* DavidsonVector<T>::operator[](size_t b) { return view[b]; }
 template <class T>
 const T* DavidsonVector<T>::operator[](size_t b) const { return view[b]; }
 
+template <class T>
+void DavidsonVector<T>::clear() {
+    buffer.clear();
+    view.clear(); 
+    block_sizes.clear();
+}
+
 
 template <class T>
 std::vector<T*>& DavidsonVector<T>::data_view() {
@@ -148,8 +253,13 @@ std::vector<T*>& DavidsonVector<T>::data_view() {
 }
 
 template <class T>
-std::vector<const T*> const& DavidsonVector<T>::data_view() const {
-    return (std::vector<const T*>)view;
+std::vector<const T*> DavidsonVector<T>::data_view() const {
+    return std::vector<const T*>{begin(view), end(view)};
+}
+
+template <class T>
+std::vector<std::size_t> const& DavidsonVector<T>::blocks() const {
+    return block_sizes;
 }
 
 
@@ -224,5 +334,7 @@ typename DavidsonVector<T>::value_type DavidsonVector<T>::scalar_overlap(Davidso
 
     return sum;
 }
+
+
 
 #endif
