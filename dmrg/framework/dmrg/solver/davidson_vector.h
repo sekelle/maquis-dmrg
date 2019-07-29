@@ -37,7 +37,6 @@
 #include "dmrg/utils/accelerator.h"
 #include "dmrg/utils/aligned_allocator.hpp"
 
-#include "dmrg/mp_tensors/contractions/numeric/gpu.h"
 
 
 template <class T>

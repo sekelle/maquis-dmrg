@@ -32,16 +32,13 @@
 #include <thread>
 #include <mutex>
 
+
 #include "dmrg/utils/accelerator.h"
 
-#include "utils/sizeof.h"
+#include "dmrg/solver/numeric/gemm_template.h"
 
-#include "dmrg/mp_tensors/contractions/numeric/gemm_template.h"
-
-#include "dmrg/mp_tensors/contractions/numeric/gpu.h"
+#include "dmrg/solver/numeric/gpu.h"
 #include "dmrg/utils/cuda_helpers.hpp"
-
-#include "dmrg/mp_tensors/contractions/task/mps_stage.hpp"
 
 namespace contraction {
 namespace common {
