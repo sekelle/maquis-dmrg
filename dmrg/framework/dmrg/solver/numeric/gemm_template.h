@@ -32,6 +32,8 @@
 #include <complex>
 #include <boost/numeric/bindings/blas/detail/blas.h>
 
+// TODO: move to std::enable_if
+#include <boost/utility.hpp>
 
 template <class T>
 inline typename boost::enable_if<boost::is_same<T, double> >::type
