@@ -29,7 +29,6 @@
 #define CONTRACTIONS_OP_ITERATE_HPP
 
 #include "dmrg/block_matrix/block_matrix.h"
-#include "dmrg/mp_tensors/contractions/task/tasks.hpp"
 
 namespace contraction {
 namespace common {
