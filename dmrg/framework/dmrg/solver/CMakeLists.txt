@@ -1,7 +1,7 @@
 
 
 # *** Libraries
-add_library(solver STATIC accelerator.cpp)
+add_library(solver STATIC accelerator.cpp tasks.cpp)
 
 # cmake prior version 3.8 doesn't apply the fPIC of the set_property command below for cu files
 #set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -Xcompiler -fPIC -arch=compute_61 -code=sm_61")

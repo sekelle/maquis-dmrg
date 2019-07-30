@@ -312,8 +312,8 @@ namespace detail{
         std::vector<value_type> buf(M*N);
         blas_gemm('N', 'N', M, N, K, value_type(1), luse, M, sloc.data(), K, value_type(0), buf.data(), M);
 
-        //std::lock_guard<std::mutex> lk(out_mutex);
-        parallel_critical
+        std::lock_guard<std::mutex> lk(out_mutex);
+        //parallel_critical
         blas_axpy(M*N, value_type{1}, buf.data(), output);
     }
 
@@ -848,7 +848,7 @@ namespace detail{
                 BoundaryIndexRT const & right_rt)
             :   mps_block_sizes(std::move(mpsbs)),
                 mpsblocks(lr_ket_sizes.size(), block_type(lr_ket_sizes, left_rt, right_rt)),
-                /*mutexes(dim),*/ cpu_time(0)
+                mutexes(lr_ket_sizes.size()), cpu_time(0)
     {
         for (unsigned rb_ket = 0; rb_ket < lr_ket_sizes.size(); ++rb_ket)
             mpsblocks[rb_ket].set_rb_ket(rb_ket);

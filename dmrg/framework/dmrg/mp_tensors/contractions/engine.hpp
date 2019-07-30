@@ -28,13 +28,12 @@
 #ifndef ABELIAN_ENGINE_H
 #define ABELIAN_ENGINE_H
 
-#include <boost/shared_ptr.hpp>
-
 #include "dmrg/mp_tensors/mpstensor.h"
 #include "dmrg/mp_tensors/mpotensor.h"
 #include "dmrg/mp_tensors/twositetensor.h"
 
-#include "dmrg/mp_tensors/contractions/task/tasks.hpp"
+#include "dmrg/solver/solver.h"
+
 #include "dmrg/mp_tensors/contractions/create_schedule/site_hamil_tasks.hpp"
 #include "dmrg/mp_tensors/contractions/create_schedule/right_tasks.hpp"
 #include "dmrg/mp_tensors/contractions/create_schedule/left_tasks.hpp"

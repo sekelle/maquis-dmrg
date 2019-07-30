@@ -5,7 +5,6 @@
  * Copyright (C) 2019 Department of Chemistry and the PULSE Institute, Stanford University
  *                    Laboratory for Physical Chemistry, ETH Zurich
  *               2019-2019 by Sebastian Keller <sebkelle@phys.ethz.ch>
- *
  * 
  * This software is part of the ALPS Applications, published under the ALPS
  * Application License; you can use, redistribute it and/or modify it under
@@ -26,30 +25,27 @@
  *
  *****************************************************************************/
 
-#ifndef SUPER_HAMIL
-#define SUPER_HAMIL
 
-#include <vector>
+#ifndef MAQUIS_AXPY_TEMPLATE_H
+#define MAQUIS_AXPY_TEMPLATE_H
 
-#include "tasks.h"
-#include "davidson_vector.h"
+#include <complex>
+#include <boost/numeric/bindings/blas/detail/blas.h>
 
-
-template<class T>
-struct SuperHamil
+template<class InputIterator, class OutputIterator, class T>
+void iterator_axpy(InputIterator in1, InputIterator in2,
+                   OutputIterator out1, T val)
 {
-    SuperHamil(std::vector<const T*> const & left_,
-               std::vector<const T*> const & right_,
-               contraction::common::ScheduleNew<T> sched)
-    : left(left_)
-    , right(right_)
-    , contraction_schedule(std::move(sched))
-    {}
-    
-    std::vector<const T*> const & left;
-    std::vector<const T*> const & right;
-    contraction::common::ScheduleNew<T> contraction_schedule;
-    double ortho_shift;
-};
+    //std::transform(in1, in2, out1, out1, boost::lambda::_1*val+boost::lambda::_2);
+    throw std::runtime_error("iterator_axpy not implemented\n");
+}
+
+inline void iterator_axpy(double const * in1, double const * in2,
+                          double * out1, double val)
+{
+    fortran_int_t one = 1, diff = in2-in1;
+    BLAS_DAXPY(&diff, &val, in1, &one, out1, &one);
+}
+
 
 #endif

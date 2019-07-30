@@ -11,6 +11,8 @@
 #include "omp.h"
 #endif
 
+//TODO move to std::chrono
+
 class Timer
 {
 public:
