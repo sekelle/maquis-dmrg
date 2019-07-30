@@ -30,13 +30,12 @@
 #define MAQUIS_GEMM_TEMPLATE_H
 
 #include <complex>
+#include <type_traits>
+
 #include <boost/numeric/bindings/blas/detail/blas.h>
 
-// TODO: move to std::enable_if
-#include <boost/utility.hpp>
-
 template <class T>
-inline typename boost::enable_if<boost::is_same<T, double> >::type
+inline typename std::enable_if<std::is_same<T, double>::value>::type
 blas_gemm(char transa, char transb, int m, int n, int k,
           T alpha, const T* a, int lda, const T* b, int ldb,
           T beta, T* c, int ldc
@@ -46,7 +45,7 @@ blas_gemm(char transa, char transb, int m, int n, int k,
 }
 
 template <class T>
-inline typename boost::enable_if<boost::is_same<T, float> >::type
+inline typename std::enable_if<std::is_same<T, float>::value>::type
 blas_gemm(char transa, char transb, int m, int n, int k,
           T alpha, const T* a, int lda, const T* b, int ldb,
           T beta, T* c, int ldc
@@ -56,7 +55,7 @@ blas_gemm(char transa, char transb, int m, int n, int k,
 }
 
 template <class T>
-inline typename boost::enable_if<boost::is_same<T, std::complex<double> > >::type
+inline typename std::enable_if<std::is_same<T, std::complex<double>>::value>::type
 blas_gemm(char transa, char transb, int m, int n, int k,
           T alpha, const T* a, int lda, const T* b, int ldb,
           T beta, T* c, int ldc
@@ -66,7 +65,7 @@ blas_gemm(char transa, char transb, int m, int n, int k,
 }
 
 template <class T>
-inline typename boost::enable_if<boost::is_same<T, std::complex<float> > >::type
+inline typename std::enable_if<std::is_same<T, std::complex<float>>::value>::type
 blas_gemm(char transa, char transb, int m, int n, int k,
           T alpha, const T* a, int lda, const T* b, int ldb,
           T beta, T* c, int ldc
@@ -76,7 +75,7 @@ blas_gemm(char transa, char transb, int m, int n, int k,
 }
 
 template <class T>
-inline typename boost::enable_if<boost::is_same<T, double> >::type
+inline typename std::enable_if<std::is_same<T, double>::value>::type
 blas_axpy(int sz, T alpha, const T* x, T* y)
 {
     int stride = 1;
@@ -84,7 +83,7 @@ blas_axpy(int sz, T alpha, const T* x, T* y)
 }
 
 template <class T>
-inline typename boost::enable_if<boost::is_same<T, float> >::type
+inline typename std::enable_if<std::is_same<T, float>::value>::type
 blas_axpy(int sz, T alpha, const T* x, T* y)
 {
     int stride = 1;
@@ -92,7 +91,7 @@ blas_axpy(int sz, T alpha, const T* x, T* y)
 }
 
 template <class T>
-inline typename boost::enable_if<boost::is_same<T, std::complex<double> > >::type
+inline typename std::enable_if<std::is_same<T, std::complex<double>>::value>::type
 blas_axpy(int sz, T alpha, const T* x, T* y)
 {
     int stride = 1;
@@ -100,7 +99,7 @@ blas_axpy(int sz, T alpha, const T* x, T* y)
 }
 
 template <class T>
-inline typename boost::enable_if<boost::is_same<T, std::complex<float> > >::type
+inline typename std::enable_if<std::is_same<T, std::complex<float>>::value>::type
 blas_axpy(int sz, T alpha, const T* x, T* y)
 {
     int stride = 1;
