@@ -33,6 +33,10 @@
 #include <vector>
 #include <utility>
 #include <algorithm>
+#include <iostream>
+#include <iterator>
+#include <cassert>
+
 #include <boost/lambda/construct.hpp>
 #include <boost/static_assert.hpp>
 
