@@ -254,9 +254,6 @@ public:
 
             ///////////////////////
             //DavidsonVector<value_type> dv(twin_mps_cpy.data().data_view(), twin_mps_cpy.data().basis().sizes());
-            //dv.sanity_check(twin_mps_cpy.data().data_view());
-
-            //sp.contraction_schedule.mps_stage.deallocate();
 
             //SuperHamil<value_type> SH(left_[site1].get_data_view(),
             //                          right_[site2+1].get_data_view(),
@@ -272,8 +269,8 @@ public:
             //res2.second.sanity_check(orig_view);
             ///////////////////////
 
+            sp.contraction_schedule.mps_stage.deallocate();
             twin_mps.clear();
-
 
 #ifndef NDEBUG
             // Caution: this is an O(L) operation, so it really should be done only in debug mode

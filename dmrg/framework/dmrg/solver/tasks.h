@@ -348,9 +348,12 @@ private:
     std::vector<std::vector<WorkSet<value_type>>> pipeline;
 };
 
+
+extern template class Cohort<double>;
+extern template class MPSBlock<double>;
+extern template class ScheduleNew<double>;
+
 } // namespace common
 } // namespace contraction
-
-//#include "tasks.cpp"
 
 #endif

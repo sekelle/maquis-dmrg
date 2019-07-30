@@ -30,7 +30,6 @@
 #include <utility>
 #include <alps/numeric/real.hpp>
 
-#include "dmrg/utils/random.hpp"
 #include "dmrg/mp_tensors/mpstensor.h"
 
 #include "dmrg/mp_tensors/reshapes.h"
