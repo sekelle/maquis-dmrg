@@ -63,7 +63,7 @@ public:
     
     void sweep(int sweep, OptimizeDirection d = Both)
     {
-        boost::chrono::high_resolution_clock::time_point sweep_now = boost::chrono::high_resolution_clock::now();
+        std::chrono::high_resolution_clock::time_point sweep_now = std::chrono::high_resolution_clock::now();
 
         iteration_results_.clear();
         
@@ -96,7 +96,7 @@ public:
             if (lr == +1 && site+2 <= L) Storage::prefetch(right_[site+2]);
             if (lr == -1 && site > 0)    Storage::prefetch(left_[site-1]);
             
-            boost::chrono::high_resolution_clock::time_point now, then;
+            std::chrono::high_resolution_clock::time_point now, then;
 
             std::pair<double, MPSTensor<Matrix, SymmGroup> > res;
             SiteProblem<Matrix, typename base::BoundaryMatrix, SymmGroup> sp(mps[site], left_[site], right_[site+1], mpo[site],
@@ -193,8 +193,8 @@ public:
             iteration_results_["TruncatedWeight"] << trunc.truncated_weight;
             iteration_results_["SmallestEV"]      << trunc.smallest_ev;
             
-            boost::chrono::high_resolution_clock::time_point sweep_then = boost::chrono::high_resolution_clock::now();
-            double elapsed = boost::chrono::duration<double>(sweep_then - sweep_now).count();
+            std::chrono::high_resolution_clock::time_point sweep_then = std::chrono::high_resolution_clock::now();
+            double elapsed = std::chrono::duration<double>(sweep_then - sweep_now).count();
             maquis::cout << "Sweep has been running for " << elapsed << " seconds." << std::endl;
             
             if (stop_callback())

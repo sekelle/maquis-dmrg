@@ -28,10 +28,8 @@
 #ifndef CONTRACTIONS_COMMON_SITE_HAMIL_HPP
 #define CONTRACTIONS_COMMON_SITE_HAMIL_HPP
 
+#include <chrono>
 #include <thread>
-//#include <mutex>
-//#include <condition_variable>
-//#include <atomic>
 
 namespace contraction {
 namespace common {
@@ -126,7 +124,7 @@ namespace common {
             for (int d = 0; d < accelerator::gpu::nGPU(); ++d)
                 gpu_workers[d] = std::thread(gpu_work<Matrix, OtherMatrix, SymmGroup>(tasks, left, right, ket_tensor, ret), d);
 
-        boost::chrono::high_resolution_clock::time_point now = boost::chrono::high_resolution_clock::now();
+        std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
         #ifdef MAQUIS_OPENMP
         #pragma omp parallel for schedule (dynamic,1)
         #endif
@@ -140,8 +138,8 @@ namespace common {
                              tasks.mutexes[it->get_rb()]);
         }
 
-        boost::chrono::high_resolution_clock::time_point then = boost::chrono::high_resolution_clock::now();
-        tasks.cpu_time += boost::chrono::duration<double>(then - now).count();
+        std::chrono::high_resolution_clock::time_point then = std::chrono::high_resolution_clock::now();
+        tasks.cpu_time += std::chrono::duration<double>(then - now).count();
 
         if (tasks.enumeration_gpu.size())
         {

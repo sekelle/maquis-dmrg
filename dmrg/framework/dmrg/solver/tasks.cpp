@@ -4,7 +4,7 @@
  *
  * Copyright (C) 2017 Department of Chemistry and the PULSE Institute, Stanford University
  *                    Laboratory for Physical Chemistry, ETH Zurich
- *               2017-2017 by Sebastian Keller <sebkelle@phys.ethz.ch>
+ *               2017-2019 by Sebastian Keller <sebkelle@ethz.ch>
  * 
  * This software is part of the ALPS Applications, published under the ALPS
  * Application License; you can use, redistribute it and/or modify it under
@@ -26,15 +26,11 @@
  *****************************************************************************/
 
 #include <vector>
-#include <algorithm>
-#include <utility>
+#include <numeric>
 #include <malloc.h>
 
 #include <thread>
 #include <mutex>
-
-// TODO: remove this
-#include <alps/numeric/matrix.hpp>
 
 #include "dmrg/utils/cuda_helpers.hpp"
 
@@ -255,13 +251,14 @@ namespace detail{
 
         int M = nSrows * ls;
         int N = rs;
-        alps::numeric::matrix<value_type> buf(M,N);
+        std::vector<value_type> buf(M*N);
         blas_gemm('N', 'T', M, N, stripe, value_type(1),
-                   &sloc[0], M, bra_mps, rs, value_type(0), &buf(0,0), M);
+                   &sloc[0], M, bra_mps, rs, value_type(0), buf.data(), M);
 
         for (unsigned b = 0; b < nSrows; ++b)
             for (unsigned col = 0; col < rs; ++col)
-                std::copy(&buf(ls*b,col), &buf(ls*b,col) + ls, new_right + (b*rs + col)*ls);
+                //         buf(ls*b,col)     buf(ls*b,col)
+                std::copy(&buf[ls*b+col*M], &buf[ls*b+col*M] + ls, new_right + (b*rs + col)*ls);
     }
 
     template <class VT>
@@ -435,21 +432,21 @@ namespace detail{
         {
             if (!x.alpha.size()) continue;
 
-            alps::numeric::matrix<value_type> buf(x.ms, rs);
+            std::vector<value_type> buf(x.ms * rs);
 
             index_type seeker = 0;
             for (index_type b=0; b < x.b2s.size(); ++b)
             {
-                memset(&buf(0,0), 0, x.ms * rs * sizeof(value_type));
+                memset(&buf[0], 0, x.ms * rs * sizeof(value_type));
 
                 for (int ia = seeker; ia < seeker + x.b2s[b]; ++ia)
                     iterator_axpy(&T[x.tidx[2*ia]][x.tidx[2*ia+1] * rs],
                                   &T[x.tidx[2*ia]][x.tidx[2*ia+1] * rs] + x.ms * rs,
-                                  &buf(0,0), x.alpha[ia]);
+                                  &buf[0], x.alpha[ia]);
 
                 unsigned bb = x.b1[b];
                 for (unsigned c = 0; c < rs; ++c)
-                    std::copy(&buf(0,c), &buf(0,c) + x.ms, ret.data() + stripe * (bb*rs + c) + x.offset);
+                    std::copy(&buf[0+c*x.ms], &buf[0,c*x.ms] + x.ms, ret.data() + stripe * (bb*rs + c) + x.offset);
 
                 seeker += x.b2s[b];
             }
@@ -476,21 +473,21 @@ namespace detail{
         {
             if (!x.alpha.size()) continue;
 
-            alps::numeric::matrix<value_type> buf(ls, x.ms);
+            std::vector<value_type> buf(ls * x.ms);
 
             index_type seeker = 0;
             for (index_type b=0; b < x.b2s.size(); ++b)
             {
-                memset(&buf(0,0), 0, ls * x.ms * sizeof(value_type));
+                memset(&buf[0], 0, ls * x.ms * sizeof(value_type));
 
                 for (int ia = seeker; ia < seeker + x.b2s[b]; ++ia)
                     iterator_axpy(&T[x.tidx[2*ia]][x.tidx[2*ia+1] * ls],
                                   &T[x.tidx[2*ia]][x.tidx[2*ia+1] * ls] + x.ms * ls,
-                                  &buf(0,0), x.alpha[ia]);
+                                  &buf[0], x.alpha[ia]);
 
                 unsigned bb = x.b1[b];
                 for (unsigned c = 0; c < x.ms; ++c)
-                    std::copy(buf.col(c).first, buf.col(c).second, ret.data() + nSrows*ls * (x.offset+c) + bb*ls);
+                    std::copy(&buf[c*ls], &buf[c*ls]+ls, ret.data() + nSrows*ls * (x.offset+c) + bb*ls);
 
                 seeker += x.b2s[b];
             }

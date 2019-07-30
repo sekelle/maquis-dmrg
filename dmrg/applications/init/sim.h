@@ -51,8 +51,6 @@ public:
     {
         maquis::cout << DMRG_VERSION_STRING << std::endl;
         
-        // TODO: insert boost::chrono timers
-        
         lat = Lattice(parms);
         model = Model<Matrix, SymmGroup>(lat, parms);
         phys = model.phys_dim(); // TODO: extend for multiple site bases!

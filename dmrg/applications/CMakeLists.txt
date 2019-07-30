@@ -1,7 +1,6 @@
 
 option(BUILD_DMRG "Build DMRG Apps" ON)
 option(BUILD_TIME_EVOLUTION "Build DMRG-Time evolution Apps" OFF)
-option(BUILD_ALPS_APPS "Build ALPS applications (requires NU1 symmetry)" OFF)
 option(BUILD_TOOLS "Build tools" ON)
 option(BUILD_MPI_APPS "Build mpi apps" OFF)
 option(BUILD_MULTIGRID "Build DMRG-Multigrid Apps" OFF)
@@ -54,7 +53,3 @@ if(BUILD_EXAMPLES)
   add_subdirectory(simple_main/dmrg_u1_current)
   add_subdirectory(simple_main/dmrg_current)
 endif(BUILD_EXAMPLES)
-
-if(DMRG_HAS_NU1 AND BUILD_ALPS_APPS)
-  add_subdirectory(alps)
-endif(DMRG_HAS_NU1 AND BUILD_ALPS_APPS)

@@ -28,6 +28,8 @@
 #ifndef OPTIMIZE_H
 #define OPTIMIZE_H
 
+#include <chrono>
+
 #include <boost/random.hpp>
 #if not defined(WIN32) && not defined(WIN64)
 #include <sys/time.h>
@@ -52,13 +54,11 @@
 
 #include "dmrg/optimize/site_problem.h"
 
-#include "dmrg/solver/davidson_vector.h"
-
 #define BEGIN_TIMING(name) \
-now = boost::chrono::high_resolution_clock::now();
+now = std::chrono::high_resolution_clock::now();
 #define END_TIMING(name) \
-then = boost::chrono::high_resolution_clock::now(); \
-maquis::cout << "Time elapsed in " << name << ": " << boost::chrono::duration<double>(then-now).count() << std::endl;
+then = std::chrono::high_resolution_clock::now(); \
+maquis::cout << "Time elapsed in " << name << ": " << std::chrono::duration<double>(then-now).count() << std::endl;
 
 inline double log_interpolate(double y0, double y1, int N, int i)
 {
@@ -138,7 +138,7 @@ protected:
 
     inline void boundary_left_step(MPO<Matrix, SymmGroup> const & mpo, int site)
     {
-        boost::chrono::high_resolution_clock::time_point now, then;
+        std::chrono::high_resolution_clock::time_point now, then;
 
         BEGIN_TIMING("LSTEP")
         left_[site+1] = contr::overlap_mpo_left_step(mps[site], mps[site], left_[site], mpo[site], true);
@@ -150,7 +150,7 @@ protected:
     
     inline void boundary_right_step(MPO<Matrix, SymmGroup> const & mpo, int site)
     {
-        boost::chrono::high_resolution_clock::time_point now, then;
+        std::chrono::high_resolution_clock::time_point now, then;
 
         BEGIN_TIMING("RSTEP")
         right_[site] = contr::overlap_mpo_right_step(mps[site], mps[site], right_[site+1], mpo[site]);

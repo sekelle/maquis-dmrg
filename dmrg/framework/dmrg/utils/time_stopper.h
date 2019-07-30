@@ -29,17 +29,17 @@
 #ifndef MAQUIS_DMRG__UTIS_TIME_STOPPER_H
 #define MAQUIS_DMRG__UTIS_TIME_STOPPER_H
 
-#include <boost/chrono.hpp>
+#include <chrono>
 
 class time_stopper {
 public:
     time_stopper(double timelimit);
     bool valid() const;
     bool operator()() const;
-    boost::chrono::duration<double> time_left() const;
+    std::chrono::duration<double> time_left() const;
 private:
-    boost::chrono::duration<double> limit;
-    boost::chrono::high_resolution_clock::time_point start;
+    std::chrono::duration<double> limit;
+    std::chrono::high_resolution_clock::time_point start;
 };
 
 #endif /* defined(MAQUIS_DMRG__UTIS_STOP_CALLBACK_H) */

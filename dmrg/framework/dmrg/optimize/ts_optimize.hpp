@@ -113,7 +113,7 @@ public:
     }
     void sweep(int sweep, OptimizeDirection d = Both)
     {
-        boost::chrono::high_resolution_clock::time_point sweep_now = boost::chrono::high_resolution_clock::now();
+        std::chrono::high_resolution_clock::time_point sweep_now = std::chrono::high_resolution_clock::now();
 
         iteration_results_.clear();
         
@@ -154,7 +154,7 @@ public:
                 Storage::broadcast::fetch(right_[site2+1]);
             }
 
-            boost::chrono::high_resolution_clock::time_point now, then;
+            std::chrono::high_resolution_clock::time_point now, then;
 
             double ratio = cpu_gpu_ratio[site1];
             double ratio_prev = 0.9;
@@ -172,19 +172,6 @@ public:
             SiteProblem<Matrix, BoundaryMatrix, SymmGroup>
                 sp(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1], ratio);
 
-
-            DavidsonVector<value_type> dv0(twin_mps.data().data_view(), twin_mps.data().basis().sizes());
-            auto dv = dv0;
-            //DavidsonVector<value_type> dvmult =
-            //    contraction::common::super_hamil_mv(dv, left_[site1].get_data_view(),
-            //                                        right_[site2+1].get_data_view(),
-            //                                        sp.contraction_schedule);
-
-            if ( std::abs(dv.scalar_norm() - twin_mps.scalar_norm()) > 1e-6) {
-                std::cout << dv.scalar_norm() << std::endl;
-                std::cout << twin_mps.scalar_norm() << std::endl;
-                throw std::runtime_error("norm mismatch\n");
-            }
 
             if (lr == +1) {
                 if (site1 > 0)                  Storage::broadcast::pin(left_[site1-1]);
@@ -250,7 +237,7 @@ public:
                     BEGIN_TIMING("JCD")
                     res = solve_ietl_jcd(sp, twin_mps, parms, ortho_vecs);
                     END_TIMING("JCD")
-                    jcd_time = boost::chrono::duration<double>(then-now).count();
+                    jcd_time = std::chrono::duration<double>(then-now).count();
                     sp.contraction_schedule.print_stats(jcd_time);
                 } else if (parms["eigensolver"] == std::string("IETL_DAVIDSON")) {
                     BEGIN_TIMING("DAVIDSON")
@@ -264,9 +251,28 @@ public:
                 tst << res.second;
                 res.second.clear();
             }
-            twin_mps.clear();
 
-            sp.contraction_schedule.mps_stage.deallocate();
+            ///////////////////////
+            //DavidsonVector<value_type> dv(twin_mps_cpy.data().data_view(), twin_mps_cpy.data().basis().sizes());
+            //dv.sanity_check(twin_mps_cpy.data().data_view());
+
+            //sp.contraction_schedule.mps_stage.deallocate();
+
+            //SuperHamil<value_type> SH(left_[site1].get_data_view(),
+            //                          right_[site2+1].get_data_view(),
+            //                          std::move(sp.contraction_schedule));
+
+            //std::pair<double, DavidsonVector<value_type>> res2;
+            //res2 = solve_ietl_jcd(SH, dv, parms);
+
+            //std::vector<std::size_t> bsz = res.second.data().basis().sizes();
+            //auto orig_view = res.second.data().data_view();
+
+            ////std::vector<const value_type*> orig_view = twin_mps_cpy.data().data_view();
+            //res2.second.sanity_check(orig_view);
+            ///////////////////////
+
+            twin_mps.clear();
 
 
 #ifndef NDEBUG
@@ -279,6 +285,7 @@ public:
                 int prec = maquis::cout.precision();
                 maquis::cout.precision(15);
                 maquis::cout << "Energy " << lr << " " << res.first + mpo.getCoreEnergy() << std::endl;
+                //maquis::cout << "Energy " << lr << " " << res2.first + mpo.getCoreEnergy() << std::endl;
                 maquis::cout.precision(prec);
             }
             iteration_results_["Energy"] << res.first + mpo.getCoreEnergy();
@@ -362,8 +369,8 @@ public:
             iteration_results_["TruncatedFraction"] << trunc.truncated_fraction;
             iteration_results_["SmallestEV"]        << trunc.smallest_ev;
             
-            boost::chrono::high_resolution_clock::time_point sweep_then = boost::chrono::high_resolution_clock::now();
-            double elapsed = boost::chrono::duration<double>(sweep_then - sweep_now).count();
+            std::chrono::high_resolution_clock::time_point sweep_then = std::chrono::high_resolution_clock::now();
+            double elapsed = std::chrono::duration<double>(sweep_then - sweep_now).count();
             maquis::cout << "Sweep has been running for " << elapsed << " seconds." << std::endl;
             
             if (stop_callback())
