@@ -47,6 +47,8 @@
 #include "dmrg/utils/parallel/tracking.hpp"
 #include "dmrg/utils/parallel.hpp"
 
+#include "dmrg/solver/constants.h"
+
 #ifdef HAVE_ALPS_HDF5
 #include "dmrg/utils/archive.h"
 #include "dmrg/utils/logger.h"
@@ -54,8 +56,6 @@ namespace storage {
     extern Logger<storage::archive> log;
 }
 #endif
-
-#define MAX_N_GPUS 10
 
 template<class Matrix, class SymmGroup> class Boundary;
 template<class Matrix, class SymmGroup> class MPSTensor;

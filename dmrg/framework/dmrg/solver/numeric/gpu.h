@@ -29,10 +29,11 @@
 #ifndef MAQUIS_NUMERIC_GPU_H
 #define MAQUIS_NUMERIC_GPU_H
 
+#include "dmrg/solver/constants.h"
+
 #include "cuda.h"
 #include "batch_gemm.h"
 
-#define BUFFER_ALIGNMENT 128
 
 void dsacc_gpu(cudaStream_t stream,
                unsigned nS, unsigned ls, unsigned ms, unsigned nb1,
