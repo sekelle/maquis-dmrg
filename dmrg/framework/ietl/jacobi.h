@@ -36,6 +36,7 @@
 #include <ietl/traits.h>
 #include <ietl/fmatrix.h>
 #include <ietl/ietl2lapack.h> 
+#include <ietl/iteration.h>
  
 #include <ietl/cg.h>
 #include <ietl/gmres.h>

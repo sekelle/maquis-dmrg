@@ -27,38 +27,38 @@
 #ifndef IETL_JACOBI_DV
 #define IETL_JACOBI_DV
 
-#include "dmrg/utils/BaseParameters.h"
 #include "ietl_interface_dv.h"
 
 #include <ietl/jacobi.h>
+//#include "ietl/jacobi.h"
 
 template<class T>
-std::pair<double, DavidsonVector<T> >
+std::pair<double, DavidsonVector<T>>
 solve_ietl_jcd(SuperHamil<T> & sp,
                DavidsonVector<T> const & initial,
-               BaseParameters & params,
-               std::vector<DavidsonVector<T> > ortho_vecs = std::vector<DavidsonVector<T> >())
+               std::vector<DavidsonVector<T>> ortho_vecs,
+               double gmres, double jcd_tol, int jcd_max_iter)
 {
-    std::cout << "initial num elements " << initial.num_elements() << std::endl;
     //if (initial.num_elements() <= ortho_vecs.size())
     //    ortho_vecs.resize(initial.num_elements()-1);
     // Gram-Schmidt the ortho_vecs
     for (int n = 1; n < ortho_vecs.size(); ++n)
         for (int n0 = 0; n0 < n; ++n0)
-            ortho_vecs[n] -= ietl::dot(ortho_vecs[n0], ortho_vecs[n])/ietl::dot(ortho_vecs[n0],ortho_vecs[n0])*ortho_vecs[n0];
+            ortho_vecs[n] -= ietl::dot(ortho_vecs[n0], ortho_vecs[n]) /
+                ietl::dot(ortho_vecs[n0],ortho_vecs[n0])*ortho_vecs[n0];
     
     
     typedef DavidsonVector<T> Vector;
     DavidsonVS<T> vs(initial, ortho_vecs);
     
     ietl::jcd_gmres_solver<SuperHamil<T>, DavidsonVS<T>>
-    jcd_gmres(sp, vs, params["ietl_jcd_gmres"]);
+    jcd_gmres(sp, vs, gmres);
     
     ietl::jacobi_davidson<SuperHamil<T>, DavidsonVS<T>>
     jd(sp, vs, ietl::Smallest);
     
-    double tol = params["ietl_jcd_tol"];
-    ietl::basic_iteration<double> iter(params["ietl_jcd_maxiter"], tol, tol);
+    double tol = jcd_tol;
+    ietl::basic_iteration<double> iter(jcd_max_iter, tol, tol);
     
     for (int n = 0; n < ortho_vecs.size(); ++n) {
         maquis::cout << "Input <MPS|O[" << n << "]> : " << ietl::dot(initial, ortho_vecs[n]) << std::endl;

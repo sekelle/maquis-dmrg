@@ -43,20 +43,18 @@ super_hamil_mv(DavidsonVector<T> const& ket_tensor,
 {
     typedef T value_type;
 
-    ScheduleNew<value_type>::sh_timer.begin();
+    ScheduleNew<value_type>::solv_timer.begin();
 
     DavidsonVector<T> ret(ket_tensor.blocks());
-
-    //auto ket_data_view = ket_tensor.data_view();
 
     std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
     #ifdef MAQUIS_OPENMP
     #pragma omp parallel for schedule (dynamic,1)
     #endif
-    //for (unsigned i = 0; i < tasks.enumeration.size(); ++i)
-    for (unsigned lb_in = 0; lb_in < tasks.size(); ++lb_in)
+    for (unsigned i = 0; i < tasks.enumeration.size(); ++i)
+    //for (unsigned lb_in = 0; lb_in < tasks.size(); ++lb_in)
     {
-        //unsigned lb_in = tasks.enumeration[i];
+        unsigned lb_in = tasks.enumeration[i];
 
         auto Tdata = tasks[lb_in].create_T(right, ket_tensor.data_view());
         for (auto it = tasks[lb_in].begin(); it != tasks[lb_in].end(); ++it)
@@ -66,7 +64,7 @@ super_hamil_mv(DavidsonVector<T> const& ket_tensor,
     std::chrono::high_resolution_clock::time_point then = std::chrono::high_resolution_clock::now();
     tasks.cpu_time += std::chrono::duration<double>(then - now).count();
 
-    ScheduleNew<value_type>::sh_timer.end();
+    ScheduleNew<value_type>::solv_timer.end();
 
     return ret;
 }

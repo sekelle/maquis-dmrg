@@ -222,7 +222,10 @@ public:
                                                                     base::ortho_left_[n][site1], base::ortho_right_[n][site2+1]);
             }
 
-            std::pair<double, MPSTensor<Matrix, SymmGroup> > res;
+            //std::cout << solve_site_problem(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1],
+            //                                ortho_vecs, parms, ratio).first + mpo.getCoreEnergy() << std::endl;
+
+            std::pair<double, MPSTensor<Matrix, SymmGroup>> res;
             double jcd_time;
 
             if (d == Both ||
@@ -251,38 +254,21 @@ public:
                 tst << res.second;
                 res.second.clear();
             }
-
-            ///////////////////////
-            //DavidsonVector<value_type> dv(twin_mps_cpy.data().data_view(), twin_mps_cpy.data().basis().sizes());
-
-            //SuperHamil<value_type> SH(left_[site1].get_data_view(),
-            //                          right_[site2+1].get_data_view(),
-            //                          std::move(sp.contraction_schedule));
-
-            //std::pair<double, DavidsonVector<value_type>> res2;
-            //res2 = solve_ietl_jcd(SH, dv, parms);
-
-            //std::vector<std::size_t> bsz = res.second.data().basis().sizes();
-            //auto orig_view = res.second.data().data_view();
-
-            ////std::vector<const value_type*> orig_view = twin_mps_cpy.data().data_view();
-            //res2.second.sanity_check(orig_view);
-            ///////////////////////
-
-            sp.contraction_schedule.mps_stage.deallocate();
             twin_mps.clear();
 
-#ifndef NDEBUG
+            sp.contraction_schedule.mps_stage.deallocate();
+
+
+            #ifndef NDEBUG
             // Caution: this is an O(L) operation, so it really should be done only in debug mode
             for (int n = 0; n < base::northo; ++n)
                 maquis::cout << "MPS overlap: " << overlap(mps, base::ortho_mps[n]) << std::endl;
-#endif
+            #endif
 
             {
                 int prec = maquis::cout.precision();
                 maquis::cout.precision(15);
                 maquis::cout << "Energy " << lr << " " << res.first + mpo.getCoreEnergy() << std::endl;
-                //maquis::cout << "Energy " << lr << " " << res2.first + mpo.getCoreEnergy() << std::endl;
                 maquis::cout.precision(prec);
             }
             iteration_results_["Energy"] << res.first + mpo.getCoreEnergy();
@@ -371,7 +357,6 @@ public:
             maquis::cout << "Sweep has been running for " << elapsed << " seconds." << std::endl;
             
             if (stop_callback())
-            //if (stop_callback() || preshot)
                 throw dmrg::time_limit(sweep, _site+1);
 
         } // for sites

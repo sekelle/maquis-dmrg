@@ -44,6 +44,8 @@
 #include "ietl_jacobi_davidson.h"
 #include "ietl_davidson.h"
 
+#include "dmrg/optimize/solver_interface.hpp"
+
 #include "dmrg/utils/BaseParameters.h"
 #include "dmrg/utils/results_collector.h"
 #include "dmrg/utils/storage.h"
@@ -251,6 +253,8 @@ protected:
     unsigned int northo;
     std::vector< std::vector<block_matrix<BoundaryMatrix, SymmGroup> > > ortho_left_, ortho_right_;
     std::vector<MPS<Matrix, SymmGroup> > ortho_mps;
+
+    //std::vector<DavidsonVector<typename Matrix::value_type>> ortho_mps_dv;
 
     // performance tuning
     std::vector<double> cpu_gpu_ratio;
