@@ -853,11 +853,9 @@ namespace detail{
         std::fill(gpu_time, gpu_time + MAX_N_GPUS, 0); 
     }
 
-    //ScheduleNew(ScheduleNew const &) = delete;
-    //ScheduleNew(ScheduleNew &&) = default;
-
     template <class T>
     void ScheduleNew<T>::print_stats(double time) const {
+        maquis::cout << total_flops << " " << niter << " " << time << " " << cpu_time << std::endl;
         maquis::cout << total_flops*niter / time / 1e6
                      << " CPU: " << cpu_flops*niter / cpu_time / 1e6;
         double gpu_t;

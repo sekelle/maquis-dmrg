@@ -169,8 +169,8 @@ public:
             TwoSiteTensor<Matrix, SymmGroup> tst(mps[site1], mps[site2]);
             MPSTensor<Matrix, SymmGroup> twin_mps = tst.make_mps();
             tst.clear();
-            SiteProblem<Matrix, BoundaryMatrix, SymmGroup>
-                sp(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1], ratio);
+            //SiteProblem<Matrix, BoundaryMatrix, SymmGroup>
+            //    sp(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1], ratio);
 
 
             if (lr == +1) {
@@ -222,9 +222,6 @@ public:
                                                                     base::ortho_left_[n][site1], base::ortho_right_[n][site2+1]);
             }
 
-            //std::cout << solve_site_problem(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1],
-            //                                ortho_vecs, parms, ratio).first + mpo.getCoreEnergy() << std::endl;
-
             std::pair<double, MPSTensor<Matrix, SymmGroup>> res;
             double jcd_time;
 
@@ -233,30 +230,32 @@ public:
                 (d == RightOnly && lr == +1))
             {
                 if (parms["eigensolver"] == std::string("IETL")) {
-                    BEGIN_TIMING("IETL")
-                    res = solve_ietl_lanczos(sp, twin_mps, parms);
-                    END_TIMING("IETL")
+                    //BEGIN_TIMING("IETL")
+                    //res = solve_ietl_lanczos(sp, twin_mps, parms);
+                    //END_TIMING("IETL")
                 } else if (parms["eigensolver"] == std::string("IETL_JCD")) {
-                    BEGIN_TIMING("JCD")
-                    res = solve_ietl_jcd(sp, twin_mps, parms, ortho_vecs);
-                    END_TIMING("JCD")
-                    jcd_time = std::chrono::duration<double>(then-now).count();
-                    sp.contraction_schedule.print_stats(jcd_time);
+                    //BEGIN_TIMING("JCD")
+                    //res = solve_ietl_jcd(sp, twin_mps, parms, ortho_vecs);
+                    res = solve_site_problem(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1],
+                                             ortho_vecs, parms, ratio);
+                    //END_TIMING("JCD")
+                    //jcd_time = std::chrono::duration<double>(then-now).count();
+                    //sp.contraction_schedule.print_stats(jcd_time);
                 } else if (parms["eigensolver"] == std::string("IETL_DAVIDSON")) {
-                    BEGIN_TIMING("DAVIDSON")
-                    res = solve_ietl_davidson(sp, twin_mps, parms, ortho_vecs);
-                    END_TIMING("DAVIDSON")
+                    //BEGIN_TIMING("DAVIDSON")
+                    //res = solve_ietl_davidson(sp, twin_mps, parms, ortho_vecs);
+                    //END_TIMING("DAVIDSON")
                 } else {
                     throw std::runtime_error("I don't know this eigensolver.");
                 }
 
-                cpu_gpu_ratio[site1] = sp.contraction_schedule.get_cpu_gpu_ratio();
+                //cpu_gpu_ratio[site1] = sp.contraction_schedule.get_cpu_gpu_ratio();
                 tst << res.second;
                 res.second.clear();
             }
             twin_mps.clear();
 
-            sp.contraction_schedule.mps_stage.deallocate();
+            //sp.contraction_schedule.mps_stage.deallocate();
 
 
             #ifndef NDEBUG

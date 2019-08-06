@@ -38,18 +38,17 @@
 template<class T>
 struct SuperHamil
 {
-    SuperHamil(std::vector<const T*> const & left_,
-               std::vector<const T*> const & right_,
-               contraction::common::ScheduleNew<T> sched)
+    SuperHamil(std::vector<const T*> const& left_,
+               std::vector<const T*> const& right_,
+               contraction::common::ScheduleNew<T> const& sched)
     : left(left_)
     , right(right_)
-    , contraction_schedule(std::move(sched))
+    , contraction_schedule(sched)
     {}
     
-    std::vector<const T*> const & left;
-    std::vector<const T*> const & right;
-    contraction::common::ScheduleNew<T> contraction_schedule;
-    double ortho_shift;
+    std::vector<const T*> const& left;
+    std::vector<const T*> const& right;
+    contraction::common::ScheduleNew<T> const& contraction_schedule;
 };
 
 #endif

@@ -15,13 +15,13 @@
 template <class T>
 double solve(std::vector<std::size_t> const& sizes, std::vector<const T*> const& in, std::vector<T*> & out,
              std::vector<const T*> const& left, std::vector<const T*> const& right,
-             contraction::common::ScheduleNew<T> eff_matrix,
+             contraction::common::ScheduleNew<T> const& eff_matrix,
              std::vector<DavidsonVector<T>> const& ortho_vecs,
              double jcd_gmres, double jcd_tol, int jcd_max_iter)
 {
     DavidsonVector<T> dv(in, sizes);
 
-    SuperHamil<T> SH(left, right, std::move(eff_matrix));
+    SuperHamil<T> SH(left, right, eff_matrix);
 
     std::pair<double, DavidsonVector<T>> res;
     res = solve_ietl_jcd(SH, dv, ortho_vecs, jcd_gmres, jcd_tol, jcd_max_iter);
@@ -40,6 +40,6 @@ template double solve<double>(std::vector<std::size_t> const&,
                               std::vector<double*> &,
                               std::vector<const double*> const&,
                               std::vector<const double*> const&,
-                              contraction::common::ScheduleNew<double>,
+                              contraction::common::ScheduleNew<double> const&,
                               std::vector<DavidsonVector<double>> const&,
                               double, double, int);

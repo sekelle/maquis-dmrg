@@ -314,24 +314,6 @@ struct ScheduleNew
 
     void sync() const;
 
-    std::size_t niter;
-    std::size_t total_flops=0;
-    std::size_t cpu_flops=0, gpu_flops=0;
-    mutable double cpu_time, gpu_time[MAX_N_GPUS];
-
-    std::vector<unsigned> enumeration;
-    std::vector<unsigned> enumeration_gpu;
-
-    mutable MPSTensorStage<value_type> mps_stage;
-    mutable std::vector<std::mutex> mutexes;
-
-    static Timer sh_timer;
-    static Timer solv_timer;
-    static Timer lfetch_timer;
-    static Timer lsched_timer;
-    static Timer lalloc_timer;
-    static Timer lstage_timer;
-
     block_type & operator[](size_t i);
     block_type const& operator[](size_t i) const;
 
@@ -341,6 +323,26 @@ struct ScheduleNew
     typename base::iterator end();
     typename base::const_iterator cbegin() const;
     typename base::const_iterator cend() const;
+
+    // statistics ///////////
+    static Timer sh_timer;
+    static Timer solv_timer;
+    static Timer lfetch_timer;
+    static Timer lsched_timer;
+    static Timer lalloc_timer;
+    static Timer lstage_timer;
+
+    std::size_t total_flops=0;
+    std::size_t cpu_flops=0, gpu_flops=0;
+    mutable std::size_t niter;
+    mutable double cpu_time, gpu_time[MAX_N_GPUS];
+    ////////////////////////
+
+    std::vector<unsigned> enumeration;
+    std::vector<unsigned> enumeration_gpu;
+
+    mutable MPSTensorStage<value_type> mps_stage;
+    mutable std::vector<std::mutex> mutexes;
 
 private:
     std::vector<std::size_t> mps_block_sizes;

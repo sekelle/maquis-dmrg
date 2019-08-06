@@ -34,7 +34,7 @@
 
 template<class T>
 std::pair<double, DavidsonVector<T>>
-solve_ietl_jcd(SuperHamil<T> & sp,
+solve_ietl_jcd(SuperHamil<T> & sh,
                DavidsonVector<T> const & initial,
                std::vector<DavidsonVector<T>> ortho_vecs,
                double gmres, double jcd_tol, int jcd_max_iter)
@@ -52,10 +52,10 @@ solve_ietl_jcd(SuperHamil<T> & sp,
     DavidsonVS<T> vs(initial, ortho_vecs);
     
     ietl::jcd_gmres_solver<SuperHamil<T>, DavidsonVS<T>>
-    jcd_gmres(sp, vs, gmres);
+    jcd_gmres(sh, vs, gmres);
     
     ietl::jacobi_davidson<SuperHamil<T>, DavidsonVS<T>>
-    jd(sp, vs, ietl::Smallest);
+    jd(sh, vs, ietl::Smallest);
     
     double tol = jcd_tol;
     ietl::basic_iteration<double> iter(jcd_max_iter, tol, tol);
@@ -70,7 +70,7 @@ solve_ietl_jcd(SuperHamil<T> & sp,
         maquis::cout << "Output <MPS|O[" << n << "]> : " << ietl::dot(r0.second, ortho_vecs[n]) << std::endl;
     
     maquis::cout << "JCD used " << iter.iterations() << " iterations." << std::endl;
-    sp.contraction_schedule.niter = iter.iterations();
+    sh.contraction_schedule.niter = iter.iterations();
     
     return r0;
 }

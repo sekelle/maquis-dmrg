@@ -9,7 +9,8 @@
 
 template <class T>
 double solve(std::vector<std::size_t> const&, std::vector<const T*> const&, std::vector<T*> &,
-             std::vector<const T*> const&, std::vector<const T*> const&, contraction::common::ScheduleNew<T>,
+             std::vector<const T*> const&, std::vector<const T*> const&,
+             contraction::common::ScheduleNew<T> const&,
              std::vector<DavidsonVector<T>> const&,
              double, double, int);
 

@@ -46,9 +46,12 @@ solve_site_problem(MPSTensor<Matrix, SymmGroup> & initial,
 
     auto now = std::chrono::high_resolution_clock::now();
     double eval = solve<value_type>(init_sizes, init_data, ret_data, left_data, right_data,
-                                    std::move(eff_matrix), ortho_vecs_dv, gmres, jcd_tol, max_iter);
+                                    eff_matrix, ortho_vecs_dv, gmres, jcd_tol, max_iter);
     auto then = std::chrono::high_resolution_clock::now();
-    std::cout << "Time elapsed in SOLV: " << std::chrono::duration<double>(then-now).count() << std::endl;
+
+    double jcd_time = std::chrono::duration<double>(then-now).count();
+    std::cout << "Time elapsed in JCD: " << jcd_time << std::endl;
+    eff_matrix.print_stats(jcd_time);
 
     return std::make_pair(eval, ret);
 }
