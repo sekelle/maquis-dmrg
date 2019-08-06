@@ -37,6 +37,7 @@
 
 #include <cuda_runtime.h>
 
+#include "dmrg/utils/cuda_helpers.hpp"
 #include "dmrg/utils/utils.hpp"
 #include "dmrg/utils/aligned_allocator.hpp"
 

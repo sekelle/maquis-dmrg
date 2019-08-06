@@ -2,9 +2,9 @@
  *
  * ALPS MPS DMRG Project
  *
- * Copyright (C) 2018 Department of Chemistry and the PULSE Institute, Stanford University
+ * Copyright (C) 2019 Department of Chemistry and the PULSE Institute, Stanford University
  *                    Laboratory for Physical Chemistry, ETH Zurich
- *               2018-2018 by Sebastian Keller <sebkelle@phys.ethz.ch>
+ *               2019-2019 by Sebastian Keller <sebkelle@ethz.ch>
  * 
  * This software is part of the ALPS Applications, published under the ALPS
  * Application License; you can use, redistribute it and/or modify it under
@@ -28,7 +28,7 @@
 #ifndef IETL_INTERFACE_DV
 #define IETL_INTERFACE_DV
 
-#include "dmrg/utils/BaseParameters.h"
+#include "dmrg/solver/davidson_vector.h"
 
 namespace ietl
 {

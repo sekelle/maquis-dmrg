@@ -30,8 +30,6 @@
 
 #include <boost/static_assert.hpp>
 
-#define ALIGNMENT 32
-
 template <unsigned A, typename T>
 inline T round_up(T x)
 {

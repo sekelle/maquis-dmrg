@@ -326,6 +326,7 @@ struct ScheduleNew
     mutable std::vector<std::mutex> mutexes;
 
     static Timer sh_timer;
+    static Timer solv_timer;
     static Timer lfetch_timer;
     static Timer lsched_timer;
     static Timer lalloc_timer;

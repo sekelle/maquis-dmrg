@@ -126,7 +126,7 @@ DavidsonVector<T> operator-(DavidsonVector<T> const& a)
     return ret*=-1.0;
 }
 
-// explicit instatiation, refer to the .cpp file
+// explicit instantiation declaration
 extern template class DavidsonVector<double>;
 
 #endif

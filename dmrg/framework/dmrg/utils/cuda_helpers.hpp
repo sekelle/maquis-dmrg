@@ -33,12 +33,10 @@
 #include <cstring>
 #include <malloc.h>
 #include <stdint.h>
-//#include <boost/static_assert.hpp>
-// BLAS declarations
-//#include <boost/numeric/bindings/blas/detail/blas.h>
 
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
+
 
 static void HandleError( cudaError_t err,
                          const char *file,

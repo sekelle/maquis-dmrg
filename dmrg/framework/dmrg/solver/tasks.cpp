@@ -1011,13 +1011,14 @@ template <class T> typename ScheduleNew<T>::base::const_iterator ScheduleNew<T>:
 }
 
 template <class T> Timer ScheduleNew<T>::sh_timer = Timer("SITE_HAMIL");
+template <class T> Timer ScheduleNew<T>::solv_timer = Timer("SOLV_SITE_HAMIL");
 
 template <class T> Timer ScheduleNew<T>::lfetch_timer = Timer("LFETCH");
 template <class T> Timer ScheduleNew<T>::lsched_timer = Timer("LSCHED");
 template <class T> Timer ScheduleNew<T>::lalloc_timer = Timer("LALLOC");
 template <class T> Timer ScheduleNew<T>::lstage_timer = Timer("LSTAGE");
 
-// instantiation
+// explicit instantiation
 template class Cohort<double>;
 template class MPSBlock<double>;
 template class ScheduleNew<double>;
