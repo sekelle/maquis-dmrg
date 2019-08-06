@@ -34,7 +34,7 @@
 
 template<class T>
 std::pair<double, DavidsonVector<T>>
-solve_ietl_jcd(SuperHamil<T> & sh,
+solve_ietl_jcd(SuperHamil<T> const& sh,
                DavidsonVector<T> const & initial,
                std::vector<DavidsonVector<T>> ortho_vecs,
                double gmres, double jcd_tol, int jcd_max_iter)

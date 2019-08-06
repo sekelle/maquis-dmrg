@@ -99,8 +99,8 @@ public:
             std::chrono::high_resolution_clock::time_point now, then;
 
             std::pair<double, MPSTensor<Matrix, SymmGroup> > res;
-            SiteProblem<Matrix, typename base::BoundaryMatrix, SymmGroup> sp(mps[site], left_[site], right_[site+1], mpo[site],
-                                                                             cpu_gpu_ratio[site]);
+            //SiteProblem<Matrix, typename base::BoundaryMatrix, SymmGroup> sp(mps[site], left_[site], right_[site+1],
+            //                                                                 mpo[site], cpu_gpu_ratio[site]);
             
             /// Compute orthogonal vectors
             std::vector<MPSTensor<Matrix, SymmGroup> > ortho_vecs(base::northo);
@@ -114,18 +114,19 @@ public:
                 (d == RightOnly && lr == +1))
             {
                 if (parms["eigensolver"] == std::string("IETL")) {
-                    BEGIN_TIMING("IETL")
-                    res = solve_ietl_lanczos(sp, mps[site], parms);
-                    END_TIMING("IETL")
+                    //BEGIN_TIMING("IETL")
+                    //res = solve_ietl_lanczos(sp, mps[site], parms);
+                    //END_TIMING("IETL")
                 } else if (parms["eigensolver"] == std::string("IETL_JCD")) {
-                    BEGIN_TIMING("JCD")
-                    res = solve_ietl_jcd(sp, mps[site], parms, ortho_vecs);
-                    END_TIMING("JCD")
+                    //BEGIN_TIMING("JCD")
+                    //res = solve_ietl_jcd(sp, mps[site], parms, ortho_vecs);
+                    res = solve_site_problem(mps[site], left_[site], right_[site+1], mpo[site], ortho_vecs, parms, 0.9);
+                    //END_TIMING("JCD")
                 } else {
                     throw std::runtime_error("I don't know this eigensolver.");
                 }
  
-                cpu_gpu_ratio[site] = sp.contraction_schedule.get_cpu_gpu_ratio();
+                //cpu_gpu_ratio[site] = sp.contraction_schedule.get_cpu_gpu_ratio();
                 mps[site] = res.second;
             }
             

@@ -110,11 +110,11 @@ private:
 namespace ietl
 {
     template<class T>
-    void mult(SuperHamil<T> const & H,
-              DavidsonVector<T> & x,
-              DavidsonVector<T> & y)
+    void mult(SuperHamil<T> const& H,
+              DavidsonVector<T>& x,
+              DavidsonVector<T>& y)
     {  
-        y = super_hamil_mv(x, H.left, H.right, H.contraction_schedule);
+        y = contraction::common::super_hamil_mv(x, H);
     }
     
     template<class T>

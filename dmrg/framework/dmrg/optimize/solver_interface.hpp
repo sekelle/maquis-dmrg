@@ -13,10 +13,22 @@
 
 #include "dmrg/solver/solver.h"
 
+template <class B>
+BoundaryView<typename B::value_type> make_bview(B const& boundary)
+{
+    BoundaryView<typename B::value_type> ret;
+
+    ret.host_data = boundary.get_data_view();
+    ret.device_data = boundary.all_device_data();
+
+    return ret;
+}
+
+
 
 template <class Matrix, class OtherMatrix, class SymmGroup>
 std::pair<double, MPSTensor<Matrix, SymmGroup>>
-solve_site_problem(MPSTensor<Matrix, SymmGroup> & initial, 
+solve_site_problem(MPSTensor<Matrix, SymmGroup> & ket,
                    Boundary<OtherMatrix, SymmGroup> const& left,
                    Boundary<OtherMatrix, SymmGroup> const& right,
                    MPOTensor<Matrix, SymmGroup> const& mpo,
@@ -26,16 +38,15 @@ solve_site_problem(MPSTensor<Matrix, SymmGroup> & initial,
 {
     typedef typename Matrix::value_type value_type;
 
-    std::vector<const value_type*> init_data = initial.data().data_view();
-    std::vector<std::size_t> init_sizes = initial.data().basis().sizes();
-
-    std::vector<const value_type*> left_data = left.get_data_view();
-    std::vector<const value_type*> right_data = right.get_data_view();
+    ket.make_right_paired();
+    DavidsonVector<value_type> initial(ket.data().data_view(), ket.data().basis().sizes());
 
     contraction::common::ScheduleNew<typename Matrix::value_type> eff_matrix =
-        contraction::common::create_contraction_schedule(initial, left, right, mpo, cpu_gpu_ratio);
+        contraction::common::create_contraction_schedule(ket, left, right, mpo, cpu_gpu_ratio);
 
-    MPSTensor<Matrix, SymmGroup> ret = initial;
+    SuperHamil<value_type> SH(make_bview(left), make_bview(right), eff_matrix);
+
+    MPSTensor<Matrix, SymmGroup> ret = ket;
     std::vector<value_type*> ret_data = ret.data().data_view_nc();
 
     std::vector<DavidsonVector<value_type>> ortho_vecs_dv;
@@ -45,8 +56,7 @@ solve_site_problem(MPSTensor<Matrix, SymmGroup> & initial,
     int max_iter = parms["ietl_jcd_maxiter"];
 
     auto now = std::chrono::high_resolution_clock::now();
-    double eval = solve<value_type>(init_sizes, init_data, ret_data, left_data, right_data,
-                                    eff_matrix, ortho_vecs_dv, gmres, jcd_tol, max_iter);
+    double eval = solve<value_type>(ret_data, initial, SH, ortho_vecs_dv, gmres, jcd_tol, max_iter);
     auto then = std::chrono::high_resolution_clock::now();
 
     double jcd_time = std::chrono::duration<double>(then-now).count();
