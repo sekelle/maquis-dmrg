@@ -39,8 +39,8 @@ solve_ietl_jcd(SuperHamil<T> const& sh,
                std::vector<DavidsonVector<T>> ortho_vecs,
                double gmres, double jcd_tol, int jcd_max_iter)
 {
-    //if (initial.num_elements() <= ortho_vecs.size())
-    //    ortho_vecs.resize(initial.num_elements()-1);
+    if (initial.num_elements() <= ortho_vecs.size())
+        ortho_vecs.resize(initial.num_elements()-1);
     // Gram-Schmidt the ortho_vecs
     for (int n = 1; n < ortho_vecs.size(); ++n)
         for (int n0 = 0; n0 < n; ++n0)

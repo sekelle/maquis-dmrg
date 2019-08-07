@@ -49,7 +49,15 @@ solve_site_problem(MPSTensor<Matrix, SymmGroup> & ket,
     MPSTensor<Matrix, SymmGroup> ret = ket;
     std::vector<value_type*> ret_data = ret.data().data_view_nc();
 
-    std::vector<DavidsonVector<value_type>> ortho_vecs_dv;
+    std::vector<DavidsonVector<value_type>> ortho_vecs_dv(ortho_vecs.size());
+    for (int i = 0; i < ortho_vecs.size(); ++i)
+    {
+        ortho_vecs[i].make_right_paired();
+        ortho_vecs_dv[i] = DavidsonVector<value_type>(ortho_vecs[i].data().data_view(),
+                                                      ortho_vecs[i].data().basis().sizes());
+        if (ortho_vecs_dv[i].num_elements() != initial.num_elements())
+            throw std::runtime_error("orthogonal vector has different dimension than current target state\n");
+    }
 
     double gmres = parms["ietl_jcd_gmres"];
     double jcd_tol = parms["ietl_jcd_tol"];
