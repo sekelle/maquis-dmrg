@@ -136,8 +136,7 @@ DavidsonVector<T>& DavidsonVector<T>::operator=(DavidsonVector rhs)
 
 template <class T>
 size_t DavidsonVector<T>::num_elements() const {
-    //return buffer.size();
-    return std::accumulate(block_sizes.begin(), block_sizes.end(), 0ul);
+    return buffer.size();
 }
 
 template <class T>
