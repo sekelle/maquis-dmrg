@@ -122,8 +122,8 @@ namespace common {
 
                 for (index_type b1 = 0; b1 < mpo.row_dim(); ++b1)
                 {
-                    if (mpo.hermLeft().skip(b1, lc_ket, lc_bra) && skip) continue;
-                    int A = mpo.left_spin(b1).get(); if (!::SU2::triangle<SymmGroup>(lc_ket, A, lc_bra)) continue;
+                    if (mpo.leftBond().conj().skip(b1, lc_ket, lc_bra) && skip) continue;
+                    int A = mpo.leftBond().spin(b1).get(); if (!::SU2::triangle<SymmGroup>(lc_ket, A, lc_bra)) continue;
 
                     for (auto row_it = mpo.row(b1).begin(); row_it != mpo.row(b1).end(); ++row_it) {
                         index_type b2 = row_it.index();
@@ -132,7 +132,7 @@ namespace common {
                         for (unsigned op_index = 0; op_index < access.size(); ++op_index)
                         {
                             typename operator_selector<Matrix, SymmGroup>::type const & W = access.op(op_index);
-                            int K = W.spin().get(), Ap = mpo.right_spin(b2).get();
+                            int K = W.spin().get(), Ap = mpo.rightBond().spin(b2).get();
 
                             for (size_t w_block = 0; w_block < W.basis().size(); ++w_block)
                             {

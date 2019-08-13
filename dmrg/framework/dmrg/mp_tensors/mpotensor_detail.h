@@ -198,10 +198,45 @@ namespace MPOTensor_detail
                                                                                   typename MPOTensor<Matrix, SymmGroup>::index_type k, bool left)
     { 
         if (left)
-        return mpo.left_spin(k).get();
+        return mpo.leftBond().spin(k).get();
         else
-        return mpo.right_spin(k).get();
+        return mpo.rightBond().spin(k).get();
     }
+
+
+    template <class SymmGroup>
+    class BondProperty
+    {
+        typedef SpinDescriptor<typename symm_traits::SymmType<SymmGroup>::type> spin_desc_t;
+        typedef std::vector<spin_desc_t> spin_index;
+
+    public:
+
+        BondProperty() : spins_(1), conjugates_(1) {}
+        BondProperty(size_t sz) : spins_(sz), conjugates_(sz) {}
+        BondProperty(spin_index const& s, Hermitian const& h) : spins_(s), conjugates_(h) {}
+
+        spin_desc_t spin(index_type b) const { return spins_[b]; }
+
+        spin_index const& spins() const { return spins_; }
+        spin_index& spins() { return spins_; }
+
+        Hermitian const& conj() const { return conjugates_; }
+        Hermitian& conj() { return conjugates_; }
+
+        std::size_t size() const { return spins_.size(); }
+    
+    private:
+        friend class boost::serialization::access;
+
+        template <class Archive>
+        void serialize(Archive & ar, const unsigned int version) {
+            ar & spins_ & conjugates_;
+        }
+
+        spin_index spins_;
+        Hermitian conjugates_;
+    };
 
 } // namespace MPOTensor_detail
 

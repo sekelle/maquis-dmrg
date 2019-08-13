@@ -72,16 +72,16 @@ namespace ts_ops_detail
             for (int ip2 = 0; ip2 < p2.size(); ++ip2)
             {
             
-            std::vector<spin_t> op_spins = allowed_spins(mpo1.left_spin(b1).get(), mpo2.right_spin(b3).get(),
+            std::vector<spin_t> op_spins = allowed_spins(mpo1.leftBond().spin(b1).get(), mpo2.rightBond().spin(b3).get(),
                                                          p1.op(ip1).spin().get(), p2.op(ip2).spin().get());
             for (typename std::vector<spin_t>::const_iterator it2 = op_spins.begin(); it2 != op_spins.end(); ++it2)
             {
                 SpinDescriptor<typename symm_traits::SymmType<SymmGroup>::type>
-                    prod_spin(*it2, mpo1.left_spin(b1).get(), mpo2.right_spin(b3).get());
+                    prod_spin(*it2, mpo1.leftBond().spin(b1).get(), mpo2.rightBond().spin(b3).get());
 
                 op_t product;
-                op_kron(phys_i1, phys_i2, p1.op(ip1), p2.op(ip2), product, mpo1.left_spin(b1),
-                        mpo1.right_spin(b2), mpo2.right_spin(b3), prod_spin);
+                op_kron(phys_i1, phys_i2, p1.op(ip1), p2.op(ip2), product, mpo1.leftBond().spin(b1),
+                        mpo1.rightBond().spin(b2), mpo2.rightBond().spin(b3), prod_spin);
                 ::tag_detail::remove_empty_blocks(product);
                 ret[*it2] += product * p1.scale(ip1) * p2.scale(ip2);
             }
@@ -148,7 +148,8 @@ MPOTensor<MPSMatrix, SymmGroup> make_twosite_mpo(MPOTensor<MPOMatrix, SymmGroup>
                 index_type b2 = *summands.begin();
                 term_descriptor<MPOMatrix, SymmGroup, true> p1 = mpo1.at(b1,b2), p2 = mpo2.at(b2,b3);
                 tag_type p_tag = kron_handler.get_kron_tag(phys_i1, phys_i2, mpo1.tag_number(b1,b2), mpo2.tag_number(b2,b3),
-                                                             mpo1.left_spin(b1), mpo1.right_spin(b2), mpo2.right_spin(b3));
+                                                           mpo1.leftBond().spin(b1), mpo1.rightBond().spin(b2),
+                                                           mpo2.rightBond().spin(b3));
                 value_type p_scale = p1.scale() * p2.scale();
                 prempo.push_back(boost::make_tuple(b1, b3, p_tag, p_scale));
             }
@@ -157,7 +158,7 @@ MPOTensor<MPSMatrix, SymmGroup> make_twosite_mpo(MPOTensor<MPOMatrix, SymmGroup>
     } // b1
 
     MPOTensor<MPSMatrix, SymmGroup> mpo_big_tag(mpo1.row_dim(), mpo2.col_dim(), prempo, kron_handler.get_kronecker_table(),
-                                                mpo1.hermLeft(), mpo2.hermRight(), mpo1.row_spin_dim(), mpo2.col_spin_dim());
+                                                mpo1.leftBond(), mpo2.rightBond());
     #ifdef MAQUIS_OPENMP
     #pragma omp critical
     #endif

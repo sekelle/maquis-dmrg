@@ -65,7 +65,7 @@ namespace SU2 {
         for (std::size_t op_index = 0; op_index < access.size(); ++op_index)
         {
             typename operator_selector<Matrix, SymmGroup>::type const & W = access.op(op_index);
-            int a = mpo.left_spin(b1).get(), k = W.spin().get(), ap = mpo.right_spin(b2).get();
+            int a = mpo.leftBond().spin(b1).get(), k = W.spin().get(), ap = mpo.rightBond().spin(b2).get();
 
             // out_left_i and right_i have identical charges, but different sector sizes
             for (size_t block = 0; block < right_i.size(); ++block)

@@ -26,22 +26,18 @@
  *****************************************************************************/
 
 template<class Matrix, class SymmGroup>
-MPOTensor<Matrix, SymmGroup>::MPOTensor(index_type ld
-                                       ,index_type rd
-                                       ,prempo_t tags
-                                       ,op_table_ptr tbl_
-                                       ,MPOTensor_detail::Hermitian const & hleft
-                                       ,MPOTensor_detail::Hermitian const & hright
-                                       ,spin_index const & lspins
-                                       ,spin_index const & rspins)
+MPOTensor<Matrix, SymmGroup>::MPOTensor(index_type ld,
+                                        index_type rd,
+                                        prempo_t tags,
+                                        op_table_ptr tbl_,
+                                        BondProperty const& lb, 
+                                        BondProperty const& rb)
 : left_i(ld)
 , right_i(rd)
-, left_spins(lspins)
-, right_spins(rspins)
 , col_tags(ld, rd)
 , operator_table(tbl_)
-, herm_left(ld)
-, herm_right(rd)
+, leftbond(ld)
+, rightbond(rd)
 {
     using namespace boost::tuples;
     row_index.resize(ld);
@@ -74,8 +70,11 @@ MPOTensor<Matrix, SymmGroup>::MPOTensor(index_type ld
         operator_table = op_table_ptr(new OPTable<Matrix, SymmGroup>());
     }
 
-    left_spins.resize(ld);
-    right_spins.resize(rd);
+    if (lb.size() == row_dim() && rb.size() == col_dim())
+    {
+        leftbond = lb;
+        rightbond = rb;
+    }
 
     // provide information about number of non-zeros in rows and columns
     row_non_zeros.resize(row_dim());
@@ -93,13 +92,6 @@ MPOTensor<Matrix, SymmGroup>::MPOTensor(index_type ld
 
     num_one_rows_ = std::count(row_non_zeros.begin(), row_non_zeros.end(), 1);
     num_one_cols_ = std::count(col_non_zeros.begin(), col_non_zeros.end(), 1);
-
-    // if the optional Hermitian object h_ is valid, adopt it
-    if (hleft.size() == left_i && hright.size() == right_i)
-    {
-        herm_left = hleft;
-        herm_right = hright;
-    }
 }
 
 template<class Matrix, class SymmGroup>
@@ -108,56 +100,6 @@ bool MPOTensor<Matrix, SymmGroup>::has(index_type left_index,
 {
     assert(left_index < left_i && right_index < right_i);
     return col_tags.find_element(left_index, right_index) != NULL;
-}
-
-template<class Matrix, class SymmGroup>
-typename MPOTensor<Matrix, SymmGroup>::spin_desc_t MPOTensor<Matrix, SymmGroup>::left_spin(index_type left_index) const
-{
-    assert(left_index < left_spins.size());
-    return left_spins[left_index];
-}
-
-template<class Matrix, class SymmGroup>
-typename MPOTensor<Matrix, SymmGroup>::spin_desc_t MPOTensor<Matrix, SymmGroup>::right_spin(index_type right_index) const
-{
-    assert(right_index < right_spins.size());
-    return right_spins[right_index];
-}
-
-template<class Matrix, class SymmGroup>
-typename MPOTensor<Matrix, SymmGroup>::spin_index const & MPOTensor<Matrix, SymmGroup>::row_spin_dim() const
-{
-    return left_spins;
-}
-
-template<class Matrix, class SymmGroup>
-typename MPOTensor<Matrix, SymmGroup>::spin_index const & MPOTensor<Matrix, SymmGroup>::col_spin_dim() const
-{
-    return right_spins;
-}
-
-template<class Matrix, class SymmGroup>
-typename MPOTensor<Matrix, SymmGroup>::index_type MPOTensor<Matrix, SymmGroup>::num_row_non_zeros(index_type row_i) const
-{
-    return row_non_zeros[row_i];
-}
-
-template<class Matrix, class SymmGroup>
-typename MPOTensor<Matrix, SymmGroup>::index_type MPOTensor<Matrix, SymmGroup>::num_col_non_zeros(index_type col_i) const
-{
-    return col_non_zeros[col_i];
-}
-
-template<class Matrix, class SymmGroup>
-typename MPOTensor<Matrix, SymmGroup>::index_type MPOTensor<Matrix, SymmGroup>::num_one_rows() const
-{
-    return num_one_rows_;
-}
-
-template<class Matrix, class SymmGroup>
-typename MPOTensor<Matrix, SymmGroup>::index_type MPOTensor<Matrix, SymmGroup>::num_one_cols() const
-{
-    return num_one_cols_;
 }
 
 // warning: this method allows to (indirectly) change the op in the table, all tags pointing to it will
@@ -235,10 +177,37 @@ void MPOTensor<Matrix, SymmGroup>::divide_by_scalar(value_type v)
             std::for_each((*it1).begin(), (*it1).end(), boost::lambda::bind(&std::pair<tag_type, value_type>::second, boost::lambda::_1) /= v);
 }
 
+
+// getters
+
 template<class Matrix, class SymmGroup>
 typename MPOTensor<Matrix, SymmGroup>::op_table_ptr MPOTensor<Matrix, SymmGroup>::get_operator_table() const
 {
     return operator_table;
+}
+
+template<class Matrix, class SymmGroup>
+typename MPOTensor<Matrix, SymmGroup>::index_type MPOTensor<Matrix, SymmGroup>::num_row_non_zeros(index_type row_i) const
+{
+    return row_non_zeros[row_i];
+}
+
+template<class Matrix, class SymmGroup>
+typename MPOTensor<Matrix, SymmGroup>::index_type MPOTensor<Matrix, SymmGroup>::num_col_non_zeros(index_type col_i) const
+{
+    return col_non_zeros[col_i];
+}
+
+template<class Matrix, class SymmGroup>
+typename MPOTensor<Matrix, SymmGroup>::index_type MPOTensor<Matrix, SymmGroup>::num_one_rows() const
+{
+    return num_one_rows_;
+}
+
+template<class Matrix, class SymmGroup>
+typename MPOTensor<Matrix, SymmGroup>::index_type MPOTensor<Matrix, SymmGroup>::num_one_cols() const
+{
+    return num_one_cols_;
 }
 
 template<class Matrix, class SymmGroup>
@@ -253,23 +222,30 @@ typename MPOTensor<Matrix, SymmGroup>::index_type MPOTensor<Matrix, SymmGroup>::
     return right_i;
 }
 
+
+// BondProperties
+
 template<class Matrix, class SymmGroup>
-typename MPOTensor_detail::Hermitian const& MPOTensor<Matrix, SymmGroup>::hermLeft() const
+typename MPOTensor_detail::BondProperty<SymmGroup> const& MPOTensor<Matrix, SymmGroup>::leftBond() const
 {
-    return herm_left;
+    return leftbond;
 }
 
 template<class Matrix, class SymmGroup>
-typename MPOTensor_detail::Hermitian const& MPOTensor<Matrix, SymmGroup>::hermRight() const
+typename MPOTensor_detail::BondProperty<SymmGroup> const& MPOTensor<Matrix, SymmGroup>::rightBond() const
 {
-    return herm_right;
+    return rightbond;
 }
+
+
+
+// serialization
 
 template<class Matrix, class SymmGroup>
 template<class Archive>
 void MPOTensor<Matrix, SymmGroup>::serialize(Archive & ar, const unsigned int version)
 {
-    ar & herm_left & herm_right & left_i & right_i & left_spins & right_spins
+    ar & left_i & right_i & leftbond & rightbond
        & row_non_zeros & col_non_zeros & col_tags & row_index & operator_table;
 }
 
