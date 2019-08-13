@@ -9,8 +9,8 @@ add_library(solver STATIC accelerator.cpp tasks.cpp davidson_vector.cpp solver.c
 set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -Xcompiler -fPIC")
 CUDA_ADD_LIBRARY(numeric_gpu STATIC numeric/gpu_dgemm_ddot.cu numeric/gpu_vgemm.cu )
 
-target_link_libraries(numeric_gpu ${CUDA_CUBLAS_LIBRARIES} ${CUDA_LIBRARIES})
-#target_link_libraries(numeric_gpu cublas_static cublasLt culibos ${CUDA_LIBRARIES})
+#target_link_libraries(numeric_gpu ${CUDA_CUBLAS_LIBRARIES} ${CUDA_LIBRARIES})
+target_link_libraries(numeric_gpu cublas_static cublasLt culibos ${CUDA_LIBRARIES})
 
 set_property(TARGET solver numeric_gpu PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 

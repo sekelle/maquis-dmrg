@@ -204,7 +204,7 @@ namespace contraction {
                 for (auto& e : tasks[rb_ket])
                     b_index.add_cohort(e.get_lb(), rb_ket, e.get_offsets());
 
-            if (symmetric) b_index.complement_transpose(mpo.herm_right, true);
+            if (symmetric) b_index.complement_transpose(mpo.hermRight(), true);
             Boundary<OtherMatrix, SymmGroup> ret(b_index);
             schedule_t::lsched_timer.end();
 
@@ -334,7 +334,7 @@ namespace contraction {
                 for (auto& e : tasks[lb_ket])
                     b_index.add_cohort(lb_ket, e.get_rb(), e.get_offsets());
 
-            b_index.complement_transpose(mpo.herm_left, false);
+            b_index.complement_transpose(mpo.hermLeft(), false);
             Boundary<OtherMatrix, SymmGroup> ret(b_index);
 
             ret.allocate_all();

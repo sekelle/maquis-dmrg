@@ -124,7 +124,7 @@ namespace common {
 
                 for (index_type b2 = 0; b2 < mpo.col_dim(); ++b2)
                 {
-                    if (mpo.herm_right.skip(b2, rc_bra, rc_ket) && skip) continue;
+                    if (mpo.hermRight().skip(b2, rc_bra, rc_ket) && skip) continue;
                     int Ap = mpo.right_spin(b2).get(); if (!::SU2::triangle<SymmGroup>(rc_ket, Ap, rc_bra)) continue;
 
                     for (typename col_proxy::const_iterator col_it = mpo.column(b2).begin(); col_it != mpo.column(b2).end(); ++col_it) {

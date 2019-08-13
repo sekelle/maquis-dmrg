@@ -157,7 +157,7 @@ MPOTensor<MPSMatrix, SymmGroup> make_twosite_mpo(MPOTensor<MPOMatrix, SymmGroup>
     } // b1
 
     MPOTensor<MPSMatrix, SymmGroup> mpo_big_tag(mpo1.row_dim(), mpo2.col_dim(), prempo, kron_handler.get_kronecker_table(),
-                                                mpo1.herm_left, mpo2.herm_right, mpo1.row_spin_dim(), mpo2.col_spin_dim());
+                                                mpo1.hermLeft(), mpo2.hermRight(), mpo1.row_spin_dim(), mpo2.col_spin_dim());
     #ifdef MAQUIS_OPENMP
     #pragma omp critical
     #endif

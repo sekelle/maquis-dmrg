@@ -102,30 +102,6 @@ MPOTensor<Matrix, SymmGroup>::MPOTensor(index_type ld
     }
 }
 
-/*
-template<class Matrix, class SymmGroup>
-block_matrix<Matrix, SymmGroup> const & MPOTensor<Matrix, SymmGroup>::operator()(index_type left_index,
-                                                                         index_type right_index) const
-{
-    throw std::runtime_error("operator() doesn't work for MPOTensors anymore!\n");
-    assert( left_index < left_i );
-    assert( right_index < right_i );
-    return (*operator_table)[col_tags(left_index, right_index).first];
-}
-
-
-template<class Matrix, class SymmGroup>
-block_matrix<Matrix, SymmGroup> & MPOTensor<Matrix, SymmGroup>::operator()(index_type left_index,
-                                                                         index_type right_index)
-{
-    throw std::runtime_error("operator() doesn't work for MPOTensors anymore!\n");
-    assert( left_index < left_i );
-    assert( right_index < right_i );
-    typename CSCMatrix::value_type const & p = col_tags(left_index, right_index);
-    return (*operator_table)[p.first];
-}
-*/
-
 template<class Matrix, class SymmGroup>
 bool MPOTensor<Matrix, SymmGroup>::has(index_type left_index,
                                        index_type right_index) const
@@ -275,6 +251,18 @@ template<class Matrix, class SymmGroup>
 typename MPOTensor<Matrix, SymmGroup>::index_type MPOTensor<Matrix, SymmGroup>::col_dim() const
 {
     return right_i;
+}
+
+template<class Matrix, class SymmGroup>
+typename MPOTensor_detail::Hermitian const& MPOTensor<Matrix, SymmGroup>::hermLeft() const
+{
+    return herm_left;
+}
+
+template<class Matrix, class SymmGroup>
+typename MPOTensor_detail::Hermitian const& MPOTensor<Matrix, SymmGroup>::hermRight() const
+{
+    return herm_right;
 }
 
 template<class Matrix, class SymmGroup>

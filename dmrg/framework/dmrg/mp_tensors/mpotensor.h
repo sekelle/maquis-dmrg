@@ -118,10 +118,14 @@ public:
     index_type num_one_rows() const;
     index_type num_one_cols() const;
 
-    MPOTensor_detail::Hermitian herm_left;
-    MPOTensor_detail::Hermitian herm_right;
+
+    MPOTensor_detail::Hermitian const& hermLeft() const;
+    MPOTensor_detail::Hermitian const& hermRight() const;
 
 private:
+
+    MPOTensor_detail::Hermitian herm_left;
+    MPOTensor_detail::Hermitian herm_right;
 
     friend class boost::serialization::access;
 
