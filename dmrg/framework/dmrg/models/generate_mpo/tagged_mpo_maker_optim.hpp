@@ -158,7 +158,7 @@ namespace generate_mpo
         TaggedMPOMaker(Lattice const& lat_, tag_vec const & i_, tag_vec const & i_f_,
                        tag_vec const & f_,
                        boost::shared_ptr<TagHandler<Matrix, SymmGroup> > th_,
-                       typename Model<Matrix, SymmGroup>::terms_type const& terms)
+                       typename Model<Matrix, SymmGroup>::terms_type const& terms, bool verb=false)
         : lat(lat_)
         , identities(i_)
         , identities_full(i_f_)
@@ -171,7 +171,7 @@ namespace generate_mpo
         , leftmost_right(length)
         , rightmost_left(0)
         , finalized(false)
-        , verbose(false)
+        , verbose(verb)
         , core_energy(0.)
         {
             //for (size_t p = 0; p < length-1; ++p)
@@ -250,6 +250,7 @@ namespace generate_mpo
                     else if (rr == right.end())
                         boost::tie(rr, boost::tuples::ignore) = right.insert( make_pair(k2, r++) );
                     
+                    // prempo key k2 is assigned MPO dimension rr_dim
                     index_type rr_dim = (p == length-1) ? 0 : rr->second;
                     pre_tensor.push_back( tag_block(ll->second, rr_dim, val.first, val.second) );
 
@@ -262,6 +263,7 @@ namespace generate_mpo
                     }
                 }
 
+                ///////////////////////////////////
                 //typedef std::map<index_type, prempo_key_type> key_map_t;
                 //key_map_t key_map;
                 //for (index_iterator it = right.begin(); it != right.end(); ++it)
@@ -270,6 +272,7 @@ namespace generate_mpo
                 //for (typename key_map_t::const_iterator it = key_map.begin(); it != key_map.end(); ++it)
                 //{ kos << it->first << "| " << it->second << std::endl; }
                 //kos.close();
+                ///////////////////////////////////
                 
                 std::pair<index_type, index_type> rcd = rcdim(pre_tensor);
 

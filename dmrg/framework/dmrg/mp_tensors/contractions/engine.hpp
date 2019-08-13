@@ -65,9 +65,10 @@ namespace contraction {
         overlap_mpo_right_step(MPSTensor<Matrix, SymmGroup> const & bra_tensor,
                                MPSTensor<Matrix, SymmGroup> const & ket_tensor,
                                Boundary<OtherMatrix, SymmGroup> const & right,
-                               MPOTensor<Matrix, SymmGroup> const & mpo)
+                               MPOTensor<Matrix, SymmGroup> const & mpo,
+                               bool symmetric = true)
         {
-            return common::overlap_mpo_right_step(bra_tensor, ket_tensor, right, mpo);
+            return common::overlap_mpo_right_step(bra_tensor, ket_tensor, right, mpo, symmetric);
         }
 
         static schedule_t
