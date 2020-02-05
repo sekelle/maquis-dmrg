@@ -40,10 +40,6 @@
 
 #include "utils/sizeof.h"
 
-#include "ietl_lanczos_solver.h"
-#include "ietl_jacobi_davidson.h"
-#include "ietl_davidson.h"
-
 #include "dmrg/optimize/solver_interface.hpp"
 
 #include "dmrg/utils/BaseParameters.h"
@@ -52,8 +48,6 @@
 #include "dmrg/utils/time_limit_exception.h"
 #include "dmrg/utils/checks.h"
 #include "dmrg/utils/aligned_allocator.hpp"
-
-#include "dmrg/optimize/site_problem.h"
 
 #define BEGIN_TIMING(name) \
 now = std::chrono::high_resolution_clock::now();

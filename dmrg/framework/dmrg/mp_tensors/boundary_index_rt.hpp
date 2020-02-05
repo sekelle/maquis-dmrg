@@ -32,6 +32,8 @@
 #include <boost/serialization/vector.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 
+#include "dmrg/utils/utils.hpp"
+
 class BoundaryIndexRT
 {
     // TODO: get rid of this

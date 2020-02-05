@@ -32,6 +32,9 @@
 #include <vector>
 #include <thread>
 
+#include <cuda_runtime.h>
+#include "dmrg/utils/cuda_helpers.hpp"
+
 #include "solver.h"
 
 namespace contraction { namespace common {
@@ -150,6 +153,71 @@ super_hamil_mv(DavidsonVector<T> const& ket_tensor,
 
     return ret;
 }
+
+
+/*
+    struct cpu_queue
+    {
+        cpu_queue(unsigned dim) : max_idx(dim), current_idx(0), T(dim),
+                                  tavail(dim), tdone(dim), slavail(dim), sldone(dim) {}
+
+        std::atomic<unsigned> current_idx;
+        unsigned max_idx;
+
+        std::vector<std::vector<std::vector<double>>> T;
+
+        std::vector<std::atomic<int>> tavail, tdone;
+        std::vector<std::atomic<int>> slavail, sldone;
+    };
+
+    template<class Matrix, class OtherMatrix, class SymmGroup>
+    void
+    cpu_work(cpu_queue& cq, unsigned tidx,
+             MPSTensor<Matrix, SymmGroup> & ret,
+             MPSTensor<Matrix, SymmGroup> & ket_tensor,
+             Boundary<OtherMatrix, SymmGroup> const & left,
+             Boundary<OtherMatrix, SymmGroup> const & right,
+             ScheduleNew<Matrix, SymmGroup> const & tasks)
+    {
+        for (unsigned idx = 0; idx < tasks.enumeration.size(); )
+        {
+            unsigned lb_in = tasks.enumeration[idx];
+
+            // check if lb_in has T jobs
+            int hasT = cq.tavail[lb_in] -= 1;
+            if (hasT >= 0)
+            {
+                tasks[lb_in].create_T(right, ket_tensor, cq.T[lb_in], hasT);
+                ++cq.tdone[lb_in];
+
+                idx = 0;
+                continue;
+            }
+
+            // check if all T done in lb_in
+            int Tdone = cq.tdone[lb_in].load();
+            if (Tdone == tasks[lb_in].t_schedule.size())
+            {
+                // check if lb_in as LS jobs
+                int hasLS = cq.slavail[lb_in] -= 1;
+                if (hasLS >= 0)
+                {
+                    unsigned rb = tasks[lb_in][hasLS].get_rb();
+                    tasks[lb_in][hasLS].contract(left, cq.T[lb_in], ret.data()[rb], tasks.mutexes[rb]);
+                    unsigned sldone = cq.sldone[lb_in] += 1;
+
+                    if (sldone == tasks[lb_in].size())
+                        cq.T[lb_in] = std::vector<std::vector<typename Matrix::value_type>>();
+
+                    idx = 0;
+                    continue;
+                }
+            }
+            idx++;
+        }
+    }
+*/
+
 
 }
 }

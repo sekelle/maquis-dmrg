@@ -41,7 +41,6 @@
 #include "dmrg/mp_tensors/contractions/create_schedule/h_diag.hpp"
 #include "dmrg/mp_tensors/contractions/boundary_ops/move_boundary.hpp"
 #include "dmrg/mp_tensors/contractions/boundary_ops/prediction.hpp"
-#include "dmrg/mp_tensors/contractions/boundary_ops/site_hamil.hpp"
 
 namespace contraction {
 
@@ -138,24 +137,6 @@ namespace contraction {
             return common::predict_split_r2l(tst, Mmax, cutoff, alpha, right, mpo);
         }
 
-        static MPSTensor<Matrix, SymmGroup>
-        site_hamil(MPSTensor<Matrix, SymmGroup> & ket_tensor,
-                   Boundary<OtherMatrix, SymmGroup> const & left,
-                   Boundary<OtherMatrix, SymmGroup> const & right,
-                   MPOTensor<Matrix, SymmGroup> const & mpo)
-        {
-            schedule_t tasks = contraction_schedule(ket_tensor, left, right, mpo);
-            return site_hamil(ket_tensor, left, right, tasks);
-        }
-
-        static MPSTensor<Matrix, SymmGroup>
-        site_hamil(MPSTensor<Matrix, SymmGroup> & ket_tensor,
-                    Boundary<OtherMatrix, SymmGroup> const & left,
-                    Boundary<OtherMatrix, SymmGroup> const & right,
-                    schedule_t const & tasks)
-        {
-            return common::site_hamil(ket_tensor, left, right, tasks);
-        }
     };
 
 } // namespace contraction

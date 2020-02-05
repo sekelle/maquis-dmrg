@@ -25,9 +25,6 @@
  *
  *****************************************************************************/
 
-#ifndef ENGINE_COMMON_TASKS_HPP
-#define ENGINE_COMMON_TASKS_HPP
-
 #include <vector>
 #include <utility>
 #include <malloc.h>
@@ -38,10 +35,12 @@
 #include <boost/tuple/tuple.hpp>
 
 #include "utils/timings.h"
+#include "dmrg/utils/utils.hpp"
 
-#include "dmrg/solver/accelerator.h"
+#include "accelerator.h"
+#include "constants.h"
 
-#include "dmrg/mp_tensors/contractions/task/mps_stage.hpp"
+#include "vector_stage.h"
 #include "dmrg/mp_tensors/boundary_index_rt.hpp"
 
 namespace contraction {
@@ -358,5 +357,3 @@ extern template class ScheduleNew<double>;
 
 } // namespace common
 } // namespace contraction
-
-#endif

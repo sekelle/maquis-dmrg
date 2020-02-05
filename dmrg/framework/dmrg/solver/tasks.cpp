@@ -39,7 +39,7 @@
 #include "dmrg/solver/numeric/gemm_template.h"
 #include "dmrg/solver/numeric/gpu.h"
 
-#include "dmrg/solver/tasks.h"
+#include "tasks.h"
 
 namespace contraction {
 namespace common {
