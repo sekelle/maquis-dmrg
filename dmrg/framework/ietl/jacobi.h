@@ -33,18 +33,20 @@
 #ifndef IETL_JACOBI_H
 #define IETL_JACOBI_H
 
-#include <ietl/traits.h>
-#include <ietl/fmatrix.h>
-#include <ietl/ietl2lapack.h> 
-#include <ietl/iteration.h>
- 
-#include <ietl/cg.h>
-#include <ietl/gmres.h>
-
 #include <complex>
 #include <vector>
+#include <functional>
 
-#include <boost/function.hpp>
+#include <boost/numeric/bindings/lapack/driver/stev.hpp>
+#include <boost/numeric/bindings/lapack/computational/steqr.hpp>
+#include <boost/numeric/bindings/lapack/driver/syev.hpp>
+#include <boost/numeric/bindings/lapack/driver/heev.hpp>
+
+#include "fmatrix.h"
+#include "iteration.h"
+ 
+#include "cg.h"
+#include "gmres.h"
 
 namespace ietl
 {
@@ -201,7 +203,7 @@ namespace ietl
     private:
         Matrix const & matrix_;
         VS vecspace_;
-        boost::function<vector_type(jcd_solver_operator<Matrix, VS, vector_type> const &, vector_type const &, vector_type const &, double)> solv_;
+        std::function<vector_type(jcd_solver_operator<Matrix, VS, vector_type> const &, vector_type const &, vector_type const &, double)> solv_;
         std::size_t n_, max_iter_;
         bool verbose_;
     };
