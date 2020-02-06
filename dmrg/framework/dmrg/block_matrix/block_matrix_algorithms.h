@@ -61,11 +61,10 @@ struct truncation_results {
     { }
 };
 
-template<class Matrix1, class Matrix2, class Matrix3, class SymmGroup, class Scheduler>
+template<class Matrix1, class Matrix2, class Matrix3, class SymmGroup>
 void gemm(block_matrix<Matrix1, SymmGroup> const & A,
           block_matrix<Matrix2, SymmGroup> const & B,
-          block_matrix<Matrix3, SymmGroup> & C,
-          const Scheduler& scheduler = Scheduler())
+          block_matrix<Matrix3, SymmGroup> & C)
 {
     C.clear();
     assert(B.basis().is_sorted());
@@ -90,13 +89,6 @@ void gemm(block_matrix<Matrix1, SymmGroup> const & A,
     }
 }
 
-template<class Matrix1, class Matrix2, class Matrix3, class SymmGroup>
-void gemm(block_matrix<Matrix1, SymmGroup> const & A,
-          block_matrix<Matrix2, SymmGroup> const & B,
-          block_matrix<Matrix3, SymmGroup> & C)
-{
-    gemm(A, B, C, parallel::scheduler_nop());
-}
 
 template<class Matrix, class DiagMatrix, class SymmGroup>
 void svd(block_matrix<Matrix, SymmGroup> const & M,
@@ -198,11 +190,7 @@ truncation_results svd_truncate(block_matrix<Matrix, SymmGroup> const & M,
                                 bool verbose = true)
 { 
     assert( M.left_basis().sum_of_sizes() > 0 && M.right_basis().sum_of_sizes() > 0 );
-    #ifdef USE_AMBIENT
-    svd_merged(M, U, V, S);
-    #else
     svd(M, U, V, S);
-    #endif
     
     Index<SymmGroup> old_basis = S.left_basis();
     size_t* keeps = new size_t[S.n_blocks()];
@@ -315,11 +303,7 @@ truncation_results heev_truncate(block_matrix<Matrix, SymmGroup> const & M,
                                  bool verbose = true)
 {
     assert( M.basis().sum_of_left_sizes() > 0 && M.right_basis().sum_of_sizes() > 0 );
-    #ifdef USE_AMBIENT
-    heev_merged(M, evecs, evals);
-    #else
     heev(M, evecs, evals);
-    #endif
     Index<SymmGroup> old_basis = evals.left_basis();
     size_t* keeps = new size_t[evals.n_blocks()];
     double truncated_fraction, truncated_weight, smallest_ev;
@@ -346,10 +330,6 @@ truncation_results heev_truncate(block_matrix<Matrix, SymmGroup> const & M,
 //            --k; // everything gets shifted, to we have to look into the same k again
 // C - Tim : I reversed the loop because the new version was incompatible with the keeps array, and created a bug when keeps[k]=0.
         } else {
-            #ifdef USE_AMBIENT
-            ambient::numeric::split(evals(evals.basis().left_charge(k), evals.basis().right_charge(k)));
-            ambient::numeric::split(evecs(evecs.basis().left_charge(k), evecs.basis().right_charge(k)));
-            #endif
 
             if(keep >= num_rows(evals[k])) continue;
 

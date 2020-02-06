@@ -413,7 +413,6 @@ struct deas_mps_init : public mps_initializer<Matrix,SymmGroup>
                    bool fillrand = true, 
                    typename Matrix::value_type val = 0)
     {
-        parallel::scheduler_balanced scheduler(mps.length());
         std::size_t L = mps.length();
 
         std::vector<Index<SymmGroup> > allowed = allowed_sectors(site_types, phys_dims, right_end, 5);
@@ -422,7 +421,6 @@ struct deas_mps_init : public mps_initializer<Matrix,SymmGroup>
         maquis::cout << "size of sectors succesfully adapted" << std::endl;
 
         omp_for(size_t i, parallel::range<size_t>(0,L), {
-            parallel::guard proc(scheduler(i));
             mps[i] = MPSTensor<Matrix, SymmGroup>(phys_dims[site_types[i]], allowed[i], allowed[i+1], fillrand, val);
             mps[i].divide_by_scalar(mps[i].scalar_norm());
         });

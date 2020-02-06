@@ -28,33 +28,29 @@
 #ifndef STORAGE_ARCHIVE_H
 #define STORAGE_ARCHIVE_H
 
-#include "dmrg/utils/parallel.hpp"
-#include <boost/utility.hpp>
 #include <alps/hdf5.hpp>
 #include <alps/utility/encode.hpp>
 
 namespace storage {
 
     inline std::string once(std::string fp){
-        if(!parallel::uniq()) return fp+"."+parallel::rank_str();
         return fp;
     }
 
-    inline void uniq(std::string fp){
-        if(!parallel::uniq()) std::remove(once(fp).c_str());
-    }
-
-    class archive : boost::noncopyable {
+    class archive {
     public:
         archive(std::string fp) : write(false), fp(fp) {
             impl = new alps::hdf5::archive(fp);
         }
+
         archive(std::string fp, const char* rights) : write(strcmp(rights,"w") == 0), fp(fp) {
             impl = new alps::hdf5::archive(once(fp), rights); 
         }
+
+        archive(const archive &) = delete;
+
        ~archive(){
            delete impl;
-           if(write) uniq(fp); 
         }
         bool is_group(const char* path){
             return impl->is_group(path);

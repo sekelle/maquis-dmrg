@@ -284,15 +284,6 @@ private:
         gemm(U, Ssqrt, left);
         gemm(Ssqrt, V, right);
         
-#ifdef USE_AMBIENT
-        {
-            parallel::guard::serial guard;
-            for(std::size_t k = 0; k < S.n_blocks(); ++k){
-                ambient::numeric::merge(S[k]);
-                ambient::numeric::touch(S[k][0]);
-            }
-        }
-#endif
         for(std::size_t k = 0; k < S.n_blocks(); ++k){
             int keep = std::find_if(S[k].diagonal().first, S[k].diagonal().second, boost::lambda::_1 < 1e-10)-S[k].diagonal().first;
             

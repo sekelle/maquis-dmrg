@@ -28,7 +28,6 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   set(CMAKE_INSTALL_PREFIX "/opt/maquis" CACHE PATH "MAQUIS install prefix" FORCE)
 endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 
-set(AMBIENT_SOURCES_DIR "../ambient" CACHE STRING "Location of the ambient source tree")
 
 set(BUILD_SYMMETRIES "SU2U1;SU2U1PG" CACHE STRING "List of symmetry
 to include in the build objects. U1, TwoU1, TwoU1PG, NU1, Z2, SU2U1, SU2U1PG and NONE are currently available.")
@@ -39,8 +38,6 @@ option(COMPLEX "compile dmrg for complex numbers" OFF)
 
 option(ENABLE_ALPS_MODELS "Enable binding with ALPS lattices and models" ON)
 option(ENABLE_OMP "Enable OpenMP" ON)
-option(USE_AMBIENT "Enable Ambient" OFF)
-option(BUILD_AMBIENT "Build Ambient inside this build tree" OFF)
 
 option(ENABLE_COLLECTOR "Enable profiling through DataCollector object" OFF)
 
@@ -235,27 +232,6 @@ if(NOT USE_AMBIENT)
   message(STATUS "Lapack libs:     ${MAQUISLapack_LIBRARIES}")
 endif(NOT USE_AMBIENT)
 
-# Ambient
-if(USE_AMBIENT)
-  add_definitions(-DUSE_AMBIENT)
-  if(BUILD_AMBIENT)
-    add_subdirectory(${AMBIENT_SOURCES_DIR} ambient-build)
-    include(${CMAKE_BINARY_DIR}/ambient-build/AmbientBuildTree.cmake)
-  else(BUILD_AMBIENT)
-    if(NOT Ambient_FOUND)
-      find_package(Ambient REQUIRED)
-    endif(NOT Ambient_FOUND)
-  endif(BUILD_AMBIENT)
-  macro(compile_with_ambient)
-    include_directories(${AMBIENT_INCLUDE_DIRS})
-    link_directories(${AMBIENT_LIBRARY_DIRS})
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${AMBIENT_COMPILE_FLAGS}")
-  endmacro(compile_with_ambient)
-else(USE_AMBIENT)
-  macro(compile_with_ambient)
-    message(FATAL_ERROR Ambient not enabled!)
-  endmacro(compile_with_ambient)
-endif(USE_AMBIENT)
 
 find_package(CUDA)
 

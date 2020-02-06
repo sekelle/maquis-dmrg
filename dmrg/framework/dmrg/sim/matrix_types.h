@@ -28,16 +28,8 @@
 #define SIM_MATRIX_TYPES_H
 
 
-#if defined USE_AMBIENT
-#include <complex>
-#include "dmrg/block_matrix/detail/ambient.hpp"
-#include "dmrg/block_matrix/detail/alps.hpp"
-typedef ambient::tiles<ambient::matrix<double> > matrix;
-typedef ambient::tiles<ambient::matrix< std::complex<double> > > cmatrix;
-#else
 #define ALIGNMENT 32
 #include "dmrg/block_matrix/detail/alps.hpp"
 #include "matrix.fwd.h"
-#endif
 
 #endif

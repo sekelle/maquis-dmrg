@@ -44,7 +44,6 @@
 #include "utils/timings.h"
 
 #include "dmrg/utils/BaseParameters.h"
-#include "dmrg/utils/parallel/tracking.hpp"
 #include "dmrg/utils/parallel.hpp"
 
 #include "dmrg/solver/constants.h"

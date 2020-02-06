@@ -40,11 +40,10 @@
 
 #include "dmrg/utils/parallel.hpp"
 
-template<class Matrix1, class Matrix2, class Matrix3, class SymmGroup, class Scheduler>
+template<class Matrix1, class Matrix2, class Matrix3, class SymmGroup>
 void gemm(SiteOperator<Matrix1, SymmGroup> const & A,
           SiteOperator<Matrix2, SymmGroup> const & B,
-          SiteOperator<Matrix3, SymmGroup> & C,
-          const Scheduler& scheduler = Scheduler())
+          SiteOperator<Matrix3, SymmGroup> & C)
 {
     C.clear();
     assert(B.basis().is_sorted());
@@ -69,13 +68,6 @@ void gemm(SiteOperator<Matrix1, SymmGroup> const & A,
     }
 }
 
-template<class Matrix1, class Matrix2, class Matrix3, class SymmGroup>
-void gemm(SiteOperator<Matrix1, SymmGroup> const & A,
-          SiteOperator<Matrix2, SymmGroup> const & B,
-          SiteOperator<Matrix3, SymmGroup> & C)
-{
-    gemm(A, B, C, parallel::scheduler_nop());
-}
 
 template<class Matrix, class SymmGroup>
 SiteOperator<Matrix, SymmGroup> adjoint(SiteOperator<Matrix, SymmGroup> m)
