@@ -31,8 +31,7 @@
 
 #include <thread>
 #include <mutex>
-
-#include <boost/tuple/tuple.hpp>
+#include <tuple>
 
 #include "utils/timings.h"
 #include "dmrg/utils/utils.hpp"
@@ -45,8 +44,6 @@
 
 namespace contraction {
 namespace common {
-
-using boost::get; 
 
 template <class T> class WorkSet;
 
@@ -235,7 +232,7 @@ public:
     void stage(accelerator::device* dev, WorkSet<value_type>* ws_);
 
     struct TSched_type : public
-    std::vector<boost::tuple<unsigned, unsigned, unsigned, unsigned, size_t>>
+    std::vector<std::tuple<unsigned, unsigned, unsigned, unsigned, size_t>>
     {
         TSched_type();
         size_t buf_size;

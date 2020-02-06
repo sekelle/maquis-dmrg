@@ -44,8 +44,6 @@
 namespace contraction {
 namespace common {
 
-using boost::get; 
-
 namespace detail{
 
     template <class T>
@@ -552,10 +550,10 @@ namespace detail{
         std::vector<std::vector<value_type>> ret(t_schedule.size());
         for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
         {
-            unsigned mps_offset = boost::get<0>(t_schedule[ti]);
-            unsigned ci = boost::get<1>(t_schedule[ti]);
-            unsigned ci_eff = boost::get<2>(t_schedule[ti]);
-            unsigned lb_ket = boost::get<3>(t_schedule[ti]);
+            unsigned mps_offset = std::get<0>(t_schedule[ti]);
+            unsigned ci = std::get<1>(t_schedule[ti]);
+            unsigned ci_eff = std::get<2>(t_schedule[ti]);
+            unsigned lb_ket = std::get<3>(t_schedule[ti]);
 
             unsigned bls = left_rt.left_size(ci);
             unsigned brs = left_rt.right_size(ci);
@@ -611,10 +609,10 @@ namespace detail{
         value_type* dev_l = gpu_data.dev_rsl;
         for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
         {
-            unsigned mps_offset = boost::get<0>(t_schedule[ti]);
-            unsigned ci = boost::get<1>(t_schedule[ti]);
-            unsigned ci_eff = boost::get<2>(t_schedule[ti]);
-            unsigned lb_ket = boost::get<3>(t_schedule[ti]);
+            unsigned mps_offset = std::get<0>(t_schedule[ti]);
+            unsigned ci = std::get<1>(t_schedule[ti]);
+            unsigned ci_eff = std::get<2>(t_schedule[ti]);
+            unsigned lb_ket = std::get<3>(t_schedule[ti]);
 
             unsigned bls = left_rt.left_size(ci);
             unsigned brs = left_rt.right_size(ci);
@@ -657,10 +655,10 @@ namespace detail{
         std::vector<std::vector<value_type>> ret(t_schedule.size());
         for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
         {
-            unsigned mps_offset = boost::get<0>(t_schedule[ti]);
-            unsigned ci = boost::get<1>(t_schedule[ti]);
-            unsigned ci_eff = boost::get<2>(t_schedule[ti]);
-            unsigned lb_ket = boost::get<3>(t_schedule[ti]);
+            unsigned mps_offset = std::get<0>(t_schedule[ti]);
+            unsigned ci = std::get<1>(t_schedule[ti]);
+            unsigned ci_eff = std::get<2>(t_schedule[ti]);
+            unsigned lb_ket = std::get<3>(t_schedule[ti]);
 
             unsigned bls = right_rt.left_size(ci);
             unsigned brs = right_rt.right_size(ci);
@@ -715,10 +713,10 @@ namespace detail{
         value_type* dev_r = gpu_data.dev_rsl;
         for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
         {
-            unsigned mps_offset = boost::get<0>(t_schedule[ti]);
-            unsigned ci = boost::get<1>(t_schedule[ti]);
-            unsigned ci_eff = boost::get<2>(t_schedule[ti]);
-            unsigned lb_ket = boost::get<3>(t_schedule[ti]);
+            unsigned mps_offset = std::get<0>(t_schedule[ti]);
+            unsigned ci = std::get<1>(t_schedule[ti]);
+            unsigned ci_eff = std::get<2>(t_schedule[ti]);
+            unsigned lb_ket = std::get<3>(t_schedule[ti]);
 
             unsigned bls = right_rt.left_size(ci);
             unsigned brs = right_rt.right_size(ci);
@@ -769,7 +767,7 @@ namespace detail{
     unsigned MPSBlock<T>::get_ti(unsigned mps_offset, unsigned ci_virt) const
     {
         for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
-            if (boost::get<0>(t_schedule[ti]) == mps_offset && boost::get<1>(t_schedule[ti]) == ci_virt)
+            if (std::get<0>(t_schedule[ti]) == mps_offset && std::get<1>(t_schedule[ti]) == ci_virt)
                 return ti;
 
         //throw std::runtime_error("ti not found\n");
@@ -782,9 +780,9 @@ namespace detail{
         std::size_t ret = 0;
         for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
         {
-            unsigned ci = boost::get<1>(t_schedule[ti]);
-            unsigned ci_eff = boost::get<2>(t_schedule[ti]);
-            unsigned lb_ket = boost::get<3>(t_schedule[ti]);
+            unsigned ci = std::get<1>(t_schedule[ti]);
+            unsigned ci_eff = std::get<2>(t_schedule[ti]);
+            unsigned lb_ket = std::get<3>(t_schedule[ti]);
 
             unsigned bls = right.left_size(ci);
             unsigned brs = right.right_size(ci);
@@ -808,7 +806,7 @@ namespace detail{
         for (unsigned ti = 0; ti < t_schedule.size(); ++ti)
         {
             gpu_data.t[ti] = dev_t_seek;
-            dev_t_seek += boost::get<4>(t_schedule[ti]);
+            dev_t_seek += std::get<4>(t_schedule[ti]);
         }
 
         gpu_data.dev_rsl = dev_t_seek;

@@ -71,7 +71,7 @@ namespace common {
                 mpsb.t_schedule.buf_size += phys_i[s].second * sza;
                 for (unsigned ss = 0; ss < phys_i[s].second; ++ss)
                 {
-                    mpsb.t_schedule.push_back(boost::make_tuple(ket_offset + ss * rs_ket, ci, ci_eff, lb_ket, sza));
+                    mpsb.t_schedule.push_back(std::make_tuple(ket_offset + ss * rs_ket, ci, ci_eff, lb_ket, sza));
                 }
             } 
         }

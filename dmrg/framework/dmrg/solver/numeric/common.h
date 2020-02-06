@@ -28,14 +28,12 @@
 #ifndef MAQUIS_COMMON_H
 #define MAQUIS_COMMON_H
 
-#include <boost/static_assert.hpp>
-
 template <unsigned A, typename T>
 inline T round_up(T x)
 {
     // round up x to nearest multiple of A
-    BOOST_STATIC_ASSERT((A & (A-1)) == 0); // check that A is a power of 2
-    BOOST_STATIC_ASSERT(!std::numeric_limits<T>::is_signed);
+    static_assert((A & (A-1)) == 0, "A needs to be a power of 2");
+    static_assert(!std::numeric_limits<T>::is_signed, "T needs to be an unsigned type");
     return (x+(A-1)) & (~(A-1));
 }
 
