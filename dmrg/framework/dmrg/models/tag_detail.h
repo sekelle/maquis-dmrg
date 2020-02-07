@@ -40,10 +40,6 @@ namespace tag_detail {
     template <class BlockMatrix>
     void remove_empty_blocks(BlockMatrix & op)
     {
-        {
-            parallel::guard::serial guard;
-        }
-
         for (typename BlockMatrix::size_type b=0; b < op.n_blocks(); ++b)
         {
             bool only_zero = true;
@@ -79,9 +75,6 @@ namespace tag_detail {
         typedef typename BlockMatrix::matrix_type Matrix;
         typedef typename Matrix::value_type value_type;
  
-        {
-            parallel::guard::serial guard;
-        }
         if (!shape_equal(reference, sample))
             return std::make_pair(false, 0.);
 

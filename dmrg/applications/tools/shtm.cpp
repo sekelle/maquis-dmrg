@@ -28,12 +28,12 @@
 #include <iostream>
 #include <string>
 #include <fstream>
+#include <chrono>
 #include <sys/time.h>
 #include <sys/stat.h>
 
 #include <cuda_profiler_api.h>
 
-#include <boost/chrono.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 
@@ -149,13 +149,13 @@ int main(int argc, char ** argv)
 
         SiteProblem<matrix, smatrix, symm> sp(initial, left, right, tsmpo, 0.97651);
 
-        auto now = boost::chrono::high_resolution_clock::now();
+        auto now = std::chrono::high_resolution_clock::now();
         cudaProfilerStart(); 
         auto res = solve_ietl_jcd(sp, initial, parms, ortho_vecs);
         cudaProfilerStop();
-        auto then = boost::chrono::high_resolution_clock::now();
+        auto then = std::chrono::high_resolution_clock::now();
 
-        double jcd_time = boost::chrono::duration<double>(then-now).count();
+        double jcd_time = std::chrono::duration<double>(then-now).count();
         sp.contraction_schedule.print_stats(jcd_time);
 
         maquis::cout << "Energy " << res.first << std::endl;

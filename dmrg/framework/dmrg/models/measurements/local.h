@@ -39,10 +39,8 @@ namespace measurements {
     class local : public measurement<Matrix, SymmGroup> {
         typedef measurement<Matrix, SymmGroup> base;
         typedef typename base::op_t op_t;
-        typedef generate_mpo::MPOMaker<Matrix, SymmGroup> generator;
         typedef std::vector<op_t> op_vec;
-        typedef std::vector<std::pair<op_vec, bool> > bond_element;
-        typedef typename maquis::traits::aligned_matrix<Matrix, maquis::aligned_allocator, ALIGNMENT>::type AlignedMatrix;
+        typedef std::vector<std::pair<op_vec, bool>> bond_element;
 
     public:
         
@@ -56,7 +54,8 @@ namespace measurements {
         , is_bond(true)
         , mpo_terms(terms)
         {
-            this->cast_to_real = all_true(mpo_terms.begin(), mpo_terms.end(), static_cast<bool (*)(bond_element const&)>(&is_hermitian_meas));
+            this->cast_to_real = all_true(mpo_terms.begin(), mpo_terms.end(),
+                                          static_cast<bool (*)(bond_element const&)>(&is_hermitian_meas));
         }
 
         local(std::string const& name_, const Lattice & lat,
@@ -73,44 +72,52 @@ namespace measurements {
             this->cast_to_real = is_hermitian_meas(site_term);
         }
 
-        void evaluate(MPS<Matrix, SymmGroup> const& mps, boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none
-                                                       , boost::optional<std::string const&> on_the_fly_bra = boost::none
-                                                       , boost::optional<MPS<Matrix, SymmGroup> const&> bra_mps = boost::none)
+        void evaluate(MPS<Matrix, SymmGroup> const& mps,
+                      boost::optional<reduced_mps<Matrix, SymmGroup> const&> rmps = boost::none,
+                      boost::optional<std::string const&> on_the_fly_bra = boost::none,
+                      boost::optional<MPS<Matrix, SymmGroup> const&> bra_mps = boost::none)
         {
             this->vector_results.clear();
             this->labels.clear();
             
             typedef typename SymmGroup::subcharge subcharge;
-            if (!rmps || this->is_super_meas || is_bond) {
-                evaluate_with_mpo(mps);
-            } else {
-                
-                /// compute local reduced density matrices
-                rmps.get().init();
-                
-                std::size_t L = mps.size();
-                this->vector_results.reserve(this->vector_results.size() + L);
-                this->labels.reserve(this->labels.size() + L);
-                
-                for (typename Lattice::pos_t p = 0; p < L; ++p) {
-                    
-                    subcharge type = lattice.get_prop<subcharge>("type", p);
-                    if (site_term[type].n_blocks() > 0) {
 
-                        MPOTensor<Matrix, SymmGroup> temp;
-                        temp.set(0, 0, site_term[type]);
-                        
-                        MPSTensor<Matrix, SymmGroup> mpsp = mps[p];
-                        MPSTensor<Matrix, SymmGroup> vec2
-                        = contraction::Engine<Matrix, AlignedMatrix, SymmGroup>::site_hamil(mpsp, rmps.get().left(p), rmps.get().right(p), temp);
-                        
-                        typename MPS<Matrix, SymmGroup>::scalar_type res = mpsp.scalar_overlap(vec2);
-                        
-                        this->vector_results.push_back(res);
-                        this->labels.push_back( lattice.get_prop<std::string>("label", p) );
-                    }
-                }
-            }
+            evaluate_with_mpo(mps);
+
+            // disabled, because site_hamil (matrix vector prod) is no longer exposed)
+
+            //if (!rmps || this->is_super_meas || is_bond) {
+            //    evaluate_with_mpo(mps);
+            //} else {
+            //    throw std::runtime_error("not implemented\n");
+
+                /// compute local reduced density matrices
+                //rmps.get().init();
+                //
+                //std::size_t L = mps.size();
+                //this->vector_results.reserve(this->vector_results.size() + L);
+                //this->labels.reserve(this->labels.size() + L);
+                //
+                //for (typename Lattice::pos_t p = 0; p < L; ++p) {
+                //    
+                //    subcharge type = lattice.get_prop<subcharge>("type", p);
+                //    if (site_term[type].n_blocks() > 0) {
+
+                //        MPOTensor<Matrix, SymmGroup> temp;
+                //        temp.set(0, 0, site_term[type]);
+                //        
+                //        MPSTensor<Matrix, SymmGroup> mpsp = mps[p];
+                //        MPSTensor<Matrix, SymmGroup> vec2
+                //        = contraction::Engine<Matrix, AlignedMatrix, SymmGroup>::
+                //            site_hamil(mpsp, rmps.get().left(p), rmps.get().right(p), temp);
+                //        
+                //        typename MPS<Matrix, SymmGroup>::scalar_type res = mpsp.scalar_overlap(vec2);
+                //        
+                //        this->vector_results.push_back(res);
+                //        this->labels.push_back( lattice.get_prop<std::string>("label", p) );
+                //    }
+                //}
+            //}
         }
         
     protected:
@@ -141,11 +148,13 @@ namespace measurements {
                         boost::tie(match, boost::tuples::ignore) = res.insert( std::make_pair(mit->first, 0.) );
                     
                     if (!this->is_super_meas) {
-                        match->second += (this->cast_to_real) ? maquis::real(expval(mps, mit->second)) : expval(mps, mit->second);
+                        match->second += (this->cast_to_real) ? maquis::real(expval(mps, mit->second))
+                                                              : expval(mps, mit->second);
                     } else {
                         MPS<Matrix, SymmGroup> super_mpo = mpo_to_smps(mit->second, this->phys_psi);
                         // static_cast needed for icpc 12.x
-                        typedef typename MPS<Matrix, SymmGroup>::scalar_type (*overlap_func)(MPS<Matrix, SymmGroup> const &, MPS<Matrix, SymmGroup> const &);
+                        typedef typename MPS<Matrix, SymmGroup>::scalar_type
+                            (*overlap_func)(MPS<Matrix, SymmGroup> const &, MPS<Matrix, SymmGroup> const &);
                         typename MPS<Matrix, SymmGroup>::scalar_type val = ::overlap(super_mpo, mps);
                         match->second += val/nn;
                     }
@@ -168,7 +177,6 @@ namespace measurements {
         op_vec site_term;
         std::vector<bond_element> mpo_terms;
     };
-    
 }
 
 #endif

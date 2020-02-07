@@ -1,6 +1,6 @@
 add_definitions(-DHAVE_ALPS_HDF5 -DDISABLE_MATRIX_ELEMENT_ITERATOR_WARNING -DALPS_DISABLE_MATRIX_ELEMENT_ITERATOR_WARNING)
 
-set(DMRG_APP_LIBRARIES dmrg_utils numeric_gpu ${DMRG_LIBRARIES})
+set(DMRG_APP_LIBRARIES dmrg_utils solver numeric_gpu ${DMRG_LIBRARIES})
 
 if(USE_AMBIENT)
   compile_with_ambient()
@@ -72,5 +72,5 @@ create_tools_symm_target("mps_transform_pg" "SU2U1PG" "mps_transform.cpp"  "dmrg
 endif(DMRG_HAS_TwoU1PG)
 
 
-create_tools_symm_target("shtm_su2u1"   "SU2U1"   "shtm.cpp"  "${DMRG_APP_LIBRARIES}")
-create_tools_symm_target("shtm_su2u1pg" "SU2U1PG" "shtm.cpp"  "${DMRG_APP_LIBRARIES}")
+#create_tools_symm_target("shtm_su2u1"   "SU2U1"   "shtm.cpp"  "${DMRG_APP_LIBRARIES}")
+#create_tools_symm_target("shtm_su2u1pg" "SU2U1PG" "shtm.cpp"  "${DMRG_APP_LIBRARIES}")

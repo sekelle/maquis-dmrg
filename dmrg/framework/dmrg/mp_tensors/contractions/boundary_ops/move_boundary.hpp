@@ -204,7 +204,7 @@ namespace contraction {
                 for (auto& e : tasks[rb_ket])
                     b_index.add_cohort(e.get_lb(), rb_ket, e.get_offsets());
 
-            if (symmetric) b_index.complement_transpose(mpo.herm_right, true);
+            if (symmetric) b_index.complement_transpose(mpo.rightBond().conj(), true);
             Boundary<OtherMatrix, SymmGroup> ret(b_index);
             schedule_t::lsched_timer.end();
 
@@ -283,7 +283,8 @@ namespace contraction {
         overlap_mpo_right_step(MPSTensor<Matrix, SymmGroup> const & bra_tensor_in,
                                MPSTensor<Matrix, SymmGroup> const & ket_tensor,
                                Boundary<OtherMatrix, SymmGroup> const & right,
-                               MPOTensor<Matrix, SymmGroup> const & mpo)
+                               MPOTensor<Matrix, SymmGroup> const & mpo,
+                               bool symmetric = true)
         {
             typedef typename SymmGroup::charge charge;
             typedef typename Matrix::value_type value_type;
@@ -324,7 +325,8 @@ namespace contraction {
             omp_for(unsigned lb_ket, parallel::range<unsigned>(0,loop_max), {
                 // should pass ket indices
                 rshtm_t_tasks(right.index(), bra_left_i, bra_right_i, physical_i, bra_right_pb, lb_ket, tasks[lb_ket]);
-                rshtm_tasks(mpo, right.index(), bra_left_i, bra_right_i, physical_i, bra_right_pb, lb_ket, tasks[lb_ket], true);
+                rshtm_tasks(mpo, right.index(), bra_left_i, bra_right_i, physical_i,
+                            bra_right_pb, lb_ket, tasks[lb_ket], symmetric);
             });
 
             BoundaryIndex<value_type, SymmGroup> b_index(ket_left_i, bra_left_i);
@@ -332,7 +334,7 @@ namespace contraction {
                 for (auto& e : tasks[lb_ket])
                     b_index.add_cohort(lb_ket, e.get_rb(), e.get_offsets());
 
-            b_index.complement_transpose(mpo.herm_left, false);
+            b_index.complement_transpose(mpo.leftBond().conj(), false);
             Boundary<OtherMatrix, SymmGroup> ret(b_index);
 
             ret.allocate_all();

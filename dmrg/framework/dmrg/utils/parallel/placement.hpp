@@ -123,15 +123,6 @@ namespace parallel {
             mpo[s].exceptions_l = exceptions[s].first;
             mpo[s].exceptions_r = exceptions[s+1].second;
         }
-    #ifdef USE_AMBIENT
-        for(int s = 0; s < mpo.length()+1; s++){
-            maquis::cout << "Left " << s << ": ";
-            maquis::cout << "E1: "; for(int k = 0; k < exceptions[s].first.size(); k++) maquis::cout << exceptions[s].first[k] << " "; 
-            maquis::cout << "; E2: "; for(int k = 0; k < exceptions[s].second.size(); k++) maquis::cout << exceptions[s].second[k] << " ";
-            maquis::cout << "; PL: "; for(int k = 0; k < placements[s].size(); k++) maquis::cout << placements[s][k] << " ";
-            maquis::cout << "\n";
-        }
-    #endif
         return placements;
     }
 

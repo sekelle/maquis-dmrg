@@ -28,8 +28,11 @@
 #ifndef ENGINE_SITE_HAMIL_SCHEDULE_HPP
 #define ENGINE_SITE_HAMIL_SCHEDULE_HPP
 
+#include <chrono>
 #include <boost/lambda/construct.hpp>
-#include "dmrg/utils/accelerator.h"
+
+#include "dmrg/solver/accelerator.h"
+
 
 namespace contraction {
 namespace common {
@@ -46,7 +49,7 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
     typedef typename Matrix::value_type value_type;
     typedef MPOTensor_detail::index_type index_type;
 
-    boost::chrono::high_resolution_clock::time_point now = boost::chrono::high_resolution_clock::now();
+    std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
 
     accelerator::gpu::reset_buffers();
 
@@ -76,16 +79,14 @@ create_contraction_schedule(MPSTensor<Matrix, SymmGroup> & initial,
     if (std::max(mpo.row_dim(), mpo.col_dim()) > 10)
     {
         maquis::cout << "Schedule size: " << tasks.size() << " blocks, " //<< tasks.enumeration_gpu.size()
-                         //<< " cgs_gpu, " << ncg << " cgs_cpu, "
                      << " R " << size_of(right) << "B, "
                      << " L " << size_of(left) << "B "
                      << " GPU " << tasks.gpu_flops / 1024 / 1024 << "MF, "
                      << " CPU " << tasks.cpu_flops / 1024 / 1024 << "MF, "
-                     //<< " B " << memops / 1024 / 1024 << "MB, "
                      << std::endl;
 
-        boost::chrono::high_resolution_clock::time_point then = boost::chrono::high_resolution_clock::now();
-        maquis::cout << "Time elapsed in SCHEDULE: " << boost::chrono::duration<double>(then - now).count() << std::endl;
+        std::chrono::high_resolution_clock::time_point then = std::chrono::high_resolution_clock::now();
+        maquis::cout << "Time elapsed in SCHEDULE: " << std::chrono::duration<double>(then - now).count() << std::endl;
     }
 
     return tasks;

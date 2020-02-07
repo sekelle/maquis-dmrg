@@ -44,8 +44,9 @@
 #include "utils/timings.h"
 
 #include "dmrg/utils/BaseParameters.h"
-#include "dmrg/utils/parallel/tracking.hpp"
 #include "dmrg/utils/parallel.hpp"
+
+#include "dmrg/solver/constants.h"
 
 #ifdef HAVE_ALPS_HDF5
 #include "dmrg/utils/archive.h"
@@ -54,8 +55,6 @@ namespace storage {
     extern Logger<storage::archive> log;
 }
 #endif
-
-#define MAX_N_GPUS 10
 
 template<class Matrix, class SymmGroup> class Boundary;
 template<class Matrix, class SymmGroup> class MPSTensor;
@@ -467,9 +466,16 @@ namespace storage {
                 return dev_data[d].device_data();
             }
 
-            std::vector<void*>const & device_data(int d = -1) const {
+            const std::vector<void*>& device_data(int d = -1) const {
                 if (d < 0) cudaGetDevice(&d);
                 return dev_data[d].device_data();
+            }
+
+            std::vector<void*> const* const* all_device_data() const {
+                for (int d = 0; d < MAX_N_GPUS; ++d)
+                    dev_data_view[d] = &dev_data[d].device_data();
+
+                return dev_data_view;
             }
 
             int const & gpu_state(int d) const
@@ -483,6 +489,8 @@ namespace storage {
             }
 
         private:
+            mutable std::vector<void*> const*  dev_data_view[MAX_N_GPUS];
+
             serializable<T> dev_data[MAX_N_GPUS];
         };
 

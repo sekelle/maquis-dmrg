@@ -93,7 +93,7 @@ namespace common {
                     if (!left.has_block(ci, b1)) continue;
                     unsigned left_idx = left.offset(ci, b1) / (ls_in * ls_out);
 
-                    int A = mpo.left_spin(b1).get(); if (!::SU2::triangle<SymmGroup>(lc_in, A, lc_out)) continue;
+                    int A = mpo.leftBond().spin(b1).get(); if (!::SU2::triangle<SymmGroup>(lc_in, A, lc_out)) continue;
 
                     for (auto row_it = mpo.row(b1).begin(); row_it != mpo.row(b1).end(); ++row_it) {
                         index_type b2 = row_it.index();
@@ -102,7 +102,7 @@ namespace common {
                         for (unsigned op_index = 0; op_index < access.size(); ++op_index)
                         {
                             typename operator_selector<Matrix, SymmGroup>::type const & W = access.op(op_index);
-                            int K = W.spin().get(), Ap = mpo.right_spin(b2).get();
+                            int K = W.spin().get(), Ap = mpo.rightBond().spin(b2).get();
 
                             for (size_t w_block = 0; w_block < W.basis().size(); ++w_block)
                             {

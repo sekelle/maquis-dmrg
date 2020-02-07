@@ -111,8 +111,6 @@ public:
     , model(lattice, parms, true)
     , tag_handler(new table_type())
     {
-        parallel::guard::serial guard;
-        
         size_t num_vertex_types = alps::maximum_vertex_type(lattice.graph())+1;
         symm_basis.reserve(num_vertex_types);
         basis_descriptors.reserve(num_vertex_types);

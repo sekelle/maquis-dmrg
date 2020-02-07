@@ -69,7 +69,7 @@ namespace common {
                 mpsb.t_schedule.buf_size += phys_i[s].second * sza;
                 for (unsigned ss = 0; ss < phys_i[s].second; ++ss)
                 {
-                    mpsb.t_schedule.push_back(boost::make_tuple(ket_offset + ss * rs_ket, ci, ci_eff, lb_ket, sza));
+                    mpsb.t_schedule.push_back(std::make_tuple(ket_offset + ss * rs_ket, ci, ci_eff, lb_ket, sza));
                 }
             }
         }
@@ -124,8 +124,8 @@ namespace common {
 
                 for (index_type b2 = 0; b2 < mpo.col_dim(); ++b2)
                 {
-                    if (mpo.herm_right.skip(b2, rc_bra, rc_ket) && skip) continue;
-                    int Ap = mpo.right_spin(b2).get(); if (!::SU2::triangle<SymmGroup>(rc_ket, Ap, rc_bra)) continue;
+                    if (mpo.rightBond().conj().skip(b2, rc_bra, rc_ket) && skip) continue;
+                    int Ap = mpo.rightBond().spin(b2).get(); if (!::SU2::triangle<SymmGroup>(rc_ket, Ap, rc_bra)) continue;
 
                     for (typename col_proxy::const_iterator col_it = mpo.column(b2).begin(); col_it != mpo.column(b2).end(); ++col_it) {
                         index_type b1 = col_it.index();
@@ -134,7 +134,7 @@ namespace common {
                         for (unsigned op_index = 0; op_index < access.size(); ++op_index)
                         {
                             typename operator_selector<Matrix, SymmGroup>::type const & W = access.op(op_index);
-                            int K = W.spin().get(), A = mpo.left_spin(b1).get();
+                            int K = W.spin().get(), A = mpo.leftBond().spin(b1).get();
 
                             for (size_t w_block = 0; w_block < W.basis().size(); ++w_block)
                             {

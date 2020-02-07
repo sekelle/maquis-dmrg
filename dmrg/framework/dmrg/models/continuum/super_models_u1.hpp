@@ -250,11 +250,6 @@ private:
         std::vector<std::pair<op_t,op_t> > ret;
         
         // discard terms with no weight
-#ifdef USE_AMBIENT
-        // Tim 02/15/12 : rewrite this kernel...
-        assert(false);
-        printf("FIX std::abs !!! \n");
-#else
         size_t j = 0;
         for( size_t k = 0; k < S.n_blocks(); ++k )
             for( unsigned i = 0; i < num_rows(S[k]); ++i )
@@ -263,7 +258,6 @@ private:
                     ret.push_back(std::make_pair( leftops[j], rightops[j] ));
                 ++j;
             }
-#endif
         return ret;
     }
 

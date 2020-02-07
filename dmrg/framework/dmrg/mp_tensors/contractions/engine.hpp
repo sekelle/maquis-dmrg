@@ -28,13 +28,12 @@
 #ifndef ABELIAN_ENGINE_H
 #define ABELIAN_ENGINE_H
 
-#include <boost/shared_ptr.hpp>
-
 #include "dmrg/mp_tensors/mpstensor.h"
 #include "dmrg/mp_tensors/mpotensor.h"
 #include "dmrg/mp_tensors/twositetensor.h"
 
-#include "dmrg/mp_tensors/contractions/task/tasks.hpp"
+#include "dmrg/solver/solver.h"
+
 #include "dmrg/mp_tensors/contractions/create_schedule/site_hamil_tasks.hpp"
 #include "dmrg/mp_tensors/contractions/create_schedule/right_tasks.hpp"
 #include "dmrg/mp_tensors/contractions/create_schedule/left_tasks.hpp"
@@ -42,7 +41,6 @@
 #include "dmrg/mp_tensors/contractions/create_schedule/h_diag.hpp"
 #include "dmrg/mp_tensors/contractions/boundary_ops/move_boundary.hpp"
 #include "dmrg/mp_tensors/contractions/boundary_ops/prediction.hpp"
-#include "dmrg/mp_tensors/contractions/boundary_ops/site_hamil.hpp"
 
 namespace contraction {
 
@@ -66,9 +64,10 @@ namespace contraction {
         overlap_mpo_right_step(MPSTensor<Matrix, SymmGroup> const & bra_tensor,
                                MPSTensor<Matrix, SymmGroup> const & ket_tensor,
                                Boundary<OtherMatrix, SymmGroup> const & right,
-                               MPOTensor<Matrix, SymmGroup> const & mpo)
+                               MPOTensor<Matrix, SymmGroup> const & mpo,
+                               bool symmetric = true)
         {
-            return common::overlap_mpo_right_step(bra_tensor, ket_tensor, right, mpo);
+            return common::overlap_mpo_right_step(bra_tensor, ket_tensor, right, mpo, symmetric);
         }
 
         static schedule_t
@@ -138,25 +137,6 @@ namespace contraction {
             return common::predict_split_r2l(tst, Mmax, cutoff, alpha, right, mpo);
         }
 
-        static MPSTensor<Matrix, SymmGroup>
-        site_hamil(MPSTensor<Matrix, SymmGroup> & ket_tensor,
-                   Boundary<OtherMatrix, SymmGroup> const & left,
-                    Boundary<OtherMatrix, SymmGroup> const & right,
-                    MPOTensor<Matrix, SymmGroup> const & mpo)
-        {
-            schedule_t tasks = contraction_schedule(ket_tensor, left, right, mpo);
-            return site_hamil(ket_tensor, left, right, mpo, tasks);
-        }
-
-        static MPSTensor<Matrix, SymmGroup>
-        site_hamil(MPSTensor<Matrix, SymmGroup> & ket_tensor,
-                    Boundary<OtherMatrix, SymmGroup> const & left,
-                    Boundary<OtherMatrix, SymmGroup> const & right,
-                    MPOTensor<Matrix, SymmGroup> const & mpo,
-                    schedule_t const & tasks)
-        {
-            return common::site_hamil(ket_tensor, left, right, mpo, tasks);
-        }
     };
 
 } // namespace contraction

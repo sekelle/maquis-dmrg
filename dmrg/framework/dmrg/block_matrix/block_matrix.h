@@ -164,6 +164,7 @@ public:
     bool reasonable() const;
 
     std::vector<const value_type*> data_view() const;
+    std::vector<value_type*> data_view_nc();
     
 private:
     DualIndex<SymmGroup> basis_;

@@ -69,55 +69,9 @@ namespace detail {
     }
 }
 
-class BoundaryIndexRT
-{
-    constexpr static unsigned A = 128 / sizeof(double);
-public:
-    BoundaryIndexRT() {}
 
-    BoundaryIndexRT(BoundaryIndexRT const& rhs)
-    {
-        left_sizes = rhs.left_sizes;
-        right_sizes = rhs.right_sizes;
-        n_blocks_ = rhs.n_blocks_;
-    }
+#include "boundary_index_rt.hpp"
 
-    unsigned n_cohorts() const { return left_sizes.size(); }
-
-    size_t left_size      (unsigned ci) const { return left_sizes[ci]; }
-    size_t right_size     (unsigned ci) const { return right_sizes[ci]; }
-    size_t n_blocks       (unsigned ci) const { return n_blocks_[ci]; }
-    size_t cohort_size    (unsigned ci) const { return n_blocks_[ci] * block_size(ci); }
-    size_t cohort_size_a  (unsigned ci) const { return bit_twiddling::round_up<A>(cohort_size(ci)); }
-    size_t block_size     (unsigned ci) const {
-        return bit_twiddling::round_up<1>(left_sizes[ci] * right_sizes[ci]); // ALIGN
-    }
-
-    size_t total_size() const
-    {
-        size_t ret =0;
-        for (unsigned ci=0; ci < n_cohorts(); ++ci)
-            ret += cohort_size_a(ci);
-        return ret;
-    }
-
-    std::vector<size_t> & lszs() { return left_sizes; }
-    std::vector<size_t> & rszs() { return right_sizes; }
-    std::vector<unsigned> & nbs() { return n_blocks_; }
-
-private:
-    std::vector<std::size_t> left_sizes;
-    std::vector<std::size_t> right_sizes;
-    std::vector<unsigned>    n_blocks_;
-
-    friend class boost::serialization::access;
-
-    template <class Archive>
-    void serialize(Archive & ar, const unsigned int version)
-    {
-        ar & left_sizes & right_sizes & n_blocks_;
-    }
-};
 
 template<class T, class SymmGroup>
 class BoundaryIndex

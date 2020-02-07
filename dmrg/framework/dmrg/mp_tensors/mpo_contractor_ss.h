@@ -27,6 +27,7 @@
 #ifndef MP_TENSORS_MPO_CONTRACTOR_SS_H
 #define MP_TENSORS_MPO_CONTRACTOR_SS_H
 
+#include <chrono>
 #include <boost/random.hpp>
 
 #include "dmrg/optimize/ietl_lanczos_solver.h"
@@ -40,10 +41,10 @@
 #include "dmrg/optimize/site_problem.h"
 
 #define BEGIN_TIMING(name) \
-now = boost::chrono::high_resolution_clock::now();
+now = std::chrono::high_resolution_clock::now();
 #define END_TIMING(name) \
-then = boost::chrono::high_resolution_clock::now(); \
-    maquis::cout << "Time elapsed in " << name << ": " << boost::chrono::duration<double>(then-now).count() << std::endl;
+then = std::chrono::high_resolution_clock::now(); \
+    maquis::cout << "Time elapsed in " << name << ": " << std::chrono::duration<double>(then-now).count() << std::endl;
 
 
 /// TODO: 1) implement two-site time evolution. (single-site is stuck in initial MPS structure)
@@ -73,7 +74,7 @@ public:
     
     std::pair<double,double> sweep(int sweep)
     {
-        boost::chrono::high_resolution_clock::time_point sweep_now = boost::chrono::high_resolution_clock::now();
+        std::chrono::high_resolution_clock::time_point sweep_now = std::chrono::high_resolution_clock::now();
         
         std::size_t L = mps.length();
         

@@ -31,10 +31,12 @@
 #include <complex>
 #include <limits>
 #include <vector>
-#include <utility>
 #include <algorithm>
+#include <iostream>
+#include <iterator>
+#include <cassert>
+
 #include <boost/lambda/construct.hpp>
-#include <boost/static_assert.hpp>
 
 #include "dmrg/utils/proc_statm.h"
 #include "dmrg/utils/proc_status.h"
@@ -142,13 +144,12 @@ bool check_align(T const* const p, unsigned int alignment) {
 
 namespace bit_twiddling
 {
-
     template <unsigned A, typename T>
     inline T round_up(T x)
     {
         // round up x to nearest multiple of A
-        BOOST_STATIC_ASSERT((A & (A-1)) == 0); // check that A is a power of 2
-        BOOST_STATIC_ASSERT(!std::numeric_limits<T>::is_signed);
+        static_assert((A & (A-1)) == 0, "A needs to be a power of 2");
+        static_assert(!std::numeric_limits<T>::is_signed, "T needs to be an unsigned type");
         return (x+(A-1)) & (~(A-1));
     }
 

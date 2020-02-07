@@ -158,7 +158,7 @@ namespace generate_mpo
         TaggedMPOMaker(Lattice const& lat_, tag_vec const & i_, tag_vec const & i_f_,
                        tag_vec const & f_,
                        boost::shared_ptr<TagHandler<Matrix, SymmGroup> > th_,
-                       typename Model<Matrix, SymmGroup>::terms_type const& terms)
+                       typename Model<Matrix, SymmGroup>::terms_type const& terms, bool verb=false)
         : lat(lat_)
         , identities(i_)
         , identities_full(i_f_)
@@ -171,7 +171,7 @@ namespace generate_mpo
         , leftmost_right(length)
         , rightmost_left(0)
         , finalized(false)
-        , verbose(false)
+        , verbose(verb)
         , core_energy(0.)
         {
             //for (size_t p = 0; p < length-1; ++p)
@@ -220,8 +220,7 @@ namespace generate_mpo
             left[trivial_left] = 0;
 
             typedef SpinDescriptor<typename symm_traits::SymmType<SymmGroup>::type> spin_desc_t;
-            std::vector<spin_desc_t> left_spins(1);
-            MPOTensor_detail::Hermitian left_herm(1);
+            MPOTensor_detail::BondProperty<SymmGroup> left_bond;
             
             for (pos_t p = 0; p < length; ++p) {
                 std::vector<tag_block> pre_tensor; pre_tensor.reserve(prempo[p].size());
@@ -250,6 +249,7 @@ namespace generate_mpo
                     else if (rr == right.end())
                         boost::tie(rr, boost::tuples::ignore) = right.insert( make_pair(k2, r++) );
                     
+                    // prempo key k2 is assigned MPO dimension rr_dim
                     index_type rr_dim = (p == length-1) ? 0 : rr->second;
                     pre_tensor.push_back( tag_block(ll->second, rr_dim, val.first, val.second) );
 
@@ -262,6 +262,7 @@ namespace generate_mpo
                     }
                 }
 
+                ///////////////////////////////////
                 //typedef std::map<index_type, prempo_key_type> key_map_t;
                 //key_map_t key_map;
                 //for (index_iterator it = right.begin(); it != right.end(); ++it)
@@ -270,29 +271,32 @@ namespace generate_mpo
                 //for (typename key_map_t::const_iterator it = key_map.begin(); it != key_map.end(); ++it)
                 //{ kos << it->first << "| " << it->second << std::endl; }
                 //kos.close();
+                ///////////////////////////////////
                 
                 std::pair<index_type, index_type> rcd = rcdim(pre_tensor);
 
-                std::vector<spin_desc_t> right_spins(rcd.second); 
+                MPOTensor_detail::BondProperty<SymmGroup> right_bond(rcd.second);
+
+                // Bond Property: spins
                 for (typename std::vector<tag_block>::const_iterator it = pre_tensor.begin();
                         it != pre_tensor.end(); ++it)
                 {
-                    spin_desc_t out_spin = couple(left_spins[boost::tuples::get<0>(*it)],
+                    spin_desc_t out_spin = couple(left_bond.spins()[boost::tuples::get<0>(*it)],
                                                   tag_handler->get_op(boost::tuples::get<2>(*it)).spin());
                     index_type out_index = boost::tuples::get<1>(*it);
-                    assert(right_spins[out_index].get() == 0 ||
-                            right_spins[out_index].get() == out_spin.get());
-                    right_spins[out_index] = out_spin;
+                    assert(right_bond.spins()[out_index].get() == 0 ||
+                            right_bond.spins()[out_index].get() == out_spin.get());
+                    right_bond.spins()[out_index] = out_spin;
                 }
 
-                MPOTensor_detail::Hermitian right_herm(rcd.second);
+                // Bond Property: hermitian conjugates
                 for (typename std::map<prempo_key_type, prempo_key_type>::const_iterator
                                 h_it = HermKeyPairs.begin(); h_it != HermKeyPairs.end(); ++h_it)
                 {
                     index_type romeo = right[h_it->first];
                     index_type julia = right[h_it->second];
                     if (romeo < julia)
-                        right_herm.register_hermitian_pair(romeo, julia,
+                        right_bond.conj().register_hermitian_pair(romeo, julia,
                                 HermitianPhases[h_it->first].first,
                                 HermitianPhases[h_it->first].second);
                 }
@@ -300,7 +304,8 @@ namespace generate_mpo
                 // record self adjoint keys
                 for (auto it = right.begin(); it != right.end(); ++it)
                     if (is_self_adjoint(it->first))
-                        right_herm.register_self_adjoint(it->second);
+                        right_bond.conj().register_self_adjoint(it->second);
+
 
                 if (verbose)
                     maquis::cout << "MPO Bond " << p << ": " << rcd.second
@@ -308,22 +313,19 @@ namespace generate_mpo
 
                 if (p == 0)
                     mpo.push_back( MPOTensor<Matrix, SymmGroup>(1, rcd.second, pre_tensor,
-                                     tag_handler->get_operator_table(), left_herm, right_herm,
-                                     left_spins, right_spins)
+                                     tag_handler->get_operator_table(), left_bond, right_bond)
                                  );
                 else if (p == length - 1)
                     mpo.push_back( MPOTensor<Matrix, SymmGroup>(rcd.first, 1, pre_tensor,
-                                     tag_handler->get_operator_table(), left_herm, right_herm,
-                                     left_spins, right_spins)
+                                     tag_handler->get_operator_table(), left_bond, right_bond)
                                  );
                 else
                     mpo.push_back( MPOTensor<Matrix, SymmGroup>(rcd.first, rcd.second, pre_tensor,
-                                     tag_handler->get_operator_table(), left_herm, right_herm,
-                                     left_spins, right_spins)
+                                     tag_handler->get_operator_table(), left_bond, right_bond)
                                  );
+
                 swap(left, right);
-                swap(left_spins, right_spins);
-                swap(left_herm, right_herm);
+                swap(left_bond, right_bond);
             }
             
             mpo.setCoreEnergy(core_energy);

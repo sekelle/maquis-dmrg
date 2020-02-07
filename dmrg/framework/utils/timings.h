@@ -4,12 +4,8 @@
 #include <string>
 #include <fstream>
 #include <iostream>
-#include <boost/chrono.hpp>
+#include <chrono>
 #include "utils/io.hpp"
-
-#ifdef MAQUIS_OPENMP
-#include "omp.h"
-#endif
 
 class Timer
 {
@@ -25,12 +21,12 @@ public:
     }
     
     void begin() {
-        t0 = boost::chrono::system_clock::now();
+        t0 = std::chrono::high_resolution_clock::now();
     }
     
     void end() {
 		nCounter += 1;
-        boost::chrono::duration<double> sec = boost::chrono::system_clock::now() - t0;
+        std::chrono::duration<double> sec = std::chrono::high_resolution_clock::now() - t0;
         val += sec.count();
     }
     
@@ -46,29 +42,8 @@ public:
 protected:
     double val;
     std::string name;
-    boost::chrono::system_clock::time_point t0;
+    std::chrono::high_resolution_clock::time_point t0; 
     unsigned long long nCounter;
 };
-        
-#ifdef MAQUIS_OPENMP
-class TimerOMP : public Timer {
-public:
-    TimerOMP(std::string name_) : Timer(name_), timer_start(0.0), timer_end(0.0){}
-    
-    ~TimerOMP(){}
-    
-    void begin() {
-        timer_start = omp_get_wtime();
-    }
-    
-    void end() {
-        timer_end = omp_get_wtime();
-        val += timer_end - timer_start;
-    }
-private:
-    double timer_start, timer_end;
-};
-#endif
-
 
 #endif

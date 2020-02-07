@@ -63,7 +63,7 @@ public:
     
     void sweep(int sweep, OptimizeDirection d = Both)
     {
-        boost::chrono::high_resolution_clock::time_point sweep_now = boost::chrono::high_resolution_clock::now();
+        std::chrono::high_resolution_clock::time_point sweep_now = std::chrono::high_resolution_clock::now();
 
         iteration_results_.clear();
         
@@ -96,11 +96,11 @@ public:
             if (lr == +1 && site+2 <= L) Storage::prefetch(right_[site+2]);
             if (lr == -1 && site > 0)    Storage::prefetch(left_[site-1]);
             
-            boost::chrono::high_resolution_clock::time_point now, then;
+            std::chrono::high_resolution_clock::time_point now, then;
 
-            std::pair<double, MPSTensor<Matrix, SymmGroup> > res;
-            SiteProblem<Matrix, typename base::BoundaryMatrix, SymmGroup> sp(mps[site], left_[site], right_[site+1], mpo[site],
-                                                                             cpu_gpu_ratio[site]);
+            std::tuple<double, MPSTensor<Matrix, SymmGroup>, double> res;
+            //SiteProblem<Matrix, typename base::BoundaryMatrix, SymmGroup> sp(mps[site], left_[site], right_[site+1],
+            //                                                                 mpo[site], cpu_gpu_ratio[site]);
             
             /// Compute orthogonal vectors
             std::vector<MPSTensor<Matrix, SymmGroup> > ortho_vecs(base::northo);
@@ -114,19 +114,20 @@ public:
                 (d == RightOnly && lr == +1))
             {
                 if (parms["eigensolver"] == std::string("IETL")) {
-                    BEGIN_TIMING("IETL")
-                    res = solve_ietl_lanczos(sp, mps[site], parms);
-                    END_TIMING("IETL")
+                    //BEGIN_TIMING("IETL")
+                    //res = solve_ietl_lanczos(sp, mps[site], parms);
+                    //END_TIMING("IETL")
                 } else if (parms["eigensolver"] == std::string("IETL_JCD")) {
-                    BEGIN_TIMING("JCD")
-                    res = solve_ietl_jcd(sp, mps[site], parms, ortho_vecs);
-                    END_TIMING("JCD")
+                    //BEGIN_TIMING("JCD")
+                    //res = solve_ietl_jcd(sp, mps[site], parms, ortho_vecs);
+                    res = solve_site_problem(mps[site], left_[site], right_[site+1], mpo[site], ortho_vecs, parms, 0.9);
+                    //END_TIMING("JCD")
                 } else {
                     throw std::runtime_error("I don't know this eigensolver.");
                 }
  
-                cpu_gpu_ratio[site] = sp.contraction_schedule.get_cpu_gpu_ratio();
-                mps[site] = res.second;
+                //cpu_gpu_ratio[site] = sp.contraction_schedule.get_cpu_gpu_ratio();
+                mps[site] = std::get<1>(res);
             }
             
 #ifndef NDEBUG
@@ -138,11 +139,11 @@ public:
             {
                 int prec = maquis::cout.precision();
                 maquis::cout.precision(15);
-                maquis::cout << "Energy " << lr << " " << res.first + mpo.getCoreEnergy()<< std::endl;
+                maquis::cout << "Energy " << lr << " " << std::get<0>(res) + mpo.getCoreEnergy()<< std::endl;
                 maquis::cout.precision(prec);
             }
             
-            iteration_results_["Energy"] << res.first + mpo.getCoreEnergy();
+            iteration_results_["Energy"] << std::get<0>(res) + mpo.getCoreEnergy();
             
             double alpha;
             int ngs = parms.template get<int>("ngrowsweeps"), nms = parms.template get<int>("nmainsweeps");
@@ -193,8 +194,8 @@ public:
             iteration_results_["TruncatedWeight"] << trunc.truncated_weight;
             iteration_results_["SmallestEV"]      << trunc.smallest_ev;
             
-            boost::chrono::high_resolution_clock::time_point sweep_then = boost::chrono::high_resolution_clock::now();
-            double elapsed = boost::chrono::duration<double>(sweep_then - sweep_now).count();
+            std::chrono::high_resolution_clock::time_point sweep_then = std::chrono::high_resolution_clock::now();
+            double elapsed = std::chrono::duration<double>(sweep_then - sweep_now).count();
             maquis::cout << "Sweep has been running for " << elapsed << " seconds." << std::endl;
             
             if (stop_callback())

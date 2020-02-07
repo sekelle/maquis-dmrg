@@ -57,6 +57,8 @@ public:
 
     typedef std::vector<pv_type> internal_value_type;
 
+    using BondProperty = MPOTensor_detail::BondProperty<SymmGroup>;
+
 private:
     typedef boost::numeric::ublas::compressed_matrix< internal_value_type,
                                                       boost::numeric::ublas::column_major
@@ -75,9 +77,7 @@ public:
     
 public:
     MPOTensor(index_type = 1, index_type = 1, prempo_t = prempo_t(), op_table_ptr = op_table_ptr(),
-              MPOTensor_detail::Hermitian const & = MPOTensor_detail::Hermitian(1),
-              MPOTensor_detail::Hermitian const & = MPOTensor_detail::Hermitian(1),
-              spin_index const & lspins = spin_index(1), spin_index const & rspins = spin_index(1));
+              BondProperty const& lb = BondProperty(), BondProperty const& rb = BondProperty());
     
     index_type row_dim() const;
     index_type col_dim() const;
@@ -109,27 +109,23 @@ public:
     
     bool has(index_type left_index, index_type right_index) const;
 
-    spin_desc_t left_spin(index_type left_index) const;
-    spin_desc_t right_spin(index_type right_index) const;
-    spin_index const & row_spin_dim() const;
-    spin_index const & col_spin_dim() const;
     index_type num_row_non_zeros(index_type row_i) const;
     index_type num_col_non_zeros(index_type col_i) const;
     index_type num_one_rows() const;
     index_type num_one_cols() const;
 
-    MPOTensor_detail::Hermitian herm_left;
-    MPOTensor_detail::Hermitian herm_right;
+    BondProperty const& leftBond() const;
+    BondProperty const& rightBond() const;
 
 private:
-
     friend class boost::serialization::access;
 
     template <class Archive>
     void serialize(Archive & ar, const unsigned int version);
 
+    BondProperty leftbond, rightbond;
     index_type left_i, right_i;
-    spin_index left_spins, right_spins;
+
     std::vector<index_type> row_non_zeros, col_non_zeros;
     index_type num_one_rows_, num_one_cols_;
 
@@ -137,8 +133,6 @@ private:
     RowIndex row_index;
     op_table_ptr operator_table;
 };
-
-// TODO: add swap
 
 #include "dmrg/mp_tensors/mpotensor.hpp"
 

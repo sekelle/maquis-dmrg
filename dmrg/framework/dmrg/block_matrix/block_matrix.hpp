@@ -180,6 +180,15 @@ std::vector<const typename Matrix::value_type*> block_matrix<Matrix, SymmGroup>:
 }
 
 template<class Matrix, class SymmGroup>
+std::vector<typename Matrix::value_type*> block_matrix<Matrix, SymmGroup>::data_view_nc()
+{
+    std::vector<value_type*> ret(n_blocks());
+    for (size_t i = 0; i < n_blocks(); ++i)
+        ret[i] = (*this)[i].get_values().data();
+    return ret;
+}
+
+template<class Matrix, class SymmGroup>
 DualIndex<SymmGroup> const & block_matrix<Matrix, SymmGroup>::basis() const { return basis_; }
 
 template<class Matrix, class SymmGroup>
@@ -438,9 +447,6 @@ void block_matrix<Matrix, SymmGroup>::load(Archive & ar)
     data_.clear();
     if (alps::is_complex<typename Matrix::value_type>() && !ar.is_complex("data_"))
     {
-        #ifdef USE_AMBIENT
-        printf("ERROR: LOAD COMPLEX DATA NOT TESTED!\n\n");
-        #endif
         typedef typename alps::numeric::matrix<typename alps::numeric::real_type<typename Matrix::value_type>::type> LoadMatrix;
         std::vector<LoadMatrix> tmp;
         ar["data_"] >> tmp;

@@ -1,10 +1,9 @@
 
+add_subdirectory(solver)
+
 add_definitions(-DHAVE_ALPS_HDF5 -DDISABLE_MATRIX_ELEMENT_ITERATOR_WARNING -DALPS_DISABLE_MATRIX_ELEMENT_ITERATOR_WARNING)
 enable_omp_if_found()
 
-if(USE_AMBIENT)
-  compile_with_ambient()
-endif(USE_AMBIENT)
 
 # Utils
 macro(add_line_to VARNAME LINE)
@@ -54,24 +53,19 @@ endif(ENABLE_LL_MODELS)
 
 
 # *** Libraries
-add_library(dmrg_utils STATIC block_matrix/symmetry.cpp utils/utils.cpp utils/DmrgOptions.cpp utils/time_stopper.cpp utils/proc_statm.cpp utils/proc_status.cpp utils/md5_impl.cpp utils/md5.cpp utils/accelerator.cpp)
+add_library(dmrg_utils STATIC block_matrix/symmetry.cpp utils/utils.cpp utils/DmrgOptions.cpp utils/time_stopper.cpp utils/proc_statm.cpp utils/proc_status.cpp utils/md5_impl.cpp utils/md5.cpp)
+
 add_library(dmrg_models STATIC ${DMRG_MODELS_SOURCES})
+target_link_libraries(dmrg_models solver numeric_gpu)
 
 add_library(wignerj STATIC block_matrix/symmetry/wignerj/coupling.c)
 
-# cmake prior version 3.8 doesn't apply the fPIC of the set_property command below for cu files
-#set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -Xcompiler -fPIC -arch=compute_61 -code=sm_61")
-set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -Xcompiler -fPIC")
-CUDA_ADD_LIBRARY(numeric_gpu STATIC mp_tensors/contractions/numeric/gpu_dgemm_ddot.cu mp_tensors/contractions/numeric/gpu_vgemm.cu )
-target_link_libraries(numeric_gpu ${CUDA_CUBLAS_LIBRARIES} ${CUDA_LIBRARIES})
-#target_link_libraries(numeric_gpu cublas_static cublasLt culibos ${CUDA_LIBRARIES})
-target_link_libraries(dmrg_models numeric_gpu)
 
-set_property(TARGET wignerj dmrg_utils dmrg_models numeric_gpu PROPERTY POSITION_INDEPENDENT_CODE TRUE)
+set_property(TARGET wignerj dmrg_utils dmrg_models PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 
 # *** Install
 
-install(TARGETS dmrg_utils dmrg_models numeric_gpu wignerj
+install(TARGETS dmrg_utils dmrg_models wignerj
         EXPORT DMRGTargets COMPONENT libraries DESTINATION lib)
-export(TARGETS dmrg_utils dmrg_models numeric_gpu wignerj
-       FILE "${PROJECT_BINARY_DIR}/DMRGTargets.cmake")
+export(TARGETS dmrg_utils dmrg_models wignerj
+       APPEND FILE "${PROJECT_BINARY_DIR}/DMRGTargets.cmake")

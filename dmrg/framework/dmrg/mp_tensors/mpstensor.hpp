@@ -500,11 +500,9 @@ template<class Matrix, class SymmGroup>
 MPSTensor<Matrix, SymmGroup> const &
 MPSTensor<Matrix, SymmGroup>::operator*=(const scalar_type& t)
 {
-    ietl_plus.begin();
     threaded_for (std::size_t i = 0; i < data().n_blocks(); ++i) {
         data()[i] *= t;
     }
-    ietl_plus.end();
     return *this;
 }
 
@@ -512,11 +510,9 @@ template<class Matrix, class SymmGroup>
 MPSTensor<Matrix, SymmGroup> const &
 MPSTensor<Matrix, SymmGroup>::operator/=(const scalar_type& t)
 {
-    ietl_plus.begin();
     threaded_for (std::size_t i = 0; i < data().n_blocks(); ++i) {
         data()[i] /= t;
     }
-    ietl_plus.end();
     return *this;
 }
 
@@ -528,8 +524,6 @@ MPSTensor<Matrix, SymmGroup>::operator+=(MPSTensor<Matrix, SymmGroup> const & rh
     assert( weak_equal(right_i, rhs.right_i) );
     assert( phys_i == rhs.phys_i );
 
-    ietl_plus.begin();
-   
     // what if both are left_paired?
     make_right_paired();
     rhs.make_right_paired();
@@ -545,8 +539,6 @@ MPSTensor<Matrix, SymmGroup>::operator+=(MPSTensor<Matrix, SymmGroup> const & rh
         }
     }
 
-    ietl_plus.end();
-    
     return *this;
 }
 
@@ -558,8 +550,6 @@ MPSTensor<Matrix, SymmGroup>::operator-=(MPSTensor<Matrix, SymmGroup> const & rh
     assert( weak_equal(right_i, rhs.right_i) );
     assert( phys_i == rhs.phys_i );
 
-    ietl_plus.begin();
-    
     make_right_paired();
     rhs.make_right_paired();
     
@@ -574,8 +564,6 @@ MPSTensor<Matrix, SymmGroup>::operator-=(MPSTensor<Matrix, SymmGroup> const & rh
         }
     }
 
-    ietl_plus.end();
-    
     return *this;
 }
 

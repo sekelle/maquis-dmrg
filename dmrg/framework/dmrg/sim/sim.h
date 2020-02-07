@@ -40,7 +40,7 @@
 #include <boost/serialization/complex.hpp>
 
 #include "utils/data_collector.hpp"
-#include "dmrg/utils/accelerator.h"
+#include "dmrg/solver/accelerator.h"
 
 #include "dmrg/version.h"
 #include "dmrg/utils/DmrgParameters.h"

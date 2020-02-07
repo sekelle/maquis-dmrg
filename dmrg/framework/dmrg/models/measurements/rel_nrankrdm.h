@@ -49,9 +49,9 @@ namespace measurements {
         typedef std::vector<op_t> op_vec;
         typedef std::vector<std::pair<op_vec, bool> > bond_element;
         typedef Lattice::pos_t pos_t;
-		typedef std::pair<op_t, bool> op_t_type;
+        typedef std::pair<op_t, bool> op_t_type;
         typedef std::vector<pos_t> positions_type;
-		typedef std::pair<pos_t, op_t> pos_op_t;
+        typedef std::pair<pos_t, op_t> pos_op_t;
     
     public:
         Rel_NRankRDM(std::string const& name_, const Lattice & lat,
@@ -116,56 +116,55 @@ namespace measurements {
             bool bra_neq_ket = (dummy_bra_mps.length() > 0);
             MPS<Matrix, SymmGroup> const & bra_mps = (bra_neq_ket) ? dummy_bra_mps : ket_mps;
 
-            // TODO: test with ambient in due time
             #ifdef MAQUIS_OPENMP
             #pragma omp parallel for collapse(1)
             #endif
-			for (pos_t l = 0; l < lattice.size(); ++l){
-				for (pos_t k = 0; k < lattice.size(); ++k){
-					for (pos_t j = 0; j < lattice.size(); ++j){
-						for (pos_t i = 0; i < lattice.size(); ++i){
+            for (pos_t l = 0; l < lattice.size(); ++l){
+                for (pos_t k = 0; k < lattice.size(); ++k){
+                    for (pos_t j = 0; j < lattice.size(); ++j){
+                        for (pos_t i = 0; i < lattice.size(); ++i){
 
-							pos_t idx[] = { i,k,l,j };
-							pos_t inv_count=0, n=4;
-        					for(pos_t c1 = 0; c1 < n - 1; c1++)
-            					for(pos_t c2 = c1+1; c2 < n; c2++)
-                					if(idx[c1] > idx[c2]) inv_count++;
+                            pos_t idx[] = { i,k,l,j };
+                            pos_t inv_count=0, n=4;
+                            for(pos_t c1 = 0; c1 < n - 1; c1++)
+                                for(pos_t c2 = c1+1; c2 < n; c2++)
+                                    if(idx[c1] > idx[c2]) inv_count++;
 
-							int phase = 1;
-							if (inv_count % 2)
-								phase = -1;
+                            int phase = 1;
+                            if (inv_count % 2)
+                                phase = -1;
 
-							std::vector<pos_op_t> op_string;
-							op_string.push_back( std::make_pair(i, ops[0][0].first[lattice.get_prop<int>("type",i)]));
-							op_string.push_back( std::make_pair(k, ops[0][1].first[lattice.get_prop<int>("type",k)]));
-							op_string.push_back( std::make_pair(l, ops[0][2].first[lattice.get_prop<int>("type",l)]));
-							op_string.push_back( std::make_pair(j, ops[0][3].first[lattice.get_prop<int>("type",j)]));
+                            std::vector<pos_op_t> op_string;
+                            op_string.push_back( std::make_pair(i, ops[0][0].first[lattice.get_prop<int>("type",i)]));
+                            op_string.push_back( std::make_pair(k, ops[0][1].first[lattice.get_prop<int>("type",k)]));
+                            op_string.push_back( std::make_pair(l, ops[0][2].first[lattice.get_prop<int>("type",l)]));
+                            op_string.push_back( std::make_pair(j, ops[0][3].first[lattice.get_prop<int>("type",j)]));
 
-							////// CALL MPO MAKER /////////
-							NTermsMPO<Matrix, SymmGroup> rdm_elem(lattice, identities, fillings, op_string, phase);
-							MPO<Matrix, SymmGroup> mpo = rdm_elem.create_mpo();
-							//////////////////////////////////
+                            ////// CALL MPO MAKER /////////
+                            NTermsMPO<Matrix, SymmGroup> rdm_elem(lattice, identities, fillings, op_string, phase);
+                            MPO<Matrix, SymmGroup> mpo = rdm_elem.create_mpo();
+                            //////////////////////////////////
 
-							//std::vector<typename MPS<Matrix, SymmGroup>::scalar_type> dct = multi_expval(bra_mps, ket_mps, mpo);
+                            //std::vector<typename MPS<Matrix, SymmGroup>::scalar_type> dct = multi_expval(bra_mps, ket_mps, mpo);
                             typename MPS<Matrix, SymmGroup>::scalar_type dct = (this->cast_to_real) ? maquis::real(expval(ket_mps, mpo)) : expval(ket_mps, mpo);
 
-							//if(dct != 0.0) {
-								//maquis::cout << std::fixed << std::setprecision(10) << i+1 << " " << j+1 << " " << k+1 << " " << l+1 << "\t" << dct << std::endl;
+                            //if(dct != 0.0) {
+                                //maquis::cout << std::fixed << std::setprecision(10) << i+1 << " " << j+1 << " " << k+1 << " " << l+1 << "\t" << dct << std::endl;
 
 
-								std::vector<pos_t> label; label.push_back(i); label.push_back(j); label.push_back(k); label.push_back(l);
-								std::vector<std::vector<pos_t> > num_labels;
-								num_labels.push_back(label);
-								std::vector<std::string> lbt = label_strings(lattice, num_labels);
+                                std::vector<pos_t> label; label.push_back(i); label.push_back(j); label.push_back(k); label.push_back(l);
+                                std::vector<std::vector<pos_t> > num_labels;
+                                num_labels.push_back(label);
+                                std::vector<std::string> lbt = label_strings(lattice, num_labels);
 
-								this->vector_results.push_back(dct);
-								this->labels.push_back(lbt[0]);
-							//}
+                                this->vector_results.push_back(dct);
+                                this->labels.push_back(lbt[0]);
+                            //}
 
-						} // i loop
-					} // j loop
-				} // k loop
-			} // l loop
+                        } // i loop
+                    } // j loop
+                } // k loop
+            } // l loop
         }
 
     private:

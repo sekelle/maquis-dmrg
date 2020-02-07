@@ -113,7 +113,7 @@ public:
     }
     void sweep(int sweep, OptimizeDirection d = Both)
     {
-        boost::chrono::high_resolution_clock::time_point sweep_now = boost::chrono::high_resolution_clock::now();
+        std::chrono::high_resolution_clock::time_point sweep_now = std::chrono::high_resolution_clock::now();
 
         iteration_results_.clear();
         
@@ -154,7 +154,7 @@ public:
                 Storage::broadcast::fetch(right_[site2+1]);
             }
 
-            boost::chrono::high_resolution_clock::time_point now, then;
+            std::chrono::high_resolution_clock::time_point now, then;
 
             double ratio = cpu_gpu_ratio[site1];
             double ratio_prev = 0.9;
@@ -169,8 +169,9 @@ public:
             TwoSiteTensor<Matrix, SymmGroup> tst(mps[site1], mps[site2]);
             MPSTensor<Matrix, SymmGroup> twin_mps = tst.make_mps();
             tst.clear();
-            SiteProblem<Matrix, BoundaryMatrix, SymmGroup>
-                sp(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1], ratio);
+            //SiteProblem<Matrix, BoundaryMatrix, SymmGroup>
+            //    sp(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1], ratio);
+
 
             if (lr == +1) {
                 if (site1 > 0)                  Storage::broadcast::pin(left_[site1-1]);
@@ -221,7 +222,7 @@ public:
                                                                     base::ortho_left_[n][site1], base::ortho_right_[n][site2+1]);
             }
 
-            std::pair<double, MPSTensor<Matrix, SymmGroup> > res;
+            std::tuple<double, MPSTensor<Matrix, SymmGroup>, double> res;
             double jcd_time;
 
             if (d == Both ||
@@ -229,45 +230,46 @@ public:
                 (d == RightOnly && lr == +1))
             {
                 if (parms["eigensolver"] == std::string("IETL")) {
-                    BEGIN_TIMING("IETL")
-                    res = solve_ietl_lanczos(sp, twin_mps, parms);
-                    END_TIMING("IETL")
+                    //BEGIN_TIMING("IETL")
+                    //res = solve_ietl_lanczos(sp, twin_mps, parms);
+                    //END_TIMING("IETL")
                 } else if (parms["eigensolver"] == std::string("IETL_JCD")) {
-                    BEGIN_TIMING("JCD")
-                    res = solve_ietl_jcd(sp, twin_mps, parms, ortho_vecs);
-                    END_TIMING("JCD")
-                    jcd_time = boost::chrono::duration<double>(then-now).count();
-                    sp.contraction_schedule.print_stats(jcd_time);
+                    //BEGIN_TIMING("JCD")
+                    //res = solve_ietl_jcd(sp, twin_mps, parms, ortho_vecs);
+                    res = solve_site_problem(twin_mps, left_[site1], right_[site2+1], ts_cache_mpo[site1],
+                                             ortho_vecs, parms, ratio);
+                    //END_TIMING("JCD")
+                    //jcd_time = std::chrono::duration<double>(then-now).count();
+                    //sp.contraction_schedule.print_stats(jcd_time);
                 } else if (parms["eigensolver"] == std::string("IETL_DAVIDSON")) {
-                    BEGIN_TIMING("DAVIDSON")
-                    res = solve_ietl_davidson(sp, twin_mps, parms, ortho_vecs);
-                    END_TIMING("DAVIDSON")
+                    //BEGIN_TIMING("DAVIDSON")
+                    //res = solve_ietl_davidson(sp, twin_mps, parms, ortho_vecs);
+                    //END_TIMING("DAVIDSON")
                 } else {
                     throw std::runtime_error("I don't know this eigensolver.");
                 }
 
-                cpu_gpu_ratio[site1] = sp.contraction_schedule.get_cpu_gpu_ratio();
-                tst << res.second;
-                res.second.clear();
+                //cpu_gpu_ratio[site1] = sp.contraction_schedule.get_cpu_gpu_ratio();
+                cpu_gpu_ratio[site1] = std::get<2>(res);
+                tst << std::get<1>(res);
+                std::get<1>(res).clear();
             }
             twin_mps.clear();
 
-            sp.contraction_schedule.mps_stage.deallocate();
 
-
-#ifndef NDEBUG
+            #ifndef NDEBUG
             // Caution: this is an O(L) operation, so it really should be done only in debug mode
             for (int n = 0; n < base::northo; ++n)
                 maquis::cout << "MPS overlap: " << overlap(mps, base::ortho_mps[n]) << std::endl;
-#endif
+            #endif
 
             {
                 int prec = maquis::cout.precision();
                 maquis::cout.precision(15);
-                maquis::cout << "Energy " << lr << " " << res.first + mpo.getCoreEnergy() << std::endl;
+                maquis::cout << "Energy " << lr << " " << std::get<0>(res) + mpo.getCoreEnergy() << std::endl;
                 maquis::cout.precision(prec);
             }
-            iteration_results_["Energy"] << res.first + mpo.getCoreEnergy();
+            iteration_results_["Energy"] << std::get<0>(res) + mpo.getCoreEnergy();
             
             
             double alpha;
@@ -348,12 +350,11 @@ public:
             iteration_results_["TruncatedFraction"] << trunc.truncated_fraction;
             iteration_results_["SmallestEV"]        << trunc.smallest_ev;
             
-            boost::chrono::high_resolution_clock::time_point sweep_then = boost::chrono::high_resolution_clock::now();
-            double elapsed = boost::chrono::duration<double>(sweep_then - sweep_now).count();
+            std::chrono::high_resolution_clock::time_point sweep_then = std::chrono::high_resolution_clock::now();
+            double elapsed = std::chrono::duration<double>(sweep_then - sweep_now).count();
             maquis::cout << "Sweep has been running for " << elapsed << " seconds." << std::endl;
             
             if (stop_callback())
-            //if (stop_callback() || preshot)
                 throw dmrg::time_limit(sweep, _site+1);
 
         } // for sites
