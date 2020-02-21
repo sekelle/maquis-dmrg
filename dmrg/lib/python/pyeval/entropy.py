@@ -28,17 +28,17 @@
 #*****************************************************************************
 
 import sys
-import pyalps
+import pyload as pyalps
 
 import numpy as np
 import scipy.linalg as sl
 
 from copy import deepcopy
 
-from corrutils import assemble_halfcorr as assy_hc
-from corrutils import merge_transpose as assy_c
-from corrutils import assemble_vector as assy_vec
-from corrutils import pretty_print
+from pyload.corrutils import assemble_halfcorr as assy_hc
+from pyload.corrutils import merge_transpose as assy_c
+from pyload.corrutils import assemble_vector as assy_vec
+from pyload.corrutils import pretty_print
 
 class MaquisMeasurement:
 
@@ -136,7 +136,7 @@ class MaquisMeasurement:
                           + self.corr_trans_up[p,q]
         pq_dm_matrix[8,2] = pq_dm_matrix[2,8]
 
-        pq_dm_matrix[3,6] = self.corr_trans_down_up1[p,q] - self.corr_trans_down[p,q]
+        pq_dm_matrix[3,6] = (self.corr_trans_down_up1[p,q] - self.corr_trans_down[p,q])
         pq_dm_matrix[6,3] = pq_dm_matrix[3,6]
 
         pq_dm_matrix[3,9] = -self.corr_trans_up_down1[p,q] + self.corr_trans_up[p,q]
@@ -154,10 +154,10 @@ class MaquisMeasurement:
         pq_dm_matrix[9,12] = -(self.corr_trans_down_up2[p,q] - self.corr_trans_down[p,q])
         pq_dm_matrix[12,9] = pq_dm_matrix[9,12]
 
-        pq_dm_matrix[7,13] = -self.corr_trans_up[p,q]
+        pq_dm_matrix[7,13] = -(self.corr_trans_up[p,q])
         pq_dm_matrix[13,7] = pq_dm_matrix[7,13]
 
-        pq_dm_matrix[11,14] = -self.corr_trans_down[p,q]
+        pq_dm_matrix[11,14] = -(self.corr_trans_down[p,q])
         pq_dm_matrix[14,11] = pq_dm_matrix[11,14]
         
         #print "pqmatrix[3,3]{0},{1}".format(p,q), "and", "pqmatrix[12,12]{0},{1}".format(p,q), pq_dm_matrix[3,3], pq_dm_matrix[12,12]
@@ -176,13 +176,6 @@ class MaquisMeasurement:
             m33 = 1 - nu[i] - nd[i] + nud[i]
             m44 = nud[i]
 
-	    # make sure that in the unlikely case that one eigenvalue is 0, log(x) gives something meaningful...
-	    # meaning nothing since log(1) = 0.
-	    if m11 == 0: m11 = 1
-	    if m22 == 0: m22 = 1
-	    if m33 == 0: m33 = 1
-	    if m44 == 0: m44 = 1
-
             ret[i] = -sum(map(lambda x: x*np.log(x), [m11, m22, m33, m44]))
 
         return ret        
@@ -194,7 +187,9 @@ class MaquisMeasurement:
         for p in range(self.norb):
             for q in range(p+1, self.norb):
                 rdm = self.two_orb_rdm(p,q)
+                #pretty_print(rdm)
                 evals = [ x for x in sl.eigh(rdm)[0] if x > 1e-12]
+                #print p,q,sl.eigh(rdm)[0]
                 ret[p,q] = -sum(map(lambda x: x*np.log(x), evals))
                 ret[q,p] = ret[p,q]
 
@@ -229,12 +224,12 @@ class MaquisMeasurement:
     def dump_raw(self):
         for k,v in zip(self.__dict__.keys(), self.__dict__.values()):
             try:
-                print k
+                print(k)
                 pretty_print(v)
             except:
-                print v
+                print(v)
 
-            print ""
+            print("")
                 
 
 if __name__ == '__main__':
@@ -242,14 +237,14 @@ if __name__ == '__main__':
 
     guinea_pig = MaquisMeasurement(inputfile)
 
-    print "s1 matrix"
-    print guinea_pig.s1()
+    print("s1 matrix")
+    print(guinea_pig.s1())
 
-    print "s2 matrix"
+    print("s2 matrix")
     s2m = guinea_pig.s2()
     pretty_print(s2m)
 
-    print "I (mutual information)"
+    print("I (mutual information)")
     pretty_print(guinea_pig.I())
 
     #guinea_pig.dump_raw()
