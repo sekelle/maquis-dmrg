@@ -13,7 +13,7 @@ import shutil
 from datetime import datetime as dt
 import subprocess
 from subprocess import check_call
-import pyalps
+import maquisFile
 
 from exception import TestFailed
 
@@ -33,7 +33,7 @@ def exec_with_log(cmd, logbase):
         check_call(cmd, stdout=fp, stderr=fp_err)
     except subprocess.CalledProcessError as e:
         fp_err.seek(0)
-        print 'The program crashed.\n',fp_err.read()
+        print('The program crashed.\n',fp_err.read())
         raise e
     fp.close()
     fp_err.close()
@@ -68,12 +68,12 @@ class DMRGTestBase(object):
         if not hasattr(self, 'tmpdir'):
             self.origdir = os.getcwd()
             self.tmpdir = tempfile.mkdtemp()
-            print 'Using temporary dir:', self.tmpdir
+            print('Using temporary dir:', self.tmpdir)
     
     def write_parameters(self):
         """Write parameters as `testname.parms/.model`."""
-        pyalps.writeParameterFile(self.testname+'.parms', self.inputs['parms'])
-        pyalps.writeParameterFile(self.testname+'.model', self.inputs['model'])
+        maquisFile.writeParameterFile(self.testname+'.parms', self.inputs['parms'])
+        maquisFile.writeParameterFile(self.testname+'.model', self.inputs['model'])
     
     def run(self, dmrg_app=None, meas_app=None):
         """Create parameters and execute the simulation."""
@@ -114,11 +114,11 @@ class DMRGTestBase(object):
         for obstest in self.observables:
             try:
                 obstest( os.path.join(self.tmpdir, resfile) )
-                print obstest, 'Success!'
+                print(str(obstest), 'Success!')
             except TestFailed as err:
                 passed = False
-                print obstest, 'Failed!'
-                print 'Details:', err
+                print(str(obstest), 'Failed!')
+                print('Details:', err)
                     
         os.chdir(self.origdir)
         
@@ -128,7 +128,7 @@ class DMRGTestBase(object):
             shutil.move( self.tmpdir, os.path.join(basedir, archive_dirname) )
             archive_file = shutil.make_archive(archive_dirname, format='gztar',
                                                root_dir=basedir, base_dir=archive_dirname)
-            print 'Failed test archived in %s.' % archive_file
+            print('Failed test archived in %s.' % archive_file)
             
             raise TestFailed('Some tests failed!')
             

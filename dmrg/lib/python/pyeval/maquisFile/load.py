@@ -192,7 +192,7 @@ class Hdf5Loader:
                     if measurements == None:
                         obslist = list_
                     else:
-                        #obslist = [h5.pt.hdf5_name_encode(obs) for obs in measurements if h5.pt.hdf5_name_encode(obs) in list_]
+                        #obslist = [h5.hdf5_name_encode(obs) for obs in measurements if h5.hdf5_name_encode(obs) in list_]
                         obslist = [obs for obs in measurements if obs in list_]
                     if loadIterations==True:
                         if "iteration" in self.h5f.list_children(respath+'/results'):
@@ -205,7 +205,7 @@ class Hdf5Loader:
                                     d = DataSet()
                                     secresultspath = respath+'/results/'+m
                                     d.props['hdf5_path'] = secresultspath
-                                    d.props['observable'] = h5.pt.hdf5_name_decode(m)
+                                    d.props['observable'] = h5.hdf5_name_decode(m)
                                     if index == None:
                                         d.y = self.h5f[secresultspath+'/mean/value']
                                         d.x = np.arange(0,len(d.y))
@@ -231,7 +231,7 @@ class Hdf5Loader:
                     if measurements == None:
                         obslist = list_
                     else:
-                        obslist = [h5.pt.hdf5_name_encode(obs) for obs in measurements if h5.pt.hdf5_name_encode(obs) in list_]
+                        obslist = [h5.hdf5_name_encode(obs) for obs in measurements if h5.hdf5_name_encode(obs) in list_]
                     for secnum in self.h5f.list_children(respath+'/sectors'):
                         sector_sets=[]
                         for m in obslist:
@@ -242,7 +242,7 @@ class Hdf5Loader:
                                     secpath = respath+'/sectors/'+secnum
                                     secresultspath = respath+'/sectors/'+secnum+'/results/'+m
                                     d.props['hdf5_path'] = secresultspath
-                                    d.props['observable'] = h5.pt.hdf5_name_decode(m)
+                                    d.props['observable'] = h5.hdf5_name_decode(m)
                                     if index == None:
                                         d.y = self.h5f[secresultspath+'/mean/value']
                                         d.x = np.arange(0,len(d.y))

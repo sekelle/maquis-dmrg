@@ -7,9 +7,8 @@
 #############################################################################
 
 import os
-import pyalps
-import pydmrg
 import numpy as np
+import maquisFile
 
 from exception import ObservableNotFound
 from exception import ObservableNotMatch
@@ -17,8 +16,8 @@ from exception import ObservableNotMatch
 def load_spectrum_observable(fname, observable, remove_equal_indexes=False):
     if not os.path.exists(fname):
         raise IOError('Archive `%s` not found.' % fname)
-    data = pyalps.loadEigenstateMeasurements([fname], [observable])
-    data = pyalps.flatten(data)
+    data = maquisFile.loadEigenstateMeasurements([fname], [observable])
+    data = maquisFile.flatten(data)
     if len(data) != 1:
         raise ObservableNotFound(fname, observable)
     d = data[0]
@@ -63,10 +62,10 @@ def load_iterations_observable(fname, observable, remove_equal_indexes=False):
     if not os.path.exists(fname):
         raise IOError('Archive `%s` not found.' % fname)
     if remove_equal_indexes:
-        print 'WARNING:', 'removing index not implemented for iterations meas.'
-    data = pydmrg.LoadDMRGSweeps([fname], [observable])
-    obs = pyalps.collectXY(data, 'sweep', observable)
-    obs = pyalps.flatten(obs)
+        print('WARNING:', 'removing index not implemented for iterations meas.')
+    data = maquisFile.LoadDMRGSweeps([fname], [observable])
+    obs = maquisFile.collectXY(data, 'sweep', observable)
+    obs = maquisFile.flatten(obs)
     if len(obs) == 0:
         raise ObservableNotFound(fname, observable)
     return obs[0]
@@ -92,7 +91,7 @@ class reference_file(object):
         for ty, ry in zip(tobs.y, robs.y):
             for tval, rval in zip( np.atleast_1d(ty), np.atleast_1d(ry) ):
                 if np.any(np.all( (abs(np.array(tval-rval) / rval) > self.tolerance, abs(np.array(tval-rval)) > self.eps), axis=0 )):
-                    print 'diff is:', abs(np.array(tval-rval) / rval)
+                    print('diff is:', abs(np.array(tval-rval) / rval))
                     raise ObservableNotMatch(self.observable, tval, rval, self.tolerance)
     
     def __str__(self):

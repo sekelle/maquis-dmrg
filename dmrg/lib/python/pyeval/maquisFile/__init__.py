@@ -42,3 +42,4 @@ if sys.platform == 'darwin' and not os.path.exists(os.path.expanduser('~/.matplo
 from . h5pyWrapper import *
 from . dataset import *
 from . load import *
+from . tools import *

@@ -51,16 +51,14 @@ class archive:
         return ret
 
 
-class pt:
+def hdf5_name_decode(x):
+    if isinstance(x, bytes):
+        return x.decode()
+    else:
+        return x
 
-    def hdf5_name_decode(x):
-        if isinstance(x, bytes):
-            return x.decode()
-        else:
-            return x
-
-    def hdf5_name_encode(x):
-        if isinstance(x, str) == True:
-            return x.encode('ascii')
-        else:
-            return x
+def hdf5_name_encode(x):
+    if isinstance(x, str) == True:
+        return x.encode('ascii')
+    else:
+        return x
