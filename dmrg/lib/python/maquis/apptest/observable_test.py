@@ -8,7 +8,7 @@
 
 import os
 import numpy as np
-import maquisFile
+from maquis.fileio import loadEigenstateMeasurements, loadDmrgSweeps, flatten, DataSet, collectXY
 
 from exception import ObservableNotFound
 from exception import ObservableNotMatch
@@ -16,8 +16,8 @@ from exception import ObservableNotMatch
 def load_spectrum_observable(fname, observable, remove_equal_indexes=False):
     if not os.path.exists(fname):
         raise IOError('Archive `%s` not found.' % fname)
-    data = maquisFile.loadEigenstateMeasurements([fname], [observable])
-    data = maquisFile.flatten(data)
+    data = loadEigenstateMeasurements([fname], [observable])
+    data = flatten(data)
     if len(data) != 1:
         raise ObservableNotFound(fname, observable)
     d = data[0]
@@ -63,9 +63,9 @@ def load_iterations_observable(fname, observable, remove_equal_indexes=False):
         raise IOError('Archive `%s` not found.' % fname)
     if remove_equal_indexes:
         print('WARNING:', 'removing index not implemented for iterations meas.')
-    data = maquisFile.LoadDMRGSweeps([fname], [observable])
-    obs = maquisFile.collectXY(data, 'sweep', observable)
-    obs = maquisFile.flatten(obs)
+    data = LoadDMRGSweeps([fname], [observable])
+    obs = collectXY(data, 'sweep', observable)
+    obs = flatten(obs)
     if len(obs) == 0:
         raise ObservableNotFound(fname, observable)
     return obs[0]

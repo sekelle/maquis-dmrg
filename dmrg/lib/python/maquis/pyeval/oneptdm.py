@@ -33,11 +33,11 @@ import numpy as np
 import scipy.linalg as sl
 from copy import deepcopy
 
-import maquisFile
+from maquis.fileio import loadEigenstateMeasurements
 
-from corrutils import assemble_halfcorr as assy_hc
-from corrutils import assemble_vector as assy_vec
-from corrutils import pretty_print
+from maquis.utils.corrutils import assemble_halfcorr as assy_hc
+from maquis.utils.corrutils import assemble_vector as assy_vec
+from maquis.utils.corrutils import pretty_print
 
 def read_irreps(orbfile):
     of = open(orbfile, 'r')
@@ -56,10 +56,10 @@ def diag_dm(matrix):
 class oneptdm:
     def __init__(self, inputfile):
         # load data from the HDF5 result file
-        self.nup    = assy_vec(maquisFile.loadEigenstateMeasurements([inputfile], what='Nup')[0][0])
-        self.ndown  = assy_vec(maquisFile.loadEigenstateMeasurements([inputfile], what='Ndown')[0][0])
-        self.dmup   = assy_hc(self.nup, maquisFile.loadEigenstateMeasurements([inputfile], what='dm_up')[0][0])
-        self.dmdown = assy_hc(self.ndown, maquisFile.loadEigenstateMeasurements([inputfile], what='dm_down')[0][0])
+        self.nup    = assy_vec(loadEigenstateMeasurements([inputfile], what='Nup')[0][0])
+        self.ndown  = assy_vec(loadEigenstateMeasurements([inputfile], what='Ndown')[0][0])
+        self.dmup   = assy_hc(self.nup, loadEigenstateMeasurements([inputfile], what='dm_up')[0][0])
+        self.dmdown = assy_hc(self.ndown, loadEigenstateMeasurements([inputfile], what='dm_down')[0][0])
 
     def rdm(self):
         return self.rdm_a() + self.rdm_b()

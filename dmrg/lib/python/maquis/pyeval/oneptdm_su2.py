@@ -29,14 +29,14 @@
 
 import sys
 import numpy as np
+from maquis.fileio import loadEigenstateMeasurements
 
-import maquisFile
-from corrutils import pretty_print
+from maquis.utils.corrutils import pretty_print
 
 #import numpy as np
 def load_1rdm(inputfile):
     # load data from the HDF5 result file
-    rdm =  maquisFile.loadEigenstateMeasurements([inputfile], what='transition_oneptdm')[0][0]
+    rdm =  loadEigenstateMeasurements([inputfile], what='oneptdm')[0][0]
     return rdm
 
 def print_1rdm(rdm):
@@ -51,7 +51,7 @@ def print_1rdm(rdm):
         j = lab[1]
 
         mat[i,j] = val;
-        #mat[j,i] = val;
+        mat[j,i] = val;
 
     pretty_print(mat)
 

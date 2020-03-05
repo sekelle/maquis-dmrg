@@ -22,7 +22,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-import maquisFile
+from maquis.fileio import flatten, DataSet
 
 def on_xlim_changed(ax):
     xlim = ax.get_xlim()
@@ -76,11 +76,11 @@ def plot(data):
     lines = []
     icolor = 0
     imarker = 0
-    if isinstance(data, maquisFile.DataSet):
+    if isinstance(data, DataSet):
       s = [data]
     else:
       s = data
-    for q in maquisFile.flatten(s):
+    for q in flatten(s):
         try:
             xmeans = np.array([xx.mean for xx in q.x])
             xerrors = np.array([xx.error for xx in q.x])

@@ -30,11 +30,11 @@
 # base class for extrapolations
 
 import numpy as np
-import fit_wrapper as fw
+import maquis.utils.fit_wrapper as fw
 import math
 import os
 import glob
-import maquisFile
+from maquis.fileio import loadDmrgSweeps
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -42,8 +42,8 @@ warnings.filterwarnings("ignore")
 def getData(flist, what = ['Energy'], sweepnr = None):
 
     # [file][sweep][observable]
-    truncs = maquisFile.LoadDMRGSweeps(flist, ['TruncatedWeight'])
-    energs = maquisFile.LoadDMRGSweeps(flist, what)
+    truncs = loadDmrgSweeps(flist, ['TruncatedWeight'])
+    energs = loadDmrgSweeps(flist, what)
     props = truncs[0][0][0].props
 
     if sweepnr is None: sweepnr = min([len(f) - 1 for f in truncs])

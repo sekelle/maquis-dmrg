@@ -369,7 +369,7 @@ def ReadDMRGSweeps(ar, measurements, props, path='/simulation', selector=None):
                 ret.append(tmp)
     return ret
 
-def LoadDMRGSweeps(files, what=None, selector=None):
+def loadDmrgSweeps(files, what=None, selector=None):
     """ loads measurements in each DMRG iteration from HDF5 result files
         
         The parameters are:

@@ -32,13 +32,13 @@
 # usage: energy.py h5-result-file
 # small interactive script to print groundstate energy
 
-import maquisFile
+from maquis.fileio import loadDmrgSweeps
 import sys 
 import numpy as np
 
 def read_energy(fname):
 
-    ret = maquisFile.LoadDMRGSweeps([fname],['Energy'])
+    ret = loadDmrgSweeps([fname],['Energy'])
 
     sweeps = []
     for sw in ret[0]:

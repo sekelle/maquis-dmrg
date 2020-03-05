@@ -36,12 +36,12 @@
 import sys 
 import numpy as np
 import matplotlib.pyplot as plt 
-import plotutil
-import maquisFile
+import maquis.utils.plotutil as plotutil
+from maquis.fileio import loadDmrgSweeps, DataSet
 
 def plot(fnames):
 
-    ret = maquisFile.LoadDMRGSweeps(fnames,['Energy'])
+    ret = loadDmrgSweeps(fnames,['Energy'])
 
     plot_data = []
     for i,f in enumerate(ret):
@@ -60,7 +60,7 @@ def plot(fnames):
         #print ydata
         print("Minimum energy:", np.min(ydata), "\n")
 
-        pdata = maquisFile.DataSet()
+        pdata = DataSet()
         pdata.x = xdata
         pdata.y = ydata
         pdata.props['label'] = "Energy " + props["resultfile"]

@@ -1,12 +1,11 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
-#
+#-*- coding: utf-8 -*-
 #*****************************************************************************
 #*
 #* ALPS MPS DMRG Project
 #*
-#* Copyright (C) 2015 Laboratory for Physical Chemistry, ETH Zurich
-#*               2012-2015 by Sebastian Keller <sebkelle@phys.ethz.ch>
+#* Copyright (C) 2014 Laboratory for Physical Chemistry, ETH Zurich
+#*               2014-2014 by Sebastian Keller <sebkelle@phys.ethz.ch>
 #*
 #* 
 #* This software is part of the ALPS Applications, published under the ALPS
@@ -28,50 +27,33 @@
 #*
 #*****************************************************************************
 
-# small interactive script to examin truncated weights in sweeps
-# Usage: trunc.py h5-result-file
-
 import sys
 import numpy as np
-import matplotlib.pyplot as plt
-import maquisFile
-import plotutil
+from maquis.fileio import loadEigenstateMeasurements
 
+from maquis.utils.corrutils import pretty_print, assemble_halfcorr
 
-def plot(fname):
+def load_1spdm(inputfile):
+    """From the diagonal and upper triangle, construct a symmetric matrix
+       diag: diagonal
+       triang: upper triangle, sequential reversed rows"""
 
-    ret = maquisFile.LoadDMRGSweeps([fname],['TruncatedWeight'])
+    diagup     =  loadEigenstateMeasurements([inputfile], what='Nup')[0][0]
+    diagdown   =  loadEigenstateMeasurements([inputfile], what='Ndown')[0][0]
+    triangup   =  loadEigenstateMeasurements([inputfile], what='dm_up')[0][0]
+    triangdown =  loadEigenstateMeasurements([inputfile], what='dm_down')[0][0]
 
-    sweeps = []
-    for sw in ret[0]:
-        sweeps += list(sw[0].y)
+    # Create the full matrix from the diagonal (nup.y[0]) and upper triangle (dmup)
+    dmu = assemble_halfcorr(diagup.y[0], triangup)
+    dmd = assemble_halfcorr(diagdown.y[0], triangdown)
 
-    print("total number of values in sweep", len(sweeps))
+    # this is the spin-density matrix
+    ds = dmu-dmd
 
-    # Get length of 1 sweep
-    props = ret[0][0][0].props
-    L = props['L']
-    swl = 2*(L-1)
+    return ds
 
-    xdata = np.arange(len(sweeps), dtype=np.float64)/swl
-    ydata = np.array(sweeps)
+if __name__ == '__main__':
+    inputfile = sys.argv[1]
 
-    pdata = maquisFile.DataSet()
-    pdata.x = xdata
-    pdata.y = ydata
-    pdata.props['label'] = "Truncated weight"
-
-    fig = plt.figure()
-    plt.ylabel('Truncated weight')
-    plt.xlabel('sweep')
-    plotutil.plot(pdata)
-    plt.legend()
-
-    for ax in fig.axes:
-        ax.callbacks.connect('xlim_changed', plotutil.on_xlim_changed)
-
-    plt.show()
-
-if __name__=='__main__':
-    rfile = sys.argv[1]
-    plot(rfile)
+    spdm = load_1spdm(inputfile)
+    pretty_print(spdm)

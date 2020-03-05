@@ -21,7 +21,7 @@
 # common utility functions
 
 import sys
-import maquisFile.h5pyWrapper as h5
+from maquis.fileio import h5pyWrapper as h5
 
 def loadProperties(fname):
     ar = h5.archive(fname)

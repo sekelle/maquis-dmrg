@@ -1,4 +1,4 @@
-#!/usr/bin/env alpspython
+#!/usr/bin/env python
 
 import sys
 

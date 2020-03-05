@@ -29,34 +29,52 @@
 
 import sys
 import numpy as np
-import maquisFile
 
-from corrutils import pretty_print
+from maquis.fileio import loadEigenstateMeasurements
 
 #import numpy as np
-def load_1rdm(inputfile):
+def load_2rdm(inputfile):
     # load data from the HDF5 result file
-    rdm =  maquisFile.loadEigenstateMeasurements([inputfile], what='oneptdm')[0][0]
+    rdm =  loadEigenstateMeasurements([inputfile], what='twoptdm')[0][0]
+    rdm.y[0] = 0.5 * rdm.y[0]
     return rdm
 
-def print_1rdm(rdm):
-    #fmt = '% -016.10E'
-    fmt = '%e'
-
-    L = int(rdm.props["L"])
-    mat = np.zeros((L,L))
+def load_2rdm_matrix(rdm):
+    L = int(rdm.props['L'])
+    odm = np.zeros([L,L,L,L])
 
     for lab, val in zip(rdm.x, rdm.y[0]):
         i = lab[0]
         j = lab[1]
+        k = lab[2]
+        l = lab[3]
 
-        mat[i,j] = val;
-        mat[j,i] = val;
+        odm[i,j,k,l] = val
 
-    pretty_print(mat)
+        if l != k or i != j:
+            odm[j,i,l,k] = val
+
+        if min(i,j) != min(l,k) or max(i,j) != max(l,k):
+            odm[k,l,i,j] = val
+            if l != k or i != j:
+                odm[l,k,j,i] = val
+
+    return odm
+
+def print_2rdm_matrix(rdm):
+    fmt = '%e'
+
+    assert (rdm.shape[0] == rdm.shape[1] == rdm.shape[2] == rdm.shape[3])
+    L = rdm.shape[0]
+
+    irange = np.arange(L)
+    idx = [ (i,j,k,l) for i in irange for j in irange for k in irange for l in irange ]
+    for (i,j,k,l) in idx:
+        print(i,j,k,l, fmt%rdm[i,j,k,l])
 
 if __name__ == '__main__':
     inputfile = sys.argv[1]
 
-    rdm = load_1rdm(inputfile)
-    print_1rdm(rdm)
+    rdm_dataset = load_2rdm(inputfile)
+    rdm = load_2rdm_matrix(rdm_dataset)
+    print_2rdm_matrix(rdm)

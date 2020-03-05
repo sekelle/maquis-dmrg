@@ -28,20 +28,20 @@
 #*****************************************************************************
 
 import sys
-import maquisFile
+from maquis.fileio import loadEigenstateMeasurements
 
 class spinMeasurement:
 
     def __init__(self, inputfile):
-        self.loc_nup          = maquisFile.loadEigenstateMeasurements([inputfile], what='Nup')[0][0].y[0]
-        self.loc_ndown        = maquisFile.loadEigenstateMeasurements([inputfile], what='Ndown')[0][0].y[0]
-        self.loc_nupdown      = maquisFile.loadEigenstateMeasurements([inputfile], what='Nupdown')[0][0].y[0]
+        self.loc_nup          = loadEigenstateMeasurements([inputfile], what='Nup')[0][0].y[0]
+        self.loc_ndown        = loadEigenstateMeasurements([inputfile], what='Ndown')[0][0].y[0]
+        self.loc_nupdown      = loadEigenstateMeasurements([inputfile], what='Nupdown')[0][0].y[0]
 
-        self.loc_nup_nup      = maquisFile.loadEigenstateMeasurements([inputfile], what='nupnup')[0][0].y[0]
-        self.loc_ndown_nup    = maquisFile.loadEigenstateMeasurements([inputfile], what='nupndown')[0][0].y[0]
-        self.loc_nup_ndown    = maquisFile.loadEigenstateMeasurements([inputfile], what='ndownnup')[0][0].y[0]
-        self.loc_ndown_ndown  = maquisFile.loadEigenstateMeasurements([inputfile], what='ndownndown')[0][0].y[0]
-        self.loc_splus_sminus = maquisFile.loadEigenstateMeasurements([inputfile], what='splus_sminus')[0][0].y[0]
+        self.loc_nup_nup      = loadEigenstateMeasurements([inputfile], what='nupnup')[0][0].y[0]
+        self.loc_ndown_nup    = loadEigenstateMeasurements([inputfile], what='nupndown')[0][0].y[0]
+        self.loc_nup_ndown    = loadEigenstateMeasurements([inputfile], what='ndownnup')[0][0].y[0]
+        self.loc_ndown_ndown  = loadEigenstateMeasurements([inputfile], what='ndownndown')[0][0].y[0]
+        self.loc_splus_sminus = loadEigenstateMeasurements([inputfile], what='splus_sminus')[0][0].y[0]
 
     def sminusplus(self):
         nupdown   = self.loc_nupdown

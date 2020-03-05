@@ -13,7 +13,7 @@ import shutil
 from datetime import datetime as dt
 import subprocess
 from subprocess import check_call
-import maquisFile
+from maquis.fileio import writeParameterFile
 
 from exception import TestFailed
 
@@ -72,8 +72,8 @@ class DMRGTestBase(object):
     
     def write_parameters(self):
         """Write parameters as `testname.parms/.model`."""
-        maquisFile.writeParameterFile(self.testname+'.parms', self.inputs['parms'])
-        maquisFile.writeParameterFile(self.testname+'.model', self.inputs['model'])
+        writeParameterFile(self.testname+'.parms', self.inputs['parms'])
+        writeParameterFile(self.testname+'.model', self.inputs['model'])
     
     def run(self, dmrg_app=None, meas_app=None):
         """Create parameters and execute the simulation."""

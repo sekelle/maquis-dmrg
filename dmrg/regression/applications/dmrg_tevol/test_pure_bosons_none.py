@@ -1,8 +1,8 @@
-#!/usr/bin/env alpspython
+#!/usr/bin/env python
 
 import sys
 
-from pydmrg import apptest
+from maquis import apptest
 import sys, os
 
 testname       = os.path.splitext( os.path.basename(sys.argv[0]) )[0]
