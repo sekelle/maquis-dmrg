@@ -33,17 +33,15 @@
 # small interactive script to look at energies in sweeps
 
 
-import pyalps
-import pydmrg
 import sys 
 import numpy as np
 import matplotlib.pyplot as plt 
-import pyalps.plot
 import plotutil
+import maquisFile
 
 def plot(fnames):
 
-    ret = pydmrg.LoadDMRGSweeps(fnames,['Energy'])
+    ret = maquisFile.LoadDMRGSweeps(fnames,['Energy'])
 
     plot_data = []
     for i,f in enumerate(ret):
@@ -51,18 +49,18 @@ def plot(fnames):
         for sw in f:
             sweeps += list(sw[0].y)
 
-        print "total number of sweep values", len(sweeps)
+        print("total number of sweep values", len(sweeps))
         props = f[0][0].props
         L = props['L']
-        print "L", L
+        print("L", L)
         swl = 2.0*(L-1)
         xdata = np.arange(len(sweeps))/swl
         ydata = np.array(sweeps)
       
         #print ydata
-        print "Minimum energy:", np.min(ydata), "\n"
+        print("Minimum energy:", np.min(ydata), "\n")
 
-        pdata = pyalps.DataSet()
+        pdata = maquisFile.DataSet()
         pdata.x = xdata
         pdata.y = ydata
         pdata.props['label'] = "Energy " + props["resultfile"]
@@ -71,7 +69,7 @@ def plot(fnames):
     fig = plt.figure()
     plt.xlabel('Sweeps')
     plt.ylabel('Energy')
-    pyalps.plot.plot(plot_data)
+    plotutil.plot(plot_data)
 
     #locs,labels = plt.xticks()
     #plt.xticks(locs, map(lambda x: "%g" % x, locs))
@@ -91,7 +89,3 @@ def plot(fnames):
 if __name__=='__main__':
     rfile = sys.argv[1:]
     plot(rfile)
-
-
-
-

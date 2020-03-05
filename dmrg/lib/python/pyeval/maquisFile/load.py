@@ -33,9 +33,14 @@
 
 import numpy as np
 import os.path
+from copy import deepcopy
 
-from . import h5py_wrapper as h5
+from . import h5pyWrapper as h5
 from . dataset import *
+
+##############################################################################################
+# these functions correspond to the original pyalps code for loading final measurement results
+##############################################################################################
 
 def log(m):
     """ print a log message"""
@@ -91,21 +96,12 @@ class Hdf5Loader:
             log( "FILE "+ f+ "DOES NOT EXIST!")
         return files
 
-    def ReadParameters(self,proppath):
-        dict = {'filename' : self.h5fname}
-        LOP=self.h5f.list_children(proppath)
-        for m in LOP:
-                try:
-                    dict[m] = self.h5f[proppath+'/'+m]
-                    try:
-                        dict[m] = float(dict[m])
-                    except:
-                        dict[m] = list(map(float,dict[m]))
-                except ValueError:
-                    pass
-        return dict
-
-    def GetProperties(self,flist,proppath='/parameters',respath='/simulation/results',verbose=False):
+    def ReadParameters(self, proppath):
+        ret = {'filename' : self.h5fname}
+        ret.update(self.h5f.readParameters(proppath))
+        return ret
+        
+    def GetProperties(self, flist, proppath='/parameters', respath='/simulation/results', verbose=False):
         fs = self.GetFileNames(flist)
         resultfiles = []
         for f in fs:
@@ -300,3 +296,117 @@ def loadEigenstateMeasurements(files, what=None, verbose=False):
     if isinstance(what,str):
       what = [what]
     return ll.ReadDiagDataFromFile(files,measurements=what,verbose=verbose)
+
+
+#############################################################################################
+# the functions below arw used for loading results recorded for every sweep
+#############################################################################################
+
+
+def ReadMeasurements(ar, measurements, path, props):
+    ret = []
+    if measurements is None:
+        measurements = ar.list_children(path)
+
+    for meas in measurements:
+        if meas in ar.list_children(path):
+            try:
+                d = DataSet()
+                d.props = deepcopy(props)
+                d.props['observable'] = meas
+                d.props['hdf5_path'] = path+'/'+meas
+                d.y = ar[ d.props['hdf5_path']+'/mean/value' ]
+                if 'labels' in ar.list_children(d.props['hdf5_path']):
+                    d.x = parse_labels(ar[ d.props['hdf5_path']+'/labels' ])
+                else:
+                    d.x = range(len(d.y))
+                ret.append(d)
+            except Exception as e:
+                print("Could not load " + meas)
+                print(e)
+                pass
+    return ret
+
+def ReadDMRGSweeps(ar, measurements, props, path='/simulation', selector=None):
+    ret = []
+    for sweep_name in ar.list_children(path):
+        if sweep_name == 'iteration':  ## new iteration format
+            # add sweeps in order
+            sweeps = sorted(map(int, ar.list_children(path+'/iteration')))
+            for sweep in sweeps:
+                sweep_num = str(sweep)
+                ret_sweep = []
+                p_sweep = path+'/iteration/'+sweep_num
+                props_sweep = deepcopy(props)
+                props_sweep['sweep'] = sweep
+                if 'parameters' in ar.list_children(p_sweep):
+                    props_sweep.update( ar.readParameters(p_sweep+'/parameters') )
+                ret_sweep.extend(ReadMeasurements(ar, measurements, p_sweep+'/results', props_sweep))
+                if len(ret_sweep) > 0:
+                    ret.append(ret_sweep)
+
+        elif 'sweep' in sweep_name:  ## old iterarion format
+            sweep = eval(sweep_name.strip('sweep'))
+            ret_sweep = []
+            p_sweep = path+'/'+sweep_name
+            props_sweep = deepcopy(props)
+            props_sweep['sweep'] = sweep
+            if 'parameters' in ar.list_children(p_sweep):
+                props_sweep.update( ar.readParameters(p_sweep+'/parameters') )
+
+            ret_sweep.extend(ReadMeasurements(ar, measurements, p_sweep+'/results', props_sweep))
+            if len(ret_sweep) > 0:
+                ret.append(ret_sweep)
+
+        elif sweep_name == 'results' and 'simulation' in path:
+            props_sweep = deepcopy(props)
+            props_sweep['sweep'] = -1
+            if 'parameters' in ar.list_children(path):
+                props_sweep.update( ar.readParameters(path+'/parameters') )
+
+            tmp = ReadMeasurements(ar, measurements, path+'/results', props_sweep)
+            if len(tmp) > 0:
+                ret.append(tmp)
+    return ret
+
+def LoadDMRGSweeps(files, what=None, selector=None):
+    """ loads measurements in each DMRG iteration from HDF5 result files
+        
+        The parameters are:
+        
+        files:    a list of DMRG result files in HDF5 format.
+        what:     an optional argument that is either a string or list of
+                  strings, specifying the names of the observables which
+                  should be loaded
+        selector: (if specified) function taking a dict of properties and
+                  returning a boolean of the dataset has to be loaded
+        
+        The function returns a list of list of lists of DataSet objects. 
+        The elements of the outer list each correspond to the file names
+        specified as input.
+        The elements of the next level are different sweeps
+        The elements of the inner-most list are each for a different observable.
+        The y-values of the DataSet objects is an array of the measurements
+        in all eigenstates calculated in this sector, and the x-values
+        optionally the labels (indices) of array-valued measurements
+    """
+    
+    if isinstance(what, str):
+      what = [what]
+    
+    ret = []
+    for fname in files:
+        ar = h5.archive(fname)
+        if 'simulation' in ar.list_children('/'):
+            props = ar.readParameters('/parameters')
+            props['filename'] = fname
+            tmp = ReadDMRGSweeps(ar, what, props, path='/simulation', selector=selector)
+            if len(tmp) > 0:
+                ret.append(tmp)
+        if 'spectrum' in ar.list_children('/') and 'iteration' in  ar.list_children('/spectrum'):
+            props = ar.readParameters('/parameters')
+            props['filename'] = fname
+            tmp = ReadDMRGSweeps(ar, what, props, path='/spectrum', selector=selector)
+            if len(tmp) > 0:
+                ret.append(tmp)
+    return ret

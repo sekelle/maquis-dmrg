@@ -104,8 +104,8 @@ def pretty_print(mat):
     for i in range(len(mat)):
         for j in range(len(mat[i])):
             if (abs(mat[i,j]) > 1e-5):
-                print "{0: .5f}".format(mat[i,j]),
+                print("{0: .5f}".format(mat[i,j]), end='')
             else:
-                print "  .     ",
+                print("  .     ", end='')
 
-        print ""
+        print("")

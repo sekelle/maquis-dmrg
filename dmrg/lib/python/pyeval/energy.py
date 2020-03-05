@@ -32,13 +32,13 @@
 # usage: energy.py h5-result-file
 # small interactive script to print groundstate energy
 
-import pydmrg
+import maquisFile
 import sys 
 import numpy as np
 
 def read_energy(fname):
 
-    ret = pydmrg.LoadDMRGSweeps([fname],['Energy'])
+    ret = maquisFile.LoadDMRGSweeps([fname],['Energy'])
 
     sweeps = []
     for sw in ret[0]:
@@ -46,12 +46,9 @@ def read_energy(fname):
 
     ydata = np.array(sweeps)
 
-    #if np.min(ydata.imag) != 0: 
-    #    print "Warning! complex energy value detected"
-  
     return np.min(ydata.real)
 
 if __name__ == '__main__':
     rfile = sys.argv[1]
-    print "Minimum energy:"
-    print read_energy(rfile)
+    print("Minimum energy:")
+    print(read_energy(rfile))

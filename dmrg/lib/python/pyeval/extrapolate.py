@@ -52,8 +52,10 @@ import extrapolate_base
 #rcParams.update({'figure.autolayout': True})
 
 rc('axes', unicode_minus=False) # supposed to eliminate Glyph warning, but doesn't work for TeX
-rc('font', **{'family':'serif','serif':['ComputerModernRoman'],'size':20})
-rc('text', usetex=True)
+
+#enable for latex support
+#rc('font', **{'family':'serif','serif':['ComputerModernRoman'],'size':20})
+#rc('text', usetex=True)
 
 def inset(fig, ax, flist, sweepnr=None):
 
@@ -91,8 +93,8 @@ def plot(flist, sweepnr=None):
     xf = np.linspace(1e-16,max(xdata),100)
     yf = fit(xf)
 
-    print "{:30s} {:13.9f}   {:12.1f}    {:5s}  {:3s}".format("extrapolation", fit(0), 0, "infty", "")
-    print "{:30s} {:14.9f}".format("extrapolation error", fit(0)-ydata[0])
+    print("{:30s} {:13.9f}   {:12.1f}    {:5s}  {:3s}".format("extrapolation", fit(0), 0, "infty", ""))
+    print("{:30s} {:14.9f}".format("extrapolation error", fit(0)-ydata[0]))
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -130,7 +132,8 @@ def plot(flist, sweepnr=None):
 
     #inset(plt, ax, flist[1], sweepnr)
 
-    plt.savefig('e.svg')
+    #plt.savefig('e.svg')
+    plt.show('e.svg')
 
 
 

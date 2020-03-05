@@ -28,20 +28,20 @@
 #*****************************************************************************
 
 import sys
-import pyalps
+import maquisFile
 
 class spinMeasurement:
 
     def __init__(self, inputfile):
-        self.loc_nup          = pyalps.loadEigenstateMeasurements([inputfile], what='Nup')[0][0].y[0]
-        self.loc_ndown        = pyalps.loadEigenstateMeasurements([inputfile], what='Ndown')[0][0].y[0]
-        self.loc_nupdown      = pyalps.loadEigenstateMeasurements([inputfile], what='Nupdown')[0][0].y[0]
+        self.loc_nup          = maquisFile.loadEigenstateMeasurements([inputfile], what='Nup')[0][0].y[0]
+        self.loc_ndown        = maquisFile.loadEigenstateMeasurements([inputfile], what='Ndown')[0][0].y[0]
+        self.loc_nupdown      = maquisFile.loadEigenstateMeasurements([inputfile], what='Nupdown')[0][0].y[0]
 
-        self.loc_nup_nup      = pyalps.loadEigenstateMeasurements([inputfile], what='nupnup')[0][0].y[0]
-        self.loc_ndown_nup    = pyalps.loadEigenstateMeasurements([inputfile], what='nupndown')[0][0].y[0]
-        self.loc_nup_ndown    = pyalps.loadEigenstateMeasurements([inputfile], what='ndownnup')[0][0].y[0]
-        self.loc_ndown_ndown  = pyalps.loadEigenstateMeasurements([inputfile], what='ndownndown')[0][0].y[0]
-        self.loc_splus_sminus = pyalps.loadEigenstateMeasurements([inputfile], what='splus_sminus')[0][0].y[0]
+        self.loc_nup_nup      = maquisFile.loadEigenstateMeasurements([inputfile], what='nupnup')[0][0].y[0]
+        self.loc_ndown_nup    = maquisFile.loadEigenstateMeasurements([inputfile], what='nupndown')[0][0].y[0]
+        self.loc_nup_ndown    = maquisFile.loadEigenstateMeasurements([inputfile], what='ndownnup')[0][0].y[0]
+        self.loc_ndown_ndown  = maquisFile.loadEigenstateMeasurements([inputfile], what='ndownndown')[0][0].y[0]
+        self.loc_splus_sminus = maquisFile.loadEigenstateMeasurements([inputfile], what='splus_sminus')[0][0].y[0]
 
     def sminusplus(self):
         nupdown   = self.loc_nupdown
@@ -78,10 +78,10 @@ if __name__ == '__main__':
 
     S2 = guinea_pig.sminusplus() + guinea_pig.sz2() + guinea_pig.sz()
 
-    print "  <psi|S_z|psi>:", guinea_pig.sz()
-    print "<psi|S_z^2|psi>:", guinea_pig.sz2()
-    print "  <psi|S^2|psi>:", S2
-    print "       S       :", (-1 + (1+4*S2)**0.5)/2
+    print("  <psi|S_z|psi>:", guinea_pig.sz())
+    print("<psi|S_z^2|psi>:", guinea_pig.sz2())
+    print("  <psi|S^2|psi>:", S2)
+    print("       S       :", (-1 + (1+4*S2)**0.5)/2)
 
     #print "sum(splus_sminus)", sum(splus_sminus)
     #print "sum(ndown) - sum(nupdown)", sum(ndown) - sum(nupdown)

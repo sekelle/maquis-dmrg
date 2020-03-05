@@ -28,16 +28,15 @@
 #*****************************************************************************
 
 import sys
-import pyalps
-
 import numpy as np
+import maquisFile
 
 from corrutils import pretty_print
 
 #import numpy as np
 def load_1rdm(inputfile):
     # load data from the HDF5 result file
-    rdm =  pyalps.loadEigenstateMeasurements([inputfile], what='oneptdm')[0][0]
+    rdm =  maquisFile.loadEigenstateMeasurements([inputfile], what='oneptdm')[0][0]
     return rdm
 
 def print_1rdm(rdm):

@@ -28,14 +28,14 @@
 #*****************************************************************************
 
 import sys
-import pyalps
-
 import numpy as np
+
+import maquisFile
 
 #import numpy as np
 def load_2rdm(inputfile):
     # load data from the HDF5 result file
-    rdm =  pyalps.loadEigenstateMeasurements([inputfile], what='twoptdm')[0][0]
+    rdm =  maquisFile.loadEigenstateMeasurements([inputfile], what='twoptdm')[0][0]
     rdm.y[0] = 0.5 * rdm.y[0]
     return rdm
 
@@ -70,7 +70,7 @@ def print_2rdm_matrix(rdm):
     irange = np.arange(L)
     idx = [ (i,j,k,l) for i in irange for j in irange for k in irange for l in irange ]
     for (i,j,k,l) in idx:
-        print i,j,k,l, fmt%rdm[i,j,k,l]
+        print(i,j,k,l, fmt%rdm[i,j,k,l])
 
 if __name__ == '__main__':
     inputfile = sys.argv[1]

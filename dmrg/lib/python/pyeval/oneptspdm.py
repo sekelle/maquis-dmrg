@@ -28,9 +28,8 @@
 #*****************************************************************************
 
 import sys
-import pyalps
-
 import numpy as np
+import maquisFile
 
 from corrutils import pretty_print, assemble_halfcorr
 
@@ -39,10 +38,10 @@ def load_1spdm(inputfile):
        diag: diagonal
        triang: upper triangle, sequential reversed rows"""
 
-    diagup     =  pyalps.loadEigenstateMeasurements([inputfile], what='Nup')[0][0]
-    diagdown   =  pyalps.loadEigenstateMeasurements([inputfile], what='Ndown')[0][0]
-    triangup   =  pyalps.loadEigenstateMeasurements([inputfile], what='dm_up')[0][0]
-    triangdown =  pyalps.loadEigenstateMeasurements([inputfile], what='dm_down')[0][0]
+    diagup     =  maquisFile.loadEigenstateMeasurements([inputfile], what='Nup')[0][0]
+    diagdown   =  maquisFile.loadEigenstateMeasurements([inputfile], what='Ndown')[0][0]
+    triangup   =  maquisFile.loadEigenstateMeasurements([inputfile], what='dm_up')[0][0]
+    triangdown =  maquisFile.loadEigenstateMeasurements([inputfile], what='dm_down')[0][0]
 
     # Create the full matrix from the diagonal (nup.y[0]) and upper triangle (dmup)
     dmu = assemble_halfcorr(diagup.y[0], triangup)

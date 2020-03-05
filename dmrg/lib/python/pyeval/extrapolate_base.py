@@ -29,13 +29,12 @@
 
 # base class for extrapolations
 
-import pyalps
-import pyalps.fit_wrapper as fw
 import numpy as np
+import fit_wrapper as fw
 import math
 import os
 import glob
-import pydmrg
+import maquisFile
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -43,8 +42,8 @@ warnings.filterwarnings("ignore")
 def getData(flist, what = ['Energy'], sweepnr = None):
 
     # [file][sweep][observable]
-    truncs = pydmrg.LoadDMRGSweeps(flist, ['TruncatedWeight'])
-    energs = pydmrg.LoadDMRGSweeps(flist, what)
+    truncs = maquisFile.LoadDMRGSweeps(flist, ['TruncatedWeight'])
+    energs = maquisFile.LoadDMRGSweeps(flist, what)
     props = truncs[0][0][0].props
 
     if sweepnr is None: sweepnr = min([len(f) - 1 for f in truncs])
@@ -52,8 +51,8 @@ def getData(flist, what = ['Energy'], sweepnr = None):
     xdata = []
     ydata = []
     mdata = []
-    print "{:30s} {:15s} {:15s}   m     sweep".format("result file", "energy", "truncation error")
-    print "-----------------------------------------------------------------------------"
+    print("{:30s} {:15s} {:15s}   m     sweep".format("result file", "energy", "truncation error"))
+    print("-----------------------------------------------------------------------------")
     for tr,e in zip(truncs, energs):
         props = tr[0][0].props
         sweeps = []
@@ -61,7 +60,7 @@ def getData(flist, what = ['Energy'], sweepnr = None):
         try:
             # check for reverse m data
             sweep_bond_dims = props['sweep_bond_dimensions']
-            bond_dims = map(int, sweep_bond_dims.split(','))
+            bond_dims = list(map(int, sweep_bond_dims.split(',')))
             for i,b in enumerate(bond_dims[1:]+[0]):
                 if bond_dims[i] > b and i < len(tr):
                     sweeps.append(i)
@@ -69,7 +68,7 @@ def getData(flist, what = ['Energy'], sweepnr = None):
                 
         except KeyError:
             if len(tr[sweepnr][0].y) != 2 * (props['L'] - 1):
-                print "\nWARNING: data in sweep", sweepnr, "incomplete\n"
+                print("\nWARNING: data in sweep", sweepnr, "incomplete\n")
             sweeps.append(len(tr)-1)
             bonds.append(int( e[sweepnr][0].props['max_bond_dimension'] + 0.5))
 
@@ -77,9 +76,9 @@ def getData(flist, what = ['Energy'], sweepnr = None):
             xdata.append(max(tr[s][0].y))
             ydata.append(min( e[s][0].y))
             mdata.append(b)
-            print "{:30s} {:13.9f}   {:.6e}    {:5d}  {:3d}".format(props['resultfile'], ydata[-1], xdata[-1], mdata[-1], s)
+            print("{:30s} {:13.9f}   {:.6e}    {:5d}  {:3d}".format(props['resultfile'], ydata[-1], xdata[-1], mdata[-1], s))
 
-    print ""
+    print("")
 
     return (xdata, ydata, mdata)
 

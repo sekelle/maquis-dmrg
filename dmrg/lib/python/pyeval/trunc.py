@@ -31,25 +31,22 @@
 # small interactive script to examin truncated weights in sweeps
 # Usage: trunc.py h5-result-file
 
-import pyalps
-import pydmrg
-import numpy as np
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
-import pyalps.plot
+import maquisFile
 import plotutil
 
 
 def plot(fname):
 
-    ret = pydmrg.LoadDMRGSweeps([fname],['TruncatedWeight'])
+    ret = maquisFile.LoadDMRGSweeps([fname],['TruncatedWeight'])
 
     sweeps = []
     for sw in ret[0]:
         sweeps += list(sw[0].y)
 
-    print "total number of values in sweep", len(sweeps)
+    print("total number of values in sweep", len(sweeps))
 
     # Get length of 1 sweep
     props = ret[0][0][0].props
@@ -59,7 +56,7 @@ def plot(fname):
     xdata = np.arange(len(sweeps), dtype=np.float64)/swl
     ydata = np.array(sweeps)
 
-    pdata = pyalps.DataSet()
+    pdata = maquisFile.DataSet()
     pdata.x = xdata
     pdata.y = ydata
     pdata.props['label'] = "Truncated weight"
@@ -67,7 +64,7 @@ def plot(fname):
     fig = plt.figure()
     plt.ylabel('Truncated weight')
     plt.xlabel('sweep')
-    pyalps.plot.plot(pdata)
+    plotutil.plot(pdata)
     plt.legend()
 
     for ax in fig.axes:

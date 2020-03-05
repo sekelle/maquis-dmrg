@@ -21,18 +21,18 @@
 # common utility functions
 
 import sys
-import pyalps.hdf5 as h5
+import maquisFile.h5pyWrapper as h5
 
 def loadProperties(fname):
     ar = h5.archive(fname)
-    return ar['/parameters']
+    return ar.readParameters('/parameters')
 
 
 if __name__ == "__main__":
     f = sys.argv[1]
     props = loadProperties(f)
-    for k,v in props.iteritems():
+    for k,v in props.items():
         if isinstance(v, str):
-            print k, " = ", "\"" + v + "\""
+            print(k, " = ", "\"" + v + "\"")
         else:
-            print k, " = ", v
+            print(k, " = ", v)

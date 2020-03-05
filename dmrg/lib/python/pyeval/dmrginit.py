@@ -115,8 +115,8 @@ try:
             return_det2mps = subprocess.Popen([settings['det2mps']+' '+settings['old_di']],shell= True)
             return_det2mps.wait()
         except subprocess.CalledProcessError as e:
-            print ' CI-DEAS MPS instantiation failed with ', e
+            print(' CI-DEAS MPS instantiation failed with ', e)
     except subprocess.CalledProcessError as e:
-        print 'DMRG measurements failed with ', e
+        print('DMRG measurements failed with ', e)
 except subprocess.CalledProcessError as e:
-    print 'DMRG failed with ', e
+    print('DMRG failed with ', e)

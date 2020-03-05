@@ -36,6 +36,20 @@ class archive:
     def is_group(self, path):
         return isinstance(self.impl[path], h5py.Group)
 
+    def readParameters(self, proppath):
+        LOP = self.list_children(proppath)
+        ret = {}
+        for m in LOP:
+            try:
+                ret[m] = self[proppath+'/'+m]
+                try:
+                    ret[m] = float(ret[m])
+                except:
+                    ret[m] = list(map(float, ret[m]))
+            except ValueError:
+                pass
+        return ret
+
 
 class pt:
 

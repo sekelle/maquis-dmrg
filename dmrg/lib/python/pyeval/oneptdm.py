@@ -29,12 +29,11 @@
 
 
 import sys
-import pyalps
-
 import numpy as np
 import scipy.linalg as sl
-
 from copy import deepcopy
+
+import maquisFile
 
 from corrutils import assemble_halfcorr as assy_hc
 from corrutils import assemble_vector as assy_vec
@@ -52,15 +51,15 @@ def diag_dm(matrix):
 
     evals = sl.eigh(matrix)[0][::-1]
     for e in evals:
-            print "{0: .5f}".format(e)
+            print("{0: .5f}".format(e))
 
 class oneptdm:
     def __init__(self, inputfile):
         # load data from the HDF5 result file
-        self.nup    = assy_vec(pyalps.loadEigenstateMeasurements([inputfile], what='Nup')[0][0])
-        self.ndown  = assy_vec(pyalps.loadEigenstateMeasurements([inputfile], what='Ndown')[0][0])
-        self.dmup   = assy_hc(self.nup, pyalps.loadEigenstateMeasurements([inputfile], what='dm_up')[0][0])
-        self.dmdown = assy_hc(self.ndown, pyalps.loadEigenstateMeasurements([inputfile], what='dm_down')[0][0])
+        self.nup    = assy_vec(maquisFile.loadEigenstateMeasurements([inputfile], what='Nup')[0][0])
+        self.ndown  = assy_vec(maquisFile.loadEigenstateMeasurements([inputfile], what='Ndown')[0][0])
+        self.dmup   = assy_hc(self.nup, maquisFile.loadEigenstateMeasurements([inputfile], what='dm_up')[0][0])
+        self.dmdown = assy_hc(self.ndown, maquisFile.loadEigenstateMeasurements([inputfile], what='dm_down')[0][0])
 
     def rdm(self):
         return self.rdm_a() + self.rdm_b()
@@ -84,7 +83,7 @@ if __name__ == '__main__':
         irrlist = read_irreps(orbfile)
         blocks = np.bincount(irrlist)[1:]
 
-    print "Point group blocks", blocks
+    print("Point group blocks", blocks)
 
     bstart = 0
     for l in blocks:

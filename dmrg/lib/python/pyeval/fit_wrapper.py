@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 # ****************************************************************************
 # 
 # ALPS Project: Algorithms and Libraries for Physics Simulations
@@ -28,38 +25,33 @@
 # 
 # ****************************************************************************
 
-import copy
 import numpy as np
+from scipy import optimize
 
-class ResultProperties:
-    def __init__(self):
-        self.props = {}
 
-class DataSet(ResultProperties):
-    """
-    The DataSet class stores a set of data, usually in XY format, along with all the properties
-    describing the data, such as input parameters to the simulation etc.
-    
-    Members are:
-     * x, y - These contain the data and are expected to come as lists of Numpy arrays
-              by many functions operating on DataSets. However, for user-supplied functions,
-              other ways of representing data may be used.
-     * props - This is a dictionary of properties describing the dataset.
-    """
-    def __init__(self,x=None,y=None,props=None):
-        ResultProperties.__init__(self)
-        if x is None:   self.x = np.array([])
-        else:           self.x = x
-        if y is None:   self.y = np.array([])
-        else:           self.y = y
-        if props is not None:   self.props = props
+__all__ = ['fit', 'Parameter']
 
-    def __repr__(self):
-        return "x=%s\ny=%s\nprops=%s" % (self.x, self.y, self.props)
+class Parameter:
+    def __init__(self, value):
+        self.value = value
 
-class ResultFile(ResultProperties):
-    def __init__(self,fn=None):
-        ResultProperties.__init__(self)
-        if fn is not None:
-            self.props['filename'] = fn
+    def set(self, value):
+        self.value = value
 
+    def get(self):
+        return self.value
+
+    def __call__(self):
+        return self.value
+
+def fit(self,function, parameters, y, x = None):
+    def f(params):
+        i = 0
+        for p in parameters:
+            p.set(params[i])
+            i += 1
+        return y - function(self,x,parameters)
+
+    if x is None: x = np.arange(y.shape[0])
+    p = [param() for param in parameters]
+    optimize.leastsq(f, p)
