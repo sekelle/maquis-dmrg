@@ -3,12 +3,13 @@
 enable_omp_if_found()
 include_directories(. ${CMAKE_CURRENT_BINARY_DIR})
 
-set(PYTHON_APP_LIBRARIES optimizer ${Python2_LIBRARIES})
+set(PYTHON_APP_LIBRARIES optimizer ${Python3_LIBRARIES})
 
 
 # *** Targets
 add_library(maquis SHARED export_collections.cpp maquis.cpp)
 target_link_libraries(maquis ${PYTHON_APP_LIBRARIES})
+target_include_directories(maquis PUBLIC ${Python3_INCLUDE_DIRS})
 set_property(TARGET maquis PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 #set_target_properties(maquis PROPERTIES PREFIX "")
 

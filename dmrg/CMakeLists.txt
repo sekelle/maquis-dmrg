@@ -201,11 +201,6 @@ endif(ALPS_HDF5_LIBRARIES)
 
 mark_as_advanced(ALPS_LIBRARY_DIRS ALPS_INCLUDE_DIRS HDF5_INCLUDE_DIR HDF5_LIBRARIES)
 
-if (ALPS_PYTHON_INTERPRETER)
-  set(ALPS_INCLUDE_DIRS ${ALPS_INCLUDE_DIRS} ${ALPS_PYTHON_INCLUDE_DIRS} ${ALPS_PYTHON_NUMPY_INCLUDE_DIR})
-  list(APPEND DMRG_LIBRARIES ${ALPS_PYTHON_LIBRARY})
-endif (ALPS_PYTHON_INTERPRETER)
-
 
 # Boost
 set(Boost_requirements bindings date_time filesystem regex system
@@ -235,14 +230,14 @@ endif(NOT USE_AMBIENT)
 
 find_package(CUDA)
 
-find_package(Python2 COMPONENTS Interpreter Development)
+find_package(Python3 COMPONENTS Interpreter Development)
 
 ######################################################################
 # Version information
 ######################################################################
-set(DMRG_YEAR 2019)
+set(DMRG_YEAR 2020)
 set(DMRG_VERSION_MAJOR 0)
-set(DMRG_VERSION_MINOR 4)
+set(DMRG_VERSION_MINOR 6)
 set(DMRG_VERSION_BUILD "")
 
 if(NOT DMRG_VERSION_BUILD AND EXISTS ${PROJECT_SOURCE_DIR}/.svn) 
