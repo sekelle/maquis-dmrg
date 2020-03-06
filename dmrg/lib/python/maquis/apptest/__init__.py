@@ -6,6 +6,6 @@
 #
 #############################################################################
 
-from main import main
-from testbase import DMRGTestBase
-import observable_test
+from .main import main
+from .testbase import DMRGTestBase
+from . import observable_test

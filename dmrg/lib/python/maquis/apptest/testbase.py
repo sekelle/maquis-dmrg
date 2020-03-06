@@ -15,7 +15,7 @@ import subprocess
 from subprocess import check_call
 from maquis.fileio import writeParameterFile
 
-from exception import TestFailed
+from .exception import TestFailed
 
 def remove_if_exists(fname):
     """Remove file if exists."""

@@ -10,7 +10,7 @@ import sys
 import inspect
 import argparse
 
-from testbase import DMRGTestBase
+from .testbase import DMRGTestBase
 
 def find_subclasses(module_name='__main__', clazz=DMRGTestBase):
     module = __import__(module_name)

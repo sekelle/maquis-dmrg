@@ -10,8 +10,8 @@ import os
 import numpy as np
 from maquis.fileio import loadEigenstateMeasurements, loadDmrgSweeps, flatten, DataSet, collectXY
 
-from exception import ObservableNotFound
-from exception import ObservableNotMatch
+from .exception import ObservableNotFound
+from .exception import ObservableNotMatch
 
 def load_spectrum_observable(fname, observable, remove_equal_indexes=False):
     if not os.path.exists(fname):

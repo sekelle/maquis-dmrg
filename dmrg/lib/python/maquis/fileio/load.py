@@ -231,7 +231,8 @@ class Hdf5Loader:
                     if measurements == None:
                         obslist = list_
                     else:
-                        obslist = [h5.hdf5_name_encode(obs) for obs in measurements if h5.hdf5_name_encode(obs) in list_]
+                        obslist = [obs for obs in measurements if obs in list_]
+
                     for secnum in self.h5f.list_children(respath+'/sectors'):
                         sector_sets=[]
                         for m in obslist:
