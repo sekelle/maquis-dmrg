@@ -1,5 +1,5 @@
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.10)
 
 ######################################################################
 # Machine Config
@@ -21,6 +21,7 @@ endif(NOT DEFAULT_BLAS_LAPACK)
 # Project START
 ######################################################################
 project (MAQUIS_DMRG) 
+set(CMAKE_CXX_STANDARD 17)
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/config)
 
@@ -202,30 +203,19 @@ endif(ALPS_HDF5_LIBRARIES)
 mark_as_advanced(ALPS_LIBRARY_DIRS ALPS_INCLUDE_DIRS HDF5_INCLUDE_DIR HDF5_LIBRARIES)
 
 
-# Boost
-set(Boost_requirements bindings date_time filesystem regex system
-serialization)
+# This forces use of cmake's own configuration for Boost, rather than the one that Boost provides
+# starting from version 1.70.0
+set(Boost_NO_BOOST_CMAKE ON)
+find_package(Boost COMPONENTS date_time program_options filesystem regex system serialization thread python36)
+set(Maquis_Boost_LIBRARIES Boost::regex Boost::system Boost::filesystem Boost::serialization
+Boost::date_time Boost::program_options Boost::thread)
 
-include(${PROJECT_SOURCE_DIR}/config/find_boost.cmake)
-find_maquis_boost(COMPONENTS ${Boost_requirements})
-
-message(STATUS "Boost include: ${MAQUIS_Boost_INCLUDE_DIRS}")
-message(STATUS "Boost libs: ${MAQUIS_Boost_LIBRARIES}")
-message(STATUS "Boost unit_test: ${MAQUIS_Boost_UNIT_TEST_FRAMEWORK_LIBRARY}")
-
-# GSL
-# find GNU Scientific Library if using SU2 Groups
-#if((DMRG_HAS_SU2U1) OR (DMRG_HAS_SU2U1PG))
-#  find_package(GSL REQUIRED)
-#endif()
 
 # BLAS/LAPACK selector
-if(NOT USE_AMBIENT)
-  find_package(MAQUISLapack)
-  message(STATUS "Lapack include:  ${MAQUISLapack_INCLUDE_DIRS}")
-  message(STATUS "Lapack lib dirs: ${MAQUISLapack_LIB_DIRS}")
-  message(STATUS "Lapack libs:     ${MAQUISLapack_LIBRARIES}")
-endif(NOT USE_AMBIENT)
+find_package(MAQUISLapack)
+message(STATUS "Lapack include:  ${MAQUISLapack_INCLUDE_DIRS}")
+message(STATUS "Lapack lib dirs: ${MAQUISLapack_LIB_DIRS}")
+message(STATUS "Lapack libs:     ${MAQUISLapack_LIBRARIES}")
 
 
 find_package(CUDA)
@@ -303,7 +293,8 @@ MESSAGE(STATUS "DMRG version: ${DMRG_VERSION}")
 set(DMRG_INCLUDE_DIRS ${MAQUIS_Boost_INCLUDE_DIRS})
 set(DMRG_LIBRARY_DIRS ${MAQUIS_Boost_LIBRARY_DIRS})
 #set(DMRG_DEFINITIONS)
-set(DMRG_LIBRARIES alps wignerj ${MAQUIS_Boost_LIBRARIES} ${HDF5_LIBRARIES} ${CUDA_LIBRARIES} )
+#set(DMRG_LIBRARIES alps wignerj ${Boost_LIBRARIES} ${HDF5_LIBRARIES} ${CUDA_LIBRARIES} )
+set(DMRG_LIBRARIES alps wignerj ${Maquis_Boost_LIBRARIES} ${HDF5_LIBRARIES} ${CUDA_LIBRARIES} )
 if(USE_AMBIENT)
   list(APPEND DMRG_LIBRARIES ${AMBIENT_LIBRARIES})
 else()

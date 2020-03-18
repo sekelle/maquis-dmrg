@@ -53,7 +53,7 @@ endif(ENABLE_LL_MODELS)
 
 
 # *** Libraries
-add_library(dmrg_utils STATIC block_matrix/symmetry.cpp utils/utils.cpp utils/DmrgOptions.cpp utils/time_stopper.cpp utils/proc_statm.cpp utils/proc_status.cpp utils/md5_impl.cpp utils/md5.cpp)
+add_library(dmrg_utils STATIC utils/utils.cpp utils/DmrgOptions.cpp utils/time_stopper.cpp utils/proc_statm.cpp utils/proc_status.cpp utils/md5_impl.cpp utils/md5.cpp)
 
 add_library(dmrg_models STATIC ${DMRG_MODELS_SOURCES})
 target_link_libraries(dmrg_models solver numeric_gpu)

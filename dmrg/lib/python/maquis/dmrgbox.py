@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import libmaquis
+from maquis import libmaquis
 import numpy as np
 import tempfile
 import shutil

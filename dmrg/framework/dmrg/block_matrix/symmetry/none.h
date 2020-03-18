@@ -39,9 +39,9 @@
 class TrivialGroup
 {
 public:
-	typedef enum { Plus } charge;
+    typedef enum { Plus } charge;
     typedef int subcharge; // Used if charge is site_dependent
-	static const charge IdentityCharge = Plus;
+    static const charge IdentityCharge;// = Plus;
     static const bool finite = true;
 
     static subcharge particleNumber(charge a) {
@@ -50,8 +50,8 @@ public:
 
     static bool physical(charge const & rhs) { return true; }
     
-	static inline charge fuse(charge a, charge b) { return Plus; }
-	template<int R> static charge fuse(boost::array<charge, R>) { return Plus; }
+    static inline charge fuse(charge a, charge b) { return Plus; }
+    template<int R> static charge fuse(boost::array<charge, R>) { return Plus; }
 };
 
 namespace boost {
@@ -99,5 +99,7 @@ inline void serialize(Archive & ar, TrivialGroup::charge & c, const unsigned int
 }
 
 inline TrivialGroup::charge operator-(TrivialGroup::charge a) { return a; }
+
+inline const TrivialGroup::charge TrivialGroup::IdentityCharge = TrivialGroup::Plus;
 
 #endif

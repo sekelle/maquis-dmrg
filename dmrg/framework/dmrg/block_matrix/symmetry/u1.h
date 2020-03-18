@@ -39,25 +39,27 @@
 class U1
 {
 public:
-	typedef int charge;
+    typedef int charge;
     typedef int subcharge;
 
-	static const charge IdentityCharge = 0;
+    static const charge IdentityCharge;
     static const bool finite = false;
-	
-	static charge fuse(charge a, charge b) { return a + b; }
+
+    static charge fuse(charge a, charge b) { return a + b; }
     static charge particleNumber(charge a) { return a; }
 
     static bool physical(charge const & rhs) { return true; }
-	
-	template<int R> static charge fuse(const boost::array<charge, R> &v)
-	{
-		charge ret = 0;
-		for (int i = 0; i < R; i++)
-			ret += v[i];
-		return ret;
-	}
+
+    template<int R> static charge fuse(const boost::array<charge, R> &v)
+    {
+        charge ret = 0;
+        for (int i = 0; i < R; i++)
+            ret += v[i];
+        return ret;
+    }
 };
+
+inline const U1::charge U1::IdentityCharge = 0;
 
 template <class Archive>
 inline void serialize(Archive & ar, U1::charge & c, const unsigned int version)
