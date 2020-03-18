@@ -38,7 +38,7 @@
 
 using namespace index_detail;
 
-typedef boost::mpl::list< U1, Zq<2> > SymmGroupList;
+typedef boost::mpl::list<U1> SymmGroupList;
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(has_test, T, SymmGroupList){
     Index<T> phys;
