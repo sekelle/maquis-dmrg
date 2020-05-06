@@ -6,7 +6,7 @@ import tempfile
 import shutil
 import os.path
 
-import energy as pytool_energy
+import maquis.pyeval.energy as pytool_energy
 
 import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
@@ -18,7 +18,7 @@ class DummyCSF:
         self.total_nCSF = 0
 
 
-class DMRGBox:
+class DmrgBox:
 
     def __init__(self, options, Hnp, Inp):
 
@@ -63,7 +63,7 @@ class DMRGBox:
             if options.has_key("Ecore"):
                 Ecore = options["Ecore"]
 
-            self.options["integrals"] = DMRGBox.pack_integrals(Hnp, Inp, self.options["L"], Ecore)
+            self.options["integrals"] = DmrgBox.pack_integrals(Hnp, Inp, self.options["L"], Ecore)
 
         self.solvers = {}
         self.result_files = {}
@@ -100,7 +100,7 @@ class DMRGBox:
     def energy(self, S, state):
         #return self.solvers[S][state].getObservable("Energy")
         #return pytool_energy.read_energy(self.result_files[S][state])
-        return pytool_energy.read_energy(self.solvers[S][state].value('resultfile'))
+        return pytool_energy.read_energy(self.result_files[S][state])
 
     def opdm(self, resources, S, state, state2, total):
         """calculate the (transition) 1-body reduced density matrix"""
@@ -110,12 +110,12 @@ class DMRGBox:
             self.solvers[S][state].measure("oneptdm", "")
             r1 = self.solvers[S][state].getObservable("oneptdm")
             r1l = self.solvers[S][state].getLabels("oneptdm")
-            rdm1 = DMRGBox.expand_1rdm(r1, r1l, self.options["L"])
+            rdm1 = DmrgBox.expand_1rdm(r1, r1l, self.options["L"])
         else:
             self.solvers[S][state2].measure("transition_oneptdm", os.path.abspath(os.path.join(self.tempdir, "state_S" + str(S) + "_" + str(state))))
             r1 = self.solvers[S][state2].getObservable("transition_oneptdm")
             r1l = self.solvers[S][state2].getLabels("transition_oneptdm")
-            rdm1 = DMRGBox.expand_t1rdm(r1, r1l, self.options["L"])
+            rdm1 = DmrgBox.expand_t1rdm(r1, r1l, self.options["L"])
 
         return rdm1
 
@@ -127,12 +127,12 @@ class DMRGBox:
             self.solvers[S][state].measure("twoptdm", "")
             r2 = self.solvers[S][state].getObservable("twoptdm")
             r2l = self.solvers[S][state].getLabels("twoptdm")
-            rdm2 = DMRGBox.expand_2rdm(r2, r2l, self.options["L"])
+            rdm2 = DmrgBox.expand_2rdm(r2, r2l, self.options["L"])
         else:
             self.solvers[S][state2].measure("transition_twoptdm", os.path.abspath(os.path.join(self.tempdir, "state_S" + str(S) + "_" + str(state))))
             r2 = self.solvers[S][state2].getObservable("transition_twoptdm")
             r2l = self.solvers[S][state2].getLabels("transition_twoptdm")
-            rdm2 = DMRGBox.expand_t2rdm(r2, r2l, self.options["L"])
+            rdm2 = DmrgBox.expand_t2rdm(r2, r2l, self.options["L"])
         return rdm2
 
 

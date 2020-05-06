@@ -34,6 +34,7 @@
 #include "dmrg/utils/DmrgParameters.h"
 #include "dmrg/sim/symmetry_factory.h"
 
+#include "../../../dmrg/applications/dmrg/simulation.h"
 #include "cpp_maquis.h"
 
 namespace detail {
@@ -51,7 +52,7 @@ Interface::Interface(DmrgParameters & parms, int spin_) : spin(spin_)
     parms["chkpfile"]   = chkpfile   + ".s" + std::to_string(spin) + "_n" + std::to_string(simv.size()) + ".h5";
     parms["resultfile"] = resultfile + ".s" + std::to_string(spin) + "_n" + std::to_string(simv.size()) + ".h5";
 
-    parms["spin"] = spin;
+    parms.set("spin", spin);
     simv.push_back(dmrg::symmetry_factory<simulation_traits>(parms));
 }
 
@@ -384,6 +385,7 @@ std::pair<int, int> DmrgInterface::state_to_s_n(int state)
             return std::make_pair(s, ret);
         ret -= nstates[s];
     }
+    return std::make_pair(0,0);
 }
 
 

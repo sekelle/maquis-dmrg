@@ -24,6 +24,9 @@
  *
  *****************************************************************************/
 
+#ifndef CPP_MAQUIS_H
+#define CPP_MAQUIS_H
+
 #include <iostream>
 #include <string>
 #include <complex>
@@ -33,71 +36,10 @@
 #include <stdexcept>
 #include <utility>
 
-namespace alps
-{
-    namespace numeric
-    {
-        template <class T, class MemoryBlock> class matrix;
-    }
-}
 
-// Forward declaration for matrix, need to specifiy the Memory Block default argument
-// Ideally, ALPS should provide a forward declaration header with the default template argument
-typedef alps::numeric::matrix<double, std::vector<double> >                              matrix;
-typedef alps::numeric::matrix<std::complex<double>, std::vector<std::complex<double> > > cmatrix;
-
-template <class Matrix, class SymmGroup> class dmrg_sim;
 
 class DmrgParameters;
-
-class FrontEndBase {
-public:
-    virtual ~FrontEndBase() {}
-    virtual void run() =0;
-    virtual void measure_all() =0;
-    virtual void measure_observable(std::string name,
-                                    std::vector<double> & results, std::vector<std::vector<int> > & labels,
-                                    std::string bra, std::shared_ptr<FrontEndBase> bra_ptr = NULL) =0;
-
-    virtual double get_energy() =0;
-
-    //virtual void add_ortho(std::shared_ptr<FrontEndBase> os) =0;
-    virtual void add_ortho(FrontEndBase* os) =0;
-
-    //virtual parameters::proxy get_parm(std::string const& key) =0;
-};
-
-template <class Matrix, class SymmGroup>
-class SimFrontEnd : public FrontEndBase {
-public:
-    SimFrontEnd(DmrgParameters & parms);
-
-    void run();
-
-    void measure_all();
-
-    void measure_observable(std::string name,
-                            std::vector<double> & results, std::vector<std::vector<int> > & labels,
-                            std::string bra,
-                            std::shared_ptr<FrontEndBase> bra_ptr = NULL);
-
-    double get_energy();
-
-    //parameters::proxy get_parm(std::string const& key);
-
-    //void add_ortho(std::shared_ptr<FrontEndBase> os);
-    void add_ortho(FrontEndBase* os);
-
-private:
-    std::shared_ptr<dmrg_sim<Matrix, SymmGroup>> sim_ptr;
-};
-
-struct simulation_traits {
-    typedef std::shared_ptr<FrontEndBase> shared_ptr;
-    template <class Matrix, class SymmGroup> struct F {
-        typedef SimFrontEnd<Matrix, SymmGroup> type;
-    };
-};
+class FrontEndBase;
 
 
 class Interface
@@ -133,7 +75,7 @@ private:
     std::map<std::string, std::vector<double> > observables;
     std::map<std::string, std::vector<std::vector<int> > > labels;
 
-    std::vector<simulation_traits::shared_ptr> simv;
+    std::vector<std::shared_ptr<FrontEndBase>> simv;
 
     int tc_num_threads;
 
@@ -168,3 +110,5 @@ private:
 };
 
 void prepare_integrals(double **, double **, double, int, int, std::map<std::string, std::string> &);
+
+#endif
