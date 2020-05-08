@@ -74,3 +74,14 @@ double SimFrontEnd<Matrix, SymmGroup>::get_energy()
     return sim_ptr->get_energy();
 }
 
+template <class Matrix, class SymmGroup>
+std::string SimFrontEnd<Matrix, SymmGroup>::getParm(const std::string& key)
+{
+    return sim_ptr->getParm(key);
+}
+
+template <class Matrix, class SymmGroup>
+const DmrgParameters& SimFrontEnd<Matrix, SymmGroup>::getParameters() const
+{
+    return sim_ptr->getParameters();
+}

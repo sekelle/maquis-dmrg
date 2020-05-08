@@ -37,6 +37,80 @@
 #include "../../../dmrg/applications/dmrg/simulation.h"
 #include "cpp_maquis.h"
 
+
+State::State() {}
+
+State::State(std::map<std::string, std::string> const& options)
+{
+
+    DmrgParameters parms;
+    for(auto const& kv : options)
+        parms.set(kv.first, kv.second);
+
+    simv = dmrg::symmetry_factory<simulation_traits>(parms);
+}
+
+State::State(DmrgParameters parms)
+{
+    simv = dmrg::symmetry_factory<simulation_traits>(parms);
+}
+
+std::string State::getParm(const std::string& key)
+{
+    std::string ret = simv->getParm(key);
+    return ret;
+}
+
+
+std::map<std::string, std::string> State::getParameters()
+{
+    DmrgParameters parms = simv->getParameters();
+
+    std::map<std::string, std::string> ret;
+    for(auto& kv : parms)
+        ret[kv.key()] = kv.value();
+
+    return ret;
+}
+
+void State::optimize()
+{
+    simv->run();
+}
+
+State State::excite() const
+{
+    DmrgParameters parms = simv->getParameters();
+    //int spin = parms["spin"];
+    //parms["chkpfile"]   = chkpfile   + ".s" + std::to_string(spin) + "_n" + std::to_string(simv.size()) + ".h5";
+    //parms["resultfile"] = resultfile + ".s" + std::to_string(spin) + "_n" + std::to_string(simv.size()) + ".h5";
+
+    std::string chkpfile   = parms["chkpfile"];
+    std::string resultfile = parms["resultfile"];
+    if (chkpfile.find(".h5") != std::string::npos)
+    {
+        chkpfile.erase(chkpfile.end()-3, chkpfile.end());
+        resultfile.erase(resultfile.end()-3, resultfile.end());
+    }
+
+    std::string exStr = std::to_string(excitation);
+    if (chkpfile.find("." + exStr) != std::string::npos)
+    {
+        chkpfile.erase(chkpfile.end() - 1 - exStr.length(), chkpfile.end());
+        resultfile.erase(resultfile.end() - 1 - exStr.length(), resultfile.end());
+    }
+
+    parms["chkpfile"]   = chkpfile + "." + std::to_string(excitation+1) + ".h5";
+    parms["resultfile"] = resultfile  + "." + std::to_string(excitation+1) + ".h5";
+
+    State ret(parms);
+    ret.excitation = excitation + 1;
+    ret.simv->add_ortho(simv.get());
+
+    return ret;
+}
+
+
 namespace detail {
     DmrgParameters parms;
     std::string chkp_base;
@@ -128,18 +202,18 @@ void Interface::measure(std::string name, int bra, int ket)
         throw std::runtime_error("State index specified is out of range (corresponding excited state has not been computed)\n");
 
     set_threads();
-    simv[ket]->measure_observable(name, observables["name"], labels["name"], "");
+    simv[ket]->measure_observable(name, observables[name], labels[name], "");
     restore_threads();
 } 
 
 std::vector<double> Interface::getObservable(std::string name)
 {
-    return observables["name"];
+    return observables[name];
 }
 
 std::vector<std::vector<int> > Interface::getLabels(std::string name)
 {
-    return labels["name"];
+    return labels[name];
 }
 
 double Interface::energy(int state)

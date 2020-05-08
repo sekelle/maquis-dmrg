@@ -37,6 +37,73 @@ using namespace boost::python;
 
 void export_collections();
 
+class DmrgState
+{
+public:
+    DmrgState() {}
+    DmrgState(boost::python::dict kwargs)
+    {
+        boost::python::list keys = kwargs.keys();
+
+        std::map<std::string, std::string> parms;
+        for(int i = 0; i < len(keys); ++i) {
+            object curArg = kwargs[keys[i]];
+            std::string k = extract<std::string>(keys[i]);
+
+            extract<int> val_int(kwargs[keys[i]]);
+            extract<double> val_double(kwargs[keys[i]]);
+            extract<std::string> val_string(kwargs[keys[i]]);
+
+            if (val_int.check())
+                parms[k] = std::to_string(val_int());
+            else if (val_double.check())
+                parms[k] = std::to_string(val_double());
+            else
+                parms[k] = val_string();
+        }
+
+        impl_ = State(parms);
+    }
+
+    void optimize()
+    {
+        impl_.optimize();
+    }
+
+    DmrgState excite()
+    {
+        State excited = impl_.excite();
+
+        DmrgState ret;
+        ret.impl_ = excited;
+
+        return ret;
+    }
+
+    std::string getParm(const std::string& key)
+    {
+        return impl_.getParm(key);
+    }
+
+    boost::python::dict getParameters()
+    {
+        auto parms = impl_.getParameters();
+
+        boost::python::dict ret;
+        for(auto& it : parms) {
+            ret[it.first] = it.second;
+        }
+
+        return ret;
+    }
+
+    //void SetParameters(DmrgParameters & p) { /*parms = p;*/ }
+
+private:
+
+    State impl_;
+};
+
 
 // wrapper to DmrgInterface to receive a python dict as ctor argument
 class DmrgBox
@@ -132,6 +199,14 @@ private:
 BOOST_PYTHON_MODULE(dmrgbox)
 {
     export_collections();
+
+    class_<DmrgState>("DmrgState")
+        .def(init<boost::python::dict>())
+        .def("optimize", &DmrgState::optimize)
+        .def("excite", &DmrgState::excite)
+        .def("getParm", &DmrgState::getParm)
+        .def("getParamaters", &DmrgState::getParameters)
+    ;
 
     class_<DmrgBox>("DmrgBox")
         .def(init<boost::python::dict>())

@@ -35,11 +35,37 @@
 #include <memory>
 #include <stdexcept>
 #include <utility>
+#include <tuple>
 
 
 
 class DmrgParameters;
 class FrontEndBase;
+
+class State
+{
+public:
+
+    State();
+    State(const std::map<std::string, std::string>&);
+
+    void optimize();
+
+    State excite() const;
+
+    std::string getParm(const std::string& key);
+
+    std::map<std::string, std::string> getParameters();
+
+    std::tuple<std::vector<double>, std::vector<int>> measure(std::string const& name) const;
+
+private:
+    State(DmrgParameters);
+
+    int excitation=0;
+
+    std::shared_ptr<FrontEndBase> simv;
+};
 
 
 class Interface

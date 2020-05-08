@@ -184,9 +184,15 @@ void sim<Matrix, SymmGroup>::add_ortho(std::shared_ptr<sim<Matrix, SymmGroup>> o
 }
 
 template <class Matrix, class SymmGroup>
-parameters::proxy sim<Matrix, SymmGroup>::get_parm(std::string const& key)
+std::string sim<Matrix, SymmGroup>::getParm(std::string const& key)
 {
-    return parms[key];
+    return parms.get<std::string>(key);
+}
+
+template <class Matrix, class SymmGroup>
+const DmrgParameters& sim<Matrix, SymmGroup>::getParameters() const
+{
+    return parms;
 }
 
 template <class Matrix, class SymmGroup>

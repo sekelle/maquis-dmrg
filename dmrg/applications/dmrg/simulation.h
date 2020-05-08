@@ -45,7 +45,8 @@ public:
 
     virtual double get_energy() =0;
 
-    //virtual parameters::proxy get_parm(std::string const& key) =0;
+    virtual std::string getParm(const std::string&) =0;
+    virtual const DmrgParameters& getParameters() const =0;
 
     //virtual void add_ortho(std::shared_ptr<FrontEndBase> os) {}
     virtual void add_ortho(FrontEndBase* os) {}
@@ -67,7 +68,8 @@ public:
 
     double get_energy();
 
-    //parameters::proxy get_parm(std::string const& key);
+    std::string getParm(const std::string& key);
+    const DmrgParameters& getParameters() const;
 
     //void add_ortho(std::shared_ptr<FrontEndBase> os);
     void add_ortho(FrontEndBase* os);

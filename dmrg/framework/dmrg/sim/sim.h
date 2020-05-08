@@ -65,12 +65,6 @@
 #include "dmrg/models/measurements.h"
 
 
-//class abstract_sim {
-//public:
-//    virtual ~abstract_sim() {}
-//    virtual void run() =0;
-//};
-
 
 template <class Matrix, class SymmGroup>
 class sim /*: public abstract_sim */ {
@@ -82,7 +76,9 @@ public:
 
     void add_ortho(std::shared_ptr<sim<Matrix, SymmGroup>> os);
 
-    parameters::proxy get_parm(std::string const& key);
+    std::string getParm(std::string const& key);
+
+    const DmrgParameters& getParameters() const;
     
 protected:
     typedef typename Model<Matrix, SymmGroup>::measurements_type measurements_type;
