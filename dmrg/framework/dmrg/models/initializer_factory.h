@@ -32,22 +32,6 @@
 #include "dmrg/models/chem/mps_init_hf.hpp"
 
 namespace detail {
-//    template <class Matrix, class SymmGroup>
-//    struct call_linear_init {
-//        static typename Model<Matrix,SymmGroup>::initializer_ptr call()
-//        {
-//            throw std::runtime_error("Linear MPS init is available only for U1 symmetry group.");
-//            BaseParameters bp;
-//            return typename Model<Matrix,SymmGroup>::initializer_ptr(new default_mps_init<Matrix, SymmGroup>(bp));
-//        }
-//    };
-//    template <class Matrix>
-//    struct call_linear_init<Matrix, U1> {
-//        static typename Model<Matrix,U1>::initializer_ptr call()
-//        {
-//            return typename Model<Matrix,U1>::initializer_ptr(new linear_mps_init<Matrix>());
-//        }
-//    };
     
     template <class Matrix, class SymmGroup, class = void>
     struct call_hf_init {
@@ -88,7 +72,7 @@ model_impl<Matrix,SymmGroup>::initializer(Lattice const& lat, BaseParameters & p
     
 #ifndef NDEBUG
     maquis::cout << "site_types: ";
-    std::copy(site_types.begin(), site_types.end(), maquis::ostream_iterator<int>(maquis::cout, " "));
+    std::copy(site_types.begin(), site_types.end(), std::ostream_iterator<int>(maquis::cout, " "));
     maquis::cout << std::endl;
 #endif
     

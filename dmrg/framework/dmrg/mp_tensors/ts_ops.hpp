@@ -182,7 +182,6 @@ void make_ts_cache_mpo(MPO<MPOMatrix, SymmGroup> const & mpo_orig,
     for (int p=0; p<mpo_out.length(); ++p) {
         ntags += mpo_out[p].get_operator_table()->size();
     }
-    maquis::cout << "Total number of tags: " << ntags << std::endl;
 }
 
 #endif

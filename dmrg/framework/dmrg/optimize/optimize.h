@@ -97,7 +97,6 @@ public:
             Storage::evict(mps[i]);
 
         northo = parms_["n_ortho_states"];
-        maquis::cout << "Expecting " << northo << " states to orthogonalize to." << std::endl;
 
         if (northo > 0 && !parms_.is_set("ortho_states"))
             throw std::runtime_error("Parameter \"ortho_states\" is not set\n");
@@ -121,7 +120,7 @@ public:
         }
         
         init_left_right(mpo, site);
-        maquis::cout << "Done init_left_right" << std::endl;
+        maquis::cout << "Done init_left_right" << std::endl << std::endl;
     }
     
     virtual ~optimizer_base() {}

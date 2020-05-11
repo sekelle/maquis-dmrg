@@ -63,8 +63,6 @@ struct default_mps_init : public mps_initializer<Matrix, SymmGroup>
     {
         std::size_t L = mps.length();
         
-        maquis::cout << "Right end: " << right_end << std::endl;
-        
         std::vector<Index<SymmGroup> > allowed = allowed_sectors(site_type, phys_dims, right_end, Mmax);
         
         omp_for(size_t i, parallel::range<size_t>(0,L), {

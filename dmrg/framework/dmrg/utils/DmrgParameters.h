@@ -53,6 +53,8 @@ private:
         add_option("GPU", "use GPUs", value(0));
         add_option("COMPLEX", "use complex numbers", value(false));
 
+        add_option("verbosity", "output verbosity", value(1));
+
         add_option("truncation_initial", "Initial value for the truncation error", value(1e-16));
         add_option("truncation_final", "Final value for the truncation", value(1e-16));
         

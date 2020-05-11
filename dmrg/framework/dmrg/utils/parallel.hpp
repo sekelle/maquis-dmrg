@@ -32,7 +32,6 @@
 #include "dmrg/utils/parallel/loops.hpp"
 #include "dmrg/utils/parallel/range.hpp"
 
-#include "dmrg/utils/parallel/io.hpp"
 #include "dmrg/utils/parallel/utils.hpp"
 
 #endif

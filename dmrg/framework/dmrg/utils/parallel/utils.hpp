@@ -28,12 +28,13 @@
 #ifndef UTILS_PARALLEL_UTILS_HPP
 #define UTILS_PARALLEL_UTILS_HPP
 
+#include <iostream>
 #include "dmrg/utils/proc_status.h"
 
 namespace parallel {
 
     inline void meminfo(){
-        parallel::cout << "Memory usage : " << proc_status_mem() << std::endl;
+        std::cout << "Memory usage : " << proc_status_mem() << std::endl;
     }
     inline void sync(){
     }

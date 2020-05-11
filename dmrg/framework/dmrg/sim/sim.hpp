@@ -102,14 +102,19 @@ sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_, bool measure_on_mps)
     /// MPO initialization
     if (restore_mpo)
     {
-        maquis::cout << "Restoring hamiltonian." << std::endl;
+        maquis::cout << "Restoring hamiltonian." << std::endl << std::endl;
         std::ifstream ifs((chkpfile+"/mpo.h5").c_str());
         boost::archive::binary_iarchive ar(ifs);
         ar >> mpo;
     }
     else
     {
+        if (parms["verbosity"] == 0) { maquis::silence(); }
+
         mpo = make_mpo(lat, model);
+
+        maquis::cout  << std::endl;
+        maquis::cout.clear();
 
         if (!dns && have_integrals)
         {
@@ -174,7 +179,7 @@ sim<Matrix, SymmGroup>::sim(DmrgParameters const & parms_, bool measure_on_mps)
         ar["/version"] << DMRG_VERSION_STRING;
     }
     
-    maquis::cout << "MPS initialization has finished...\n"; // MPS restored now
+    maquis::cout << std::endl;
 }
 
 template <class Matrix, class SymmGroup>

@@ -32,6 +32,7 @@
 #undef toupper
 #include <boost/tokenizer.hpp>
 #include <map>
+#include <set>
 #include <string>
 
 #include "utils/io.hpp"
@@ -39,13 +40,40 @@
 #include "dmrg/utils/guess_symmetry.h"
 
 namespace dmrg {
+
+    namespace detail {
+
+        template <class TR>
+        struct SymmHolderBase {
+            virtual typename TR::shared_ptr dispatch(DmrgParameters& parms) =0;
+        };
+
+
+        template <class TR, class SymmGroup>
+        struct SymmHolderReal : public SymmHolderBase<TR>
+        {
+            typename TR::shared_ptr dispatch(DmrgParameters& parms) {
+                return typename TR::shared_ptr(new typename TR::template F<matrix, SymmGroup>::type(parms));
+            }
+        };
+
+        #ifdef HAVE_COMPLEX
+        template <class TR, class SymmGroup>
+        struct SymmHolderComplex : public SymmHolderBase<TR>
+        {
+            typename TR::shared_ptr dispatch(DmrgParameters& parms) {
+                return typename TR::shared_ptr(new typename TR::template F<cmatrix, SymmGroup>::type(parms));
+            }
+        };
+        #endif
+    }
     
     template <class TR>
     typename TR::shared_ptr symmetry_factory(DmrgParameters & parms)
     {
         typedef typename TR::shared_ptr ptr_type;
-        std::map<std::string, ptr_type> factory_map;
-        
+        std::map<std::string, std::shared_ptr<detail::SymmHolderBase<TR>>> factory_map;
+
         std::string symm_name;
         if (!parms.is_set("symmetry")) {
 #ifdef HAVE_NU1
@@ -61,14 +89,14 @@ namespace dmrg {
 #ifdef HAVE_COMPLEX
     #define FACTORY_MAP(key, grp) \
     if (symm_name == #key) { \
-        factory_map["c_"#key] = ptr_type(new typename TR::template F<cmatrix, grp>::type(parms)); \
-        factory_map[#key] = ptr_type(new typename TR::template F<matrix, grp>::type(parms)); \
+        factory_map["c_"#key].reset(new detail::SymmHolderComplex<TR, grp>()); \
+        factory_map[#key].reset(new detail::SymmHolderReal<TR, grp>()); \
     } \
     maquis::cout << #key << " ";
 #else
     #define FACTORY_MAP(key, grp) \
     if (symm_name == #key) { \
-        factory_map[#key] = ptr_type(new typename TR::template F<matrix, grp>::type(parms)); \
+        factory_map[#key].reset(new detail::SymmHolderReal<TR, grp>()); \
     } \
     maquis::cout << #key << " ";
 #endif
@@ -105,16 +133,15 @@ namespace dmrg {
         
         if (factory_map.find(symm_name) != factory_map.end()) {
             if (parms["COMPLEX"])
-                return factory_map[std::string("c_") + symm_name];
+                return factory_map[std::string("c_") + symm_name]->dispatch(parms);
             else
-                return factory_map[symm_name];
+                return factory_map[symm_name]->dispatch(parms);
         }
         else
             throw std::runtime_error("Don't know this symmetry group. Please, check your compilation flags.");
 
         parallel::sync();
-        return factory_map[symm_name];
-        //return ptr_type();
+        return factory_map[symm_name]->dispatch(parms);
     }
 
 }

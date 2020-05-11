@@ -39,6 +39,9 @@ void dmrg_sim<Matrix, SymmGroup>::run()
 {
     int meas_each = parms["measure_each"];
     int chkp_each = parms["chkp_each"];
+
+    maquis::cout.clear();
+    if (parms["verbosity"] == 0) maquis::silence();
     
     /// MPO creation
     if (parms["MODEL"] == std::string("quantum_chemistry") && parms["use_compressed"])
@@ -62,10 +65,16 @@ void dmrg_sim<Matrix, SymmGroup>::run()
     else {
         throw std::runtime_error("Don't know this optimizer");
     }
+
+    maquis::cout.clear();
     
     measurements_type always_measurements = this->iteration_measurements(init_sweep);
     
     try {
+
+        maquis::cout << "Optimizing state " << mps.quantumNumber() << ", excitation " << base::ortho_mps.size() << std::endl;
+        if (parms["verbosity"] == 0) maquis::silence();
+
         for (int sweep=init_sweep; sweep < parms["nsweeps"]; ++sweep) {
             // TODO: introduce some timings
             
@@ -121,6 +130,14 @@ void dmrg_sim<Matrix, SymmGroup>::run()
             
             if (stopped) break;
         }
+
+        maquis::cout.clear();
+
+        int prec = maquis::cout.precision();
+        maquis::cout.precision(15);
+        maquis::cout << "Finished optimization. Lowest energy " << emin << std::endl << std::endl;
+        maquis::cout.precision(prec);
+
     } catch (dmrg::time_limit const& e) {
         maquis::cout << e.what() << " checkpointing partial result." << std::endl;
         checkpoint_simulation(mps, e.sweep(), e.site());
@@ -132,6 +149,8 @@ void dmrg_sim<Matrix, SymmGroup>::run()
             // ar[results_archive_path(e.sweep()) + "/results/Runtime/mean/value"] << std::vector<double>(1, elapsed_sweep + elapsed_measure);
         }
     }
+
+    if (parms["verbosity"] == 0) maquis::silence();
 }
 
 template <class Matrix, class SymmGroup>

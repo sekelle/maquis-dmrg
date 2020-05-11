@@ -63,6 +63,8 @@ public:
     Index<SymmGroup> const & site_dim(size_t i) const { return data_[i].site_dim(); }
     Index<SymmGroup> const & row_dim(size_t i) const { return data_[i].row_dim(); }
     Index<SymmGroup> const & col_dim(size_t i) const { return data_[i].col_dim(); }
+
+    typename SymmGroup::charge quantumNumber() const { return data_.rbegin()->col_dim()[0].first; }
     
     value_type const & operator[](size_t i) const;
     value_type& operator[](size_t i);
