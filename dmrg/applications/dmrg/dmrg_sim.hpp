@@ -40,7 +40,7 @@ void dmrg_sim<Matrix, SymmGroup>::run()
     int meas_each = parms["measure_each"];
     int chkp_each = parms["chkp_each"];
 
-    maquis::cout.clear();
+    // turn of output for boundary init and ts_mpo
     if (parms["verbosity"] == 0) maquis::silence();
     
     /// Optimizer initialization
@@ -66,60 +66,46 @@ void dmrg_sim<Matrix, SymmGroup>::run()
     try {
 
         maquis::cout << "Optimizing state " << mps.quantumNumber() << ", excitation " << base::ortho_mps.size() << std::endl;
+
+        // turn off output for sweeping
         if (parms["verbosity"] == 0) maquis::silence();
 
-        for (int sweep=init_sweep; sweep < parms["nsweeps"]; ++sweep) {
-            
+        double emin_prev = std::numeric_limits<double>::max();
+
+        for (int sweep = init_sweep; sweep < parms["nsweeps"]; ++sweep)
+        {
             optimizer->sweep(sweep, Both);
             storage::Controller::sync();
 
-            bool converged = false;
+            emin          = minIterationEnergy(optimizer->iteration_results());
+            double e_diff = std::abs(emin - emin_prev);
+            emin_prev     = emin;
+
+            bool writeIterationResults = (sweep+1) % meas_each == 0;
+            bool writeCheckpoint       = (sweep+1) % chkp_each == 0;
+            bool finalIteration        = (sweep+1) == parms["nsweeps"];
+            bool converged             = e_diff < parms["conv_thresh"];
+            bool stop                  = stop_callback() || converged || finalIteration;
             
-            if ((sweep+1) % meas_each == 0 || (sweep+1) == parms["nsweeps"])
+            if (writeIterationResults || stop)
             {
-                /// write iteration results
-                {
-                    storage::archive ar(rfile, "w");
-                    ar[results_archive_path(sweep) + "/parameters"] << parms;
-                    ar[results_archive_path(sweep) + "/results"] << optimizer->iteration_results();
-
-                    // record lowest energy from previous sweep
-                    {
-                        typedef typename maquis::traits::real_type<Matrix>::type real_type;
-                        std::vector<real_type> energies;
-
-                        ar[results_archive_path(sweep) + "/results/Energy/mean/value"] >> energies;
-                        emin = *std::min_element(energies.begin(), energies.end());
-                        ar["/spectrum/results/Energy/mean/value"] << emin;
-                    }
-
-                    // stop simulation if a specified energy threshold has been reached
-                    int prev_sweep = sweep - meas_each;
-                    if (prev_sweep >= 0 && parms["conv_thresh"] > 0.)
-                    {
-                        typedef typename maquis::traits::real_type<Matrix>::type real_type;
-                        std::vector<real_type> energies;
-
-                        ar[results_archive_path(prev_sweep) + "/results/Energy/mean/value"] >> energies;
-                        real_type emin_prev = *std::min_element(energies.begin(), energies.end());
-                        real_type e_diff = std::abs(emin - emin_prev);
-
-                        if (e_diff < parms["conv_thresh"])
-                            converged = true;
-                    }
-                }
+                // write iteration results
+                storage::archive ar(rfile, "w");
+                ar[results_archive_path(sweep) + "/parameters"] << parms;
+                ar[results_archive_path(sweep) + "/results"] << optimizer->iteration_results();
+                ar["/spectrum/results/Energy/mean/value"] << emin;
+                ar["/spectrum/results/Convergence/mean/value"] << e_diff;
                 
-                /// measure observables specified in 'always_measure'
+                // measure observables specified in 'always_measure'
                 if (always_measurements.size() > 0)
                     this->measure(this->results_archive_path(sweep) + "/results/", always_measurements);
             }
             
-            /// write checkpoint
-            bool stopped = stop_callback() || converged;
-            if (stopped || (sweep+1) % chkp_each == 0 || (sweep+1) == parms["nsweeps"])
+            // write checkpoint
+            if (writeCheckpoint || stop)
                 checkpoint_simulation(mps, sweep, -1);
             
-            if (stopped) break;
+            if (stop) break;
         }
 
         maquis::cout.clear();
@@ -142,8 +128,6 @@ void dmrg_sim<Matrix, SymmGroup>::run()
             // ar[results_archive_path(e.sweep()) + "/results/Runtime/mean/value"] << std::vector<double>(1, elapsed_sweep + elapsed_measure);
         }
     }
-
-    if (parms["verbosity"] == 0) maquis::silence();
 }
 
 template <class Matrix, class SymmGroup>

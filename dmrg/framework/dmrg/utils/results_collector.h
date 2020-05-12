@@ -28,8 +28,8 @@
 #define UTILS_RESULTS_COLLECTOR_H
 
 #include <map>
-#include <boost/any.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
+#include <any>
 #include <utility>
 
 #include "dmrg/utils/storage.h"
@@ -39,27 +39,33 @@ namespace detail {
     {
     public:
         virtual ~collector_impl_base() {}
-        virtual void collect(boost::any const &) = 0;
-        virtual void save(alps::hdf5::archive & ar) const = 0;
-        // TODO: fixed storage type because templated virtual function are not allowed
+        virtual void collect(const std::any&) = 0;
+        virtual void save(alps::hdf5::archive& ar) const = 0;
+        virtual void extract(const std::any&) const = 0;
     };
 
     template<class T>
     class collector_impl : public collector_impl_base
     {
     public:
-        void collect(boost::any const & val)
+        void collect(const std::any& val)
         {
-            vals.push_back(boost::any_cast<T>(val));
+            vals.push_back(std::any_cast<T>(val));
         }
         
-        void save(alps::hdf5::archive & ar) const
+        void save(alps::hdf5::archive& ar) const
         {
             std::vector<T> allvalues;
             if (ar.is_data("mean/value"))
                 ar["mean/value"] >> allvalues;
             std::copy(vals.begin(), vals.end(), std::back_inserter(allvalues));
             ar["mean/value"] << allvalues;
+        }
+
+        void extract(const std::any& output) const
+        {
+            std::vector<T>* ovalues = std::any_cast<std::vector<T>*>(output);
+            std::copy(vals.begin(), vals.end(), std::back_inserter(*ovalues));
         }
         
     private:
@@ -68,22 +74,40 @@ namespace detail {
 }
 
 class collector_proxy {
-    typedef boost::shared_ptr<detail::collector_impl_base> coll_type;
+    typedef std::shared_ptr<detail::collector_impl_base> coll_type;
 public:
     collector_proxy(coll_type & collector_)
     : collector(collector_)
     { }
     
     template<class T>
-    void operator<<(T const& val)
+    void operator<<(const T& val)
     {
         if (!collector)
             collector.reset(new detail::collector_impl<T>());
         collector->collect(val);
     }
-    
+
 private:
     coll_type & collector;
+};
+
+class collector_proxy_const {
+    typedef std::shared_ptr<detail::collector_impl_base> coll_type;
+public:
+    collector_proxy_const(coll_type collector_)
+    : collector(collector_)
+    { }
+
+    template<class T>
+    void operator>>(std::vector<T>& output) const
+    {
+        if (!collector) return;
+        collector->extract(&output);
+    }
+
+private:
+    coll_type collector;
 };
 
 class results_collector
@@ -95,15 +119,20 @@ public:
         collection.clear();
     }
     
-    collector_proxy operator[] (std::string name)
+    auto operator[] (std::string name)
     {
         return collector_proxy(collection[name]);
     }
     
+    auto operator[] (std::string name) const
+    {
+        return collector_proxy_const(collection.at(name));
+    }
+
     template <class Archive>
     void save(Archive & ar) const
     {
-        for (std::map<std::string, boost::shared_ptr< ::detail::collector_impl_base> >::const_iterator
+        for (std::map<std::string, std::shared_ptr< ::detail::collector_impl_base> >::const_iterator
              it = collection.begin(); it != collection.end(); ++it)
         {
             ar[it->first] << *it->second;
@@ -111,7 +140,15 @@ public:
     }
     
 private:
-    std::map<std::string, boost::shared_ptr< ::detail::collector_impl_base> > collection;
+    std::map<std::string, std::shared_ptr<::detail::collector_impl_base>> collection;
 };
+
+
+inline double minIterationEnergy(const results_collector& collector)
+{
+    std::vector<double> energies;
+    collector["Energy"] >> energies;
+    return *std::min_element(energies.begin(), energies.end());
+}
 
 #endif
