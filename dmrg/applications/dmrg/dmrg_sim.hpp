@@ -43,24 +43,17 @@ void dmrg_sim<Matrix, SymmGroup>::run()
     maquis::cout.clear();
     if (parms["verbosity"] == 0) maquis::silence();
     
-    /// MPO creation
-    if (parms["MODEL"] == std::string("quantum_chemistry") && parms["use_compressed"])
-        throw std::runtime_error("chem compression has been disabled");
-    MPO<Matrix, SymmGroup> mpoc = mpo;
-    if (parms["use_compressed"])
-        mpoc.compress(1e-12);
-
     /// Optimizer initialization
     boost::shared_ptr<opt_base_t> optimizer;
     if (parms["optimization"] == "singlesite")
     {
         optimizer.reset( new ss_optimize<Matrix, SymmGroup, storage::Controller>
-                        (mps, mpoc, base::ortho_mps, parms, stop_callback, init_site) );
+                        (mps, mpo, base::ortho_mps, parms, stop_callback, init_site) );
     }
     else if(parms["optimization"] == "twosite")
     {
         optimizer.reset( new ts_optimize<Matrix, SymmGroup, storage::Controller>
-                        (mps, mpoc, base::ortho_mps, parms, stop_callback, init_site) );
+                        (mps, mpo, base::ortho_mps, parms, stop_callback, init_site) );
     }
     else {
         throw std::runtime_error("Don't know this optimizer");
@@ -76,7 +69,6 @@ void dmrg_sim<Matrix, SymmGroup>::run()
         if (parms["verbosity"] == 0) maquis::silence();
 
         for (int sweep=init_sweep; sweep < parms["nsweeps"]; ++sweep) {
-            // TODO: introduce some timings
             
             optimizer->sweep(sweep, Both);
             storage::Controller::sync();
@@ -90,7 +82,6 @@ void dmrg_sim<Matrix, SymmGroup>::run()
                     storage::archive ar(rfile, "w");
                     ar[results_archive_path(sweep) + "/parameters"] << parms;
                     ar[results_archive_path(sweep) + "/results"] << optimizer->iteration_results();
-                    // ar[results_archive_path(sweep) + "/results/Runtime/mean/value"] << std::vector<double>(1, elapsed_sweep + elapsed_measure);
 
                     // record lowest energy from previous sweep
                     {
@@ -133,10 +124,12 @@ void dmrg_sim<Matrix, SymmGroup>::run()
 
         maquis::cout.clear();
 
-        int prec = maquis::cout.precision();
-        maquis::cout.precision(15);
-        maquis::cout << "Finished optimization. Lowest energy " << emin << std::endl << std::endl;
-        maquis::cout.precision(prec);
+        if (parms["verbosity"] == 0) {
+            int prec = maquis::cout.precision();
+            maquis::cout.precision(15);
+            maquis::cout << "Finished optimization. Lowest energy " << emin << std::endl << std::endl;
+            maquis::cout.precision(prec);
+        }
 
     } catch (dmrg::time_limit const& e) {
         maquis::cout << e.what() << " checkpointing partial result." << std::endl;
